@@ -13,6 +13,17 @@ This project uses **bd** (beads) for issue tracking. Run `bd prime` for full wor
 > source of truth; don't `bd import` during normal operation; don't
 > reach for third-party Dolt hosting before trying the default).
 
+## Project: moviemakerY2K
+
+Video editor in the style of Movie Maker 2.x; focus on transitions and effects.
+`apps/web` (Vite/React/TS, WebGL2), `backend/` (Python 3.13, FastAPI, FFmpeg as
+a subprocess), `packages/shaders` (shared GLSL), `packages/catalog` (effect
+catalog). Toolchain and commands only through Pixi (`pixi run check`,
+`pixi task list`). Architecture: `docs/adr/0001-architecture.md` and
+`docs/architecture.md`; research: `docs/research/movie-maker-reference.md`.
+No Microsoft assets. Bead token in commits upper-cased (`[MMY-6kz]` for
+`mmy-6kz`). Public docs are in English; contributor guide: `CONTRIBUTING.md`.
+
 ## Quick Reference
 
 ```bash

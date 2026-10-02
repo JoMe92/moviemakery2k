@@ -1,0 +1,10 @@
+{
+  "name": "@mmy/shaders",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Geteilte GLSL-ES-3.00-Shader für Vorschau (WebGL2) und Export (headless GL)",
+  "license": "GPL-3.0-or-later",
+  "exports": {
+    "./*": "./*"
+  }
+}

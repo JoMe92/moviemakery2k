@@ -1,0 +1,49 @@
+.tile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 96px;
+  padding: 3px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 66px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-face-light);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.caption {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile[aria-pressed="true"] .thumb {
+  outline: 2px solid var(--y2k-select);
+}
+
+.tile[aria-pressed="true"] .caption {
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+}
+
+.tile:hover:not([aria-pressed="true"]) .thumb {
+  border-color: var(--y2k-select);
+}

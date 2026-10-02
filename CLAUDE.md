@@ -60,23 +60,31 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+pixi run dev       # backend (MMY_API_PORT, default 8000) + Vite dev server (proxies /api)
+pixi run check     # quality gate: lint, typecheck, test, check-shaders, build
+pixi run test-e2e  # Playwright browser tests incl. golden frames
+pixi task list     # all commands; dependencies only via pixi.toml (+ pnpm for npm packages)
 ```
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+moviemakerY2K: a video editor in the style of Movie Maker 2.x, focused on
+transitions and effects. Monorepo: `apps/web` (Vite/React/TS, WebGL2 preview),
+`backend/` (Python 3.13, FastAPI, FFmpeg as a subprocess), `packages/shaders`
+(GLSL ES 3.00, shared by preview and export), `packages/catalog` (effect
+catalog, single source of truth). Overview: `docs/architecture.md`; rationale:
+`docs/adr/0001-architecture.md`; toolchain: `docs/adr/0002-pixi.md`.
+Research on the original: `docs/research/movie-maker-reference.md`.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- Effects and transitions are defined only in the catalog plus a shader, never duplicated in the web app or backend.
+- No Microsoft assets (icons, sounds, texts, `Parity.fx`). The XML files in `docs/research/sources/` are reference only.
+- Pydantic models are the API contract; TS types are generated from them (`pixi run gen-api`).
+- Bead token in commits upper-cased, e.g. `[MMY-6kz]` for `mmy-6kz` (the hook requires `[A-Z]…`).
+- Public documentation (README, docs/, package READMEs, CONTRIBUTING.md) is written in English.
 
-<!-- nogging:begin -->
 ## Nogging
 
 This repository uses the Nogging operating model. **`AGENTS.md` is the

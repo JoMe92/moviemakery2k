@@ -1,0 +1,40 @@
+.item {
+  margin: 0 0 5px;
+}
+
+.item:last-child {
+  margin-bottom: 0;
+}
+
+.link {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 1px 2px;
+  border: 0;
+  background: none;
+  color: var(--y2k-link);
+  text-align: left;
+  cursor: pointer;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.link:hover:not([aria-disabled="true"]) .text {
+  color: var(--y2k-link-hover);
+  text-decoration: underline;
+}
+
+.link[aria-disabled="true"] {
+  color: var(--y2k-text-disabled);
+  cursor: default;
+}
+
+.link[aria-disabled="true"] .icon {
+  opacity: 0.45;
+  filter: grayscale(1);
+}

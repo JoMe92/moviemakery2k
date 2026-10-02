@@ -1,0 +1,263 @@
+<TransitionsAndEffects Version="1.0">
+	<Titles>
+		<TitleDLL guid="{353359C1-39E1-491b-9951-464FD8AB071C}">
+			<Title name="Stretch" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Stretches up and in"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="1.0"/>
+					<Param name="EntranceEffect" value="EffectFade"/>
+					<Param name="ExitDuration" value="1.0"/>
+					<Param name="ExitEffect" value="EffectFade"/>
+					<Param name="EntranceZoom" value="10.0 0.01"/>
+					<Param name="MainZoom" value="1.0 1.0"/>
+					<Param name="ExitZoom" value="10.0 0.01"/>
+				</Paragraph>
+			</Title>
+			<Title name="Subtitle" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Subtitle at bottom (overlay)"/>
+				<Paragraph>
+					<Param name="ShadowOutline" value="Outline"/>
+					<Param name="BoundingRect" value="0.1 0.4 0.8 0.45"/>
+					<Param name="FontSize" value="20"/>
+					<Param name="MaxCharacterCount" value="256"/>
+					<Param name="VerticalAlignment" value="Bottom"/>
+				</Paragraph>
+			</Title>
+			<Title name="Basic Title" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Text appears with no motion or fade"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="0.0"/>
+				</Paragraph>
+			</Title>
+			<Title name="Video, In Text" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Video shows through text"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="1.0"/>
+					<Param name="ExitDuration" value="0.5"/>
+					<Param name="EntranceEffect" value="EffectFade"/>
+					<Param name="MainEffect" value="EffectInverse"/>
+					<Param name="ExitEffect" value="EffectFade"/>
+					<Param name="EntranceZoom" value="10.0 10.0"/>
+					<Param name="MainZoom" value="1.0 1.0"/>
+					<Param name="ExitZoom" value="1.0 1.0"/>
+				</Paragraph>
+			</Title>
+			<Title name="Wow!" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Jagged shape outline (overlay)"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="0.33"/>
+					<Param name="EntranceZoom" value="0.1 0.1"/>
+					<Param name="MainZoom" value="1.0 1.0"/>
+					<Param name="BannerType" value="Explosion"/>
+					<Param name="BoundingRect" value="0.25 0.25 0.5 0.5"/>
+					<Param name="BannerShadowColor" value="#FF000000"/>
+					<Param name="MaxCharacterCount" value="64"/>
+					<Param name="ShadowOutline" value="Shadow"/>
+				</Paragraph>
+			</Title>
+			<Title name="Fade, Wipe" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Fades, wipes left to right"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="1.0"/>
+					<Param name="ExitDuration" value="1.0"/>
+					<Param name="EntranceEffect" value="EffectFadeWipe"/>
+					<Param name="ExitEffect" value="EffectFadeWipe"/>
+				</Paragraph>
+			</Title>
+			<Title name="Fade, Bounce Wipe" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Fades, wipes back and forth"/>
+				<Param name="EntranceEffect" value="EffectFade"/>
+				<Param name="ExitEffect" value="EffectFade"/>
+				<Param name="EntranceDuration" value="0.5"/>
+				<Param name="ExitDuration" value="0.5"/>
+				<Param name="OptimalDurationMultiplier" value="2.0"/>
+				<Paragraph>
+					<Param name="MainEffect" value="EffectBounceWipe"/>
+					<Param name="SwitchDuration" value="2.0" />
+				</Paragraph>
+			</Title>
+			<Title name="Fade, Ellipse Wipe" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Fades in and out in elliptical shape"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="1.0"/>
+					<Param name="ExitDuration" value="1.0"/>
+					<Param name="EntranceEffect" value="EffectFadeEllipse"/>
+					<Param name="ExitEffect" value="EffectFadeEllipse"/>
+				</Paragraph>
+			</Title>
+			<Title name="Mirror" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Text flies in and out from both sides"/>
+				<Paragraph>
+					<Param name="EntranceDuration" value="1.5"/>
+					<Param name="ExitDuration" value="1.5"/>
+					<Param name="EntrancePosition" value="-0.5 0.5"/>
+					<Param name="MainPosition" value="0.5 0.5"/>
+					<Param name="ExitPosition" value="-0.5 0.5"/>
+					<Param name="EntranceEffect" value="EffectFade"/>
+					<Param name="ExitEffect" value="EffectFade"/>
+					<Param name="MainEffect" value="EffectScroll, Banner"/>
+				</Paragraph>
+			</Title>
+			<Title name="Scroll, Banner" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Banner scrolls right to left (overlay)"/>
+				<Param name="EntranceEffect" value="EffectFade"/>
+				<Param name="ExitEffect" value="EffectFade"/>
+				<Param name="EntranceDuration" value="0.5"/>
+				<Param name="ExitDuration" value="0.5"/>
+				<Param name="OptimalDurationMultiplier" value="8.0"/>
+				<Paragraph>
+					<Param name="IsOneLine" value="true"/>
+					<Param name="EntrancePosition" value="1.5 0.5"/>
+					<Param name="ExitPosition" value="-0.5 0.5"/>
+					<Param name="FontSize" value="240.0"/>
+					<Param name="ResizingTechnique" value="KeepVerticalConstant"/>
+					<Param name="BoundingRect" value="0.0 0.0 1.0 1.0"/>
+					<Param name="MaxCharacterCount" value="64"/>
+				</Paragraph>
+			</Title>
+			<Title name="Scroll, Inverted" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Video appears in text, scrolls right to left (overlay)"/>
+				<Param name="EntranceEffect" value="EffectFade"/>
+				<Param name="ExitEffect" value="EffectFade"/>
+				<Param name="EntranceDuration" value="0.5"/>
+				<Param name="ExitDuration" value="0.5"/>
+				<Param name="OptimalDurationMultiplier" value="8.0"/>
+				<Paragraph>
+					<Param name="IsOneLine" value="true"/>
+					<Param name="EntrancePosition" value="1.5 0.5"/>
+					<Param name="ExitPosition" value="-0.5 0.5"/>
+					<Param name="FontSize" value="240.0"/>
+					<Param name="ResizingTechnique" value="KeepVerticalConstant"/>
+					<Param name="BoundingRect" value="0.0 0.0 1.0 1.0"/>
+					<Param name="MainEffect" value="EffectInverse"/>
+					<Param name="MaxCharacterCount" value="64"/>
+				</Paragraph>
+			</Title>
+			<Title name="Exploding Outline" iconid="13" >
+				<Param name="InternalName" value="TitleMultiTitles"/>
+				<Param name="Description" value="Zooms in, outline explodes off screen"/>
+				<Param name="EntranceEffect" value="EffectOutlineExplode"/>
+				<Param name="EntranceDuration" value="2.0"/>
+				<Param name="ExitEffect" value="EffectFade"/>
+				<Param name="ExitDuration" value="1.0"/>
+				<Param name="ShadowOutline" value="Outline"/>
+				<Param name="EntranceZoom" value="0.5 0.5"/>
+				<Param name="MainZoom" value="20.0 20.0"/>
+				<Param name="ExitZoom" value="20.0 20.0"/>
+				<Paragraph>
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.5"/>
+					<Param name="VerticalAlignment" value="Bottom"/>
+					<Param name="MaxCharacterCount" value="128"/>
+				</Paragraph>
+				<Paragraph>
+					<Param name="VerticalAlignment" value="Top"/>
+					<Param name="FontSize" value="20.0"/>
+					<Param name="ProgressDelay" value="0.15"/>
+					<Param name="ProgressDuration" value="0.85"/>
+					<Param name="BoundingRect" value="0.1 0.6 0.8 0.3"/>
+					<Param name="MaxCharacterCount" value="96"/>
+				</Paragraph>
+			</Title>
+			<Title name="Paint Drip" iconid="13" >
+				<Param name="InternalName" value="TitleStandard"/>
+				<Param name="Description" value="Fills with paint"/>
+					<Param name="OptimalDurationMultiplier" value="3.0"/>
+				<Paragraph>
+					<Param name="FillBitmapFilename" value="paint.png"/>
+					<Param name="FillBitmapRect" value="0.0 0.0 1.0 2.0"/>
+					<Param name="FillBitmapEntrancePosition" value="0.5 -2.5"/>
+					<Param name="FillBitmapExitPosition" value="0.5 0.5"/>
+					<Param name="ExitEffect" value="EffectFade"/>
+					<Param name="ExitDuration" value="0.5"/>
+				</Paragraph>
+			</Title>
+			<Title name="Fly In, Left and Right" iconid="13" >
+				<Param name="InternalName" value="TitleMultiTitles"/>
+				<Param name="Description" value="Flies in from left and right"/>
+				<Param name="EntranceDuration" value="0.5"/>
+				<Param name="ExitDuration" value="1.0"/>
+				<Param name="EntranceEffect" value="EffectFade"/>
+				<Param name="ExitEffect" value="EffectFade"/>
+				<Paragraph>
+					<Param name="BoundingRect" value="0.15 0.1 0.7 0.4"/>
+					<Param name="FontSize" value="30.0"/>
+					<Param name="EntrancePosition" value="-0.5 0.5"/>
+					<Param name="MainPosition" value="0.45 0.5"/>
+					<Param name="ExitPosition" value="-0.5 0.5"/>
+					<Param name="VerticalAlignment" value="Bottom"/>
+					<Param name="MaxCharacterCount" value="96"/>
+				</Paragraph>
+				<Paragraph>
+					<Param name="EntrancePosition" value="1.5 0.5"/>
+					<Param name="MainPosition" value="0.55 0.5"/>
+					<Param name="ExitPosition" value="1.5 0.5"/>
+					<Param name="FontSize" value="15.0"/>
+					<Param name="ProgressDelay" value="0.2"/>
+					<Param name="ProgressDuration" value="0.7"/>
+					<Param name="BoundingRect" value="0.15 0.5 0.7 0.4"/>
+					<Param name="VerticalAlignment" value="Top"/>
+					<Param name="MaxCharacterCount" value="96"/>
+				</Paragraph>
+			</Title>
+			<Title name="Sports Scoreboard" iconid="13" >
+				<Param name="InternalName" value="TitleMultiTitles"/>
+				<Param name="Description" value="Slides down and then up (overlay)"/>
+				<Param name="EntranceDuration" value="0.5"/>
+				<Param name="ExitDuration" value="0.5"/>
+				<Param name="ShadowOutline" value="Shadow"/>
+				<Param name="EntranceEffect" value="EffectFade"/>
+				<Param name="ExitEffect" value="EffectFade"/>
+				<Param name="EntrancePosition" value="0.5 0.0"/>
+				<Param name="MainPosition" value="0.5 0.5"/>
+				<Param name="ExitPosition" value="0.5 0.0"/>
+				<Param name="IsOneLine" value="true"/>
+				<Param name="MaxCharacterCount" value="28"/>
+				<Paragraph>
+					<Param name="RenderOrder" value="RenderLast"/>
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.1"/>
+				</Paragraph>
+				<Paragraph>
+					<Param name="BoundingRect" value="0.1 0.2 0.8 0.1"/>
+					<Param name="BannerType" value="UpperFlood"/>
+				</Paragraph>
+			</Title>
+			<Title name="Newspaper" iconid="13" >
+				<Param name="InternalName" value="TitleMultiTitles"/>
+				<Param name="Description" value="Spins and zooms in (overlay)"/>
+				<Param name="OptimalDurationMultiplier" value="2.0"/>
+				<Param name="LogoBitmapFilename" value="news.png"/>
+				<Param name="LogoRect" value="0.075 0.075 0.85 0.85"/>
+				<Param name="EntranceVideoRect" value="0.38 0.41 0.35 0.35"/>
+				<Param name="MainVideoRect" value="0.38 0.41 0.35 0.35"/>
+				<Param name="ExitVideoRect" value="0.0 0.0 1.0 1.0"/>
+				<Param name="EntranceDuration" value="1.5"/>
+				<Param name="EntranceEffect" value="EffectRotate"/>
+				<Param name="EntranceZoom" value="0.01 0.01"/>
+				<Param name="MainZoom" value="1.0 1.0"/>
+				<Param name="ExitDuration" value="1.0"/>
+				<Param name="ForceFrontColor1" value="#FF505050"/>
+				<Paragraph>
+					<Param name="IsOneLine" value="true"/>
+					<Param name="BoundingRect" value="0.1 0.075 0.8 0.15"/>
+					<Param name="MaxCharacterCount" value="32"/>
+				</Paragraph>
+				<Paragraph>
+					<Param name="IsOneLine" value="true"/>
+					<Param name="BoundingRect" value="0.1 0.25 0.8 0.1"/>
+					<Param name="MaxCharacterCount" value="32"/>
+				</Paragraph>
+			</Title>
+		</TitleDLL>
+	</Titles>
+</TransitionsAndEffects>

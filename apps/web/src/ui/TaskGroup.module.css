@@ -1,0 +1,56 @@
+.group {
+  margin: 0 0 12px;
+  overflow: hidden;
+  border-radius: var(--y2k-title-radius) var(--y2k-title-radius) 0 0;
+}
+
+.heading {
+  margin: 0;
+  font-size: inherit;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 25px;
+  padding: 0 4px 0 10px;
+  border: 0;
+  background: linear-gradient(
+    to right,
+    var(--y2k-taskgroup-head-left),
+    var(--y2k-taskgroup-head-right)
+  );
+  color: var(--y2k-taskgroup-head-text);
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+
+.header:hover {
+  color: var(--y2k-link-hover);
+}
+
+.title {
+  flex: 1;
+}
+
+.chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--y2k-chevron-ring);
+  border-radius: 50%;
+  background: var(--y2k-chevron-bg);
+}
+
+.body {
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  border: 1px solid var(--y2k-taskgroup-border);
+  border-top: 0;
+  background: var(--y2k-taskgroup-body);
+}

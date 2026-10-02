@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Branch-Namenskonvention
+        if: github.event_name == 'pull_request'
+        run: scripts/check-branch-name "${{ github.head_ref }}"
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: v0.81.0
+          locked: true
+          cache: true
+      - name: pnpm-Version passt zu packageManager
+        run: |
+          want=$(node -p "require('./package.json').packageManager.split('@')[1]" 2>/dev/null || pixi run node -p "require('./package.json').packageManager.split('@')[1]")
+          have=$(pixi run pnpm --version)
+          echo "packageManager=$want pixi-pnpm=$have"
+          test "$want" = "$have"
+      - run: pixi run check
+      - name: Generierte API-Typen sind aktuell
+        run: |
+          pixi run gen-api
+          git diff --exit-code -- apps/web/src/generated
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: v0.81.0
+          locked: true
+          cache: true
+      - name: Browser-Abhängigkeiten des Systems
+        run: sudo env "PATH=$PATH" pixi run playwright install-deps chromium
+      - run: pixi run test-e2e
+      - name: Screenshots bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          if-no-files-found: ignore

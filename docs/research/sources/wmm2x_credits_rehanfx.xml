@@ -1,0 +1,266 @@
+<TransitionsAndEffects Version="1.0">
+	<Titles>
+		<TitleDLL guid="{353359C1-39E1-491b-9951-464FD8AB071C}">
+			<Title name="Credits: Scroll, Up Stacked" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired stacked credits scroll up " />
+				<Param name="CreditLineOverlap" value="0.68" />
+				<Param name="OptimalDurationMultiplier" value="1.5" />
+				<Param name="EntrancePosition" value="0.5 1.3" />
+				<Param name="ExitPosition" value="0.5 -0.3" />
+				<Param name="MaxCharacterCount" value="48" />
+				<Paragraph>
+					<Param name="FontSize" value="30.0" />
+					<Param name="BoundingRect" value="0.1 0.35 0.8 0.3" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="BoundingRect" value="0.1 0.2 0.8 0.25" />
+					<Param name="VerticalAlignment" value="Bottom" />
+					<Param name="FontSize" value="16.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="BoundingRect" value="0.1 0.45 0.8 0.35" />
+					<Param name="VerticalAlignment" value="Top" />
+					<Param name="FontSize" value="25.0" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Zoom, In" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired credits zoom in" />
+				<Param name="CreditLineOverlap" value="0.1" />
+				<Param name="EntranceEffect" value="EffectFade" />
+				<Param name="ExitEffect" value="EffectFade" />
+				<Param name="EntranceDuration" value="1.0" />
+				<Param name="ExitDuration" value="1.0" />
+				<Param name="EntranceZoom" value="10.0 10.0" />
+				<Param name="MainZoom" value="1.0 1.0" />
+				<Param name="ExitZoom" value="1.0 1.0" />
+				<Param name="ShadowOutline" value="Shadow" />
+				<Param name="MaxCharacterCount" value="64" />
+				<Paragraph>
+					<Param name="FontSize" value="35.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="16.0" />
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.35" />
+					<Param name="VerticalAlignment" value="Bottom" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="25.0" />
+					<Param name="BoundingRect" value="0.1 0.45 0.8 0.45" />
+					<Param name="VerticalAlignment" value="Top" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Fade, In and Out" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired credits fade in and out" />
+				<Param name="CreditLineOverlap" value="0.1" />
+				<Param name="EntranceEffect" value="EffectFade" />
+				<Param name="ExitEffect" value="EffectFade" />
+				<Param name="EntranceDuration" value="1.0" />
+				<Param name="ExitDuration" value="1.0" />
+				<Param name="ShadowOutline" value="Shadow" />
+				<Param name="MaxCharacterCount" value="64" />
+				<Paragraph>
+					<Param name="FontSize" value="35.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="16.0" />
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.35" />
+					<Param name="VerticalAlignment" value="Bottom" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="25.0" />
+					<Param name="BoundingRect" value="0.1 0.45 0.8 0.45" />
+					<Param name="VerticalAlignment" value="Top" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Scroll, Up Side-by-Side" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired credits scroll up side-by-side" />
+				<Param name="CreditLineOverlap" value="0.9" />
+				<Param name="OptimalDurationMultiplier" value="1.5" />
+				<Param name="EntrancePosition" value="0.5 1.3" />
+				<Param name="ExitPosition" value="0.5 -0.3" />
+				<Param name="MaxCharacterCount" value="24" />
+				<Param name="IsOneLine" value="true" />
+				<Paragraph>
+					<Param name="FontSize" value="25.0" />
+					<Param name="BoundingRect" value="0.1 0.35 0.8 0.3" />
+					<Param name="ForceCenterAlignment" value="true" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="ResizingTechnique" value="NoResize" />
+					<Param name="BoundingRect" value="0.1 0.4 0.4 0.2" />
+					<Param name="FontSize" value="16.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="ResizingTechnique" value="NoResize" />
+					<Param name="BoundingRect" value="0.5 0.4 0.4 0.2" />
+					<Param name="FontSize" value="16.0" />
+					<Param name="ReverseAlignment" value="true" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Mirror" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired credits fly in from both sides" />
+				<Param name="CreditLineOverlap" value="0.07" />
+				<Param name="EntranceDuration" value="1.5" />
+				<Param name="ExitDuration" value="1.5" />
+				<Param name="EntrancePosition" value="-0.5 0.5" />
+				<Param name="MainPosition" value="0.5 0.5" />
+				<Param name="ExitPosition" value="-0.5 0.5" />
+				<Param name="EntranceEffect" value="EffectFade" />
+				<Param name="ExitEffect" value="EffectFade" />
+				<Param name="MainEffect" value="EffectMirror" />
+				<Param name="MaxCharacterCount" value="64" />
+				<Param name="OptimalDurationMultiplier" value="1.5" />
+				<Paragraph>
+					<Param name="FontSize" value="35.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="16.0" />
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.35" />
+					<Param name="VerticalAlignment" value="Bottom" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="25.0" />
+					<Param name="BoundingRect" value="0.1 0.45 0.8 0.45" />
+					<Param name="VerticalAlignment" value="Top" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Exploding" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired credits zoom in and outline explodes off screen" />
+				<Param name="EntranceEffect" value="EffectOutlineExplode" />
+				<Param name="EntranceDuration" value="2.0" />
+				<Param name="ExitEffect" value="EffectFade" />
+				<Param name="ExitDuration" value="1.0" />
+				<Param name="EntranceZoom" value="0.5 0.5" />
+				<Param name="MainZoom" value="20.0 20.0" />
+				<Param name="ExitZoom" value="20.0 20.0" />
+				<Param name="ShadowOutline" value="Outline" />
+				<Param name="MaxCharacterCount" value="64" />
+				<Paragraph>
+					<Param name="FontSize" value="35.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="16.0" />
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.35" />
+					<Param name="VerticalAlignment" value="Bottom" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="FontSize" value="25.0" />
+					<Param name="ProgressDelay" value="0.15" />
+					<Param name="ProgressDuration" value="0.85" />
+					<Param name="BoundingRect" value="0.1 0.45 0.8 0.45" />
+					<Param name="VerticalAlignment" value="Top" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Fly In, Left and Right" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Paired credits fly in from left and right" />
+				<Param name="CreditLineOverlap" value="0.03" />
+				<Param name="EntranceDuration" value="0.75" />
+				<Param name="ExitDuration" value="0.75" />
+				<Param name="EntranceEffect" value="EffectFade" />
+				<Param name="ExitEffect" value="EffectFade" />
+				<Param name="ShadowOutline" value="Shadow" />
+				<Param name="MaxCharacterCount" value="48" />
+				<Param name="OptimalDurationMultiplier" value="1.5" />
+				<Paragraph>
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.8" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="BoundingRect" value="0.15 0.2 0.7 0.3" />
+					<Param name="FontSize" value="16.0" />
+					<Param name="EntrancePosition" value="-0.5 0.5" />
+					<Param name="MainPosition" value="0.45 0.5" />
+					<Param name="ExitPosition" value="-0.5 0.5" />
+					<Param name="VerticalAlignment" value="Bottom" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="EntrancePosition" value="1.5 0.5" />
+					<Param name="MainPosition" value="0.55 0.5" />
+					<Param name="ExitPosition" value="1.5 0.5" />
+					<Param name="FontSize" value="25.0" />
+					<Param name="ProgressDelay" value="0.2" />
+					<Param name="ProgressDuration" value="0.7" />
+					<Param name="BoundingRect" value="0.15 0.5 0.7 0.4" />
+					<Param name="VerticalAlignment" value="Top" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Video Left" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Credits scroll up on the right with video squeezed on left (overlay)" />
+				<Param name="CreditLineOverlap" value="0.68" />
+				<Param name="IsHeaderFullTime" value="true" />
+				<Param name="MainVideoRect" value="0.0 0.0 0.5 1.0" />
+				<Param name="OptimalDurationMultiplier" value="2.0" />
+				<Param name="MaxCharacterCount" value="24" />
+				<Paragraph>
+					<Param name="RenderOrder" value="RenderLast" />
+					<Param name="BannerType" value="LeftFlood" />
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.1" />
+					<Param name="EntranceEffect" value="EffectFade" />
+					<Param name="EntranceDuration" value="1.0" />
+					<Param name="ExitEffect" value="EffectFade" />
+					<Param name="ExitDuration" value="1.0" />
+					<Param name="IsOneLine" value="true" />
+					<Param name="ForceCenterAlignment" value="true" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="EntrancePosition" value="0.5 1.3" />
+					<Param name="ExitPosition" value="0.5 -0.3" />
+					<Param name="BoundingRect" value="0.5 0.2 0.4 0.25" />
+					<Param name="VerticalAlignment" value="Bottom" />
+					<Param name="FontSize" value="16.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="EntrancePosition" value="0.5 1.3" />
+					<Param name="ExitPosition" value="0.5 -0.3" />
+					<Param name="BoundingRect" value="0.5 0.45 0.4 0.35" />
+					<Param name="VerticalAlignment" value="Top" />
+					<Param name="FontSize" value="25.0" />
+				</Paragraph>
+			</Title>
+			<Title name="Credits: Video Top" iconid="13" >
+				<Param name="InternalName" value="CreditStandard" />
+				<Param name="Description" value="Credits scroll up on the bottom with video squeezed on top (overlay)" />
+				<Param name="CreditLineOverlap" value="0.68" />
+				<Param name="IsHeaderFullTime" value="true" />
+				<Param name="MainVideoRect" value="0.0 0.0 1.0 0.5" />
+				<Param name="BackgroundColor1" value="#FF000060" />
+				<Param name="BackgroundColor2" value="#FF6060FF" />
+				<Param name="OptimalDurationMultiplier" value="2.0" />
+				<Param name="MaxCharacterCount" value="48" />
+				<Paragraph>
+					<Param name="RenderOrder" value="RenderLast" />
+					<Param name="BannerType" value="LeftFlood" />
+					<Param name="BoundingRect" value="0.1 0.1 0.8 0.1" />
+					<Param name="EntranceEffect" value="EffectFade" />
+					<Param name="EntranceDuration" value="1.0" />
+					<Param name="ExitEffect" value="EffectFade" />
+					<Param name="ExitDuration" value="1.0" />
+					<Param name="IsOneLine" value="true" />
+					<Param name="ForceCenterAlignment" value="true" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="EntrancePosition" value="0.5 1.3" />
+					<Param name="ExitPosition" value="0.5 -0.3" />
+					<Param name="BoundingRect" value="0.1 0.2 0.8 0.25" />
+					<Param name="VerticalAlignment" value="Bottom" />
+					<Param name="FontSize" value="16.0" />
+				</Paragraph>
+				<Paragraph>
+					<Param name="EntrancePosition" value="0.5 1.3" />
+					<Param name="ExitPosition" value="0.5 -0.3" />
+					<Param name="BoundingRect" value="0.1 0.45 0.8 0.35" />
+					<Param name="VerticalAlignment" value="Top" />
+					<Param name="FontSize" value="25.0" />
+				</Paragraph>
+			</Title>
+		</TitleDLL>
+	</Titles>
+</TransitionsAndEffects>
+

@@ -1,0 +1,29 @@
+.stage {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 6px;
+  background: var(--y2k-monitor-frame);
+  container-type: size;
+}
+
+/* Größte 4:3-Fläche, die in die Bühne passt. */
+.screen {
+  position: relative;
+  width: min(100cqw, 100cqh * 4 / 3);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--y2k-monitor-screen);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 30px;
+  padding: 3px 6px;
+  border-top: 1px solid var(--y2k-border);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-face));
+}

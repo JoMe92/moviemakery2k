@@ -11,3 +11,37 @@
 .nogging/reports/
 __pycache__/
 *.py[cod]
+
+# Node / Web
+node_modules/
+dist/
+*.tsbuildinfo
+.vite/
+
+# Python
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Medien & Render-Ausgaben (nie committen)
+/media/
+/renders/
+*.mp4
+*.mov
+*.mkv
+*.webm
+!**/fixtures/**
+
+# Editor / OS
+.DS_Store
+.idea/
+
+# Pixi
+.pixi/
+
+# Laufzeitdaten des Backends (Uploads, Projekt)
+backend/.data/
+
+# Playwright
+test-results/

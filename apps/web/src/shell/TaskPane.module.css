@@ -1,0 +1,23 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--y2k-border);
+  background: linear-gradient(to bottom, var(--y2k-taskpane-top), var(--y2k-taskpane-bottom));
+}
+
+.heading {
+  margin: 0;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--y2k-border);
+  background: var(--y2k-face);
+  font-size: inherit;
+}
+
+.groups {
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  overflow-y: auto;
+}

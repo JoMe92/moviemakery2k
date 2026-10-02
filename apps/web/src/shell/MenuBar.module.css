@@ -1,0 +1,77 @@
+.menubar {
+  display: flex;
+  min-width: 0;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--y2k-separator);
+  background: var(--y2k-face);
+  position: relative;
+  z-index: 20;
+}
+
+.menu {
+  position: relative;
+}
+
+.item {
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.item:hover,
+.item[aria-expanded="true"] {
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+}
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 210px;
+  padding: 2px;
+  border: 1px solid var(--y2k-edge-dark);
+  background: var(--y2k-pane);
+  box-shadow: 2px 2px 3px var(--y2k-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 3px 18px 3px 22px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: default;
+  font: inherit;
+  color: inherit;
+}
+
+.entry:hover:not([aria-disabled="true"]),
+.entry:focus-visible:not([aria-disabled="true"]) {
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+}
+
+.entry[aria-disabled="true"] {
+  color: var(--y2k-text-disabled);
+}
+
+.entry[aria-disabled="true"]:focus-visible {
+  outline: 1px dotted currentcolor;
+  outline-offset: -2px;
+}
+
+.shortcut {
+  opacity: 0.8;
+}
+
+.separator {
+  margin: 3px 2px;
+  border: 0;
+  border-top: 1px solid var(--y2k-separator);
+}

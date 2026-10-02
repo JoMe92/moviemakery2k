@@ -1,0 +1,68 @@
+.dialog {
+  min-width: 320px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--y2k-title-edge);
+  border-radius: var(--y2k-title-radius) var(--y2k-title-radius) 0 0;
+  background: var(--y2k-face);
+  color: var(--y2k-text);
+  box-shadow: 4px 4px 12px var(--y2k-shadow);
+}
+
+.dialog::backdrop {
+  background: var(--y2k-backdrop);
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 4px 2px 8px;
+  background: linear-gradient(
+    to bottom,
+    var(--y2k-title-top),
+    var(--y2k-title-mid) 40%,
+    var(--y2k-title-bottom)
+  );
+  color: var(--y2k-title-text);
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 0 var(--y2k-title-shadow);
+  white-space: nowrap;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 1px solid var(--y2k-edge-light);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-icon-red), var(--y2k-title-shadow));
+  color: var(--y2k-title-text);
+  cursor: pointer;
+}
+
+.close:hover {
+  filter: brightness(1.15);
+}
+
+.body {
+  padding: 14px 16px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 16px 12px;
+}

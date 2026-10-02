@@ -1,0 +1,10 @@
+/* Hervorhebung, solange Dateien über die Sammlung gezogen werden. */
+section.dropping {
+  outline: 2px dashed var(--y2k-select);
+  outline-offset: -3px;
+  background: var(--y2k-select-soft);
+}
+
+.input {
+  display: none;
+}
