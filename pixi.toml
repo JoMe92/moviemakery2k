@@ -18,12 +18,27 @@ uvicorn-standard = ">=0.54"
 pydantic = ">=2.13"
 python-multipart = ">=0.0.32"
 pillow = ">=12"
+# Export-Renderer (design.md D1, D8): headless GL über EGL.
+moderngl = ">=5.12"
+glcontext = ">=3"
+
+[target.linux-64.dependencies]
+# Mesa mit llvmpipe-Software-Renderer: EGL ohne Display, GPU und Systempakete.
+mesalib = "*"
 
 [activation.env]
 # Keine Pakete aus ~/.local einmischen: die Umgebung kommt ausschließlich aus pixi.lock.
 PYTHONNOUSERSITE = "1"
 # Playwright-Browser im Projekt statt in ~/.cache (siehe README: Cache-Probleme).
 PLAYWRIGHT_BROWSERS_PATH = "$PIXI_PROJECT_ROOT/.pixi/playwright-browsers"
+
+[target.linux-64.activation.env]
+# Headless-EGL aus der Pixi-Umgebung statt aus Systempaketen (design.md D1, D8):
+# glvnd sucht den Mesa-ICD sonst nur unter /usr/share/glvnd/egl_vendor.d und
+# glcontext findet libEGL/libGL per ldconfig nur im System.
+__EGL_VENDOR_LIBRARY_DIRS = "$CONDA_PREFIX/share/glvnd/egl_vendor.d"
+GLCONTEXT_LINUX_LIBEGL = "$CONDA_PREFIX/lib/libEGL.so.1"
+GLCONTEXT_LINUX_LIBGL = "$CONDA_PREFIX/lib/libGL.so.1"
 
 [pypi-dependencies]
 mmy-backend = { path = "backend", editable = true }
@@ -77,5 +92,7 @@ e2e-browsers = { cmd = "playwright install chromium", description = "Chromium f�
 test-e2e = { cmd = "pytest -c e2e/pytest.ini e2e", depends-on = ["build", "e2e-browsers"], description = "Browser-Tests gegen Backend + gebaute Web-App" }
 
 check-shaders = { cmd = "python scripts/check_shaders.py", description = "GLSL-ES-3.00-Shader kompilieren und mit dem Katalog abgleichen" }
+
+check-render-env = { cmd = "python scripts/check_render_env.py", description = "Export-Renderer: EGL/llvmpipe-Kontext, Testframe, FFmpeg libx264 + aac" }
 
 check = { depends-on = ["lint", "typecheck", "test", "check-shaders", "build"], description = "Quality-Gate: lint, typecheck, test, Shader, build" }
