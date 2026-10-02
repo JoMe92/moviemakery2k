@@ -1,40 +1,44 @@
-# @mmy/shaders – geteilte GLSL-Programme
+# @mmy/shaders – shared GLSL programs
 
-Ein Shader pro Übergang, geschrieben in **GLSL ES 3.00**. Dieselbe Datei läuft
-in der Vorschau (WebGL2) und später im Export (headless GL im Backend). Nur so
-sehen beide gleich aus (ADR 0001, design.md D4).
+One shader per transition, written in **GLSL ES 3.00**. The same file runs in
+the preview (WebGL2) and, later, in the export (headless GL in the backend).
+That is the only way to make both look the same
+([ADR 0001](../../docs/adr/0001-architecture.md), design decision D4 of the
+`add-slideshow-mvp` change).
 
-## Shader-Vertrag
+## Shader contract
 
-Eine Datei `transitions/<id>.glsl` enthält **nur**:
+A file `transitions/<id>.glsl` contains **only**:
 
 ```glsl
-uniform float <param>;   // je Eintrag in catalog params, Name 1:1
+uniform float <param>;   // one per entry in the catalog's params, same name
 vec4 transition(vec2 uv) { … }
 ```
 
-Der Renderer baut das Programm so zusammen:
-`prelude.glsl` + `transitions/<id>.glsl` + `epilogue.glsl`, dazu `vertex.glsl`.
+The renderer assembles the program as
+`prelude.glsl` + `transitions/<id>.glsl` + `epilogue.glsl`, plus `vertex.glsl`.
 
-| Bereitgestellt | Bedeutung |
+| Provided | Meaning |
 |---|---|
-| `getFromColor(uv)` / `getToColor(uv)` | Ausgangs- bzw. Zielbild (Frame-Raum, bereits 4:3 eingepasst) |
+| `getFromColor(uv)` / `getToColor(uv)` | Source and target picture (frame space, already letterboxed to 4:3) |
 | `uniform float progress` | 0.0 … 1.0 |
-| `uniform vec2 resolution` | Ausgabegröße in Pixeln |
-| `uv` | 0…1, Ursprung unten links |
+| `uniform vec2 resolution` | Output size in pixels |
+| `uv` | 0…1, origin at the bottom left |
 
-Regeln:
+Rules:
 
-- Bei `progress == 0.0` muss exakt das Ausgangsbild herauskommen, bei `1.0`
-  exakt das Zielbild. Das prüfen die Randwert-Golden-Frames in der E2E-Suite.
-- Kein Laufzeit-Zufall: Pseudozufall nur über deterministische Integer-Hashes.
-- Größen in Pixeln beziehen sich auf eine Bildbreite von 640 px und werden
-  mit `resolution.x / 640.0` skaliert. So passen die Werte zu Movie Maker
-  (DV/NTSC-Breite).
-- Neue Parameter zuerst in `packages/catalog/transitions.json` eintragen.
+- At `progress == 0.0` the output must be exactly the source picture, at
+  `1.0` exactly the target picture. The boundary golden frames in the E2E
+  suite check this.
+- No runtime randomness: pseudo-randomness only through deterministic integer
+  hashes.
+- Sizes in pixels refer to a picture width of 640 px and are scaled by
+  `resolution.x / 640.0`. This keeps the values in line with Movie Maker
+  (DV/NTSC width).
+- Add new parameters to `packages/catalog/transitions.json` first.
 
-## Prüfung
+## Checks
 
-`pixi run check-shaders` setzt jedes Programm zusammen, prüft es mit
-`glslangValidator` (ES 3.00) und gleicht die Parameter mit dem Katalog ab.
-Der Task ist Teil von `pixi run check`.
+`pixi run check-shaders` assembles every program, validates it with
+`glslangValidator` (ES 3.00) and cross-checks the parameters against the
+catalog. The task is part of `pixi run check`.
