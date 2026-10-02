@@ -42,3 +42,6 @@ dist/
 
 # Laufzeitdaten des Backends (Uploads, Projekt)
 backend/.data/
+
+# Playwright
+test-results/
