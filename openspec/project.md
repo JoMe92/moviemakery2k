@@ -53,9 +53,12 @@ Siehe `docs/adr/0001-architecture.md`.
 - OpenSpec is written only in planning sessions.
 - A task has one Bead mapping via namespaced labels.
 - Change lifecycle: `open`, `done`, `archived`.
-- Spezifikationen und Doku sind auf Deutsch, Code-Bezeichner auf Englisch.
+- Spezifikationen sind auf Deutsch; öffentliche Doku, Code-Bezeichner und
+  Code-Kommentare auf Englisch. Die Oberfläche ist zweisprachig (Deutsch,
+  Englisch; Change `add-ui-localisation`).
 - Jeder Effekt- oder Übergangs-Change nennt seine Quelle (XML-Parameter bzw.
   SMIL-Wipe-Nummer) und definiert einen Golden-Frame-Test.
-- Keine Microsoft-Assets ausliefern. Die Dateien in `docs/research/sources/`
-  sind nur Referenz.
+- Keine Microsoft-Assets ausliefern oder einchecken. Die Original-Definitionen
+  sind in `docs/research/sources/README.md` nur verlinkt; lokale Kopien sind
+  per `.gitignore` ausgeschlossen.
 - Quality-Gate: `pixi run check`.
