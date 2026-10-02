@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError } from "../lib/apiClient";
 import { AUTOSAVE_DELAY_MS, createAppStore } from "./appStore";
 import { mediaItem, mockApi } from "./testApi";
 
@@ -122,6 +123,27 @@ describe("appStore", () => {
     expect(api.deleteMedia).toHaveBeenCalledWith("a");
     expect(store.getState().media.map((m) => m.id)).toEqual(["b"]);
     expect(store.getState().slides).toEqual([]);
+  });
+
+  it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
+    const error = new ApiError("Medium is used by a running export", 409, {
+      code: "media.inUseByExport",
+      params: { mediaId: "a", exportId: "job-1" },
+      message: "Medium is used by a running export",
+    });
+    const api = mockApi({
+      deleteMedia: vi.fn(async () => {
+        throw error;
+      }),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    store.getState().addSlide("a");
+    store.getState().addSlide("b");
+    const slides = store.getState().slides;
+    await expect(store.getState().deleteMedia("a")).rejects.toBe(error);
+    expect(store.getState().media.map((m) => m.id)).toEqual(["a", "b"]);
+    expect(store.getState().slides).toEqual(slides);
   });
 
   it("new project only clears the storyboard", async () => {
