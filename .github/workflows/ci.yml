@@ -77,7 +77,7 @@ jobs:
       - run: pixi run test-e2e
       - name: Screenshots on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-test-results
           path: test-results/
@@ -93,7 +93,7 @@ jobs:
         run: KEEP_OUTPUT=export-smoke scripts/docker_export_smoke.sh
       - name: Exported movie
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-export-smoke
           path: export-smoke/
