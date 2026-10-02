@@ -8,7 +8,15 @@ import { musicPlanner, useMusicAudio } from "./useMusicAudio";
 
 const slides: Slide[] = [{ id: "s1", mediaId: "img", duration: 5, transitionIn: null }];
 const music: MusicClip[] = [
-  { id: "c1", mediaId: "song", trimStart: 1, trimEnd: null, volume: 0.8, fadeIn: false, fadeOut: false },
+  {
+    id: "c1",
+    mediaId: "song",
+    trimStart: 1,
+    trimEnd: null,
+    volume: 0.8,
+    fadeIn: false,
+    fadeOut: false,
+  },
 ];
 const media = [
   { kind: "audio", id: "song", duration: 30, audioUrl: "/song.m4a" },
@@ -77,31 +85,34 @@ describe("useMusicAudio", () => {
   it.each([
     ["keydown", (el: Document) => fireEvent.keyDown(el, { key: "p" })],
     ["pointerdown", (el: Document) => fireEvent.pointerDown(el)],
-  ])("a document %s unlocks the engine, so playback started elsewhere is audible", async (_, gesture) => {
-    const { ctx, started } = fakeContext();
-    const createContext = vi.fn(() => ctx);
-    const engine = new AudioEngine({
-      createContext,
-      decode: async () => ({ duration: 30 }),
-      fetchData: async () => new ArrayBuffer(0),
-    });
-    const store = createAppStore(mockApi());
-    store.setState({ slides, media: [audioItem("song", 30)], music });
-    const { unmount } = renderHook(() => useMusicAudio(store, () => engine));
-    await engine.whenLoaded();
+  ])(
+    "a document %s unlocks the engine, so playback started elsewhere is audible",
+    async (_, gesture) => {
+      const { ctx, started } = fakeContext();
+      const createContext = vi.fn(() => ctx);
+      const engine = new AudioEngine({
+        createContext,
+        decode: async () => ({ duration: 30 }),
+        fetchData: async () => new ArrayBuffer(0),
+      });
+      const store = createAppStore(mockApi());
+      store.setState({ slides, media: [audioItem("song", 30)], music });
+      const { unmount } = renderHook(() => useMusicAudio(store, () => engine));
+      await engine.whenLoaded();
 
-    gesture(document);
-    expect(createContext).toHaveBeenCalledTimes(1);
-    // Playback started via the store (e.g. the menu), not the play button.
-    act(() => store.getState().togglePlay());
-    expect(started).toEqual([[0.05, 1, 5]]);
-    expect(window.__mmyAudio?.().sources).toBe(1);
+      gesture(document);
+      expect(createContext).toHaveBeenCalledTimes(1);
+      // Playback started via the store (e.g. the menu), not the play button.
+      act(() => store.getState().togglePlay());
+      expect(started).toEqual([[0.05, 1, 5]]);
+      expect(window.__mmyAudio?.().sources).toBe(1);
 
-    unmount();
-    expect(window.__mmyAudio).toBeUndefined();
-    gesture(document);
-    expect(createContext).toHaveBeenCalledTimes(1);
-  });
+      unmount();
+      expect(window.__mmyAudio).toBeUndefined();
+      gesture(document);
+      expect(createContext).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("does not create an AudioContext on gestures without music", () => {
     const createContext = vi.fn(() => fakeContext().ctx);

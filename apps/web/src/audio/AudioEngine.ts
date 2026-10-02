@@ -279,7 +279,7 @@ export class AudioEngine {
     this.stopAll();
     const ctx = this.ctx;
     const { playing, muted, segments, time } = this.plan;
-    if (!ctx || ctx.state !== "running" || !playing || muted || segments.length === 0) return;
+    if (ctx?.state !== "running" || !playing || muted || segments.length === 0) return;
     const start = ctx.currentTime + SCHEDULE_LEAD;
     this.anchor = { ctxTime: start, movieTime: time };
     this.lastReported = time;
