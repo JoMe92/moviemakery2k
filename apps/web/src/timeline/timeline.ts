@@ -9,6 +9,7 @@
  * Reine Funktionen ohne DOM/GL, damit Vorschau und späterer Export identisch
  * rechnen.
  */
+import { formatTime as formatLocalizedTime } from "../i18n/format";
 
 export interface TimelineSlide {
   id: string;
@@ -140,14 +141,10 @@ export function slideStartTime(timeline: Timeline, index: number): number {
   return p ? p.start + p.transitionIn : 0;
 }
 
-/** Zeitformat des Monitors: h:mm:ss,cc (Hundertstel, gerundet). */
+/**
+ * Zeitformat des Monitors: h:mm:ss,cc (Hundertstel, gerundet). German default;
+ * localized display uses `formatTime(locale, seconds)` from `i18n/format`.
+ */
 export function formatTime(seconds: number): string {
-  const totalCs = Math.max(0, Math.round(seconds * 100));
-  const cs = totalCs % 100;
-  const totalS = Math.floor(totalCs / 100);
-  const s = totalS % 60;
-  const m = Math.floor(totalS / 60) % 60;
-  const h = Math.floor(totalS / 3600);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${h}:${pad(m)}:${pad(s)},${pad(cs)}`;
+  return formatLocalizedTime("de", seconds);
 }

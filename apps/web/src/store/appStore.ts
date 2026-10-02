@@ -3,6 +3,7 @@
  * Projektänderungen werden entprellt gespeichert (Autosave, 500 ms).
  */
 import { createStore, type StoreApi } from "zustand/vanilla";
+import { applyDocumentLocale, initialLocale, type Locale, writeStoredLocale } from "../i18n/locale";
 import type {
   AppApi,
   ExportApi,
@@ -74,8 +75,12 @@ export interface AppState {
   exportWizardOpen: boolean;
   /** Export-Schnittstelle für den Assistenten (gleiche API wie der Store). */
   exportApi: ExportApi;
+  /** UI language (localization design.md D2). */
+  locale: Locale;
 
   init(): Promise<void>;
+  /** Switches the UI language at once, persists it and updates `<html lang>`. */
+  setLocale(locale: Locale): void;
   setCollection(collection: CollectionId): void;
   select(selection: Selection): void;
   /** Kachel im Katalog auswählen: startet die Übergangsdemo im Monitor (null beendet sie). */
@@ -116,7 +121,14 @@ export interface AppState {
 
 export type AppStore = StoreApi<AppState>;
 
-export function createAppStore(api: AppApi): AppStore {
+export interface AppStoreOptions {
+  /** Initial UI language; defaults to stored setting → browser → `en`. */
+  locale?: Locale;
+}
+
+export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppStore {
+  const locale = options.locale ?? initialLocale();
+  applyDocumentLocale(locale);
   let timer: ReturnType<typeof setTimeout> | null = null;
   let saving: Promise<void> | null = null;
   let dirty = false;
@@ -196,6 +208,12 @@ export function createAppStore(api: AppApi): AppStore {
       uploads: [],
       importRequest: 0,
       exportWizardOpen: false,
+      locale,
+      setLocale(next) {
+        writeStoredLocale(next);
+        applyDocumentLocale(next);
+        set({ locale: next });
+      },
       exportApi: {
         startExport: (request) => api.startExport(request),
         getExport: (id) => api.getExport(id),
