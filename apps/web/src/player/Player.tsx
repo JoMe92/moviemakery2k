@@ -1,5 +1,6 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMusicAudio } from "../audio/useMusicAudio";
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { loadImage } from "../render/imageCache";
@@ -62,6 +63,7 @@ function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
 export function Player() {
   const { t, formatTime, locale } = useT();
   const store = useAppStoreApi();
+  const audio = useMusicAudio(store);
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const catalog = useAppStore((s) => s.catalog);
@@ -86,12 +88,17 @@ export function Player() {
     [catalog],
   );
 
-  // rAF clock only while something is playing.
+  // rAF clock only while something is playing. While music is scheduled, the
+  // audio clock is the master clock (add-music-track design.md D5).
   const running = playback.playing || Boolean(demo?.playing);
   useEffect(() => {
     if (!running) return;
-    return startClock((dt) => store.getState().tick(dt));
-  }, [running, store]);
+    return startClock((dt) => {
+      const state = store.getState();
+      const audioTime = audio.clockTime();
+      state.tick(audioTime === null ? dt : audioTime - state.playback.time);
+    });
+  }, [running, store, audio]);
 
   // Space bar: play/pause (except in input fields, dialogs, menus and while dragging).
   const draggingRef = useRef(false);
@@ -120,6 +127,8 @@ export function Player() {
       event.preventDefault();
       event.stopPropagation();
       swallowKeyUp = true;
+      // Inside the user gesture: create/resume the AudioContext.
+      audio.unlock();
       state.togglePlay();
     };
     const onKeyUp = (event: KeyboardEvent) => {
@@ -135,7 +144,7 @@ export function Player() {
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("keyup", onKeyUp, true);
     };
-  }, [store]);
+  }, [store, audio]);
 
   const playing = playback.playing && !demo;
   const state = store.getState;
@@ -162,7 +171,10 @@ export function Player() {
               icon={playing ? <PauseIcon /> : <PlayIcon />}
               label={playing ? t("player.pause") : t("player.play")}
               disabled={empty}
-              onClick={() => state().togglePlay()}
+              onClick={() => {
+                audio.unlock();
+                state().togglePlay();
+              }}
             />
             <Button
               variant="toolbar"
