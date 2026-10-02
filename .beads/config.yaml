@@ -66,3 +66,6 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 sync.remote: "git+https://github.com/JoMe92/moviemakery2k.git"
+dolt:
+    auto-push: true
+    auto-push-interval: 10s
