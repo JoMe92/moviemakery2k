@@ -7,7 +7,8 @@ The **single source of truth** for transitions (later also effects and titles).
 - Every entry names its shader in `packages/shaders/transitions/`. Every key
   in `params` becomes a `uniform float <name>` in that shader.
 - `source` documents where the parameters come from (the Movie Maker 2.x
-  effect XML or the SMPTE wipe number; see `docs/research/sources/` and
+  effect XML or the SMPTE wipe number; see
+  `docs/research/sources/README.md` for links to the originals and
   [the research notes](../../docs/research/movie-maker-reference.md)).
   `estimated` lists values that cannot be verified against the original
   (**[E]**, estimated). They can be re-tuned here without any code change.
