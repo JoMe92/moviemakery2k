@@ -1,0 +1,45 @@
+.window {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) var(--y2k-storyboard-height) auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 560px;
+  overflow: hidden;
+  background: var(--y2k-face);
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--y2k-title-edge);
+  background: linear-gradient(
+    to bottom,
+    var(--y2k-title-top),
+    var(--y2k-title-mid) 35%,
+    var(--y2k-title-bottom)
+  );
+  color: var(--y2k-title-text);
+}
+
+.title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: bold;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 0 var(--y2k-title-shadow);
+  white-space: nowrap;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: var(--y2k-taskpane-width) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 4px 0;
+}

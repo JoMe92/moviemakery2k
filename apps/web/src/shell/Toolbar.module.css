@@ -1,0 +1,31 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 3px 6px;
+  border-top: 1px solid var(--y2k-edge-light);
+  border-bottom: 1px solid var(--y2k-edge-dark);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-face));
+}
+
+.buttons {
+  display: flex;
+  gap: 2px;
+  padding-right: 6px;
+  border-right: 1px solid var(--y2k-separator);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.select {
+  min-width: 180px;
+  height: 22px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+}

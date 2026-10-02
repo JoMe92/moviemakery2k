@@ -1,0 +1,24 @@
+.statusbar {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  min-height: 22px;
+  margin-top: 4px;
+  padding: 2px 4px;
+  border-top: 1px solid var(--y2k-edge-dark);
+  background: var(--y2k-face);
+}
+
+.field {
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-edge-dark);
+  border-right-color: var(--y2k-edge-light);
+  border-bottom-color: var(--y2k-edge-light);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field:first-child {
+  flex: 1;
+}

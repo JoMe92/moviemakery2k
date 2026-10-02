@@ -1,0 +1,39 @@
+import { type ReactNode, useId } from "react";
+import { Button } from "../ui/Button";
+import { TimelineIcon } from "../ui/icons";
+import pane from "./Pane.module.css";
+import styles from "./StoryboardPane.module.css";
+
+export const STORYBOARD_EMPTY_HINT = "Ziehen Sie Bilder hierher, um eine Diashow zu erstellen.";
+
+export interface StoryboardPaneProps {
+  /** Elemente des Bildstreifens; leer → Hinweistext. */
+  children?: ReactNode;
+}
+
+/** Storyboard über die volle Breite. Die Zeitachse ist im MVP deaktiviert. */
+export function StoryboardPane({ children }: StoryboardPaneProps) {
+  const headingId = useId();
+  const isEmpty = children === undefined || children === null || children === false;
+  return (
+    <section className={`${pane.pane} ${styles.storyboard}`} aria-labelledby={headingId}>
+      <div className={pane.header}>
+        <Button
+          variant="toolbar"
+          icon={<TimelineIcon />}
+          aria-pressed={false}
+          disabled
+          className={styles.toggle}
+        >
+          Zeitachse anzeigen
+        </Button>
+        <h2 id={headingId} className={pane.heading}>
+          Storyboard
+        </h2>
+      </div>
+      <div className={`${pane.body} ${styles.body}`}>
+        {isEmpty ? <p className={styles.hint}>{STORYBOARD_EMPTY_HINT}</p> : children}
+      </div>
+    </section>
+  );
+}

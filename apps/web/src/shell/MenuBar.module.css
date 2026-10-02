@@ -1,0 +1,20 @@
+.menubar {
+  display: flex;
+  min-width: 0;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--y2k-separator);
+  background: var(--y2k-face);
+}
+
+.item {
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.item:hover,
+.item[aria-expanded="true"] {
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+}

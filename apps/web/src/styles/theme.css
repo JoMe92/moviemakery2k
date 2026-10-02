@@ -1,62 +1,126 @@
 /*
  * Y2K-Theme: eigene Interpretation des XP/Luna-Looks. Keine Original-Assets
  * (siehe docs/research/movie-maker-klon.md, Abschnitt „Rechtliches“).
- * Alle Farben laufen über Tokens, damit das Theme austauschbar bleibt.
+ * Alle Farben laufen über diese Tokens; Komponenten-CSS (CSS Modules) nutzt
+ * ausschließlich var(--y2k-*). Es wird keine Schrift mitgeliefert.
  */
 :root {
-  --y2k-title-from: #0a246a;
-  --y2k-title-to: #3a6ea5;
+  /* Schrift */
+  --y2k-font: Tahoma, Verdana, "DejaVu Sans", sans-serif;
+  --y2k-font-size: 12px;
+
+  /* Text */
+  --y2k-text: #000000;
+  --y2k-text-muted: #5a5a5a;
+  --y2k-text-disabled: #a19f93;
+  --y2k-text-inverse: #ffffff;
+  --y2k-link: #1c3f94;
+  --y2k-link-hover: #3d6fd6;
+
+  /* Titelleiste */
+  --y2k-title-top: #4a8cf7;
+  --y2k-title-mid: #1d5fd8;
+  --y2k-title-bottom: #0b3fae;
+  --y2k-title-edge: #08309a;
   --y2k-title-text: #ffffff;
+  --y2k-title-shadow: #0a2470;
+
+  /* Fensterflächen */
   --y2k-face: #ece9d8;
+  --y2k-face-light: #f7f6ef;
+  --y2k-face-dark: #d6d2bd;
+  --y2k-edge-light: #ffffff;
+  --y2k-edge-dark: #aca899;
+  --y2k-separator: #c5c2b2;
+
+  /* Inhaltsflächen und Rahmen */
   --y2k-pane: #ffffff;
   --y2k-border: #7f9db9;
-  --y2k-text: #000000;
-  --y2k-font: "Tahoma", "Verdana", "Segoe UI", sans-serif;
+  --y2k-border-strong: #4f6f96;
+
+  /* Plastische Schaltflächen */
+  --y2k-button-top: #ffffff;
+  --y2k-button-bottom: #e3e0d0;
+  --y2k-button-border: #3c5a8a;
+  --y2k-button-hover-glow: #f8b33a;
+  --y2k-button-pressed-top: #e0ddcc;
+  --y2k-button-pressed-bottom: #f3f1e6;
+  --y2k-toolbar-hover-top: #fdfcf6;
+  --y2k-toolbar-hover-bottom: #e8e4d2;
+  --y2k-toolbar-hover-border: #b9b49c;
+
+  /* Aufgabenbereich */
+  --y2k-taskpane-top: #7ba2e7;
+  --y2k-taskpane-bottom: #6375d6;
+  --y2k-taskgroup-head-left: #ffffff;
+  --y2k-taskgroup-head-right: #c6d3f7;
+  --y2k-taskgroup-head-text: #215dc6;
+  --y2k-taskgroup-body: #d6dff7;
+  --y2k-taskgroup-border: #ffffff;
+  --y2k-chevron-bg: #ffffff;
+  --y2k-chevron-ring: #b2c3ec;
+
+  /* Auswahl und Fokus */
+  --y2k-select: #316ac5;
+  --y2k-select-soft: #c1d2ee;
+  --y2k-select-text: #ffffff;
+  --y2k-focus: #e68b2c;
+  --y2k-focus-inner: #ffffff;
+
+  /* Monitor und Storyboard */
+  --y2k-monitor-screen: #000000;
+  --y2k-monitor-frame: #3b3b3b;
+  --y2k-storyboard-bg: #f2f1ea;
+  --y2k-storyboard-slot: #d9d6c4;
+
+  /* Dialog-Schatten */
+  --y2k-shadow: rgb(0 0 0 / 35%);
+  --y2k-backdrop: rgb(0 0 40 / 25%);
+
+  /* Symbol-Akzente */
+  --y2k-icon-green: #2f9e37;
+  --y2k-icon-yellow: #f2c84b;
+  --y2k-icon-blue: #2c6bd8;
+  --y2k-icon-red: #d4442c;
+  --y2k-icon-ink: #233a66;
+
+  /* Maße */
+  --y2k-radius: 3px;
+  --y2k-title-radius: 7px;
+  --y2k-taskpane-width: 220px;
+  --y2k-storyboard-height: 180px;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background: var(--y2k-face);
   color: var(--y2k-text);
-  font: 12px / 1.4 var(--y2k-font);
+  font: var(--y2k-font-size) / 1.35 var(--y2k-font);
 }
 
-.window {
-  display: grid;
-  grid-template-rows: auto 1fr 160px auto;
-  height: 100vh;
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
 }
 
-.titlebar {
-  padding: 4px 8px;
-  background: linear-gradient(to bottom, var(--y2k-title-to), var(--y2k-title-from));
-  color: var(--y2k-title-text);
-  font-weight: bold;
-}
-
-.workspace {
-  display: grid;
-  grid-template-columns: 200px 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  min-height: 0;
-}
-
-.pane {
-  background: var(--y2k-pane);
-  border: 1px solid var(--y2k-border);
-  padding: 6px;
-}
-
-.storyboard {
-  margin: 0 4px;
-}
-
-.statusbar {
-  padding: 2px 8px;
-  border-top: 1px solid var(--y2k-border);
+/* Sichtbarer Fokus für alle interaktiven Elemente (Tastaturbedienung). */
+:focus-visible {
+  outline: 2px solid var(--y2k-focus);
+  outline-offset: 1px;
 }
