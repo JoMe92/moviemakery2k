@@ -26,3 +26,9 @@ def test_catalog_contains_exactly_the_mvp_transitions() -> None:
     ids = [t["id"] for t in _load("transitions.json")["transitions"]]
     assert len(ids) == len(set(ids))
     assert set(ids) == MVP_IDS
+
+
+def test_every_transition_has_a_german_and_an_english_name() -> None:
+    for entry in _load("transitions.json")["transitions"]:
+        assert set(entry["names"]) == {"de", "en"}
+        assert all(name.strip() for name in entry["names"].values())

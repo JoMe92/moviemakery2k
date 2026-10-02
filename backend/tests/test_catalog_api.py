@@ -33,10 +33,10 @@ def test_catalog_endpoint_returns_six_entries_in_camel_case(settings: Settings) 
     assert body["schemaVersion"] == 1
     assert [t["id"] for t in body["transitions"]] == MVP_IDS
     for entry in body["transitions"]:
-        assert set(entry) == {"id", "name", "shader", "defaultDuration", "params", "source"}
+        assert set(entry) == {"id", "names", "shader", "defaultDuration", "params", "source"}
         assert entry["source"]["kind"] in {"wmm2x-xml", "smpte"}
     checker = body["transitions"][-1]
-    assert checker["name"] == "Schachbrett"
+    assert checker["names"] == {"de": "Schachbrett", "en": "Checkerboard"}
     assert checker["defaultDuration"] == 1.25
     assert checker["params"] == {"squaresX": 12, "squaresY": 10}
 
@@ -61,6 +61,21 @@ def test_startup_aborts_without_default_duration(tmp_path: Path) -> None:
     message = str(exc_info.value)
     assert "entry #2 (id 'wipe-right')" in message
     assert "defaultDuration" in message
+
+
+def test_startup_aborts_without_english_name(tmp_path: Path) -> None:
+    settings = _broken_catalog(tmp_path, lambda raw: raw["transitions"][3]["names"].pop("en"))
+    with pytest.raises(CatalogError) as exc_info:
+        create_app(settings)
+    message = str(exc_info.value)
+    assert "entry #3 (id 'circle')" in message
+    assert "names.en" in message
+
+
+def test_startup_aborts_with_empty_german_name(tmp_path: Path) -> None:
+    settings = _broken_catalog(tmp_path, lambda raw: raw["transitions"][0]["names"].update(de=""))
+    with pytest.raises(CatalogError, match=r"entry #0 \(id 'fade'\): names\.de"):
+        create_app(settings)
 
 
 def test_startup_aborts_on_duplicate_id(tmp_path: Path) -> None:

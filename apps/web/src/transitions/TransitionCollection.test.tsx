@@ -54,4 +54,29 @@ describe("Sammlung „Videoübergänge“", () => {
       duration: 1.25,
     });
   });
+
+  it("Spec localization: zeigt die Katalognamen auf Englisch und wechselt ohne Neuladen", async () => {
+    const user = userEvent.setup();
+    const { collection, store } = await setup();
+    expect(within(collection).getByRole("button", { name: "Kreis" })).toHaveTextContent("Kreis");
+
+    act(() => store.getState().setLocale("en"));
+    const english = screen.getByRole("region", { name: "Collection: Video Transitions" });
+    const list = within(english).getByRole("list", { name: "Transitions" });
+    expect(
+      within(list)
+        .getAllByRole("button")
+        .map((t) => t.getAttribute("aria-label")),
+    ).toEqual(["Fade", "Circle"]);
+    expect(within(list).getByRole("button", { name: "Circle" })).toHaveTextContent("Circle");
+
+    // The name also follows the language in the storyboard and its dialog.
+    act(() => store.getState().setTransition("s2", "circle"));
+    const slot = screen.getByRole("button", { name: /^Transition before picture 2:/ });
+    expect(slot).toHaveAccessibleName("Transition before picture 2: Circle, 1.50 s");
+    await user.dblClick(slot);
+    expect(screen.getByRole("dialog", { name: "Transition before picture 2" })).toHaveTextContent(
+      "Transition: Circle",
+    );
+  });
 });
