@@ -5,7 +5,8 @@
  * `errorKey`); codes outside it show the backend's English `message`.
  * Where the code comes from:
  * - HTTP errors: `detail.code` / `detail.params` (`ApiError.info`),
- * - FastAPI's native 422 list: `type` / `ctx` per entry (`info.issues`),
+ * - FastAPI's native 422 list: `type` / `ctx` per entry (`info.issues`), with
+ *   the picture number from `loc` put in front (harden-export-and-ui D6),
  * - upload results and export jobs alike: `errorCode` / `errorParams` /
  *   `message` (design.md D3).
  */
@@ -64,12 +65,16 @@ export function translateError(info: ApiErrorInfo, locale: Locale): string {
   const issues = info.issues ?? [];
   if (!info.code && issues.length > 0) {
     // FastAPI's native list: our rule violations carry their code in `type`;
-    // anything else (missing field, wrong type …) gets a general hint.
-    const texts = issues.map(
-      (issue) =>
+    // anything else (missing field, wrong type …) gets a general hint. An entry
+    // about a storyboard picture names it ("Picture 2: …", design.md D6).
+    const texts = issues.map((issue) => {
+      const text =
         translateCode(locale, issue.code, formatParams(locale, issue.params)) ??
-        translate(locale, "errors.invalidInput"),
-    );
+        translate(locale, "errors.invalidInput");
+      return issue.picture
+        ? translate(locale, "errors.atPicture", { number: String(issue.picture), text })
+        : text;
+    });
     return [...new Set(texts)].join(" ");
   }
   const params = formatParams(locale, info.params);

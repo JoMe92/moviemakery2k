@@ -245,6 +245,7 @@ export const de = {
   errors: {
     unknown: "Ein unbekannter Fehler ist aufgetreten.",
     invalidInput: "Die Eingabe ist ungültig.",
+    atPicture: "Bild {number}: {text}",
     client: {
       offline: "Das Backend ist nicht erreichbar.",
       requestFailed: "Die Anfrage an das Backend ist fehlgeschlagen (Status {status}).",
