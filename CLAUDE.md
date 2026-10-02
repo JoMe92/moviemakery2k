@@ -80,7 +80,7 @@ Research on the original: `docs/research/movie-maker-reference.md`.
 ## Conventions & Patterns
 
 - Effects and transitions are defined only in the catalog plus a shader, never duplicated in the web app or backend.
-- No Microsoft assets (icons, sounds, texts, `Parity.fx`). The XML files in `docs/research/sources/` are reference only.
+- No Microsoft assets (icons, sounds, texts, `Parity.fx`). The original XML definitions are reference only and never committed (links in `docs/research/sources/README.md`).
 - Pydantic models are the API contract; TS types are generated from them (`pixi run gen-api`).
 - Bead token in commits upper-cased, e.g. `[MMY-6kz]` for `mmy-6kz` (the hook requires `[A-Z]…`).
 - Public documentation (README, docs/, package READMEs, CONTRIBUTING.md) is written in English.
