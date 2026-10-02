@@ -12,6 +12,10 @@ export const de = {
     de: "Deutsch",
     en: "English",
   },
+  options: {
+    title: "Optionen",
+    language: "Sprache der Benutzeroberfläche:",
+  },
   common: {
     ok: "OK",
     cancel: "Abbrechen",

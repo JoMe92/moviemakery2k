@@ -21,6 +21,8 @@ export interface MenuHandlers {
   togglePlay?: () => void;
   stop?: () => void;
   about?: () => void;
+  /** Tools → Options (language setting). */
+  options?: () => void;
 }
 
 const item = (id: string, label: string, onSelect?: () => void, shortcut?: string): MenuEntry => ({
@@ -77,7 +79,7 @@ export function buildMenus(h: MenuHandlers): MenuDef[] {
         item("effects", "Videoeffekte"),
         separator,
         item("automovie", "AutoMovie…"),
-        item("options", "Optionen…"),
+        item("options", "Optionen…", h.options),
       ],
     },
     {

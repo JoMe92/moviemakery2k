@@ -3,11 +3,13 @@ import { useAppStore } from "../store/useAppStore";
 import { AboutDialog, ConfirmDialog } from "./AppDialogs";
 import { MenuBar } from "./MenuBar";
 import { buildMenus, type MenuHandlers } from "./menus";
+import { OptionsDialog } from "./OptionsDialog";
 
-/** Menüleiste samt der Dialoge, die sie öffnet (Info, Neues Projekt). */
+/** Menüleiste samt der Dialoge, die sie öffnet (Info, Optionen, Neues Projekt). */
 export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const [about, setAbout] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
+  const [options, setOptions] = useState(false);
   const newProject = useAppStore((s) => s.newProject);
   const removeSlide = useAppStore((s) => s.removeSlide);
   const selection = useAppStore((s) => s.selection);
@@ -21,6 +23,7 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
         ...extra,
         newProject: () => setConfirmNew(true),
         about: () => setAbout(true),
+        options: () => setOptions(true),
         importImages: requestImport,
         saveMovie: hasSlides ? openExportWizard : undefined,
         deleteSelection: selection ? () => removeSlide(selection.slideId) : undefined,
@@ -32,6 +35,7 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
     <>
       <MenuBar menus={menus} />
       <AboutDialog open={about} onClose={() => setAbout(false)} />
+      <OptionsDialog open={options} onClose={() => setOptions(false)} />
       <ConfirmDialog
         open={confirmNew}
         title="Neues Projekt"
