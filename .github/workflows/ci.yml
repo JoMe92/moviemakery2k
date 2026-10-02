@@ -60,3 +60,19 @@ jobs:
           name: e2e-test-results
           path: test-results/
           if-no-files-found: ignore
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Smoke-Skript (shellcheck)
+        run: shellcheck scripts/docker_export_smoke.sh
+      - name: Image bauen, Export über die API, MP4 mit ffprobe prüfen
+        run: KEEP_OUTPUT=export-smoke scripts/docker_export_smoke.sh
+      - name: Exportierter Film
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-export-smoke
+          path: export-smoke/
+          if-no-files-found: ignore
