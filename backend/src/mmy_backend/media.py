@@ -28,6 +28,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.alias_generators import to_camel
 
+from mmy_backend.storage import write_bytes_atomic
+
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_PIXELS = 40_000_000
 MAX_FILES_PER_REQUEST = 50
@@ -189,18 +191,8 @@ class MediaStore:
         return self.media_dir / media_id
 
     def _write_index(self, items: Sequence[MediaItem]) -> None:
-        self.data_dir.mkdir(parents=True, exist_ok=True)
         payload = _INDEX_ADAPTER.dump_json(list(items), indent=2, by_alias=True)
-        fd, tmp_name = tempfile.mkstemp(prefix=".media-", suffix=".json", dir=self.data_dir)
-        try:
-            with os.fdopen(fd, "wb") as handle:
-                handle.write(payload)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(tmp_name, self.index_file)
-        except BaseException:
-            Path(tmp_name).unlink(missing_ok=True)
-            raise
+        write_bytes_atomic(self.index_file, payload)
 
     def _prepare(self, source: BinaryIO) -> _Prepared:
         """Prüft eine Datei und legt Original + Ableitungen unter media/<id>/ ab.
