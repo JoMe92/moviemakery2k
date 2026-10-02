@@ -27,6 +27,8 @@ describe("Optionen-Dialog", () => {
     screen.getByRole("menuitem", { name: "Extras" }).focus();
     await user.keyboard("{Enter}");
     const menu = await screen.findByRole("menu", { name: "Extras" });
+    // The menu moves focus to its first entry asynchronously; press End only after that.
+    await waitFor(() => expect(within(menu).getAllByRole("menuitem")[0]).toHaveFocus());
     await user.keyboard("{End}");
     await waitFor(() =>
       expect(within(menu).getByRole("menuitem", { name: "Optionen…" })).toHaveFocus(),
