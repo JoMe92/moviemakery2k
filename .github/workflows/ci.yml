@@ -33,6 +33,8 @@ jobs:
           have=$(pixi run pnpm --version)
           echo "packageManager=$want pixi-pnpm=$have"
           test "$want" = "$have"
+      - name: Render-Umgebung (EGL/llvmpipe, FFmpeg-Encoder)
+        run: pixi run check-render-env
       - run: pixi run check
       - name: Generierte API-Typen sind aktuell
         run: |
