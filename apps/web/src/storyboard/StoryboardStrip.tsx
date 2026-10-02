@@ -6,6 +6,7 @@ import { timelineOf } from "../player/controls";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
+import { catalogName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import { DurationDialog } from "../ui/DurationDialog";
@@ -23,7 +24,7 @@ type MenuState = Target & { x: number; y: number };
  * Eigenschaftendialoge für Bilddauer und Übergang.
  */
 export function StoryboardStrip() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const catalog = useAppStore((s) => s.catalog);
@@ -60,7 +61,7 @@ export function StoryboardStrip() {
   const dialogSlide = dialog ? slides.find((s) => s.id === dialog.slideId) : undefined;
   const dialogTransition =
     dialog?.kind === "transition" ? (dialogSlide?.transitionIn ?? null) : null;
-  const transitionName = (id: string) => catalog.find((c) => c.id === id)?.name ?? id;
+  const transitionName = (id: string) => catalogName(catalog, id, locale);
 
   const menuItems = (m: MenuState): ContextMenuItem[] => {
     if (m.kind === "slide") {

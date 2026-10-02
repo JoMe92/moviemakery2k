@@ -4,6 +4,7 @@ import { useT } from "../i18n/useT";
 import type { TransitionRef } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
+import { catalogName } from "../transitions/transitionName";
 import { type DragItem, type DropTarget, formatDuration, transitionSlotId } from "./dropLogic";
 import styles from "./StoryboardStrip.module.css";
 
@@ -44,10 +45,7 @@ export function TransitionSlot({
   });
   const dropping = isOver && accepts;
   const name = useAppStore((s) =>
-    transitionIn
-      ? (s.catalog.find((c) => c.id === transitionIn.transitionId)?.name ??
-        transitionIn.transitionId)
-      : null,
+    transitionIn ? catalogName(s.catalog, transitionIn.transitionId, s.locale) : null,
   );
   const label = t("storyboard.transitionBefore", { number });
   const description =

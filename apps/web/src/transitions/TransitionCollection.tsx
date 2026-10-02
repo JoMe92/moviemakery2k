@@ -6,6 +6,7 @@ import { type DragItem, transitionDraggableId } from "../storyboard/dropLogic";
 import { Tile } from "../ui/Tile";
 import styles from "./TransitionCollection.module.css";
 import { TransitionIcon } from "./TransitionIcon";
+import { transitionName } from "./transitionName";
 
 interface TransitionTileProps {
   transition: Transition;
@@ -16,7 +17,8 @@ interface TransitionTileProps {
 
 /** Katalogkachel, per dnd-kit auf einen Übergangsplatz ziehbar. */
 function TransitionTile({ transition, selected, onSelect, onApply }: TransitionTileProps) {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const name = transitionName(transition, locale);
   const data: DragItem = { type: "transition", transitionId: transition.id };
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: transitionDraggableId(transition.id),
@@ -29,9 +31,9 @@ function TransitionTile({ transition, selected, onSelect, onApply }: TransitionT
       ref={setNodeRef}
       {...dragAttributes}
       {...listeners}
-      caption={transition.name}
-      aria-label={transition.name}
-      title={transition.name}
+      caption={name}
+      aria-label={name}
+      title={name}
       thumbnail={<TransitionIcon transitionId={transition.id} size={80} />}
       selected={selected}
       onClick={onSelect}

@@ -24,6 +24,7 @@ import { useT } from "../i18n/useT";
 import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
+import { catalogName } from "../transitions/transitionName";
 import {
   type DragItem,
   type DropTarget,
@@ -190,8 +191,9 @@ function describe(state: AppState, item: DragItem | null): string {
   const t = translator(state.locale);
   if (!item) return t("dnd.element");
   if (item.type === "transition") {
-    const name = state.catalog.find((c) => c.id === item.transitionId)?.name ?? "";
-    return t("dnd.transition", { name });
+    return t("dnd.transition", {
+      name: catalogName(state.catalog, item.transitionId, state.locale),
+    });
   }
   if (item.type === "media") {
     return t("dnd.picture", {

@@ -16,7 +16,7 @@ export function mediaItem(id: string): MediaItem {
 export const CATALOG: Transition[] = [
   {
     id: "fade",
-    name: "Überblenden",
+    names: { de: "Überblenden", en: "Fade" },
     shader: "fade.glsl",
     defaultDuration: 1.25,
     params: {},
@@ -24,7 +24,7 @@ export const CATALOG: Transition[] = [
   },
   {
     id: "circle",
-    name: "Kreis",
+    names: { de: "Kreis", en: "Circle" },
     shader: "circle.glsl",
     defaultDuration: 1.5,
     params: { borderSoftness: 20 },
