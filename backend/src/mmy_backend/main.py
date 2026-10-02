@@ -23,7 +23,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.data_dir.mkdir(parents=True, exist_ok=True)
         yield
 
-    app = FastAPI(title="moviemakerY2K", version="0.0.0", lifespan=lifespan)
+    app = FastAPI(title="moviemakerY2K", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.catalog = catalog
     app.state.media = MediaStore(settings.data_dir)
