@@ -1,8 +1,8 @@
-"""Python-Zeitmodell gegen die gemeinsamen Testvektoren (TASK-RENDER-001, design.md D3).
+"""Python time model against the shared test vectors (TASK-RENDER-001, design.md D3).
 
-Dieselbe Datei prüft `apps/web/src/timeline/timelineVectors.test.ts`; der
-Vergleich hier folgt derselben Regel: Zahlen mit der absoluten Toleranz der
-Datei, Texte/null/Objektschlüssel exakt, Listen gleich lang und gleich geordnet.
+`apps/web/src/timeline/timelineVectors.test.ts` checks the same file; the
+comparison here follows the same rule: numbers within the file's absolute
+tolerance, strings/null/object keys exactly, lists of equal length and order.
 """
 
 import json
@@ -38,7 +38,7 @@ CASES: list[dict[str, Any]] = VECTORS["cases"]
 
 
 def diff(actual: Any, expected: Any, path: str = "$") -> list[str]:
-    """Rekursiver Vergleich wie im Vitest-Test; leere Liste = gleich."""
+    """Recursive comparison as in the Vitest test; empty list = equal."""
     if isinstance(expected, int | float) and not isinstance(expected, bool):
         ok = (
             isinstance(actual, int | float)
@@ -71,7 +71,7 @@ def diff(actual: Any, expected: Any, path: str = "$") -> list[str]:
     return [] if same else [f"{path}: expected {json.dumps(expected)}, got {json.dumps(actual)}"]
 
 
-# --- Umwandlung in die JSON-Form der Vektoren -------------------------------
+# --- Conversion into the JSON form of the vectors ---------------------------
 
 
 def slide_from_json(raw: dict[str, Any]) -> TimelineSlide:
@@ -117,7 +117,7 @@ def frame_json(frame: Frame) -> dict[str, Any]:
             }
 
 
-# --- Vektoren ---------------------------------------------------------------
+# --- Vectors ----------------------------------------------------------------
 
 
 def test_vector_file_has_version_1_unique_names_and_required_cases() -> None:
@@ -172,7 +172,7 @@ def test_samples(case: dict[str, Any]) -> None:
     assert problems == []
 
 
-# --- Weitere Funktionen -----------------------------------------------------
+# --- Further functions ------------------------------------------------------
 
 
 def test_effective_transition_is_clamped_to_half_of_both_slides() -> None:
@@ -186,7 +186,7 @@ def test_slide_index_at_and_slide_start_time() -> None:
     slides = [slide_from_json(s) for s in CASES[0]["slides"]]  # spec-total-duration-12.50
     tl = build_timeline(slides)
     assert slide_index_at(tl, 2) == 0
-    assert slide_index_at(tl, 4) == 1  # im Übergang zählt das Zielbild
+    assert slide_index_at(tl, 4) == 1  # during a transition the target slide counts
     assert slide_index_at(tl, 99) == 2
     assert slide_index_at(build_timeline([]), 1) is None
     assert slide_start_time(tl, 0) == 0
@@ -204,10 +204,10 @@ def test_slide_index_at_and_slide_start_time() -> None:
         (-1.0, 30, 0),
         (5.0, 30, 150),
         (5.01, 30, 151),
-        (0.25, 30, 8),  # 7,5 -> 8: das letzte, angebrochene Bild zählt
-        (0.1 + 0.2, 10, 3),  # 3.0000000000000004 ist Rundungsfehler, nicht 4
+        (0.25, 30, 8),  # 7.5 -> 8: the last, partial frame counts
+        (0.1 + 0.2, 10, 3),  # 3.0000000000000004 is a rounding error, not 4
         (1 / 3, 3, 1),
-        (10.0, 30000 / 1001, 300),  # 299,7 -> 300
+        (10.0, 30000 / 1001, 300),  # 299.7 -> 300
         (float("inf"), 30, 0),
         (float("nan"), 30, 0),
     ],

@@ -1,4 +1,4 @@
-"""GET/PUT /api/project: Speichern, Laden, Ablehnungsregeln, Kaskade (TASK-API-004)."""
+"""GET/PUT /api/project: save, load, rejection rules, cascade (TASK-API-004)."""
 
 import asyncio
 import io
@@ -28,7 +28,7 @@ def _upload(client: TestClient, count: int) -> list[str]:
     for i in range(count):
         buf = io.BytesIO()
         Image.new("RGB", (8, 6), (i * 40, 10, 10)).save(buf, "PNG")
-        files.append(("files", (f"bild{i}.png", buf.getvalue(), "image/png")))
+        files.append(("files", (f"image{i}.png", buf.getvalue(), "image/png")))
     res = client.post("/api/media", files=files)
     assert res.status_code == 200, res.text
     return [r["item"]["id"] for r in res.json()["items"]]
@@ -321,16 +321,16 @@ def test_invalid_put_without_previous_project_writes_nothing(
 def test_corrupt_file_serves_empty_and_is_kept_until_next_save(settings: Settings) -> None:
     settings.data_dir.mkdir(parents=True)
     corrupt = settings.data_dir / "project.json"
-    corrupt.write_text("{nicht json")
+    corrupt.write_text("{not json")
     with TestClient(create_app(settings)) as client:
         assert client.get("/api/project").json() == EMPTY
-        assert corrupt.read_text() == "{nicht json"
+        assert corrupt.read_text() == "{not json"
 
         project = _valid_project(_upload(client, 2))
         assert client.put("/api/project", json=project).status_code == 200
 
     backups = list(settings.data_dir.glob("project.json.corrupt-*"))
-    assert [b.read_text() for b in backups] == ["{nicht json"]
+    assert [b.read_text() for b in backups] == ["{not json"]
     assert json.loads(corrupt.read_text()) == project
 
 

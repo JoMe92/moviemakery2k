@@ -1,4 +1,4 @@
-"""Übergangskatalog über die API und Startabbruch bei ungültigem Katalog (TASK-API-001)."""
+"""Transition catalog via the API and startup abort on an invalid catalog (TASK-API-001)."""
 
 import json
 from pathlib import Path
@@ -59,13 +59,13 @@ def test_startup_aborts_without_default_duration(tmp_path: Path) -> None:
     with pytest.raises(CatalogError) as exc_info:
         create_app(settings)
     message = str(exc_info.value)
-    assert "Eintrag #2 (id 'wipe-right')" in message
+    assert "entry #2 (id 'wipe-right')" in message
     assert "defaultDuration" in message
 
 
 def test_startup_aborts_on_duplicate_id(tmp_path: Path) -> None:
     settings = _broken_catalog(tmp_path, lambda raw: raw["transitions"][4].update(id="fade"))
-    with pytest.raises(CatalogError, match=r"Eintrag #4 \(id 'fade'\): id: doppelt"):
+    with pytest.raises(CatalogError, match=r"entry #4 \(id 'fade'\): id: duplicate"):
         create_app(settings)
 
 

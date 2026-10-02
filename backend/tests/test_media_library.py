@@ -1,4 +1,4 @@
-"""GET /api/media, Bildauslieferung und DELETE mit Kaskade (TASK-API-003)."""
+"""GET /api/media, image delivery and DELETE with cascade (TASK-API-003)."""
 
 import io
 import shutil
@@ -49,7 +49,7 @@ def _slide(
     }
 
 
-# --- Liste --------------------------------------------------------------------
+# --- List ---------------------------------------------------------------------
 
 
 def test_list_is_empty_initially(client: TestClient) -> None:
@@ -71,7 +71,7 @@ def test_list_keeps_import_order_across_uploads(client: TestClient) -> None:
     assert items[0]["previewUrl"] == f"/api/media/{first[0]}/preview"
 
 
-# --- Auslieferung -------------------------------------------------------------
+# --- Delivery -----------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -95,19 +95,19 @@ def test_derived_images_are_served_immutable(
 @pytest.mark.parametrize(
     "media_id",
     [
-        "0" * 32,  # gültiges Format, unbekannt
-        "ABCDEF" + "0" * 26,  # Großbuchstaben
-        "abc",  # zu kurz
-        "..",  # Pfad-Trick
-        "%2e%2e",  # kodierter Pfad-Trick
-        "g" * 32,  # kein Hex
+        "0" * 32,  # valid format, unknown
+        "ABCDEF" + "0" * 26,  # upper case
+        "abc",  # too short
+        "..",  # path trick
+        "%2e%2e",  # encoded path trick
+        "g" * 32,  # not hex
     ],
 )
 def test_unknown_or_malformed_id_is_404(client: TestClient, kind: str, media_id: str) -> None:
     _upload(client, ["x.png"])
     res = client.get(f"/api/media/{media_id}/{kind}")
     assert res.status_code == 404
-    if media_id != "..":  # ".." normalisiert der Client weg; dann greift das 404 des Routers.
+    if media_id != "..":  # The client normalises ".." away; then the router's 404 applies.
         detail = res.json()["detail"]
         assert detail["code"] == "media.notFound"
         assert detail["message"] == "Media item not found."
@@ -124,7 +124,7 @@ def test_missing_derived_file_is_404(client: TestClient, settings: Settings) -> 
     assert client.get(f"/api/media/{media_id}/preview").status_code == 200
 
 
-# --- Löschen ------------------------------------------------------------------
+# --- Delete -------------------------------------------------------------------
 
 
 def test_delete_removes_files_and_index_entry_persistently(settings: Settings) -> None:
@@ -156,7 +156,7 @@ def test_delete_unknown_or_malformed_is_404(client: TestClient, media_id: str) -
     [kept] = _upload(client, ["x.png"])
     res = client.delete(f"/api/media/{media_id}")
     assert res.status_code == 404
-    if media_id != "..":  # ".." normalisiert der Client weg; dann greift das 404 des Routers.
+    if media_id != "..":  # The client normalises ".." away; then the router's 404 applies.
         assert res.json() == {
             "detail": {
                 "code": "media.notFound",
@@ -191,7 +191,7 @@ def test_delete_cascades_into_project(settings: Settings) -> None:
         assert client.get("/api/project").json() == expected
         assert [i["id"] for i in client.get("/api/media").json()["items"]] == [b, c]
 
-        # Ein erneutes Einfügen der gelöschten ID wird abgelehnt.
+        # Re-inserting the deleted ID is rejected.
         stale = {"schemaVersion": 1, "slides": [_slide("s1", a)]}
         assert client.put("/api/project", json=stale).status_code == 422
 

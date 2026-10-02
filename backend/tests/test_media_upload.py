@@ -1,4 +1,4 @@
-"""POST /api/media: Import, Prüfung, Grenzen, EXIF und Index (TASK-API-002)."""
+"""POST /api/media: import, validation, limits, EXIF and index (TASK-API-002)."""
 
 import io
 import json
@@ -78,13 +78,13 @@ def test_jpeg_png_webp_are_imported_with_dims_and_files(settings: Settings) -> N
             assert preview.format == "JPEG"
             assert max(preview.size) <= 1920
 
-    # Original bleibt unverändert, Vorschau ist auf 1920 verkleinert.
+    # The original stays unchanged, the preview is scaled down to 1920.
     webp_dir = settings.data_dir / "media" / items[2]["item"]["id"]
     with Image.open(webp_dir / "original.webp") as original:
         assert original.size == (2400, 1200)
     with Image.open(webp_dir / "preview.jpg") as preview:
         assert preview.size == (1920, 960)
-    # Transparenz liegt in den JPEG-Ableitungen auf Schwarz.
+    # Transparency is flattened onto black in the JPEG derivatives.
     png_dir = settings.data_dir / "media" / items[1]["item"]["id"]
     with Image.open(png_dir / "preview.jpg") as preview:
         r, g, b = preview.convert("RGB").getpixel((10, 10))  # type: ignore[misc]
@@ -100,7 +100,7 @@ def test_text_file_named_jpg_is_unsupported_but_others_import(settings: Settings
             client,
             [
                 _file("ok-1.jpg", _image_bytes("JPEG", (10, 10))),
-                _file("fake.jpg", b"Das ist kein Bild, nur Text.\n" * 10),
+                _file("fake.jpg", b"This is not an image, just text.\n" * 10),
                 _file("ok-2.png", _image_bytes("PNG", (10, 10)), "image/png"),
             ],
         )
@@ -188,11 +188,11 @@ def test_path_in_filename_is_display_only(settings: Settings, tmp_path: Path) ->
     ("raw", "expected"),
     [
         ("../../etc/passwd.png", "passwd.png"),
-        ("C:\\Users\\x\\bild.jpg", "bild.jpg"),
+        ("C:\\Users\\x\\picture.jpg", "picture.jpg"),
         ("a\x00b\nc.jpg", "abc.jpg"),
-        ("..", "bild"),
-        ("", "bild"),
-        (None, "bild"),
+        ("..", "image"),
+        ("", "image"),
+        (None, "image"),
         ("x" * 300 + ".jpg", "x" * 255),
     ],
 )
@@ -202,11 +202,11 @@ def test_sanitize_filename(raw: str | None, expected: str) -> None:
 
 def test_exif_rotated_photo_is_reported_and_derived_portrait(settings: Settings) -> None:
     exif = Image.Exif()
-    exif[0x0112] = 6  # Orientation: um 90° im Uhrzeigersinn drehen
+    exif[0x0112] = 6  # Orientation: rotate 90° clockwise
     data = _image_bytes("JPEG", (40, 20), exif=exif.tobytes())
 
     with TestClient(create_app(settings)) as client:
-        items = _upload(client, [_file("hochkant.jpg", data)])
+        items = _upload(client, [_file("portrait.jpg", data)])
 
     item = items[0]["item"]
     assert (item["width"], item["height"]) == (20, 40)
@@ -215,7 +215,7 @@ def test_exif_rotated_photo_is_reported_and_derived_portrait(settings: Settings)
         with Image.open(item_dir / name) as derived:
             assert derived.width < derived.height
     with Image.open(item_dir / "original.jpg") as original:
-        assert original.size == (40, 20)  # Original bleibt erhalten
+        assert original.size == (40, 20)  # the original is kept
 
 
 def test_more_than_50_files_rejects_request(settings: Settings) -> None:
@@ -249,7 +249,7 @@ def test_index_persists_across_app_instances(settings: Settings) -> None:
     listed = store.list()
     assert [m.id for m in listed] == [first[0]["item"]["id"], second[0]["item"]["id"]]
     assert [m.filename for m in listed] == ["1.jpg", "2.jpg"]
-    assert not list(settings.data_dir.glob(".media-*"))  # keine Temp-Reste
+    assert not list(settings.data_dir.glob(".media-*"))  # no temp leftovers
 
     with TestClient(create_app(settings)) as client:
         _upload(client, [_file("3.jpg", _image_bytes("JPEG", (10, 10)))])

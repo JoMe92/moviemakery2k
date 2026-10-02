@@ -10,16 +10,16 @@ from mmy_backend.render.context import create_render_context
 
 CATALOG_DIR = REPO_ROOT / "packages" / "catalog"
 
-# GL-Tests des Exports: unter Linux (lokal und in CI) immer, sonst übersprungen.
+# GL tests of the export: always on Linux (locally and in CI), skipped otherwise.
 requires_gl = pytest.mark.skipif(
     not sys.platform.startswith("linux"),
-    reason="Headless-Export (EGL/llvmpipe) wird offiziell nur unter Linux unterstützt",
+    reason="Headless export (EGL/llvmpipe) is officially supported on Linux only",
 )
 
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    """Echter Katalog, temporäres Datenverzeichnis pro Test (design.md D8)."""
+    """Real catalog, temporary data directory per test (design.md D8)."""
     return Settings(
         data_dir=tmp_path / "data",
         catalog_dir=CATALOG_DIR,

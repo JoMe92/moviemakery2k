@@ -1,4 +1,4 @@
-"""Der Katalog in packages/catalog ist gegen sein JSON Schema gültig (TASK-CAT-001)."""
+"""The catalog in packages/catalog is valid against its JSON Schema (TASK-CAT-001)."""
 
 import json
 from pathlib import Path

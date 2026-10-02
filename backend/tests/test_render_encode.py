@@ -1,7 +1,7 @@
-"""Kodierung des Exports (TASK-RENDER-004, design.md D4).
+"""Encoding of the export (TASK-RENDER-004, design.md D4).
 
-Kleine Projekte, damit die Ende-zu-Ende-Tests (markiert `slow`) nur wenige
-Sekunden brauchen. Die Laufzeit für 12 Bilder à 5 s misst
+Small projects so that the end-to-end tests (marked `slow`) take only a few
+seconds. The runtime for 12 images of 5 s each is measured by
 `scripts/bench_export.py` (`pixi run bench-export`).
 """
 
@@ -52,7 +52,7 @@ slow = pytest.mark.slow
 
 
 def photo(seed: int, size: tuple[int, int] = (480, 360)) -> Image.Image:
-    """Fotoähnliches Testbild: weiche Verläufe plus einige Formen."""
+    """Photo-like test image: soft gradients plus a few shapes."""
     w, h = size
     image = Image.merge(
         "RGB",
@@ -77,7 +77,7 @@ def load(media_id: str) -> Image.Image | None:
 
 
 def small_timeline() -> Timeline:
-    # 3 x 1 s, Übergänge 0.5 s → 2.0 s, 60 Bilder bei 30 fps
+    # 3 x 1 s, transitions 0.5 s → 2.0 s, 60 frames at 30 fps
     return build_timeline(
         [
             TimelineSlide("s0", "a", 1.0, None),
@@ -142,7 +142,7 @@ def popen_spy(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[subprocess.Popen
     yield started
 
 
-# --- ohne FFmpeg/GL -------------------------------------------------------------
+# --- without FFmpeg/GL ----------------------------------------------------------
 
 
 def test_profiles() -> None:
@@ -182,7 +182,7 @@ def test_empty_project_fails_without_files(tmp_path: Path) -> None:
     assert list(tmp_path.iterdir()) == []
 
 
-# --- Ende zu Ende ---------------------------------------------------------------
+# --- End to end -----------------------------------------------------------------
 
 
 @requires_gl
@@ -213,7 +213,7 @@ def test_small_export_streams_progress_and_psnr(tmp_path: Path) -> None:
     for duration in (video["duration"], audio["duration"], info["format"]["duration"]):
         assert abs(float(duration) - expected) <= 1 / 30
 
-    # Mittelbild eines Übergangs gegen den Roh-Frame des Renderers.
+    # Middle frame of a transition against the renderer's raw frame.
     n = 22
     frame = frame_at(timeline, frame_time(n, 30))
     assert isinstance(frame, TransitionFrame) and 0.3 < frame.progress < 0.7
@@ -228,7 +228,7 @@ def test_small_export_streams_progress_and_psnr(tmp_path: Path) -> None:
     finally:
         ctx.release()
     psnr = psnr_rgb(decoded, raw)
-    print(f"PSNR Bild {n}: {psnr:.2f} dB")
+    print(f"PSNR frame {n}: {psnr:.2f} dB")
     assert psnr > 35
 
 
@@ -268,7 +268,7 @@ def test_cancel_leaves_no_file_and_stops_ffmpeg(
             cancel=cancel,
         )
     assert list(tmp_path.iterdir()) == []
-    # glcontext startet selbst ldconfig/gcc; hier zählt nur FFmpeg.
+    # glcontext itself starts ldconfig/gcc; only FFmpeg counts here.
     ffmpeg = [p for p in popen_spy if isinstance(p.args, list) and p.args[0] == ffmpeg_binary()]
     assert len(ffmpeg) == 1
     assert ffmpeg[0].poll() is not None
@@ -279,13 +279,13 @@ def test_ffmpeg_exit_raises_with_stderr_tail(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = tmp_path / "fake-ffmpeg"
-    fake.write_text("#!/bin/sh\necho 'kaputt: boom' >&2\nexit 3\n", encoding="utf-8")
+    fake.write_text("#!/bin/sh\necho 'broken: boom' >&2\nexit 3\n", encoding="utf-8")
     fake.chmod(0o755)
     monkeypatch.setenv("MMY_FFMPEG", str(fake))
     out = tmp_path / "out" / "film.mp4"
     with pytest.raises(ExportFailed) as info:
         export_movie(small_timeline(), CATALOG, ExportProfile.SMALL, out, load)
-    assert "kaputt: boom" in info.value.stderr_tail
+    assert "broken: boom" in info.value.stderr_tail
     # FFmpeg exits at once: depending on timing the pipe breaks first or the exit is seen.
     assert info.value.code in {
         "export.ffmpegFailed",

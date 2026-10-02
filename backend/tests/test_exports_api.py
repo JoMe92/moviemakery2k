@@ -1,8 +1,8 @@
-"""Export-Jobs über die API (TASK-API-006, design.md D5).
+"""Export jobs via the API (TASK-API-006, design.md D5).
 
-Kleine Projekte im Profil `small`, damit die GL-Tests nur wenige Sekunden
-brauchen. Wo ein Test einen laufenden Export braucht, hält `gate` den Worker
-beim ersten Fortschritt an, bis der Test ihn freigibt.
+Small projects in the `small` profile so that the GL tests take only a few
+seconds. Where a test needs a running export, `gate` holds the worker at the
+first progress report until the test releases it.
 """
 
 import io
@@ -38,7 +38,7 @@ def client(settings: Settings) -> Iterator[TestClient]:
 
 
 class Gate:
-    """Hält den Export-Worker beim ersten Fortschritt an, bis `release()`."""
+    """Holds the export worker at the first progress report until `release()`."""
 
     def __init__(self) -> None:
         self.reached = threading.Event()
@@ -48,7 +48,7 @@ class Gate:
         self.released.set()
 
     def wait_reached(self) -> None:
-        assert self.reached.wait(TIMEOUT), "Export hat keinen Fortschritt gemeldet"
+        assert self.reached.wait(TIMEOUT), "Export reported no progress"
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ def _upload(client: TestClient, count: int) -> list[str]:
     for i in range(count):
         buf = io.BytesIO()
         Image.new("RGB", (64, 48), (i * 80, 40, 200 - i * 60)).save(buf, "PNG")
-        files.append(("files", (f"bild{i}.png", buf.getvalue(), "image/png")))
+        files.append(("files", (f"image{i}.png", buf.getvalue(), "image/png")))
     res = client.post("/api/media", files=files)
     assert res.status_code == 200, res.text
     return [r["item"]["id"] for r in res.json()["items"]]
@@ -102,7 +102,7 @@ def _save_project(client: TestClient, media_ids: list[str], duration: float = 1.
 
 
 def _start(client: TestClient, **body: Any) -> dict[str, Any]:
-    res = client.post("/api/exports", json={"profile": "small", "fileName": "Mein Film", **body})
+    res = client.post("/api/exports", json={"profile": "small", "fileName": "My Movie", **body})
     assert res.status_code == 202, res.text
     return dict(res.json())
 
@@ -119,7 +119,7 @@ def _poll(client: TestClient, export_id: str, until: set[str]) -> tuple[dict[str
         if job["status"] in until:
             return job, seen
         time.sleep(0.02)
-    raise AssertionError(f"Export {export_id} blieb in {seen}")
+    raise AssertionError(f"Export {export_id} stuck in {seen}")
 
 
 def _export_dir(settings: Settings, export_id: str) -> Path:
@@ -138,11 +138,11 @@ def _duration(path: Path) -> float:
     return float(json.loads(out)["format"]["duration"])
 
 
-# --- Ohne Rendern ----------------------------------------------------------------
+# --- Without rendering -----------------------------------------------------------
 
 
 def test_empty_project_is_rejected(client: TestClient) -> None:
-    res = client.post("/api/exports", json={"fileName": "Mein Film"})
+    res = client.post("/api/exports", json={"fileName": "My Movie"})
     assert res.status_code == 422
     assert res.json()["detail"] == {
         "code": "export.emptyProject",
@@ -155,10 +155,10 @@ def test_empty_project_is_rejected(client: TestClient) -> None:
 def test_missing_media_is_rejected(client: TestClient) -> None:
     media_ids = _upload(client, 2)
     _save_project(client, media_ids)
-    # Medium verschwindet hinter dem Rücken des Projekts (z. B. Datei-Index geändert).
+    # A medium disappears behind the project's back (e.g. the file index changed).
     store = client.app.state.media  # type: ignore[attr-defined]
     store._items = [item for item in store._items if item.id != media_ids[1]]
-    res = client.post("/api/exports", json={"fileName": "Mein Film"})
+    res = client.post("/api/exports", json={"fileName": "My Movie"})
     assert res.status_code == 422
     assert res.json()["detail"] == {
         "code": "export.missingMedia",
@@ -180,7 +180,7 @@ INVALID_CHARS = (
         ("", "export.fileName.empty", {}, "The file name must not be empty."),
         ("   ", "export.fileName.empty", {}, "The file name must not be empty."),
         (".mp4", "export.fileName.empty", {}, "The file name must not be empty."),
-        ("Urlaub/2003", "export.fileName.invalidChars", {"chars": "/"}, INVALID_CHARS.format("/")),
+        ("Holiday/2003", "export.fileName.invalidChars", {"chars": "/"}, INVALID_CHARS.format("/")),
         ('a"b', "export.fileName.invalidChars", {"chars": '"'}, INVALID_CHARS.format('"')),
         ("a:b", "export.fileName.invalidChars", {"chars": ":"}, INVALID_CHARS.format(":")),
         ("a*b", "export.fileName.invalidChars", {"chars": "*"}, INVALID_CHARS.format("*")),
@@ -214,13 +214,13 @@ def test_invalid_file_name_is_rejected(
 
 
 def test_file_name_rules() -> None:
-    assert normalize_file_name("  Mein Film  ") == "Mein Film"
-    assert normalize_file_name("Mein Film.mp4") == "Mein Film"
-    assert normalize_file_name("Urlaub.MP4") == "Urlaub"
+    assert normalize_file_name("  My Movie  ") == "My Movie"
+    assert normalize_file_name("My Movie.mp4") == "My Movie"
+    assert normalize_file_name("Holiday.MP4") == "Holiday"
     assert normalize_file_name("Fest 2003 \u2013 Grüße") == "Fest 2003 \u2013 Grüße"
     assert normalize_file_name("x" * 120) == "x" * 120
     with pytest.raises(ValueError, match="not allowed: / :"):
-        normalize_file_name("Urlaub/2003:a")
+        normalize_file_name("Holiday/2003:a")
     with pytest.raises(ValueError, match="too long"):
         normalize_file_name("x" * 121)
 
@@ -230,7 +230,7 @@ def test_invalid_profile_and_unknown_ids(client: TestClient) -> None:
     res = client.post("/api/exports", json={"profile": "huge", "fileName": "Film"})
     assert res.status_code == 422
     assert res.json()["detail"][0]["type"] == "enum"  # FastAPI's native list, unchanged
-    for export_id in ("unbekannt", "0" * 32):
+    for export_id in ("unknown", "0" * 32):
         path = f"/api/exports/{export_id}"
         expected = {
             "code": "export.notFound",
@@ -246,7 +246,7 @@ def test_no_gl_context_fails_with_message(
     client: TestClient, settings: Settings, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def no_context() -> Any:
-        raise RenderContextError("Export nicht möglich: kein OpenGL-3.3-Kontext (Test).")
+        raise RenderContextError("Export not possible: no OpenGL 3.3 context (test).")
 
     monkeypatch.setattr(encode, "create_render_context", no_context)
     _save_project(client, _upload(client, 1))
@@ -254,9 +254,7 @@ def test_no_gl_context_fails_with_message(
     final, _ = _poll(client, job["id"], {"done", "failed", "cancelled"})
     assert final["status"] == "failed"
     assert final["errorCode"] == "export.glUnavailable"
-    assert final["errorParams"] == {
-        "reason": "Export nicht möglich: kein OpenGL-3.3-Kontext (Test)."
-    }
+    assert final["errorParams"] == {"reason": "Export not possible: no OpenGL 3.3 context (test)."}
     assert final["error"] == MESSAGE_GL_UNAVAILABLE
     assert final["error"].startswith("Export is not available on this system")
     assert not _export_dir(settings, job["id"]).exists()
@@ -267,7 +265,7 @@ def test_no_gl_context_fails_with_message(
         "params": {"status": "failed"},
         "message": "The movie is not available: the export has the status “failed”.",
     }
-    # Die App bleibt bedienbar: ein neuer Start ist möglich, der fehlgeschlagene Job löschbar.
+    # The app stays usable: a new start is possible, the failed job can be deleted.
     assert client.delete(f"/api/exports/{job['id']}").status_code == 204
     assert client.get(f"/api/exports/{job['id']}").status_code == 404
 
@@ -329,7 +327,7 @@ def test_failed_job_carries_error_code(
     assert final["error"] == message
 
 
-# --- Mit Rendern (GL + FFmpeg) ------------------------------------------------------
+# --- With rendering (GL + FFmpeg) ---------------------------------------------------
 
 
 @requires_gl
@@ -368,7 +366,7 @@ def test_export_runs_to_done_and_downloads(client: TestClient, settings: Setting
     assert disposition.startswith("attachment;")
     assert 'filename="Gruesse aus Koeln.mp4"' in disposition
     assert f"filename*=UTF-8''{quote('Grüße aus Köln.mp4', safe='')}" in disposition
-    # 2 x 1 s mit 0,5-s-Übergang = 1,5 s
+    # 2 x 1 s with a 0.5 s transition = 1.5 s
     assert abs(_duration(out) - 1.5) <= 1 / 30
 
     assert [j["id"] for j in client.get("/api/exports").json()["items"]] == [job["id"]]
@@ -385,7 +383,7 @@ def test_second_export_conflicts_and_file_before_end(client: TestClient, gate: G
     first = _start(client)
     gate.wait_reached()
 
-    res = client.post("/api/exports", json={"profile": "small", "fileName": "Zweiter"})
+    res = client.post("/api/exports", json={"profile": "small", "fileName": "Second"})
     assert res.status_code == 409
     assert res.json()["detail"] == {
         "code": "export.busy",
@@ -403,7 +401,7 @@ def test_second_export_conflicts_and_file_before_end(client: TestClient, gate: G
     final, _ = _poll(client, first["id"], {"done", "failed", "cancelled"})
     assert final["status"] == "done", final
     assert len(client.get("/api/exports").json()["items"]) == 1
-    # Nach dem Ende ist ein neuer Start wieder möglich.
+    # After the end a new start is possible again.
     second = _start(client)
     final, _ = _poll(client, second["id"], {"done", "failed", "cancelled"})
     assert final["status"] == "done", final
@@ -428,7 +426,7 @@ def test_cancel_leaves_no_partial_file(client: TestClient, settings: Settings, g
     assert current["status"] == "cancelled"
     assert not directory.exists()
     assert client.get(f"/api/exports/{job['id']}/file").status_code == 409
-    # Ein abgebrochener Job lässt sich löschen; danach ist er unbekannt.
+    # A cancelled job can be deleted; afterwards it is unknown.
     assert client.delete(f"/api/exports/{job['id']}").status_code == 204
     assert client.get(f"/api/exports/{job['id']}").status_code == 404
 
@@ -437,11 +435,11 @@ def test_cancel_leaves_no_partial_file(client: TestClient, settings: Settings, g
 @slow
 def test_export_uses_project_snapshot(client: TestClient, gate: Gate) -> None:
     media_ids = _upload(client, 3)
-    _save_project(client, media_ids)  # 3 x 1 s, 2 x 0,5 s Übergang = 2,0 s
+    _save_project(client, media_ids)  # 3 x 1 s, 2 x 0.5 s transition = 2.0 s
     job = _start(client)
     gate.wait_reached()
 
-    _save_project(client, media_ids[:1])  # Bild entfernt, nur noch 1 s
+    _save_project(client, media_ids[:1])  # image removed, only 1 s left
     assert len(client.get("/api/project").json()["slides"]) == 1
 
     gate.release()

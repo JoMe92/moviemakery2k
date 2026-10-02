@@ -1,10 +1,10 @@
-"""Frame-Renderer des Exports (TASK-RENDER-003, design.md D4).
+"""Frame renderer of the export (TASK-RENDER-003, design.md D4).
 
-Die Randwert-Golden-Frames folgen `e2e/test_golden_frames.py`: Übergang von
-reinem Rot nach reinem Blau auf 640x480; bei `progress` 0 jedes Pixel exakt
-rot, bei 1 exakt blau, bei 0.4 von beiden verschieden (außer `pixelate`, das
-auf einfarbigen Bildern keine Mitte zeigt; dafür prüft ein Testmuster die
-Blöcke). Die GL-Tests laufen unter Linux immer (EGL/llvmpipe aus Pixi).
+The boundary golden frames follow `e2e/test_golden_frames.py`: transition from
+pure red to pure blue at 640x480; at `progress` 0 every pixel is exactly red,
+at 1 exactly blue, at 0.4 different from both (except `pixelate`, which shows
+no midpoint on solid-colour images; a test pattern checks its blocks instead).
+The GL tests always run on Linux (EGL/llvmpipe from Pixi).
 """
 
 import uuid
@@ -48,7 +48,7 @@ def solid(color: tuple[int, int, int], size: tuple[int, int] = (64, 48)) -> Imag
 
 
 def pattern(size: tuple[int, int]) -> Image.Image:
-    """Asymmetrisches Muster: jede Spalte/Zeile anders, damit Spiegelungen auffallen."""
+    """Asymmetric pattern: every column/row differs so that flips are noticed."""
     w, h = size
     image = Image.new("RGB", size)
     image.putdata(
@@ -66,7 +66,7 @@ def count(data: bytes, color: tuple[int, int, int, int]) -> int:
 
 
 def at(data: bytes, x: int, y: int, width: int = W) -> tuple[int, ...]:
-    """Pixel (x, y), Ursprung oben links."""
+    """Pixel (x, y), origin top left."""
     i = (y * width + x) * 4
     return tuple(data[i : i + 4])
 
@@ -86,7 +86,7 @@ def timeline_for(*media_ids: str, transition: str = "fade") -> Timeline:
 
 
 class DictLoader:
-    """ImageLoader aus einem Dict; zählt die Ladevorgänge."""
+    """ImageLoader backed by a dict; counts the loads."""
 
     def __init__(self, images: dict[str, Image.Image]) -> None:
         self.images = images
@@ -113,19 +113,19 @@ def red_blue(ctx: moderngl.Context, library: ShaderLibrary) -> Iterator[FrameRen
         yield renderer
 
 
-# --- Geometrie und Pixelhilfen (ohne GL) ---------------------------------------
+# --- Geometry and pixel helpers (without GL) -----------------------------------
 
 
 @pytest.mark.parametrize(
     ("args", "expected"),
     [
-        # Vektoren aus apps/web/src/render/geometry.test.ts
+        # Vectors from apps/web/src/render/geometry.test.ts
         ((300, 600, 640, 480), Rect(200, 0, 240, 480)),
         ((1920, 1080, 640, 480), Rect(0, 60, 640, 360)),
         ((1600, 1200, 640, 480), Rect(0, 0, 640, 480)),
         ((3, 7, 1280, 960), Rect((1280 - 411) // 2, 0, 411, 960)),
         ((0, 10, 640, 480), Rect(0, 0, 0, 0)),
-        # Math.round: 2.5 → 3 (Python round ergäbe 2)
+        # Math.round: 2.5 → 3 (Python round would give 2)
         ((5, 4, 100, 2), Rect(48, 0, 3, 2)),
         ((100, 200, 640, 480), Rect(200, 0, 240, 480)),
     ],
@@ -159,11 +159,11 @@ def test_preview_loader_reads_media_preview(tmp_path: Path) -> None:
     image = load(media_id)
     assert image is not None
     assert (image.mode, image.size) == ("RGB", (40, 30))
-    assert load(uuid.uuid4().hex) is None  # fehlt
-    assert load("../etc") is None  # ungültige ID
+    assert load(uuid.uuid4().hex) is None  # missing
+    assert load("../etc") is None  # invalid ID
 
 
-# --- Golden Frames (GL) ---------------------------------------------------------
+# --- Golden frames (GL) ---------------------------------------------------------
 
 
 @requires_gl
@@ -213,7 +213,7 @@ def test_pixelate_midpoint_builds_coarse_blocks(
 
 @requires_gl
 def test_wipe_right_and_circle_orientation(red_blue: FrameRenderer) -> None:
-    # Gleiche Stichproben wie e2e: Ursprung oben links nach dem Spiegeln.
+    # Same samples as e2e: origin top left after flipping.
     timeline = timeline_for("red", "blue")
     wipe = red_blue.render(TransitionFrame(0, 1, "wipe-right", 0.5), timeline, CATALOG)
     assert at(wipe, int(0.02 * (W - 1)), H // 2) == BLUE
@@ -229,7 +229,7 @@ def test_portrait_still_has_black_bars(ctx: moderngl.Context, library: ShaderLib
     timeline = timeline_for("tall", "blue")
     with FrameRenderer(ctx, library, W, H, loader) as renderer:
         still = renderer.render(StillFrame(0), timeline, CATALOG)
-        # Über GL (Fade bei progress 0) muss dasselbe herauskommen.
+        # Via GL (fade at progress 0) the result must be the same.
         drawn = renderer.render(TransitionFrame(0, 1, "fade", 0.0), timeline, CATALOG)
     for data in (still, drawn):
         for y in (0, H // 2, H - 1):
@@ -247,8 +247,8 @@ def test_portrait_still_has_black_bars(ctx: moderngl.Context, library: ShaderLib
 def test_gl_path_matches_still_pixels_without_flip(
     ctx: moderngl.Context, library: ShaderLibrary
 ) -> None:
-    # Asymmetrisches Bild: Textur-Ursprung unten links + Spiegeln beim Auslesen
-    # ergeben exakt das eingepasste Bild, oben links zuerst.
+    # Asymmetric image: texture origin bottom left + flipping on read-back
+    # yield exactly the fitted image, top left first.
     loader = DictLoader({"p": pattern((200, 100)), "q": pattern((90, 120))})
     timeline = timeline_for("p", "q")
     with FrameRenderer(ctx, library, W, H, loader) as renderer:
@@ -288,7 +288,7 @@ def test_unknown_transition_uses_fade(red_blue: FrameRenderer) -> None:
     timeline = timeline_for("red", "blue", transition="no-such-transition")
     data = red_blue.render(TransitionFrame(0, 1, "no-such-transition", 0.5), timeline, CATALOG)
     (r, g, b, a), *rest = set(pixels(data))
-    assert not rest  # einheitliche Mischung
+    assert not rest  # uniform mix
     assert abs(r - 127.5) <= 1 and g == 0 and abs(b - 127.5) <= 1 and a == 255
 
 
@@ -302,7 +302,7 @@ def test_iter_frames_covers_timeline_with_two_images(
         TimelineSlide("s0", "a", 1.0, None),
         TimelineSlide("s1", "b", 1.0, TransitionIn("dissolve", 0.5)),
         TimelineSlide("s2", "c", 1.0, TransitionIn("circle", 0.5)),
-        TimelineSlide("s3", "a", 1.0, None),  # harter Schnitt, Bild erneut
+        TimelineSlide("s3", "a", 1.0, None),  # hard cut, image again
         TimelineSlide("s4", "d", 1.0, TransitionIn("unknown", 0.5)),
     ]
     timeline = build_timeline(slides)
@@ -315,10 +315,10 @@ def test_iter_frames_covers_timeline_with_two_images(
         assert renderer.live_textures <= 2
 
     assert [n for n, _ in frames] == list(range(frame_count(timeline.duration, fps)))
-    assert len(frames) == 35  # 5 x 1 s - 3 x 0.5 s Übergang = 3.5 s bei 10 fps
+    assert len(frames) == 35  # 5 x 1 s - 3 x 0.5 s transition = 3.5 s at 10 fps
     assert all(len(data) == width * height * 4 for _, data in frames)
     first, last = frames[0][1], frames[-1][1]
     assert set(pixels(first)) == {(255, 0, 0, 255)}
     assert set(pixels(last)) == {(255, 255, 0, 255)}
-    # Jedes Bild wird höchstens einmal je Auftritt geladen, nicht pro Frame.
+    # Every image is loaded at most once per appearance, not per frame.
     assert loader.loads == ["a", "b", "c", "a", "d"]

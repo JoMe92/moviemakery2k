@@ -1,7 +1,7 @@
-"""Aufbewahrung, Aufräumen beim Start und Download-Dateiname (TASK-API-007).
+"""Retention, cleanup at startup and download file name (TASK-API-007).
 
-Ohne GL: `export_movie` wird durch eine schnelle Attrappe ersetzt, die eine
-kleine Datei schreibt bzw. fehlschlägt.
+Without GL: `export_movie` is replaced by a fast stub that writes a small
+file or fails.
 """
 
 import io
@@ -26,7 +26,7 @@ EN_DASH = chr(0x2013)
 
 
 class FakeExport:
-    """Ersetzt `export_movie`: schreibt `out.mp4` oder scheitert, je nach `fail`."""
+    """Replaces `export_movie`: writes `out.mp4` or fails, depending on `fail`."""
 
     def __init__(self) -> None:
         self.fail = False
@@ -68,11 +68,11 @@ def _run(client: TestClient, name: str = "Film") -> dict[str, Any]:
     while time.monotonic() < deadline:
         job = dict(client.get(f"/api/exports/{export_id}").json())
         if job["status"] not in ("queued", "running"):
-            # Aufbewahrung läuft direkt nach dem Statuswechsel im Worker.
+            # Retention runs in the worker right after the status change.
             client.app.state.exports._jobs[export_id].thread.join(TIMEOUT)  # type: ignore[attr-defined]
             return job
         time.sleep(0.005)
-    raise AssertionError("Export wurde nicht fertig")
+    raise AssertionError("Export did not finish")
 
 
 def _ids(client: TestClient) -> list[str]:
@@ -112,7 +112,7 @@ def test_job_entries_are_bounded_dropping_oldest_failed_first(
     failed = [_run(client) for _ in range(MAX_JOB_ENTRIES + 2)]
     ids = _ids(client)
     assert len(ids) == MAX_JOB_ENTRIES
-    # Der fertige Export bleibt; die ältesten fehlgeschlagenen fallen weg.
+    # The finished export stays; the oldest failed ones are dropped.
     assert ids == [kept_done["id"]] + [j["id"] for j in failed[3:]]
     assert client.get(f"/api/exports/{kept_done['id']}/file").status_code == 200
 
@@ -121,18 +121,18 @@ def test_startup_removes_orphaned_parts_and_old_exports(settings: Settings) -> N
     exports_dir = settings.data_dir / "exports"
     orphan = exports_dir / ("a" * 32)
     orphan.mkdir(parents=True)
-    (orphan / "out.mp4.part").write_bytes(b"halb")
+    (orphan / "out.mp4.part").write_bytes(b"half")
     old = exports_dir / ("b" * 32)
     old.mkdir()
-    (old / "out.mp4").write_bytes(b"alt")
+    (old / "out.mp4").write_bytes(b"old")
     (exports_dir / "stray.mp4.part").write_bytes(b"x")
     keep = settings.data_dir / "project.json.unrelated"
-    keep.write_text("bleibt")
+    keep.write_text("kept")
 
     with TestClient(create_app(settings)) as client:
         assert exports_dir.is_dir() and list(exports_dir.iterdir()) == []
         assert client.get("/api/exports").json() == {"items": []}
-    assert keep.read_text() == "bleibt"
+    assert keep.read_text() == "kept"
 
 
 def test_startup_without_exports_dir(settings: Settings) -> None:
@@ -149,7 +149,7 @@ def test_startup_without_exports_dir(settings: Settings) -> None:
         ("Café Crème", "Cafe Creme"),
         (f"Fest {EN_DASH} 2003", "Fest _ 2003"),
         ("東京", "__"),
-        ("Mein Film", "Mein Film"),
+        ("My Movie", "My Movie"),
     ],
 )
 def test_ascii_file_name(name: str, expected: str) -> None:
