@@ -18,6 +18,10 @@ pydantic = ">=2.13"
 python-multipart = ">=0.0.32"
 pillow = ">=12"
 
+[activation.env]
+# Keine Pakete aus ~/.local einmischen: die Umgebung kommt ausschließlich aus pixi.lock.
+PYTHONNOUSERSITE = "1"
+
 [pypi-dependencies]
 mmy-backend = { path = "backend", editable = true }
 
@@ -32,3 +36,31 @@ glslang = ">=16"
 [environments]
 default = { features = ["dev"], solve-group = "default" }
 prod = { features = [], solve-group = "default" }
+
+# ---------------------------------------------------------------------------
+# Tasks: die einzige Befehlsschnittstelle (pixi run <task>)
+# ---------------------------------------------------------------------------
+[tasks]
+install-web = { cmd = "pnpm install --frozen-lockfile", inputs = ["package.json", "pnpm-lock.yaml", "apps/*/package.json", "packages/*/package.json"], outputs = ["node_modules/.modules.yaml"] }
+
+dev-backend = { cmd = "python scripts/dev.py backend", description = "FastAPI mit Live-Reload (Port: MMY_API_PORT, Standard 8000)" }
+dev-web = { cmd = "python scripts/dev.py web", depends-on = ["install-web"], description = "Vite-Dev-Server mit Proxy /api → Backend" }
+dev = { cmd = "python scripts/dev.py", depends-on = ["install-web"], description = "Backend und Web-App gemeinsam starten" }
+
+lint-web = "biome check ."
+lint-backend = { cmd = "ruff check . && ruff format --check .", cwd = "backend" }
+lint = { depends-on = ["lint-web", "lint-backend"] }
+
+format = { cmd = "biome check --write . && ruff format backend && ruff check --fix backend" }
+
+typecheck-web = { cmd = "pnpm -r typecheck", depends-on = ["install-web"] }
+typecheck-backend = { cmd = "mypy src tests", cwd = "backend" }
+typecheck = { depends-on = ["typecheck-web", "typecheck-backend"] }
+
+test-web = { cmd = "pnpm -r test", depends-on = ["install-web"] }
+test-backend = { cmd = "pytest", cwd = "backend" }
+test = { depends-on = ["test-web", "test-backend"] }
+
+build = { cmd = "pnpm -r build", depends-on = ["install-web"] }
+
+check = { depends-on = ["lint", "typecheck", "test", "build"], description = "Quality-Gate: lint, typecheck, test, build" }

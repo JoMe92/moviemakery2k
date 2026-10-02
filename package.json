@@ -2,7 +2,7 @@
   "name": "moviemakery2k",
   "private": true,
   "license": "GPL-3.0-or-later",
-  "packageManager": "pnpm@10.19.0",
+  "packageManager": "pnpm@10.33.2",
   "engines": {
     "node": ">=22"
   },
@@ -10,12 +10,9 @@
     "dev": "pnpm --filter @mmy/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "biome check .",
-    "format": "biome check --write ."
+    "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
     "typescript": "^5.9.0"
   }
 }
