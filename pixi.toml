@@ -73,9 +73,10 @@ dev = { cmd = "python scripts/dev.py", depends-on = ["install-web"], description
 
 lint-web = "biome check ."
 lint-backend = { cmd = "ruff check . && ruff format --check .", cwd = "backend" }
-lint = { depends-on = ["lint-web", "lint-backend"] }
+lint-scripts = { cmd = "ruff check e2e scripts && ruff format --check e2e scripts", description = "Ruff for e2e/ and scripts/ (config: ruff.toml, extends backend/pyproject.toml)" }
+lint = { depends-on = ["lint-web", "lint-backend", "lint-scripts"] }
 
-format = { cmd = "biome check --write . && ruff format backend && ruff check --fix backend" }
+format = { cmd = "biome check --write . && ruff format backend e2e scripts && ruff check --fix backend e2e scripts" }
 
 typecheck-web = { cmd = "pnpm -r typecheck", depends-on = ["install-web"] }
 typecheck-backend = { cmd = "mypy src tests", cwd = "backend" }

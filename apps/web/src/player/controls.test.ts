@@ -22,7 +22,8 @@ const slide = (id: string, duration = 5, t: number | null = null) => ({
   duration,
   transitionIn: t === null ? null : { transitionId: "fade", duration: t },
 });
-// Spec: three images of 5 s, two transitions of 1.25 s → 12.5 s; image 2 fully visible from 5, image 3 from 8.75.
+// spec preview-player "Gesamtdauer": three images of 5 s, two transitions of 1.25 s → 12.5 s;
+// image 2 fully visible from 5, image 3 from 8.75.
 const tl = buildTimeline([slide("1"), slide("2", 5, 1.25), slide("3", 5, 1.25)]);
 
 describe("control logic", () => {

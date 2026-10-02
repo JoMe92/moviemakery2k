@@ -1,16 +1,16 @@
-"""Kreuzvergleich Vorschau ↔ Export bei `progress` 0,5 (TASK-WEB-014, design.md D7).
+"""Cross-check preview ↔ export at `progress` 0.5 (TASK-WEB-014, design.md D7).
 
-Für jeden der sechs Katalogübergänge wird dasselbe Bild zweimal erzeugt:
+For each of the six catalog transitions the same frame is produced twice:
 
-- im Browser über den Testhook `?debug-progress=<id>:0.5` (WebGL2/SwiftShader,
-  einfarbig Rot → Blau auf 640×480, wie `test_golden_frames.py`);
-- im Backend direkt aus pytest mit dem Export-Renderer (`FrameRenderer`,
-  EGL/llvmpipe) mit denselben einfarbigen 640×480-Eingaben.
+- in the browser through the test hook `?debug-progress=<id>:0.5` (WebGL2/SwiftShader,
+  solid red → blue at 640x480, like `test_golden_frames.py`);
+- in the backend, directly from pytest, with the export renderer (`FrameRenderer`,
+  EGL/llvmpipe) and the same solid 640x480 inputs.
 
-Spec movie-export „Export entspricht der Vorschau“: Abweichung je Farbkanal
-höchstens 2 bei mindestens 99,5 % der Pixel. Beide Bilder liegen oberste Zeile
-zuerst vor. Bei einem Fehlschlag landen beide PNGs und ein Differenzbild im
-tmp-Verzeichnis des Tests.
+spec movie-export "Export entspricht der Vorschau": a deviation of at most 2 per
+colour channel for at least 99.5 % of the pixels. Both images are top row first.
+On failure both PNGs and a difference image are written to the test's tmp
+directory.
 """
 
 import base64
@@ -38,17 +38,17 @@ from playwright.sync_api import Page
 
 pytestmark = pytest.mark.skipif(
     not sys.platform.startswith("linux"),
-    reason="Headless-Export (EGL/llvmpipe) wird offiziell nur unter Linux unterstützt",
+    reason="Headless export (EGL/llvmpipe) is officially supported on Linux only",
 )
 
 CATALOG: TransitionCatalog = load_catalog(REPO_ROOT / "packages" / "catalog" / "transitions.json")
 IDS = [t.id for t in CATALOG.transitions]
-W, H = 640, 480  # Größe des Debug-Canvas (apps/web/src/render/DebugView.tsx)
+W, H = 640, 480  # size of the debug canvas (apps/web/src/render/DebugView.tsx)
 PROGRESS = 0.5
 MAX_CHANNEL_DELTA = 2
 MIN_MATCH_RATIO = 0.995
 
-# Liest das Debug-Canvas verlustfrei als PNG (oberste Zeile zuerst).
+# Reads the debug canvas losslessly as PNG (top row first).
 _READ_PNG = """
 (selector) => {
   const src = document.querySelector(selector);
@@ -105,10 +105,10 @@ def backend_frame(renderer: FrameRenderer, transition_id: str) -> Image.Image:
 
 
 def match_ratio(a: Image.Image, b: Image.Image) -> tuple[float, int, Image.Image]:
-    """Anteil der Pixel mit |Δ| ≤ MAX_CHANNEL_DELTA in jedem Kanal, max. |Δ|, Differenzbild."""
+    """Share of pixels with |Δ| ≤ MAX_CHANNEL_DELTA in every channel, max |Δ|, diff image."""
     diff = ImageChops.difference(a, b)
     r, g, b_ = diff.split()
-    # Pixel liegt in der Toleranz, wenn das Maximum über die Kanäle ≤ Δ ist.
+    # A pixel is within tolerance when its maximum over the channels is ≤ Δ.
     worst = ImageChops.lighter(ImageChops.lighter(r, g), b_)
     histogram = worst.histogram()
     within = sum(histogram[: MAX_CHANNEL_DELTA + 1])
@@ -123,8 +123,8 @@ def test_export_frame_matches_preview_at_half_progress(
     preview = browser_frame(page, server, transition_id)
     export = backend_frame(renderer, transition_id)
     assert preview.size == export.size == (W, H)
-    if transition_id != "pixelate":  # Pixelate zeigt auf einfarbigen Bildern keine Mitte
-        # Plausibilität: echtes Zwischenbild, nicht durchgehend Rot, Blau oder Schwarz.
+    if transition_id != "pixelate":  # pixelate shows no midpoint on solid images
+        # Sanity check: a real in-between frame, not solid red, blue or black.
         colors = {c for _, c in export.getcolors(W * H) or []}
         assert colors not in ({(255, 0, 0)}, {(0, 0, 255)}, {(0, 0, 0)}), (
             f"{transition_id}: {colors}"
@@ -132,15 +132,15 @@ def test_export_frame_matches_preview_at_half_progress(
 
     ratio, max_delta, diff = match_ratio(preview, export)
     print(
-        f"{transition_id}: {ratio * 100:.3f} % der Pixel mit |Δ| ≤ {MAX_CHANNEL_DELTA}, "
+        f"{transition_id}: {ratio * 100:.3f} % of the pixels with |Δ| ≤ {MAX_CHANNEL_DELTA}, "
         f"max |Δ| = {max_delta}"
     )
     if ratio < MIN_MATCH_RATIO:
         preview.save(tmp_path / f"{transition_id}-preview.png")
         export.save(tmp_path / f"{transition_id}-export.png")
-        # Differenz verstärkt, damit kleine Abweichungen sichtbar werden.
+        # Amplify the difference so that small deviations become visible.
         diff.point(lambda v: min(255, v * 16)).save(tmp_path / f"{transition_id}-diff.png")
     assert ratio >= MIN_MATCH_RATIO, (
-        f"{transition_id}: nur {ratio * 100:.3f} % der Pixel innerhalb ±{MAX_CHANNEL_DELTA} "
-        f"(gefordert {MIN_MATCH_RATIO * 100:.1f} %), max |Δ| = {max_delta}; Bilder in {tmp_path}"
+        f"{transition_id}: only {ratio * 100:.3f} % of the pixels within ±{MAX_CHANNEL_DELTA} "
+        f"(required {MIN_MATCH_RATIO * 100:.1f} %), max |Δ| = {max_delta}; images in {tmp_path}"
     )

@@ -1,32 +1,27 @@
-"""Ende-zu-Ende: Import → Bildstreifen → Übergang → Play → Reload (TASK-WEB-011).
+"""End to end: import → storyboard → transition → play → reload (TASK-WEB-011).
 
-Der Monitor wird per Element-Screenshot ausgewertet; ein WebGL-Canvas ohne
-preserveDrawingBuffer lässt sich nicht zuverlässig per drawImage auslesen.
+The monitor is evaluated from an element screenshot; a WebGL canvas without
+preserveDrawingBuffer cannot be read back reliably with drawImage.
 """
 
 import io
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageStat
 from playwright.sync_api import Locator, Page, expect
 
 
 def mean_rgb(locator: Locator) -> tuple[float, float, float]:
     img = Image.open(io.BytesIO(locator.screenshot())).convert("RGB")
-    # Nur die Bildmitte, Letterbox-Ränder sind schwarz.
+    # Only the centre of the picture; the letterbox bars are black.
     w, h = img.size
     crop = img.crop((w // 4, h // 4, 3 * w // 4, 3 * h // 4))
-    pixels = list(crop.getdata())
-    n = len(pixels)
-    return (
-        sum(p[0] for p in pixels) / n,
-        sum(p[1] for p in pixels) / n,
-        sum(p[2] for p in pixels) / n,
-    )
+    r, g, b = ImageStat.Stat(crop).mean
+    return (r, g, b)
 
 
 def drag(page: Page, source: Locator, target: Locator) -> None:
-    """Echter Zeiger-Drag in Schritten (dnd-kit braucht > 5 px Bewegung)."""
+    """Real pointer drag in steps (dnd-kit needs > 5 px of movement)."""
     s = source.bounding_box()
     t = target.bounding_box()
     assert s and t
@@ -42,7 +37,7 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     page.goto(server)
     expect(page.get_by_text("Backend bereit")).to_be_visible()
 
-    # Import über den (versteckten) Dateidialog
+    # Import through the (hidden) file dialog
     page.locator("input[type=file]").set_input_files(
         [images["rot.png"], images["blau.png"], images["gruen.png"]]
     )
@@ -50,7 +45,7 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     for name in ("rot.png", "blau.png", "gruen.png"):
         expect(collection.get_by_role("button", name=name)).to_be_visible()
 
-    # Doppelklick hängt an, echter Drag fügt am Ende ein
+    # Double-click appends, a real drag inserts at the end
     collection.get_by_role("button", name="rot.png").dblclick()
     collection.get_by_role("button", name="blau.png").dblclick()
     strip = page.get_by_role("list", name="Bildstreifen")
@@ -65,44 +60,48 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     expect(second).to_have_attribute("aria-pressed", "true")
     expect(strip.get_by_role("button", name="Bild 3: gruen.png, 5,00 s")).to_be_visible()
 
-    # Übergang „Kreis“ vor Bild 2: Katalog öffnen, Doppelklick auf die Kachel
+    # Transition "Kreis" (circle) before picture 2: open the catalog, double-click the tile
     page.get_by_role("button", name="Videoübergänge anzeigen").click()
     page.get_by_role("list", name="Übergänge").get_by_role("button", name="Kreis").dblclick()
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
     expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
 
-    # Wiedergabe: Gesamtdauer 15 − 1,25 = 13,75 s
-    # Auswahl von Bild 2 springt im Stopp-Zustand an dessen Start (Spec preview-player)
+    # Playback: total duration 15 - 1.25 = 13.75 s.
+    # Selecting picture 2 while stopped jumps to its start
+    # (spec preview-player "Auswahl im Storyboard").
     time = page.get_by_label("Zeit")
     expect(time).to_have_text("0:00:05,00 / 0:00:13,75")
     monitor = page.get_by_role("img", name="Vorschaubild")
     page.get_by_role("button", name="Stopp").click()
     expect(time).to_have_text("0:00:00,00 / 0:00:13,75")
     start = mean_rgb(monitor)
-    assert start[0] > 150 and start[2] < 80, f"Start sollte rot sein: {start}"
+    assert start[0] > 150 and start[2] < 80, f"start should be red: {start}"
 
     page.get_by_role("button", name="Wiedergabe").click()
     expect(page.get_by_role("button", name="Pause")).to_be_visible()
     expect(time).not_to_have_text("0:00:00,00 / 0:00:13,75")
 
-    # Suchen hinter den Übergang → Bild 2 (blau)
+    # Seek past the transition → picture 2 (blue)
     page.get_by_role("button", name="Pause").click()
     page.get_by_role("button", name="Nächstes Bild").click()
     expect(time).to_have_text("0:00:05,00 / 0:00:13,75")
     later = mean_rgb(monitor)
-    assert later[2] > 150 and later[0] < 80, f"Bild 2 sollte blau sein: {later}"
+    assert later[2] > 150 and later[0] < 80, f"picture 2 should be blue: {later}"
 
-    # Reload: alles wiederhergestellt
+    # Reload: everything is restored
     page.reload()
     strip = page.get_by_role("list", name="Bildstreifen")
     expect(strip.get_by_role("button", name="Bild 3: gruen.png, 5,00 s")).to_be_visible()
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
 
 
-def test_invalid_upload_is_reported_per_file(page: Page, server: str, tmp_path: Path, images: dict[str, Path]) -> None:
+def test_invalid_upload_is_reported_per_file(
+    page: Page, server: str, tmp_path: Path, images: dict[str, Path]
+) -> None:
     fake = tmp_path / "kaputt.jpg"
     fake.write_text("kein Bild")
     page.goto(server)
     page.locator("input[type=file]").set_input_files([images["rot.png"], fake])
-    expect(page.get_by_role("list", name="Bilder").get_by_role("button", name="rot.png")).to_be_visible()
+    collection = page.get_by_role("list", name="Bilder")
+    expect(collection.get_by_role("button", name="rot.png")).to_be_visible()
     expect(page.get_by_text("kaputt.jpg")).to_be_visible()

@@ -1,5 +1,5 @@
 /**
- * Menu bar content (spec app-shell requirement "Menüs mit funktionalem Kern").
+ * Menu bar content (spec app-shell "Menüs mit funktionalem Kern").
  * Items without a handler are visible but disabled. Labels come from the
  * message catalogs via the passed `t`.
  */

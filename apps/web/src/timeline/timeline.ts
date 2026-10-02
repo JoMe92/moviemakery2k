@@ -1,5 +1,5 @@
 /**
- * Time model of the slideshow (design.md D3, spec preview-player "Zeitmodell").
+ * Time model of the slideshow (design.md D3, spec preview-player "Zeitmodell der Diashow").
  *
  * A transition belongs to the target image (`transitionIn`) and overlaps the end
  * of the predecessor with the start of the target image. Effective duration:

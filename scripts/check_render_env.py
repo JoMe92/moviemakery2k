@@ -42,7 +42,7 @@ def check_gl() -> list[str]:
 
     try:
         ctx = moderngl.create_context(standalone=True, backend="egl")
-    except Exception as exc:  # noqa: BLE001 – glcontext only raises generic exceptions
+    except Exception as exc:  # broad on purpose: glcontext only raises generic exceptions
         return [
             (
                 f"EGL context failed: {exc}\n"
@@ -66,7 +66,7 @@ def check_gl() -> list[str]:
         fbo.clear(0.0, 0.0, 0.0, 0.0)
         vao.render(moderngl.TRIANGLES, vertices=3)
         pixel = tuple(fbo.read(viewport=(1, 1, 1, 1), components=4))
-    except Exception as exc:  # noqa: BLE001 – moderngl.Error and ctypes errors alike
+    except Exception as exc:  # broad on purpose: moderngl.Error and ctypes errors alike
         return [*problems, f"Rendering failed: {exc}"]
     finally:
         ctx.release()

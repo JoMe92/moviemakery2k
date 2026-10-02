@@ -14,7 +14,7 @@ export function describeBackend(backend: BackendState, t: Translate): string {
   }
 }
 
-/** Spec app-shell "Status bar": saved / saving… / saving failed. */
+/** spec app-shell "Statusleiste und Backend-Zustand": saved / saving… / saving failed. */
 export function describeSave(state: SaveState, t: Translate): string | null {
   switch (state) {
     case "idle":

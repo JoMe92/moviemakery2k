@@ -16,8 +16,6 @@ import tempfile
 import time
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-
 from mmy_backend.catalog import load_catalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR, REPO_ROOT
 from mmy_backend.render.context import create_render_context
@@ -25,6 +23,7 @@ from mmy_backend.render.encode import ExportProfile, export_movie
 from mmy_backend.render.frames import FrameRenderer
 from mmy_backend.render.shaders import ShaderLibrary, ShaderSources
 from mmy_backend.render.timeline import TimelineSlide, TransitionIn, build_timeline
+from PIL import Image, ImageDraw
 
 SLIDES = 12
 SLIDE_SECONDS = 5.0

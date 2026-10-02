@@ -7,8 +7,8 @@ import { Dialog } from "../ui/Dialog";
 import styles from "./OptionsDialog.module.css";
 
 /**
- * Tools → Options (spec app-shell scenario "Optionen öffnen", spec
- * localization requirement "Wahl der Sprache"): OK applies and persists the
+ * Tools → Options (spec app-shell "Optionen öffnen", spec localization
+ * "Wahl der Sprache"): OK applies and persists the
  * chosen language at once, Cancel discards the choice.
  */
 export function OptionsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
