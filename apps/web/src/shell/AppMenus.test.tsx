@@ -2,10 +2,9 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderApp } from "../test/renderApp";
-import { ABOUT_TEXT } from "./AppDialogs";
 
-describe("Menüleiste", () => {
-  it("öffnet ein Menü per Tastatur und navigiert mit den Pfeiltasten", async () => {
+describe("Menu bar", () => {
+  it("opens a menu by keyboard and navigates with the arrow keys", async () => {
     const user = userEvent.setup();
     renderApp();
     const datei = screen.getByRole("menuitem", { name: "Datei" });
@@ -22,7 +21,7 @@ describe("Menüleiste", () => {
     expect(datei).toHaveFocus();
   });
 
-  it("deaktivierte Einträge sind markiert und lösen nichts aus", async () => {
+  it("disabled items are marked and trigger nothing", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
@@ -32,16 +31,20 @@ describe("Menüleiste", () => {
     expect(screen.getByRole("menu", { name: "Bearbeiten" })).toBeInTheDocument();
   });
 
-  it("Hilfe → Info zeigt den Hinweis zu Microsoft", async () => {
+  it("Help → About shows the Microsoft notice", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("menuitem", { name: "Hilfe" }));
     await user.click(screen.getByRole("menuitem", { name: "Info" }));
     const dialog = screen.getByRole("dialog", { name: "Info über moviemakerY2K" });
-    expect(within(dialog).getByText(ABOUT_TEXT)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "moviemakerY2K ist vom klassischen Movie Maker inspiriert. Es ist kein Microsoft-Produkt und steht in keiner Verbindung zu Microsoft.",
+      ),
+    ).toBeInTheDocument();
   });
 
-  it("Spec: Neues Projekt leert nach Rückfrage nur den Bildstreifen", async () => {
+  it("Spec: New Project clears only the storyboard after confirmation", async () => {
     const user = userEvent.setup();
     const { store, ready } = renderApp();
     await ready;
@@ -60,7 +63,7 @@ describe("Menüleiste", () => {
     expect(store.getState().saveState).toBe("saved");
   });
 
-  it("Datei → In Sammlungen importieren fordert den Dateidialog an", async () => {
+  it("File → Import into Collections requests the file dialog", async () => {
     const user = userEvent.setup();
     const { store } = renderApp();
     const before = store.getState().importRequest;
@@ -69,7 +72,7 @@ describe("Menüleiste", () => {
     expect(store.getState().importRequest).toBe(before + 1);
   });
 
-  it("Bearbeiten → Löschen entfernt das gewählte Storyboard-Element", async () => {
+  it("Edit → Delete removes the selected storyboard item", async () => {
     const user = userEvent.setup();
     const { store, ready } = renderApp();
     await ready;
@@ -79,5 +82,38 @@ describe("Menüleiste", () => {
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
     await user.click(screen.getByRole("menuitem", { name: /Löschen/ }));
     expect(store.getState().slides).toEqual([]);
+  });
+
+  it("shows menu items and dialogs in English", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const user = userEvent.setup();
+    const { ready, store } = renderApp();
+    await ready;
+    store.getState().addSlide("a");
+    await user.click(screen.getByRole("menuitem", { name: "File" }));
+    const file = screen.getByRole("menu", { name: "File" });
+    expect(
+      within(file)
+        .getAllByRole("menuitem")
+        .map((m) => m.textContent),
+    ).toEqual([
+      "New Project",
+      "Open Project…",
+      "Save Project",
+      "Import into Collections…",
+      "Save Movie…",
+      "Exit",
+    ]);
+    await user.click(within(file).getByRole("menuitem", { name: "New Project" }));
+    const confirm = screen.getByRole("dialog", { name: "New Project" });
+    expect(within(confirm).getByRole("button", { name: "Yes" })).toBeInTheDocument();
+    expect(within(confirm).getByRole("button", { name: "Close" })).toBeInTheDocument();
+    await user.click(within(confirm).getByRole("button", { name: "No" }));
+    expect(store.getState().slides).toHaveLength(1);
+
+    await user.click(screen.getByRole("menuitem", { name: "Help" }));
+    await user.click(screen.getByRole("menuitem", { name: "About" }));
+    const about = screen.getByRole("dialog", { name: "About moviemakerY2K" });
+    expect(within(about).getByText(/is not a Microsoft product/)).toBeInTheDocument();
   });
 });

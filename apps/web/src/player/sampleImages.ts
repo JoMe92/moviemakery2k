@@ -1,7 +1,7 @@
 /**
- * Selbst erzeugte Beispielbilder für die Übergangsdemo im Katalog
- * (Spec transitions „Übergänge in der Sammlung“): zwei Y2K-Karten „A“ und „B“.
- * Keine Assets; ohne Canvas-2D (jsdom) bleiben die Flächen leer.
+ * Self-generated sample images for the transition demo in the catalog
+ * (spec transitions "Übergänge in der Sammlung"): two Y2K cards "A" and "B".
+ * No assets; without Canvas 2D (jsdom) the surfaces stay empty.
  */
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -31,7 +31,7 @@ function drawCard(card: Card): HTMLCanvasElement {
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // Weiche Hügel und ein „Sonnen“-Kreis: genug Struktur, um Übergänge zu erkennen.
+  // Soft hills and a "sun" circle: enough structure to make transitions visible.
   ctx.fillStyle = card.accent;
   ctx.beginPath();
   ctx.arc(WIDTH * 0.78, HEIGHT * 0.28, 52, 0, Math.PI * 2);
@@ -60,7 +60,7 @@ function drawCard(card: Card): HTMLCanvasElement {
 
 let samples: [HTMLCanvasElement, HTMLCanvasElement] | null = null;
 
-/** Beispielbilder A und B (einmal erzeugt). */
+/** Sample images A and B (generated once). */
 export function sampleImages(): [HTMLCanvasElement, HTMLCanvasElement] {
   samples ??= [drawCard(CARDS[0]), drawCard(CARDS[1])];
   return samples;

@@ -23,8 +23,8 @@ function fakeRaf() {
   };
 }
 
-describe("rAF-Uhr", () => {
-  it("liefert dt in Sekunden ab dem zweiten Frame und hört nach dem Stoppen auf", () => {
+describe("rAF clock", () => {
+  it("delivers dt in seconds from the second frame and stops after stopping", () => {
     const f = fakeRaf();
     const ticks: number[] = [];
     const stop = startClock((dt) => ticks.push(dt), f.raf, f.caf);

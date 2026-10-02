@@ -1,4 +1,4 @@
-/* Hervorhebung, solange Dateien über die Sammlung gezogen werden. */
+/* Highlight while files are dragged over the collection. */
 section.dropping {
   outline: 2px dashed var(--y2k-select);
   outline-offset: -3px;

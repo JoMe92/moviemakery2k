@@ -1,15 +1,15 @@
-"""Medienspeicher: Import, Prüfung und abgeleitete Bilder (design.md D7).
+"""Media store: import, validation and derived images (design.md D7).
 
-Layout im Datenverzeichnis:
+Layout in the data directory:
 
-    media.json                  Index, Liste von MediaItem in Importreihenfolge
-    media/<id>/original.<ext>   unverändertes Original (jpg, png oder webp)
-    media/<id>/thumb.jpg        Thumbnail, passt in 160x120
-    media/<id>/preview.jpg      Vorschaubild, längste Kante <= 1920, JPEG q90
+    media.json                  index, list of MediaItem in import order
+    media/<id>/original.<ext>   unchanged original (jpg, png or webp)
+    media/<id>/thumb.jpg        thumbnail, fits into 160x120
+    media/<id>/preview.jpg      preview image, longest edge <= 1920, JPEG q90
 
-Die ID ist uuid4().hex; der hochgeladene Dateiname ist nur Anzeigename und
-wird nie für einen Pfad verwendet. Transparenz wird in den JPEG-Ableitungen
-auf Schwarz gelegt - passend zum schwarzen Monitor der Wiedergabe.
+The ID is uuid4().hex; the uploaded file name is only a display name and is
+never used for a path. Transparency is flattened onto black in the JPEG
+derivatives - matching the black monitor of the playback.
 """
 
 import asyncio
@@ -23,12 +23,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, BinaryIO, Literal
+from typing import Annotated, BinaryIO, Literal, get_args
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.alias_generators import to_camel
 
+from mmy_backend.errors import Params, error_message
 from mmy_backend.storage import write_bytes_atomic
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -39,7 +40,7 @@ PREVIEW_MAX_EDGE = 1920
 PREVIEW_QUALITY = 90
 THUMB_QUALITY = 85
 MAX_FILENAME_LENGTH = 255
-FALLBACK_FILENAME = "bild"
+FALLBACK_FILENAME = "image"
 
 MEDIA_ID_PATTERN = r"^[0-9a-f]{32}$"
 _MEDIA_ID_RE = re.compile(MEDIA_ID_PATTERN)
@@ -47,14 +48,12 @@ _MEDIA_ID_RE = re.compile(MEDIA_ID_PATTERN)
 _CHUNK = 1024 * 1024
 _EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 
-ErrorCode = Literal["unsupported", "too_large", "too_many_pixels"]
+UploadErrorCode = Literal["media.unsupportedType", "media.tooLarge", "media.tooManyPixels"]
 
-ERROR_MESSAGES: dict[ErrorCode, str] = {
-    "unsupported": "Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP).",
-    "too_large": f"Die Datei ist zu groß (höchstens {MAX_FILE_BYTES // (1024 * 1024)} MB).",
-    "too_many_pixels": (
-        f"Das Bild hat zu viele Pixel (höchstens {MAX_PIXELS // 1_000_000} Megapixel)."
-    ),
+UPLOAD_ERROR_PARAMS: dict[UploadErrorCode, Params] = {
+    "media.unsupportedType": {},
+    "media.tooLarge": {"maxMegabytes": MAX_FILE_BYTES // (1024 * 1024)},
+    "media.tooManyPixels": {"maxMegapixels": MAX_PIXELS // 1_000_000},
 }
 
 
@@ -71,9 +70,9 @@ class _MediaModel(BaseModel):
 
 class MediaItem(_MediaModel):
     id: Annotated[str, Field(pattern=MEDIA_ID_PATTERN)]
-    filename: str = Field(description="Original-Dateiname, nur zur Anzeige")
-    width: int = Field(description="Breite nach EXIF-Ausrichtung")
-    height: int = Field(description="Höhe nach EXIF-Ausrichtung")
+    filename: str = Field(description="Original file name, for display only")
+    width: int = Field(description="Width after EXIF orientation")
+    height: int = Field(description="Height after EXIF orientation")
     created_at: datetime
     thumbnail_url: str
     preview_url: str
@@ -88,13 +87,16 @@ class MediaUploadSuccess(_MediaModel):
 class MediaUploadFailure(_MediaModel):
     filename: str
     ok: Literal[False]
-    error: ErrorCode
-    message: str
+    error: str = Field(
+        description="Stable error code (design.md D5): " + ", ".join(get_args(UploadErrorCode))
+    )
+    error_params: Params = Field(default_factory=dict, description="Values of the message")
+    message: str = Field(description="English message")
 
 
-# Absichtlich ohne Pydantic-Discriminator: dessen OpenAPI-Mapping hätte die
-# Schlüssel "True"/"False". `ok` ist Pflichtfeld mit const true/false, das reicht
-# TypeScript zum Eingrenzen.
+# Deliberately without a Pydantic discriminator: its OpenAPI mapping would have the
+# keys "True"/"False". `ok` is a required field with const true/false, which is
+# enough for TypeScript to narrow.
 MediaUploadResult = MediaUploadSuccess | MediaUploadFailure
 
 
@@ -103,27 +105,28 @@ class MediaUploadResponse(_MediaModel):
 
 
 class MediaListResponse(_MediaModel):
-    items: list[MediaItem] = Field(description="Alle Medien in Importreihenfolge")
+    items: list[MediaItem] = Field(description="All media in import order")
 
 
 _INDEX_ADAPTER = TypeAdapter(list[MediaItem])
 
 
 class MediaError(Exception):
-    """Eine Datei wird abgelehnt; `code` geht als Fehlercode an den Client."""
+    """A file is rejected; `code` goes to the client as its error code."""
 
-    def __init__(self, code: ErrorCode) -> None:
-        super().__init__(ERROR_MESSAGES[code])
-        self.code: ErrorCode = code
+    def __init__(self, code: UploadErrorCode) -> None:
+        self.code: UploadErrorCode = code
+        self.params: Params = dict(UPLOAD_ERROR_PARAMS[code])
+        super().__init__(error_message(code, self.params))
 
 
 def is_media_id(value: str) -> bool:
-    """Hat `value` das Format einer Medien-ID (uuid4().hex)? Nur dann wird ein Pfad gebaut."""
+    """Does `value` have the format of a media ID (uuid4().hex)? Only then is a path built."""
     return _MEDIA_ID_RE.fullmatch(value) is not None
 
 
 def sanitize_filename(raw: str | None) -> str:
-    """Nur der letzte Pfadteil, ohne Steuerzeichen, höchstens 255 Zeichen."""
+    """Only the last path component, without control characters, at most 255 characters."""
     name = (raw or "").replace("\\", "/").rsplit("/", 1)[-1]
     name = "".join(ch for ch in name if unicodedata.category(ch) not in ("Cc", "Cf"))
     name = name.strip()
@@ -150,12 +153,12 @@ def _to_rgb(image: Image.Image) -> Image.Image:
 
 
 def _copy_limited(source: BinaryIO, target: BinaryIO) -> None:
-    """Kopiert höchstens MAX_FILE_BYTES; liest nie mehr als ein Stück darüber hinaus."""
+    """Copies at most MAX_FILE_BYTES; never reads more than one chunk beyond that."""
     total = 0
     while chunk := source.read(_CHUNK):
         total += len(chunk)
         if total > MAX_FILE_BYTES:
-            raise MediaError("too_large")
+            raise MediaError("media.tooLarge")
         target.write(chunk)
 
 
@@ -164,25 +167,25 @@ def _check_and_load(path: Path) -> tuple[str, Image.Image]:
         with Image.open(path) as probe:
             fmt = probe.format
             if fmt not in _EXTENSIONS:
-                raise MediaError("unsupported")
+                raise MediaError("media.unsupportedType")
             width, height = probe.size
             if width * height > MAX_PIXELS:
-                raise MediaError("too_many_pixels")
+                raise MediaError("media.tooManyPixels")
             probe.verify()
-        # verify() macht das Objekt unbrauchbar - neu öffnen und vollständig laden.
+        # verify() makes the object unusable - reopen and load it completely.
         with Image.open(path) as opened:
             opened.load()
             oriented = ImageOps.exif_transpose(opened)
             oriented.load()
     except Image.DecompressionBombError as exc:
-        raise MediaError("too_many_pixels") from exc
+        raise MediaError("media.tooManyPixels") from exc
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError) as exc:
-        raise MediaError("unsupported") from exc
+        raise MediaError("media.unsupportedType") from exc
     return _EXTENSIONS[fmt], oriented
 
 
 class MediaStore:
-    """Medien im Datenverzeichnis; eine Instanz pro App (app.state.media)."""
+    """Media in the data directory; one instance per app (app.state.media)."""
 
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
@@ -197,18 +200,18 @@ class MediaStore:
         return _INDEX_ADAPTER.validate_json(self.index_file.read_bytes())
 
     def list(self) -> list[MediaItem]:
-        """Alle Medien in Importreihenfolge."""
+        """All media in import order."""
         return list(self._items)
 
     def get(self, media_id: str) -> MediaItem | None:
-        """Das Medium mit dieser ID oder None (auch bei ungültigem ID-Format)."""
+        """The medium with this ID or None (also for an invalid ID format)."""
         if not is_media_id(media_id):
             return None
         return next((item for item in self._items if item.id == media_id), None)
 
     def item_dir(self, media_id: str) -> Path:
         if not is_media_id(media_id):
-            raise ValueError(f"Ungültige Medien-ID: {media_id!r}")
+            raise ValueError(f"Invalid media ID: {media_id!r}")
         return self.media_dir / media_id
 
     def _write_index(self, items: Sequence[MediaItem]) -> None:
@@ -216,10 +219,10 @@ class MediaStore:
         write_bytes_atomic(self.index_file, payload)
 
     def _prepare(self, source: BinaryIO) -> _Prepared:
-        """Prüft eine Datei und legt Original + Ableitungen unter media/<id>/ ab.
+        """Validates a file and stores original + derivatives under media/<id>/.
 
-        Läuft synchron (Threadpool). Erst wird in ein Staging-Verzeichnis
-        geschrieben und dieses dann umbenannt; bei einem Fehler bleibt nichts liegen.
+        Runs synchronously (thread pool). It first writes into a staging directory
+        and then renames it; on an error nothing is left behind.
         """
         self.media_dir.mkdir(parents=True, exist_ok=True)
         media_id = uuid.uuid4().hex
@@ -246,12 +249,18 @@ class MediaStore:
         return _Prepared(id=media_id, width=width, height=height)
 
     def import_file(self, source: BinaryIO, filename: str | None) -> MediaUploadResult:
-        """Verarbeitet eine Datei synchron; gehört in den Threadpool."""
+        """Processes a file synchronously; belongs in the thread pool."""
         display = sanitize_filename(filename)
         try:
             prepared = self._prepare(source)
         except MediaError as exc:
-            return MediaUploadFailure(filename=display, ok=False, error=exc.code, message=str(exc))
+            return MediaUploadFailure(
+                filename=display,
+                ok=False,
+                error=exc.code,
+                error_params=exc.params,
+                message=str(exc),
+            )
         item = MediaItem(
             id=prepared.id,
             filename=display,
@@ -264,7 +273,7 @@ class MediaStore:
         return MediaUploadSuccess(filename=display, ok=True, item=item)
 
     async def add(self, items: Sequence[MediaItem]) -> None:
-        """Hängt importierte Medien an und schreibt den Index atomar."""
+        """Appends imported media and writes the index atomically."""
         if not items:
             return
         async with self._lock:
@@ -273,11 +282,11 @@ class MediaStore:
             self._items = updated
 
     async def remove(self, media_id: str) -> bool:
-        """Entfernt ein Medium aus dem Index und löscht sein Verzeichnis.
+        """Removes a medium from the index and deletes its directory.
 
-        Erst wird der Index atomar geschrieben, dann das Verzeichnis gelöscht
-        (ein schon fehlendes Verzeichnis ist kein Fehler). Liefert False, wenn
-        die ID unbekannt ist. Die Kaskade ins Projekt ist Sache des Aufrufers.
+        The index is written atomically first, then the directory is deleted
+        (an already missing directory is not an error). Returns False if the
+        ID is unknown. The cascade into the project is the caller's job.
         """
         if not is_media_id(media_id):
             return False

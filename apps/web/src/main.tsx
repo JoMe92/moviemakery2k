@@ -10,13 +10,13 @@ import "./styles/theme.css";
 const root = document.getElementById("root");
 if (!root) throw new Error("#root fehlt in index.html");
 
-// Testhook ?debug-progress=<id>:<p> zeigt statt der App nur das Debug-Canvas.
+// Test hook ?debug-progress=<id>:<p> shows only the debug canvas instead of the app.
 const debug = parseDebugProgress(window.location.search);
 const DebugView = lazy(() => import("./render/DebugView"));
 
 const store = createAppStore(createApi());
 if (!debug) void store.getState().init();
-// Beim Verlassen der Seite ausstehende Änderungen sofort speichern.
+// Save pending changes immediately when leaving the page.
 window.addEventListener("pagehide", () => void store.getState().flushSave());
 
 createRoot(root).render(

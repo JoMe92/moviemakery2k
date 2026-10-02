@@ -5,14 +5,14 @@ import styles from "./TaskGroup.module.css";
 export interface TaskGroupProps {
   title: string;
   children: ReactNode;
-  /** Startzustand im unkontrollierten Modus (Standard: aufgeklappt). */
+  /** Initial state in uncontrolled mode (default: expanded). */
   defaultExpanded?: boolean;
-  /** Kontrollierter Modus: Zustand kommt von außen. */
+  /** Controlled mode: the state comes from outside. */
   expanded?: boolean;
   onToggle?: (expanded: boolean) => void;
 }
 
-/** Ein- und ausklappbare Aufgabengruppe mit blauem Verlaufskopf. */
+/** Collapsible task group with a blue gradient header. */
 export function TaskGroup({
   title,
   children,

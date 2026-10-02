@@ -1,4 +1,4 @@
-/* Gemeinsamer Rahmen für Sammlung, Monitor und Storyboard. */
+/* Shared frame for collection, monitor and storyboard. */
 .pane {
   display: flex;
   flex-direction: column;

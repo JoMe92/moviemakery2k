@@ -1,10 +1,10 @@
-"""Medien-Endpunkte (TASK-API-002, TASK-API-003).
+"""Media endpoints (TASK-API-002, TASK-API-003).
 
-- POST   /api/media                 Bilder importieren, Ergebnis je Datei
-- GET    /api/media                 Sammlung in Importreihenfolge
-- GET    /api/media/{id}/thumbnail  Thumbnail (JPEG, immutable)
-- GET    /api/media/{id}/preview    Vorschaubild (JPEG, immutable)
-- DELETE /api/media/{id}            Medium löschen, Kaskade ins Projekt
+- POST   /api/media                 import pictures, one result per file
+- GET    /api/media                 collection in import order
+- GET    /api/media/{id}/thumbnail  thumbnail (JPEG, immutable)
+- GET    /api/media/{id}/preview    preview image (JPEG, immutable)
+- DELETE /api/media/{id}            delete a medium, cascading into the project
 """
 
 from typing import Annotated, Any, Literal, cast
@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
+from mmy_backend.errors import api_exception, error_response
 from mmy_backend.media import (
     MAX_FILES_PER_REQUEST,
     MediaListResponse,
@@ -24,14 +25,13 @@ from mmy_backend.media import (
 )
 from mmy_backend.project import Project, ProjectStore
 
-# Abgeleitete Bilder ändern sich nie (neue Datei = neue ID), design.md D7.
+# Derived images never change (new file = new ID), design.md D7.
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
-NOT_FOUND_DETAIL = "Medium nicht gefunden."
 
 _IMAGE_FILES: dict[str, str] = {"thumbnail": "thumb.jpg", "preview": "preview.jpg"}
 
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
-    status.HTTP_404_NOT_FOUND: {"description": "Unbekannte oder ungültige Medien-ID"}
+    status.HTTP_404_NOT_FOUND: error_response("Unknown or invalid media id (`media.notFound`)")
 }
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -53,35 +53,39 @@ def get_project_store(request: Request) -> ProjectStore:
 
 @router.get("")
 def list_media(store: Annotated[MediaStore, Depends(get_media_store)]) -> MediaListResponse:
-    """Alle importierten Medien in Importreihenfolge."""
+    """All imported media in import order."""
     return MediaListResponse(items=store.list())
 
 
+def _not_found(media_id: str) -> HTTPException:
+    return api_exception(status.HTTP_404_NOT_FOUND, "media.notFound", mediaId=media_id)
+
+
 def _image_response(store: MediaStore, media_id: str, kind: Literal["thumbnail", "preview"]) -> Any:
-    # get() prüft das ID-Format; erst danach wird ein Pfad gebaut.
+    # get() checks the ID format; only then is a path built.
     if store.get(media_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+        raise _not_found(media_id)
     path = store.item_dir(media_id) / _IMAGE_FILES[kind]
     if not path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+        raise _not_found(media_id)
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": IMMUTABLE_CACHE})
 
 
 _IMAGE_RESPONSES: dict[int | str, dict[str, Any]] = {
-    status.HTTP_200_OK: {"content": {"image/jpeg": {}}, "description": "JPEG-Bild"},
+    status.HTTP_200_OK: {"content": {"image/jpeg": {}}, "description": "JPEG image"},
     **_NOT_FOUND,
 }
 
 
 @router.get("/{media_id}/thumbnail", response_class=FileResponse, responses=_IMAGE_RESPONSES)
 def get_thumbnail(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
-    """Thumbnail (JPEG, passt in 160x120) mit `Cache-Control: immutable`."""
+    """Thumbnail (JPEG, fits into 160x120) with `Cache-Control: immutable`."""
     return _image_response(store, media_id, "thumbnail")
 
 
 @router.get("/{media_id}/preview", response_class=FileResponse, responses=_IMAGE_RESPONSES)
 def get_preview(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
-    """Vorschaubild (JPEG, längste Kante <= 1920) mit `Cache-Control: immutable`."""
+    """Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`."""
     return _image_response(store, media_id, "preview")
 
 
@@ -91,20 +95,20 @@ async def delete_media(
     store: Annotated[MediaStore, Depends(get_media_store)],
     projects: Annotated[ProjectStore, Depends(get_project_store)],
 ) -> MediaDeleteResponse:
-    """Löscht ein Medium samt Dateien und entfernt es aus dem Projekt (Kaskade).
+    """Deletes a medium with its files and removes it from the project (cascade).
 
-    Alle Elemente des Bildstreifens mit diesem Medium entfallen samt ihrer
-    eingehenden Übergänge; das neue erste Element hat keinen Übergang.
+    All storyboard elements using this medium are dropped together with their
+    incoming transitions; the new first element has no transition.
 
-    Antwort ist 200 mit dem aktualisierten Projekt (statt 204), damit der
-    Client seinen Stand ohne erneutes GET /api/project übernehmen kann.
+    The response is 200 with the updated project (instead of 204) so that the
+    client can adopt its state without another GET /api/project.
 
-    Reihenfolge: erst aus dem Medienspeicher, dann aus dem Projekt. Ein
-    gleichzeitiges PUT /api/project prüft gegen den Medienspeicher und kann
-    die ID danach nicht wieder einfügen.
+    Order: first from the media store, then from the project. A concurrent
+    PUT /api/project validates against the media store and therefore cannot
+    re-insert the ID afterwards.
     """
     if not await store.remove(media_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+        raise _not_found(media_id)
     project = await projects.remove_media(media_id)
     return MediaDeleteResponse(project=project)
 
@@ -112,22 +116,21 @@ async def delete_media(
 @router.post(
     "",
     responses={
-        status.HTTP_413_CONTENT_TOO_LARGE: {
-            "description": f"Mehr als {MAX_FILES_PER_REQUEST} Dateien in einer Anfrage"
-        }
+        status.HTTP_413_CONTENT_TOO_LARGE: error_response(
+            f"More than {MAX_FILES_PER_REQUEST} files in one request (`media.tooManyFiles`)"
+        )
     },
 )
 async def upload_media(
     store: Annotated[MediaStore, Depends(get_media_store)],
-    files: Annotated[list[UploadFile], File(description="Bilddateien (JPEG, PNG, WebP)")],
+    files: Annotated[list[UploadFile], File(description="Image files (JPEG, PNG, WebP)")],
 ) -> MediaUploadResponse:
     if len(files) > MAX_FILES_PER_REQUEST:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=(
-                f"Zu viele Dateien: höchstens {MAX_FILES_PER_REQUEST} pro Import "
-                f"({len(files)} gesendet)."
-            ),
+        raise api_exception(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            "media.tooManyFiles",
+            max=MAX_FILES_PER_REQUEST,
+            count=len(files),
         )
     results: list[MediaUploadResult] = []
     for upload in files:

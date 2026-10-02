@@ -1,13 +1,13 @@
 /**
- * WebGL2-Renderer des Vorschaumonitors (design.md D4). Kein React: Die
- * Komponente `PreviewCanvas` besitzt eine Instanz und ruft nur `resize` und
- * `draw*` auf.
+ * WebGL2 renderer of the preview monitor (design.md D4). No React: the
+ * `PreviewCanvas` component owns an instance and only calls `resize` and
+ * `draw*`.
  *
- * - Jedes Bild wird per Canvas2D auf schwarzen 4:3-Grund eingepasst und als
- *   Frame-Textur in Puffergröße hochgeladen; die Shader arbeiten im Frame-Raum.
- * - Pro Übergang ein Programm (prelude + Shader + epilogue), lazy kompiliert
- *   und gecacht. Ein Kompilier-/Linkfehler wird geloggt und fällt auf Fade zurück.
- * - Ein verlorener Kontext beendet das Zeichnen still.
+ * - Each image is fitted onto a black 4:3 background via Canvas2D and uploaded
+ *   as a frame texture at buffer size; the shaders work in frame space.
+ * - One program per transition (prelude + shader + epilogue), lazily compiled
+ *   and cached. A compile/link error is logged and falls back to Fade.
+ * - A lost context silently stops drawing.
  */
 import { bufferSize, containRect } from "./geometry";
 import { FALLBACK_TRANSITION_ID, fragmentSourceFor, VERTEX_SOURCE } from "./shaderSource";
@@ -22,7 +22,7 @@ export class WebGL2UnsupportedError extends Error {
 }
 
 export interface RendererOptions {
-  /** Für Testhooks/Screenshots: Puffer nach dem Compositing behalten. */
+  /** For test hooks/screenshots: keep the buffer after compositing. */
   preserveDrawingBuffer?: boolean;
 }
 
@@ -35,7 +35,7 @@ interface ProgramInfo {
   params: Map<string, WebGLUniformLocation | null>;
 }
 
-/** Natürliche Pixelgröße einer Bildquelle. */
+/** Natural pixel size of an image source. */
 export function sourceSize(source: ImageSource): { width: number; height: number } {
   if (typeof HTMLImageElement !== "undefined" && source instanceof HTMLImageElement) {
     return { width: source.naturalWidth, height: source.naturalHeight };
@@ -43,9 +43,9 @@ export function sourceSize(source: ImageSource): { width: number; height: number
   return { width: source.width, height: source.height };
 }
 
-/** Eine eingepasste Bildquelle als Textur. Wird bei geänderter Puffergröße neu eingepasst. */
+/** A fitted image source as a texture. Re-fitted when the buffer size changes. */
 export class FrameTexture {
-  /** Puffergröße, für die die Textur zuletzt eingepasst wurde (0 = noch nie). */
+  /** Buffer size the texture was last fitted for (0 = never). */
   width = 0;
   height = 0;
   disposed = false;
@@ -63,7 +63,7 @@ export class Renderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly vao: WebGLVertexArrayObject | null;
   private vertexShader: WebGLShader | null = null;
-  /** Ergebnis je Übergangs-ID; ein fehlerhafter Shader zeigt auf das Fade-Programm. */
+  /** Result per transition ID; a broken shader points to the Fade program. */
   private readonly programs = new Map<string, ProgramInfo | null>();
   private readonly frames = new Set<FrameTexture>();
   private letterboxCanvas: Canvas2D | null = null;
@@ -105,14 +105,14 @@ export class Renderer {
     return this.canvas.height;
   }
 
-  /** Puffer auf die größte ganzzahlige 4:3-Fläche der CSS-Box (mal DPR) setzen. */
+  /** Set the buffer to the largest integer 4:3 area of the CSS box (times DPR). */
   resize(cssWidth: number, cssHeight: number, dpr: number): void {
     const { width, height } = bufferSize(cssWidth, cssHeight, dpr, this.maxSize);
     if (this.canvas.width !== width) this.canvas.width = width;
     if (this.canvas.height !== height) this.canvas.height = height;
   }
 
-  /** Kompiliert alle bekannten Übergänge vorab (sonst geschieht das beim ersten Zeichnen). */
+  /** Precompiles all known transitions (otherwise this happens on the first draw). */
   precompile(ids: Iterable<string>): void {
     for (const id of ids) this.programFor(id);
   }
@@ -148,7 +148,7 @@ export class Renderer {
     gl.clear(gl.COLOR_BUFFER_BIT);
   }
 
-  /** Ein einzelnes Bild: Fade-Programm mit from = to, progress 0. */
+  /** A single image: Fade program with from = to, progress 0. */
   drawStill(frame: FrameTexture): void {
     this.drawTransition(frame, frame, FALLBACK_TRANSITION_ID, 0, {});
   }
@@ -172,7 +172,7 @@ export class Renderer {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    // biome-ignore lint/correctness/useHookAtTopLevel: WebGL-Aufruf, kein React-Hook.
+    // biome-ignore lint/correctness/useHookAtTopLevel: WebGL call, not a React hook.
     gl.useProgram(info.program);
     gl.bindVertexArray(this.vao);
 
@@ -214,13 +214,13 @@ export class Renderer {
     this.programs.clear();
     if (this.vertexShader) gl.deleteShader(this.vertexShader);
     if (this.vao) gl.deleteVertexArray(this.vao);
-    // Den Kontext bewusst nicht per WEBGL_lose_context abgeben: Unter React
-    // StrictMode wird dieselbe Canvas sofort wieder verwendet.
+    // Deliberately do not release the context via WEBGL_lose_context: under React
+    // StrictMode the same canvas is reused immediately.
   }
 
   private readonly onContextLost = (event: Event): void => {
-    // Ohne preventDefault würde der Browser nie einen Neustart anbieten; wir
-    // zeichnen ab hier einfach nicht mehr.
+    // Without preventDefault the browser would never offer a restore; we
+    // simply stop drawing from here on.
     event.preventDefault();
     this.lost = true;
   };
@@ -229,7 +229,7 @@ export class Renderer {
     return !this.disposed && !this.isContextLost;
   }
 
-  /** Bild in eine schwarze 4:3-Fläche in Puffergröße einpassen und hochladen. */
+  /** Fit an image into a black 4:3 area at buffer size and upload it. */
   private ensureLetterboxed(frame: FrameTexture): void {
     const { width, height } = this.canvas;
     if (frame.disposed || (frame.width === width && frame.height === height)) return;

@@ -23,7 +23,7 @@ function Harness() {
 }
 
 describe("Dialog", () => {
-  it("öffnet modal, schließt mit Escape und gibt den Fokus zurück", async () => {
+  it("opens modally, closes with Escape and returns focus", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     const opener = screen.getByRole("button", { name: "Info" });
@@ -38,7 +38,7 @@ describe("Dialog", () => {
     expect(opener).toHaveFocus();
   });
 
-  it("hält den Tab-Fokus im Dialog", async () => {
+  it("keeps Tab focus inside the dialog", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Info" }));
@@ -52,7 +52,7 @@ describe("Dialog", () => {
     expect(ok).toHaveFocus();
   });
 
-  it("schließt über den Schließen-Knopf", async () => {
+  it("closes via the close button", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Info" }));

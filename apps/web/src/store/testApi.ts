@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { Api, MediaItem, Project, Transition } from "../lib/apiClient";
+import type { AppApi, ExportJob, MediaItem, Project, Transition } from "../lib/apiClient";
 
 export function mediaItem(id: string): MediaItem {
   return {
@@ -16,7 +16,7 @@ export function mediaItem(id: string): MediaItem {
 export const CATALOG: Transition[] = [
   {
     id: "fade",
-    name: "Überblenden",
+    names: { de: "Überblenden", en: "Fade" },
     shader: "fade.glsl",
     defaultDuration: 1.25,
     params: {},
@@ -24,7 +24,7 @@ export const CATALOG: Transition[] = [
   },
   {
     id: "circle",
-    name: "Kreis",
+    names: { de: "Kreis", en: "Circle" },
     shader: "circle.glsl",
     defaultDuration: 1.5,
     params: { borderSoftness: 20 },
@@ -32,7 +32,20 @@ export const CATALOG: Transition[] = [
   },
 ];
 
-export function mockApi(overrides: Partial<Api> = {}): Api & { saved: Project[] } {
+export function exportJob(overrides: Partial<ExportJob> = {}): ExportJob {
+  return {
+    id: "job1",
+    status: "queued",
+    progress: 0,
+    profile: "high",
+    fileName: "Mein Film",
+    error: null,
+    createdAt: "2026-10-02T00:00:00Z",
+    ...overrides,
+  };
+}
+
+export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Project[] } {
   const saved: Project[] = [];
   return {
     saved,
@@ -50,6 +63,10 @@ export function mockApi(overrides: Partial<Api> = {}): Api & { saved: Project[] 
       saved.push(structuredClone(p));
       return p;
     }),
+    startExport: vi.fn(async ({ profile, fileName }) => exportJob({ profile, fileName })),
+    getExport: vi.fn(async (id: string) => exportJob({ id, status: "running" })),
+    cancelExport: vi.fn(async () => undefined),
+    exportFileUrl: vi.fn((id: string) => `/api/exports/${id}/file`),
     ...overrides,
   };
 }

@@ -19,9 +19,12 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { createContext, type ReactNode, useContext, useState } from "react";
+import { translator } from "../i18n/t";
+import { useT } from "../i18n/useT";
 import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
+import { catalogName } from "../transitions/transitionName";
 import {
   type DragItem,
   type DropTarget,
@@ -32,7 +35,7 @@ import {
 import { StoryboardPointerSensor } from "./pointerSensor";
 import styles from "./StoryboardStrip.module.css";
 
-/** Einfügemarke für Bilder aus der Sammlung (0…n) oder null. */
+/** Insertion marker for pictures from the collection (0…n) or null. */
 const InsertIndexContext = createContext<number | null>(null);
 export const useInsertIndex = () => useContext(InsertIndexContext);
 
@@ -58,9 +61,9 @@ function pointRect(p: { x: number; y: number }): ClientRect {
 }
 
 /**
- * Ziel nur innerhalb des Bildstreifens: die Kachel, deren Mitte dem Zeiger
- * (Tastatur: der gezogenen Kachel) am nächsten ist; ohne Kacheln der Streifen selbst.
- * Übergänge zielen nur auf Übergangsplätze (der nächstgelegene Platz).
+ * Targets only inside the storyboard: the tile whose centre is closest to the
+ * pointer (keyboard: to the dragged tile); without tiles, the strip itself.
+ * Transitions only target transition slots (the nearest slot).
  */
 const collisionDetection: CollisionDetection = (args) => {
   const stripRect = args.droppableRects.get(STRIP_DROPPABLE_ID);
@@ -85,7 +88,7 @@ const ARROWS: string[] = [
   KeyboardCode.Down,
 ];
 
-/** Tastatur für Übergänge: Pfeil nach unten → erster Platz, links/rechts → Nachbarplatz. */
+/** Keyboard for transitions: arrow down → first slot, left/right → neighbouring slot. */
 const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
   if (!ARROWS.includes(event.code)) return undefined;
   event.preventDefault();
@@ -113,9 +116,9 @@ const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => 
 };
 
 /**
- * Tastatur: Kacheln im Streifen wie gewohnt sortierbar; ein Bild aus der
- * Sammlung springt mit Pfeil nach unten ans Ende des Streifens und wandert dort
- * mit Pfeil links/rechts von Einfügeposition zu Einfügeposition.
+ * Keyboard: tiles in the strip are sortable as usual; a picture from the
+ * collection jumps to the end of the strip with arrow down and moves there
+ * from insertion position to insertion position with arrow left/right.
  */
 const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   const { context } = args;
@@ -134,8 +137,8 @@ const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
     .map((c) => context.droppableRects.get(c.id))
     .filter((r): r is ClientRect => r !== undefined)
     .sort((a, b) => a.left - b.left);
-  // Position der gezogenen Kachel je Einfügestelle: knapp links der Kachelmitte
-  // (= davor), für das Ende knapp rechts der letzten Kachelmitte (= dahinter).
+  // Position of the dragged tile per insertion point: just left of the tile
+  // centre (= before it); for the end, just right of the last tile centre (= after it).
   const slots = slideRects.map((r) => ({
     x: r.left + r.width / 2 - 1 - rect.width / 2,
     y: r.top + r.height / 2 - rect.height / 2,
@@ -165,7 +168,7 @@ const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   return undefined;
 };
 
-/** Ziel aus dnd-kit-Ereignis: Kachel samt Seite (Zeiger links/rechts der Mitte) oder Streifen. */
+/** Target from a dnd-kit event: tile with side (pointer left/right of the centre) or strip. */
 function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   const over: Over | null = event.over;
   if (!over) return null;
@@ -185,20 +188,26 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
 }
 
 function describe(state: AppState, item: DragItem | null): string {
-  if (!item) return "Element";
+  const t = translator(state.locale);
+  if (!item) return t("dnd.element");
   if (item.type === "transition") {
-    return `Übergang „${state.catalog.find((t) => t.id === item.transitionId)?.name ?? ""}“`;
+    return t("dnd.transition", {
+      name: catalogName(state.catalog, item.transitionId, state.locale),
+    });
   }
   if (item.type === "media") {
-    return `Bild „${state.media.find((m) => m.id === item.mediaId)?.filename ?? ""}“`;
+    return t("dnd.picture", {
+      name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
+    });
   }
   const index = state.slides.findIndex((s) => s.id === item.slideId);
-  return `Bild ${index + 1} des Storyboards`;
+  return t("storyboard.slideMenu", { number: index + 1 });
 }
 
-/** Drag & Drop für Sammlung und Storyboard (design.md D2: dnd-kit, Zeiger und Tastatur). */
+/** Drag and drop for collection and storyboard (design.md D2: dnd-kit, pointer and keyboard). */
 export function StoryboardDnd({ children }: { children: ReactNode }) {
   const store = useAppStoreApi();
+  const { t } = useT();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const [active, setActive] = useState<DragItem | null>(null);
@@ -213,22 +222,24 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
 
   const insertIndex = active?.type === "media" ? insertionIndex(target, slides) : null;
 
+  // Announcements read the locale at call time from the store.
+  const tNow = () => translator(store.getState().locale);
   const announcements: Announcements = {
     onDragStart: ({ active: a }) =>
-      `${describe(store.getState(), dragItem(a))} aufgenommen. Pfeiltasten bewegen, Eingabe- oder Leertaste legt ab, Escape bricht ab.`,
+      tNow()("dnd.pickedUp", { item: describe(store.getState(), dragItem(a)) }),
     onDragOver: ({ over }) => {
       const slot = over?.data.current as DropTarget | undefined;
       if (slot?.type === "transitionSlot") {
         const n = store.getState().slides.findIndex((s) => s.id === slot.slideId);
-        return `Über dem Übergangsplatz vor Bild ${n + 1}.`;
+        return tNow()("dnd.overSlot", { number: n + 1 });
       }
-      return over ? "Über dem Storyboard." : "Außerhalb des Storyboards.";
+      return over ? tNow()("dnd.overStoryboard") : tNow()("dnd.outside");
     },
     onDragEnd: ({ active: a, over }) =>
       over
-        ? `${describe(store.getState(), dragItem(a))} abgelegt.`
-        : "Ablegen abgebrochen: kein Ziel.",
-    onDragCancel: () => "Ziehen abgebrochen.",
+        ? tNow()("dnd.dropped", { item: describe(store.getState(), dragItem(a)) })
+        : tNow()("dnd.noTarget"),
+    onDragCancel: () => tNow()("dnd.cancelled"),
   };
 
   const onDragStart = (event: DragStartEvent) => {
@@ -268,8 +279,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
       accessibility={{
         announcements,
         screenReaderInstructions: {
-          draggable:
-            "Eingabetaste nimmt das Element auf. Mit den Pfeiltasten verschieben (aus der Sammlung: Pfeil nach unten ins Storyboard), Eingabe- oder Leertaste legt ab, Escape bricht ab.",
+          draggable: t("dnd.instructions"),
         },
       }}
       onDragStart={onDragStart}

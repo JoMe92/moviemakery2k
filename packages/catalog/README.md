@@ -7,12 +7,14 @@ The **single source of truth** for transitions (later also effects and titles).
 - Every entry names its shader in `packages/shaders/transitions/`. Every key
   in `params` becomes a `uniform float <name>` in that shader.
 - `source` documents where the parameters come from (the Movie Maker 2.x
-  effect XML or the SMPTE wipe number; see `docs/research/sources/` and
+  effect XML or the SMPTE wipe number; see
+  `docs/research/sources/README.md` for links to the originals and
   [the research notes](../../docs/research/movie-maker-reference.md)).
   `estimated` lists values that cannot be verified against the original
   (**[E]**, estimated). They can be re-tuned here without any code change.
 - The backend loads and validates the catalog at startup and serves it at
   `GET /api/catalog/transitions`. The reference XML files themselves are never
   served or shipped.
-- The `name` field is the display name in the UI (currently German, e.g.
-  `Überblenden` for Fade).
+- `names` holds the display name per UI language; both `de` and `en` are
+  required (e.g. `{ "de": "Überblenden", "en": "Fade" }`). A missing name stops
+  the backend at startup.

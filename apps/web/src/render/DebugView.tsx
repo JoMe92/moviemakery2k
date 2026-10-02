@@ -18,7 +18,7 @@ function solid(color: string, width = WIDTH, height = HEIGHT): HTMLCanvasElement
   return c;
 }
 
-/** 300×600-Hochkant-Testbild: Verlauf, Rahmen und Diagonalen, um Einpassung zu prüfen. */
+/** 300×600 portrait test image: gradient, border and diagonals to check the fit. */
 function portraitPattern(): HTMLCanvasElement {
   const c = solid("#ffffff", 300, 600);
   const ctx = c.getContext("2d");
@@ -51,7 +51,7 @@ function catalogParams(id: string): Record<string, number> {
   return { ...((entry?.params ?? {}) as Record<string, number>) };
 }
 
-/** Nur für Tests: zeichnet genau einen Frame und meldet `body[data-debug-ready="1"]`. */
+/** Tests only: draws exactly one frame and signals `body[data-debug-ready="1"]`. */
 export default function DebugView({ spec }: { spec: DebugProgress }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 

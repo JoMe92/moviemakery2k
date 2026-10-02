@@ -45,3 +45,8 @@ backend/.data/
 
 # Playwright
 test-results/
+
+# Microsoft/community reference XMLs (mmy-80g): maintainers may keep local
+# copies here, but they must never be committed. See
+# docs/research/sources/README.md for where the originals live.
+docs/research/sources/*.xml

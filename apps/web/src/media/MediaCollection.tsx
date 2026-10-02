@@ -1,5 +1,6 @@
 import { useDraggable } from "@dnd-kit/core";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import type { MediaItem } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
@@ -8,13 +9,6 @@ import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
 import { Tile } from "../ui/Tile";
 import styles from "./MediaCollection.module.css";
-
-export const MEDIA_EMPTY_HINT =
-  "Diese Sammlung ist leer. Wählen Sie „Bilder importieren“ oder ziehen Sie Bilder hierher.";
-
-export function deleteQuestion(filename: string): string {
-  return `Möchten Sie „${filename}“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.`;
-}
 
 interface MediaTileProps {
   item: MediaItem;
@@ -26,15 +20,16 @@ interface MediaTileProps {
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
 }
 
-/** Kachel der Sammlung, per dnd-kit ins Storyboard ziehbar (Zeiger und Tastatur). */
+/** Collection tile, draggable into the storyboard via dnd-kit (pointer and keyboard). */
 function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTileProps) {
+  const { t } = useT();
   const data: DragItem = { type: "media", mediaId: item.id };
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: mediaDraggableId(item.id),
     data,
-    attributes: { roleDescription: "ziehbares Bild" },
+    attributes: { roleDescription: t("media.draggable") },
   });
-  // aria-pressed bleibt die Auswahl der Kachel (nicht der Ziehzustand von dnd-kit).
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   return (
     <Tile
@@ -67,10 +62,11 @@ interface MenuState {
 }
 
 /**
- * Sammlung „Meine Bilder“: Kacheln in Importreihenfolge. Doppelklick hängt
- * das Bild ans Storyboard an; Entf oder Kontextmenü löscht nach Rückfrage.
+ * "My Pictures" collection: tiles in import order. Double-click appends the
+ * picture to the storyboard; Delete or the context menu deletes after confirmation.
  */
 export function MediaCollection() {
+  const { t } = useT();
   const media = useAppStore((s) => s.media);
   const addSlide = useAppStore((s) => s.addSlide);
   const deleteMedia = useAppStore((s) => s.deleteMedia);
@@ -116,11 +112,11 @@ export function MediaCollection() {
       await deleteMedia(item.id);
       setSelectedId(neighbour?.id ?? null);
       setPendingDelete(null);
-      // Nach dem Schließen des Dialogs die Nachbarkachel fokussieren.
+      // After the dialog closes, focus the neighbouring tile.
       if (neighbour) setTimeout(() => tiles.current.get(neighbour.id)?.focus(), 0);
     } catch {
       setPendingDelete(null);
-      setError(`„${item.filename}“ konnte nicht gelöscht werden.`);
+      setError(t("media.deleteFailed", { name: item.filename }));
     } finally {
       setDeleting(false);
     }
@@ -134,9 +130,9 @@ export function MediaCollection() {
         </p>
       ) : null}
       {media.length === 0 ? (
-        <p className={styles.hint}>{MEDIA_EMPTY_HINT}</p>
+        <p className={styles.hint}>{t("media.emptyHint")}</p>
       ) : (
-        <ul className={styles.grid} aria-label="Bilder">
+        <ul className={styles.grid} aria-label={t("media.list")}>
           {media.map((item) => (
             <li key={item.id}>
               <MediaTile
@@ -157,35 +153,37 @@ export function MediaCollection() {
       )}
       {menu ? (
         <ContextMenu
-          label={`Bild „${menu.item.filename}“`}
+          label={t("media.menu", { name: menu.item.filename })}
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            { label: "Zum Storyboard hinzufügen", onSelect: () => addSlide(menu.item.id) },
-            { label: "Löschen", onSelect: () => setPendingDelete(menu.item) },
+            { label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) },
+            { label: t("media.delete"), onSelect: () => setPendingDelete(menu.item) },
           ]}
         />
       ) : null}
       <Dialog
         open={pendingDelete !== null}
-        title="Bild löschen"
+        title={t("media.deleteTitle")}
         onClose={() => {
           if (!deleting) setPendingDelete(null);
         }}
         footer={
           <>
             <Button onClick={() => void confirmDelete()} disabled={deleting}>
-              Ja
+              {t("common.yes")}
             </Button>
             <Button onClick={() => setPendingDelete(null)} disabled={deleting}>
-              Nein
+              {t("common.no")}
             </Button>
           </>
         }
       >
         {pendingDelete ? (
-          <p className={styles.question}>{deleteQuestion(pendingDelete.filename)}</p>
+          <p className={styles.question}>
+            {t("media.deleteQuestion", { name: pendingDelete.filename })}
+          </p>
         ) : null}
       </Dialog>
     </>

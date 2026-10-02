@@ -1,15 +1,15 @@
 import { type ReactNode, useId } from "react";
 
 /*
- * Eigene, schematische Vorschausymbole der Übergänge: Bild A (blau) geht in
- * Bild B (gelb) über. Keine Original-Assets; Farben aus den Theme-Tokens.
+ * Custom schematic preview icons for the transitions: image A (blue) turns into
+ * image B (yellow). No original assets; colours come from the theme tokens.
  */
 const A = "var(--y2k-icon-blue)";
 const B = "var(--y2k-icon-yellow)";
 
 export interface TransitionIconProps {
   transitionId: string;
-  /** Breite in Pixeln; Höhe im Verhältnis 4:3. */
+  /** Width in pixels; height at a 4:3 ratio. */
   size?: number;
 }
 
@@ -36,7 +36,7 @@ function Frame({ size, children }: { size: number; children: ReactNode }) {
   );
 }
 
-// Feste Pseudo-Zufallsmuster (deterministisch).
+// Fixed pseudo-random patterns (deterministic).
 const DISSOLVE = [3, 7, 12, 18, 21, 26, 30, 35, 38, 44, 47, 51, 56, 60, 63, 69, 72, 77];
 const PIXEL_LEVELS = [0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1];
 
@@ -91,7 +91,7 @@ export function TransitionIcon({ transitionId, size = 40 }: TransitionIconProps)
         <Frame size={size}>
           {PIXEL_LEVELS.map((level, i) => (
             <rect
-              // biome-ignore lint/suspicious/noArrayIndexKey: festes Raster
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed grid
               key={i}
               x={(i % 4) * 10}
               y={Math.floor(i / 4) * 10}

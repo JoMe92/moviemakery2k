@@ -10,7 +10,7 @@ describe("appStore", () => {
     vi.useRealTimers();
   });
 
-  it("lädt Health, Katalog, Medien und Projekt beim Start", async () => {
+  it("loads health, catalog, media and project on startup", async () => {
     const api = mockApi();
     const store = createAppStore(api);
     await store.getState().init();
@@ -21,7 +21,7 @@ describe("appStore", () => {
     expect(st.saveState).toBe("saved");
   });
 
-  it("meldet ein nicht erreichbares Backend", async () => {
+  it("reports an unreachable backend", async () => {
     const store = createAppStore(
       mockApi({
         health: vi.fn(async () => {
@@ -33,7 +33,7 @@ describe("appStore", () => {
     expect(store.getState().backend.kind).toBe("offline");
   });
 
-  it("speichert entprellt: mehrere Änderungen → ein PUT nach 500 ms", async () => {
+  it("saves debounced: several changes → one PUT after 500 ms", async () => {
     const api = mockApi();
     const store = createAppStore(api);
     await store.getState().init();
@@ -50,7 +50,7 @@ describe("appStore", () => {
     expect(store.getState().saveState).toBe("saved");
   });
 
-  it("zeigt „Speichern fehlgeschlagen“ und versucht es bei der nächsten Änderung erneut", async () => {
+  it("shows “Saving failed” and retries on the next change", async () => {
     let fail = true;
     const api = mockApi();
     const put = vi.fn(async (p: Parameters<typeof api.putProject>[0]) => {
@@ -71,7 +71,7 @@ describe("appStore", () => {
     expect(store.getState().saveState).toBe("saved");
   });
 
-  it("kein Übergang am ersten Bild; ungültige Dauern werden abgelehnt", async () => {
+  it("no transition on the first picture; invalid durations are rejected", async () => {
     const store = createAppStore(mockApi());
     await store.getState().init();
     store.getState().addSlide("a");
@@ -83,7 +83,7 @@ describe("appStore", () => {
     expect(store.getState().slides[0]?.duration).toBe(2.5);
   });
 
-  it("Import: Teilerfolg wird je Datei gemeldet", async () => {
+  it("import: partial success is reported per file", async () => {
     const api = mockApi({
       uploadMedia: vi.fn(async (file: File) =>
         file.name === "bad.jpg"
@@ -111,7 +111,7 @@ describe("appStore", () => {
     ]);
   });
 
-  it("Löschen übernimmt das kaskadierte Projekt vom Backend", async () => {
+  it("delete adopts the cascaded project from the backend", async () => {
     const api = mockApi();
     const store = createAppStore(api);
     await store.getState().init();
@@ -123,7 +123,7 @@ describe("appStore", () => {
     expect(store.getState().slides).toEqual([]);
   });
 
-  it("Neues Projekt leert nur den Bildstreifen", async () => {
+  it("new project only clears the storyboard", async () => {
     const store = createAppStore(mockApi());
     await store.getState().init();
     store.getState().addSlide("a");
@@ -131,32 +131,32 @@ describe("appStore", () => {
     expect(store.getState().slides).toEqual([]);
     expect(store.getState().media).toHaveLength(2);
   });
-  it("Storyboard: Einfügen, Umsortieren und Entfernen (Spec slideshow-project) mit Autosave", async () => {
+  it("storyboard: insert, reorder and remove (spec slideshow-project) with autosave", async () => {
     const api = mockApi();
     const store = createAppStore(api);
     await store.getState().init();
     const st = () => store.getState();
     const media = () => st().slides.map((x) => x.mediaId);
 
-    // Anhängen per Doppelklick: ans Ende mit Standarddauer.
+    // Append by double-click: to the end with the default duration.
     st().addSlide("a");
     st().addSlide("b");
     expect(st().slides.every((x) => x.duration === 5)).toBe(true);
-    // Einfügen zwischen erstem und zweitem Element → Position 2.
+    // Insert between the first and second item → position 2.
     st().addSlide("b", 1);
     expect(media()).toEqual(["a", "b", "b"]);
 
     const [s1, s2, s3] = st().slides.map((x) => x.id) as [string, string, string];
     st().setTransition(s2, "fade");
     st().setTransition(s3, "circle");
-    // Drittes Element an Position 1: sein Übergang entfällt, die anderen behalten ihren.
+    // Third item to position 1: its transition is dropped, the others keep theirs.
     st().moveSlide(2, 0);
     expect(st().slides.map((x) => x.id)).toEqual([s3, s1, s2]);
     expect(st().slides[0]?.transitionIn).toBeNull();
     expect(st().slides[1]?.transitionIn).toBeNull();
     expect(st().slides[2]?.transitionIn?.transitionId).toBe("fade");
 
-    // Entfernen des ausgewählten Elements hebt die Auswahl auf.
+    // Removing the selected item clears the selection.
     st().select({ kind: "slide", slideId: s1 });
     st().removeSlide(s1);
     expect(st().slides.map((x) => x.id)).toEqual([s3, s2]);
@@ -167,7 +167,7 @@ describe("appStore", () => {
     expect(api.saved.at(-1)?.slides.map((x) => x.id)).toEqual([s3, s2]);
   });
 
-  it("Übergänge: setzen, ersetzen, Dauer ändern, ungültige Dauern ablehnen, entfernen", async () => {
+  it("transitions: set, replace, change duration, reject invalid durations, remove", async () => {
     const store = createAppStore(mockApi());
     await store.getState().init();
     const st = () => store.getState();
@@ -178,7 +178,7 @@ describe("appStore", () => {
 
     st().setTransition(second, "fade");
     expect(tIn()).toEqual({ transitionId: "fade", duration: 1.25 });
-    // Ersetzen übernimmt die Standarddauer des neuen Übergangs.
+    // Replacing adopts the default duration of the new transition.
     st().setTransition(second, "circle");
     expect(tIn()).toEqual({ transitionId: "circle", duration: 1.5 });
 
@@ -196,7 +196,7 @@ describe("appStore", () => {
     expect(tIn()).toBeNull();
   });
 
-  describe("Wiedergabe", () => {
+  describe("playback", () => {
     async function threeSlides() {
       const store = createAppStore(
         mockApi({
@@ -224,7 +224,7 @@ describe("appStore", () => {
       return store;
     }
 
-    it("spielt ab, pausiert, hält am Ende an und Stopp springt an den Anfang", async () => {
+    it("plays, pauses, stops at the end, and Stop jumps to the start", async () => {
       const store = await threeSlides();
       const st = () => store.getState();
       st().togglePlay();
@@ -241,7 +241,7 @@ describe("appStore", () => {
       expect(st().playback).toEqual({ playing: false, time: 0 });
     });
 
-    it("Nächstes/Vorheriges Bild und Suchen mit Begrenzung", async () => {
+    it("next/previous picture and seeking with clamping", async () => {
       const store = await threeSlides();
       const st = () => store.getState();
       st().seek(6);
@@ -255,12 +255,12 @@ describe("appStore", () => {
       expect(st().playback.time).toBe(0);
     });
 
-    it("Spec: Auswahl bei gestoppter Wiedergabe springt an die Startzeit des Bildes", async () => {
+    it("Spec: selecting while playback is stopped jumps to the start time of the picture", async () => {
       const store = await threeSlides();
       const st = () => store.getState();
       st().select({ kind: "slide", slideId: "s3" });
       expect(st().playback).toEqual({ playing: false, time: 8.75 });
-      // Während der Wiedergabe ändert die Auswahl die Zeit nicht.
+      // During playback, the selection does not change the time.
       st().seek(1);
       st().play();
       st().select({ kind: "slide", slideId: "s2" });
@@ -268,7 +268,7 @@ describe("appStore", () => {
       expect(st().playback.playing).toBe(true);
     });
 
-    it("Projektänderung begrenzt die Zeit; leerer Bildstreifen stoppt", async () => {
+    it("a project change clamps the time; an empty storyboard stops", async () => {
       const store = await threeSlides();
       const st = () => store.getState();
       st().seek(12);
@@ -281,7 +281,7 @@ describe("appStore", () => {
       expect(st().playback.playing).toBe(false);
     });
 
-    it("Übergangsdemo: startet beim Auswählen, läuft einmal, endet mit Wiedergabe oder Sammlungswechsel", async () => {
+    it("transition demo: starts on selection, runs once, ends with playback or a collection change", async () => {
       const store = await threeSlides();
       const st = () => store.getState();
       st().play();
@@ -289,7 +289,7 @@ describe("appStore", () => {
       expect(st().playback.playing).toBe(false);
       expect(st().demo).toEqual({ playing: true, time: 0 });
       for (let i = 0; i < 200 && st().demo?.playing; i++) st().tick(0.05);
-      expect(st().demo).toEqual({ playing: false, time: 2.5 }); // 0,5 + 1,5 (Kreis) + 0,5
+      expect(st().demo).toEqual({ playing: false, time: 2.5 }); // 0.5 + 1.5 (circle) + 0.5
       st().play();
       expect(st().demo).toBeNull();
       expect(st().previewTransitionId).toBeNull();

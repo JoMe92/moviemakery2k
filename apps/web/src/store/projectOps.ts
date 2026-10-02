@@ -1,7 +1,7 @@
 /**
- * Reine Operationen auf dem Bildstreifen (Spec slideshow-project).
- * Ein Übergang gehört zum Zielbild (`transitionIn`) und wandert beim Umsortieren mit;
- * das erste Element hat nie einen eingehenden Übergang.
+ * Pure operations on the storyboard (spec slideshow-project).
+ * A transition belongs to the target picture (`transitionIn`) and moves with it
+ * when reordering; the first item never has an incoming transition.
  */
 import type { Slide } from "../lib/apiClient";
 
@@ -35,7 +35,7 @@ export function newSlideId(): string {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 16);
 }
 
-/** Erstes Element ohne eingehenden Übergang. */
+/** First item without an incoming transition. */
 export function normalize(slides: readonly Slide[]): Slide[] {
   return slides.map((s, i) => (i === 0 && s.transitionIn ? { ...s, transitionIn: null } : s));
 }

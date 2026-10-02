@@ -14,9 +14,9 @@ export interface AppWindowProps {
 }
 
 /**
- * Hauptfenster im Movie-Maker-Layout: Titel-, Menü- und Symbolleiste oben,
- * darunter Aufgabenbereich | Sammlung | Monitor, dann Storyboard über die
- * volle Breite und die Statusleiste.
+ * Main window in the Movie Maker layout: title bar, menu bar and toolbar on
+ * top, below them task pane | collection | monitor, then the full-width
+ * storyboard and the status bar.
  */
 export function AppWindow({
   title,

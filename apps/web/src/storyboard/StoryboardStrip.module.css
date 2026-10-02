@@ -1,4 +1,4 @@
-/* Ablagefläche über die ganze Breite und Höhe des Storyboards. */
+/* Drop area across the full width and height of the storyboard. */
 .strip {
   display: flex;
   flex: 1;
@@ -36,7 +36,7 @@
   align-items: center;
 }
 
-/* Kachel: Rahmen wie ein Filmbild, Nummer im Thumbnail, Dauer darunter. */
+/* Tile: frame like a film frame, number in the thumbnail, duration below. */
 .tile {
   display: flex;
   flex-direction: column;
@@ -58,7 +58,7 @@
   outline-offset: -1px;
 }
 
-/* Gerade wiedergegebenes Bild. */
+/* Picture currently being played. */
 .tile[data-playing="true"] {
   border-color: var(--y2k-focus);
   box-shadow:
@@ -117,7 +117,7 @@
   opacity: 0.4;
 }
 
-/* Deaktivierter Effekt-Platz (spätere Videoeffekte) oben rechts auf der Kachel. */
+/* Disabled effect slot (future video effects) at the top right of the tile. */
 .effect {
   position: absolute;
   top: 7px;
@@ -136,7 +136,7 @@
   filter: grayscale(1);
 }
 
-/* Übergangsplatz zwischen zwei Kacheln. */
+/* Transition slot between two tiles. */
 .transition {
   display: flex;
   flex-direction: column;
@@ -162,7 +162,7 @@
   color: var(--y2k-text);
 }
 
-/* Hervorhebung, solange ein Übergang über dem Platz liegt. */
+/* Highlight while a transition is dragged over the slot. */
 .transition[data-drop="true"] {
   border: 2px solid var(--y2k-select);
   background: var(--y2k-select-soft);
@@ -181,7 +181,7 @@
   white-space: nowrap;
 }
 
-/* Einfügemarke: senkrechter Balken, ohne das Layout zu verschieben. */
+/* Insertion marker: vertical bar that does not shift the layout. */
 .marker {
   position: absolute;
   top: 50%;
@@ -200,14 +200,14 @@
 }
 
 .markerGap {
-  left: 30px; /* Mitte des Übergangsplatzes (4 + 56/2 - 2) */
+  left: 30px; /* centre of the transition slot (4 + 56/2 - 2) */
 }
 
 .markerAfter {
   right: -6px;
 }
 
-/* Vorschau beim Ziehen (DragOverlay). */
+/* Preview while dragging (DragOverlay). */
 .overlay {
   width: 94px;
   height: 70px;

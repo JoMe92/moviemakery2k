@@ -20,13 +20,13 @@ const slide = (
 });
 
 describe("buildTimeline", () => {
-  it("leeres Projekt hat Dauer 0 und zeigt nichts", () => {
+  it("empty project has duration 0 and shows nothing", () => {
     const tl = buildTimeline([]);
     expect(tl.duration).toBe(0);
     expect(frameAt(tl, 0)).toEqual({ kind: "empty" });
   });
 
-  it("Spec: drei Bilder à 5 s mit zwei Übergängen à 1,25 s dauern 12,50 s", () => {
+  it("Spec: three images of 5 s with two transitions of 1.25 s last 12.50 s", () => {
     const tl = buildTimeline([
       slide("a"),
       slide("b", 5, ["fade", 1.25]),
@@ -36,13 +36,13 @@ describe("buildTimeline", () => {
     expect(formatTime(tl.duration)).toBe("0:00:12,50");
   });
 
-  it("harte Schnitte addieren nur die Bilddauern", () => {
+  it("hard cuts only add up the image durations", () => {
     const tl = buildTimeline([slide("a", 2), slide("b", 3)]);
     expect(tl.duration).toBe(5);
     expect(tl.segments.map((s) => s.kind)).toEqual(["still", "still"]);
   });
 
-  it("Spec: 4-s-Übergang zwischen 2-s-Bildern wirkt 1 s", () => {
+  it("Spec: a 4 s transition between 2 s images is effective for 1 s", () => {
     const tl = buildTimeline([slide("a", 2), slide("b", 2, ["fade", 4])]);
     expect(tl.slides[1]?.transitionIn).toBe(1);
     expect(tl.duration).toBe(3);
@@ -50,13 +50,13 @@ describe("buildTimeline", () => {
     expect(tr).toMatchObject({ start: 1, end: 2, fromIndex: 0, toIndex: 1 });
   });
 
-  it("ein transitionIn am ersten Bild wird ignoriert", () => {
+  it("a transitionIn on the first image is ignored", () => {
     const tl = buildTimeline([slide("a", 5, ["fade", 1])]);
     expect(tl.duration).toBe(5);
     expect(tl.segments).toEqual([{ kind: "still", slideIndex: 0, start: 0, end: 5 }]);
   });
 
-  it("Segmente sind lückenlos und decken die Gesamtdauer ab", () => {
+  it("segments are gapless and cover the total duration", () => {
     const tl = buildTimeline([
       slide("a", 3),
       slide("b", 1, ["fade", 5]),
@@ -75,13 +75,13 @@ describe("buildTimeline", () => {
 
 describe("frameAt", () => {
   const tl = buildTimeline([slide("a"), slide("b", 5, ["fade", 2])]);
-  // a: 0–5, Übergang 3–5, b voll ab 5, Ende 8
+  // a: 0–5, transition 3–5, b fully visible from 5, end 8
 
-  it("zeigt vor dem Übergang das erste Bild", () => {
+  it("shows the first image before the transition", () => {
     expect(frameAt(tl, 1)).toEqual({ kind: "still", slideIndex: 0 });
   });
 
-  it("Spec: Suchen mitten im Übergang liefert den Zwischenzustand", () => {
+  it("Spec: seeking into the middle of the transition yields the intermediate state", () => {
     expect(frameAt(tl, 4)).toEqual({
       kind: "transition",
       fromIndex: 0,
@@ -91,30 +91,30 @@ describe("frameAt", () => {
     });
   });
 
-  it("Übergangsbeginn hat progress 0", () => {
+  it("transition start has progress 0", () => {
     expect(frameAt(tl, 3)).toMatchObject({ kind: "transition", progress: 0 });
   });
 
-  it("am Ende und danach bleibt das letzte Bild stehen", () => {
+  it("at the end and beyond, the last image is held", () => {
     expect(frameAt(tl, 8)).toEqual({ kind: "still", slideIndex: 1 });
     expect(frameAt(tl, 99)).toEqual({ kind: "still", slideIndex: 1 });
     expect(frameAt(tl, -3)).toEqual({ kind: "still", slideIndex: 0 });
   });
 
-  it("aktives Bild während des Übergangs ist das Zielbild", () => {
+  it("the active image during the transition is the target image", () => {
     expect(slideIndexAt(tl, 4)).toBe(1);
     expect(slideIndexAt(tl, 2)).toBe(0);
   });
 });
 
 describe("slideStartTime", () => {
-  it("Spec: „Nächstes Bild“ springt ans Ende des Übergangs dorthin", () => {
+  it("Spec: 'Next image' jumps to the end of the transition into it", () => {
     const tl = buildTimeline([
       slide("a"),
       slide("b", 5, ["fade", 1.25]),
       slide("c", 5, ["fade", 1.25]),
     ]);
-    // b beginnt bei 3,75, voll sichtbar ab 5,0; c beginnt 7,5, voll ab 8,75
+    // b starts at 3.75, fully visible from 5.0; c starts at 7.5, fully visible from 8.75
     expect(slideStartTime(tl, 1)).toBeCloseTo(5);
     expect(slideStartTime(tl, 2)).toBeCloseTo(8.75);
     expect(frameAt(tl, slideStartTime(tl, 2))).toEqual({ kind: "still", slideIndex: 2 });

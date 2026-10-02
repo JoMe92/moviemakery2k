@@ -1,14 +1,15 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from "react";
+import { useT } from "../i18n/useT";
 import styles from "./Dialog.module.css";
 import { CloseIcon } from "./icons";
 
 export interface DialogProps {
   open: boolean;
   title: string;
-  /** Wird bei Schließen-Knopf und Escape aufgerufen; der Aufrufer setzt `open` zurück. */
+  /** Called on the close button and Escape; the caller resets `open`. */
   onClose: () => void;
   children: ReactNode;
-  /** Schaltflächenzeile unten rechts (z. B. OK/Abbrechen). */
+  /** Button row at the bottom right (e.g. OK/Cancel). */
   footer?: ReactNode;
 }
 
@@ -20,11 +21,12 @@ function focusables(root: HTMLElement): HTMLElement[] {
 }
 
 /**
- * Modaler Dialog im eigenen Y2K-Fensterstil auf Basis von <dialog>.
- * Fokus wird beim Öffnen hineingesetzt, Tab bleibt im Dialog, Escape schließt,
- * und beim Schließen kehrt der Fokus zum auslösenden Element zurück.
+ * Modal dialog in our own Y2K window style, built on <dialog>.
+ * Focus moves inside on open, Tab stays within the dialog, Escape closes,
+ * and on close focus returns to the triggering element.
  */
 export function Dialog({ open, title, onClose, children, footer }: DialogProps) {
+  const { t } = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const onCloseRef = useRef(onClose);
@@ -38,14 +40,14 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
     if (typeof dialog.showModal === "function") {
       if (!dialog.open) dialog.showModal();
     } else {
-      // Fallback für Umgebungen ohne showModal (z. B. jsdom).
+      // Fallback for environments without showModal (e.g. jsdom).
       dialog.setAttribute("open", "");
     }
-    // Erstes Element im Inhalt bevorzugen, sonst den Schließen-Knopf.
+    // Prefer the first element in the content, otherwise the close button.
     const items = focusables(dialog);
     (items[1] ?? items[0])?.focus();
 
-    // Native Escape-Behandlung: abfangen und über onClose steuern.
+    // Native Escape handling: intercept it and route it through onClose.
     const onCancel = (event: Event) => {
       event.preventDefault();
       onCloseRef.current();
@@ -95,7 +97,12 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         <h2 id={titleId} className={styles.title}>
           {title}
         </h2>
-        <button type="button" className={styles.close} aria-label="Schließen" onClick={onClose}>
+        <button
+          type="button"
+          className={styles.close}
+          aria-label={t("common.close")}
+          onClick={onClose}
+        >
           <CloseIcon size={12} />
         </button>
       </div>

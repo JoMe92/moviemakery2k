@@ -1,6 +1,6 @@
 /**
- * requestAnimationFrame-Uhr: ruft `onTick(dt)` je Frame mit der Zeit seit dem
- * vorherigen Frame in Sekunden. rAF ist injizierbar (Tests).
+ * requestAnimationFrame clock: calls `onTick(dt)` each frame with the time since
+ * the previous frame in seconds. rAF is injectable (tests).
  */
 export type Raf = (cb: (ts: number) => void) => number;
 export type Caf = (id: number) => void;
