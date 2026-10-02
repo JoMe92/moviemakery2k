@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from "react";
+import { useT } from "../i18n/useT";
 import styles from "./Dialog.module.css";
 import { CloseIcon } from "./icons";
 
@@ -25,6 +26,7 @@ function focusables(root: HTMLElement): HTMLElement[] {
  * und beim Schließen kehrt der Fokus zum auslösenden Element zurück.
  */
 export function Dialog({ open, title, onClose, children, footer }: DialogProps) {
+  const { t } = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const onCloseRef = useRef(onClose);
@@ -95,7 +97,12 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         <h2 id={titleId} className={styles.title}>
           {title}
         </h2>
-        <button type="button" className={styles.close} aria-label="Schließen" onClick={onClose}>
+        <button
+          type="button"
+          className={styles.close}
+          aria-label={t("common.close")}
+          onClick={onClose}
+        >
           <CloseIcon size={12} />
         </button>
       </div>

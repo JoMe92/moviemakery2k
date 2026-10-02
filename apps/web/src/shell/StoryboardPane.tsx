@@ -1,10 +1,9 @@
 import { type ReactNode, useId } from "react";
+import { useT } from "../i18n/useT";
 import { Button } from "../ui/Button";
 import { TimelineIcon } from "../ui/icons";
 import pane from "./Pane.module.css";
 import styles from "./StoryboardPane.module.css";
-
-export const STORYBOARD_EMPTY_HINT = "Ziehen Sie Bilder hierher, um eine Diashow zu erstellen.";
 
 export interface StoryboardPaneProps {
   /** Elemente des Bildstreifens; leer → Hinweistext. */
@@ -13,6 +12,7 @@ export interface StoryboardPaneProps {
 
 /** Storyboard über die volle Breite. Die Zeitachse ist im MVP deaktiviert. */
 export function StoryboardPane({ children }: StoryboardPaneProps) {
+  const { t } = useT();
   const headingId = useId();
   const isEmpty = children === undefined || children === null || children === false;
   return (
@@ -25,14 +25,14 @@ export function StoryboardPane({ children }: StoryboardPaneProps) {
           disabled
           className={styles.toggle}
         >
-          Zeitachse anzeigen
+          {t("shell.showTimeline")}
         </Button>
         <h2 id={headingId} className={pane.heading}>
-          Storyboard
+          {t("shell.storyboard")}
         </h2>
       </div>
       <div className={`${pane.body} ${styles.body}`}>
-        {isEmpty ? <p className={styles.hint}>{STORYBOARD_EMPTY_HINT}</p> : children}
+        {isEmpty ? <p className={styles.hint}>{t("shell.storyboardHint")}</p> : children}
       </div>
     </section>
   );

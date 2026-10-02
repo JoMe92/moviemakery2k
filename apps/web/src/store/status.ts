@@ -1,28 +1,29 @@
+import type { Translate } from "../i18n/t";
 import type { BackendState, SaveState } from "./appStore";
 
-export function describeBackend(backend: BackendState): string {
+export function describeBackend(backend: BackendState, t: Translate): string {
   switch (backend.kind) {
     case "unknown":
-      return "Verbinde mit Backend…";
+      return t("status.connecting");
     case "offline":
-      return "Backend nicht erreichbar";
+      return t("status.offline");
     case "ok":
       return backend.health.ffmpeg
-        ? `Backend bereit · FFmpeg ${backend.health.ffmpeg}`
-        : "Backend bereit · FFmpeg fehlt";
+        ? t("status.ready", { version: backend.health.ffmpeg })
+        : t("status.readyNoFfmpeg");
   }
 }
 
 /** Spec app-shell „Statusleiste“: Gespeichert / Wird gespeichert… / Speichern fehlgeschlagen. */
-export function describeSave(state: SaveState): string | null {
+export function describeSave(state: SaveState, t: Translate): string | null {
   switch (state) {
     case "idle":
       return null;
     case "saving":
-      return "Wird gespeichert…";
+      return t("status.saving");
     case "saved":
-      return "Gespeichert";
+      return t("status.saved");
     case "error":
-      return "Speichern fehlgeschlagen";
+      return t("status.saveFailed");
   }
 }

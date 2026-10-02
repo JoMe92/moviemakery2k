@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import { useT } from "../i18n/useT";
 import styles from "./CollectionPane.module.css";
 import pane from "./Pane.module.css";
 
@@ -18,15 +19,16 @@ export function CollectionPane({
   className,
   ...rest
 }: CollectionPaneProps) {
+  const { t } = useT();
   return (
     <section
       className={[pane.pane, className].filter(Boolean).join(" ")}
-      aria-label={`Sammlung: ${name}`}
+      aria-label={t("shell.collection", { name })}
       {...rest}
     >
       <div className={pane.header}>
         <h2 className={pane.heading}>
-          <span className={styles.prefix}>Sammlung: </span>
+          <span className={styles.prefix}>{t("shell.collectionPrefix")} </span>
           {name}
         </h2>
       </div>

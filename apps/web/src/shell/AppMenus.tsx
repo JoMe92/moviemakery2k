@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useT } from "../i18n/useT";
 import { useAppStore } from "../store/useAppStore";
 import { AboutDialog, ConfirmDialog } from "./AppDialogs";
 import { MenuBar } from "./MenuBar";
@@ -16,19 +17,23 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const requestImport = useAppStore((s) => s.requestImport);
   const hasSlides = useAppStore((s) => s.slides.length > 0);
   const openExportWizard = useAppStore((s) => s.openExportWizard);
+  const { t } = useT();
 
   const menus = useMemo(
     () =>
-      buildMenus({
-        ...extra,
-        newProject: () => setConfirmNew(true),
-        about: () => setAbout(true),
-        options: () => setOptions(true),
-        importImages: requestImport,
-        saveMovie: hasSlides ? openExportWizard : undefined,
-        deleteSelection: selection ? () => removeSlide(selection.slideId) : undefined,
-      }),
-    [extra, selection, removeSlide, requestImport, hasSlides, openExportWizard],
+      buildMenus(
+        {
+          ...extra,
+          newProject: () => setConfirmNew(true),
+          about: () => setAbout(true),
+          options: () => setOptions(true),
+          importImages: requestImport,
+          saveMovie: hasSlides ? openExportWizard : undefined,
+          deleteSelection: selection ? () => removeSlide(selection.slideId) : undefined,
+        },
+        t,
+      ),
+    [extra, selection, removeSlide, requestImport, hasSlides, openExportWizard, t],
   );
 
   return (
@@ -38,8 +43,8 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
       <OptionsDialog open={options} onClose={() => setOptions(false)} />
       <ConfirmDialog
         open={confirmNew}
-        title="Neues Projekt"
-        message="Möchten Sie ein neues Projekt beginnen? Der Bildstreifen wird geleert; die Bilder in der Sammlung bleiben erhalten."
+        title={t("newProject.title")}
+        message={t("newProject.message")}
         onConfirm={() => {
           setConfirmNew(false);
           newProject();

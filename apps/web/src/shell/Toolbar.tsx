@@ -1,4 +1,5 @@
 import { type ReactNode, useId } from "react";
+import { useT } from "../i18n/useT";
 import { FolderIcon } from "../ui/icons";
 import styles from "./Toolbar.module.css";
 
@@ -18,13 +19,14 @@ export interface ToolbarProps {
 
 /** Symbolleiste mit Sammlungsauswahl. */
 export function Toolbar({ collections, collection, onCollectionChange, children }: ToolbarProps) {
+  const { t } = useT();
   const selectId = useId();
   return (
-    <div className={styles.toolbar} role="toolbar" aria-label="Symbolleiste">
+    <div className={styles.toolbar} role="toolbar" aria-label={t("shell.toolbar")}>
       {children ? <div className={styles.buttons}>{children}</div> : null}
       <label htmlFor={selectId} className={styles.label}>
         <FolderIcon size={16} />
-        Sammlungen:
+        {t("shell.collections")}
       </label>
       <select
         id={selectId}

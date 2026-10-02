@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import styles from "./MenuBar.module.css";
 import type { MenuDef, MenuEntry } from "./menus";
 
@@ -15,6 +16,7 @@ type Item = Extract<MenuEntry, { kind: "item" }>;
  * sind fokussierbar, lösen aber nichts aus.
  */
 export function MenuBar({ menus }: MenuBarProps) {
+  const { t } = useT();
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
   const topRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -105,7 +107,7 @@ export function MenuBar({ menus }: MenuBarProps) {
 
   let itemIndex = -1;
   return (
-    <div className={styles.menubar} role="menubar" aria-label="Menüleiste" ref={rootRef}>
+    <div className={styles.menubar} role="menubar" aria-label={t("menu.bar")} ref={rootRef}>
       {menus.map((menu, index) => (
         <div key={menu.id} className={styles.menu}>
           <button

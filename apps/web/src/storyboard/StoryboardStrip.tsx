@@ -1,8 +1,8 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
-import { STORYBOARD_EMPTY_HINT } from "../shell/StoryboardPane";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
@@ -23,6 +23,7 @@ type MenuState = Target & { x: number; y: number };
  * Eigenschaftendialoge für Bilddauer und Übergang.
  */
 export function StoryboardStrip() {
+  const { t } = useT();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const catalog = useAppStore((s) => s.catalog);
@@ -105,7 +106,7 @@ export function StoryboardStrip() {
       data-over={(empty && isOver && insertIndex !== null) || undefined}
     >
       {empty ? (
-        <p className={styles.hint}>{STORYBOARD_EMPTY_HINT}</p>
+        <p className={styles.hint}>{t("shell.storyboardHint")}</p>
       ) : (
         <SortableContext items={slides.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
           <ol className={styles.list} aria-label="Bildstreifen">

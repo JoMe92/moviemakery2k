@@ -1,4 +1,5 @@
 import { type ReactNode, useId } from "react";
+import { useT } from "../i18n/useT";
 import styles from "./MonitorPane.module.css";
 import pane from "./Pane.module.css";
 
@@ -11,12 +12,13 @@ export interface MonitorPaneProps {
 
 /** Vorschaumonitor rechts: schwarze 4:3-Fläche und Steuerleiste. */
 export function MonitorPane({ children, controls }: MonitorPaneProps) {
+  const { t } = useT();
   const headingId = useId();
   return (
     <section className={pane.pane} aria-labelledby={headingId}>
       <div className={pane.header}>
         <h2 id={headingId} className={pane.heading}>
-          Vorschau
+          {t("shell.preview")}
         </h2>
       </div>
       <div className={styles.stage}>

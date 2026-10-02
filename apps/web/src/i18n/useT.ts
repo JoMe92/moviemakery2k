@@ -2,10 +2,10 @@
  * React access to the UI language (design.md D2): `t()` and formatters bound
  * to the locale in the store; components re-render when it changes.
  */
-import { useMemo } from "react";
-import { useAppStore } from "../store/useAppStore";
+import { useContext, useMemo, useSyncExternalStore } from "react";
+import { AppStoreContext } from "../store/useAppStore";
 import { formatNumber, formatTime } from "./format";
-import type { Locale } from "./locale";
+import { initialLocale, type Locale } from "./locale";
 import { type Translate, translator } from "./t";
 
 export interface LocaleTools {
@@ -24,7 +24,16 @@ export function localeTools(locale: Locale): LocaleTools {
   };
 }
 
+const noSubscription = () => () => {};
+
+/**
+ * Without a store (shared UI components rendered on their own, e.g. in unit
+ * tests) the startup locale is used: stored setting → browser → `en`.
+ */
 export function useT(): LocaleTools {
-  const locale = useAppStore((s) => s.locale);
+  const store = useContext(AppStoreContext);
+  const locale = useSyncExternalStore(store ? store.subscribe : noSubscription, () =>
+    store ? store.getState().locale : initialLocale(),
+  );
   return useMemo(() => localeTools(locale), [locale]);
 }
