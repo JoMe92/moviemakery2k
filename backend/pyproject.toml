@@ -1,26 +1,24 @@
 [project]
 name = "mmy-backend"
 version = "0.0.0"
-description = "moviemakerY2K Backend: Projektmodell, Render-Pipeline und FFmpeg-Export"
+description = "moviemakerY2K Backend: Medien, Übergangskatalog, Projekt und (später) FFmpeg-Export"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.13"
+# Die Pakete installiert Pixi aus conda-forge (pixi.toml); hier stehen sie nur als Metadaten.
 dependencies = [
     "fastapi>=0.142",
-    "uvicorn[standard]>=0.54",
+    "uvicorn>=0.54",
     "pydantic>=2.13",
-]
-
-[dependency-groups]
-dev = [
-    "httpx2>=2.13",
-    "mypy>=2.4",
-    "pytest>=9.1",
-    "ruff>=0.16",
+    "python-multipart>=0.0.32",
+    "pillow>=12",
 ]
 
 [build-system]
-requires = ["uv_build>=0.12,<0.13"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mmy_backend"]
 
 [tool.ruff]
 line-length = 100
