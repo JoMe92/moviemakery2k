@@ -1,18 +1,30 @@
-from typing import Literal
+"""FastAPI-App. `create_app` lädt den Übergangskatalog sofort: ist er ungültig,
+bricht schon der Import von `mmy_backend.main:app` (und damit uvicorn) ab."""
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from pydantic import BaseModel
 
-from mmy_backend.ffmpeg import ffmpeg_version
-
-app = FastAPI(title="moviemakerY2K", version="0.0.0")
-
-
-class Health(BaseModel):
-    status: Literal["ok"] = "ok"
-    ffmpeg: str | None
+from mmy_backend.api import router
+from mmy_backend.catalog import load_catalog
+from mmy_backend.config import Settings
 
 
-@app.get("/api/health")
-def health() -> Health:
-    return Health(ffmpeg=ffmpeg_version())
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or Settings.from_env()
+    catalog = load_catalog(settings.catalog_file)
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        yield
+
+    app = FastAPI(title="moviemakerY2K", version="0.0.0", lifespan=lifespan)
+    app.state.settings = settings
+    app.state.catalog = catalog
+    app.include_router(router)
+    return app
+
+
+app = create_app()

@@ -39,3 +39,6 @@ dist/
 
 # Pixi
 .pixi/
+
+# Laufzeitdaten des Backends (Uploads, Projekt)
+backend/.data/
