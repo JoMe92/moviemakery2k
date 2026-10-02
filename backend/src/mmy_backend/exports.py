@@ -293,6 +293,16 @@ class ExportManager:
             job = self._jobs.get(export_id)
             return job.model() if job is not None else None
 
+    def export_using_media(self, media_id: str) -> str | None:
+        """ID of a `queued`/`running` job whose snapshot uses `media_id`, else None."""
+        with self._lock:
+            for job in self._jobs.values():
+                if not job.status.active:
+                    continue
+                if any(s.media_id == media_id for s in job.project.slides):
+                    return job.id
+            return None
+
     def file_path(self, export_id: str) -> Path | None:
         """Path of the finished file; only with status `done`, otherwise None."""
         with self._lock:

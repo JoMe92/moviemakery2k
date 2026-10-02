@@ -2,7 +2,10 @@
 
 import io
 import shutil
+import threading
+import time
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -11,6 +14,7 @@ from PIL import Image
 
 from mmy_backend.config import Settings
 from mmy_backend.main import create_app
+from mmy_backend.render.encode import ExportCancelled
 
 IMMUTABLE = "public, max-age=31536000, immutable"
 
@@ -199,6 +203,122 @@ def test_delete_cascades_into_project(settings: Settings) -> None:
         assert client.get("/api/project").json() == expected
 
 
+# --- Delete while exporting (design.md D5, TASK-API-010) ------------------------
+
+TIMEOUT = 30.0
+
+
+class FakeExport:
+    """Replaces `export_movie` without GL: runs until `release()` (then writes the
+    file) or until the export is cancelled."""
+
+    def __init__(self) -> None:
+        self.running = threading.Event()
+        self.released = threading.Event()
+
+    def release(self) -> None:
+        self.released.set()
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Path:
+        output: Path = args[3]
+        cancel: threading.Event = kwargs["cancel"]
+        self.running.set()
+        deadline = time.monotonic() + TIMEOUT
+        while not self.released.wait(0.01):
+            if cancel.is_set():
+                raise ExportCancelled
+            assert time.monotonic() < deadline, "test never released the export"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(b"fake mp4")
+        return output
+
+
+@pytest.fixture
+def fake_export(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeExport]:
+    fake = FakeExport()
+    monkeypatch.setattr("mmy_backend.exports.export_movie", fake)
+    try:
+        yield fake
+    finally:
+        fake.release()
+
+
+def _wait_status(client: TestClient, export_id: str, wanted: str) -> dict[str, Any]:
+    deadline = time.monotonic() + TIMEOUT
+    while time.monotonic() < deadline:
+        job = dict(client.get(f"/api/exports/{export_id}").json())
+        if job["status"] == wanted:
+            return job
+        time.sleep(0.02)
+    raise AssertionError(f"export {export_id} did not reach {wanted}")
+
+
+def test_delete_is_rejected_while_an_export_uses_the_medium(
+    client: TestClient, settings: Settings, fake_export: FakeExport
+) -> None:
+    used, unused = _upload(client, ["used.png", "unused.png"])
+    project = {"schemaVersion": 1, "slides": [_slide("s1", used), _slide("s2", used)]}
+    assert client.put("/api/project", json=project).status_code == 200
+    res = client.post("/api/exports", json={"profile": "small", "fileName": "Movie"})
+    assert res.status_code == 202, res.text
+    export_id = res.json()["id"]
+    assert fake_export.running.wait(TIMEOUT)
+    running = _wait_status(client, export_id, "running")
+
+    res = client.delete(f"/api/media/{used}")
+    assert res.status_code == 409, res.text
+    assert res.json() == {
+        "detail": {
+            "code": "media.inUseByExport",
+            "params": {"mediaId": used, "exportId": export_id},
+            "message": (
+                "The image cannot be deleted while it is being exported. "
+                "Wait for the export to finish or cancel it first."
+            ),
+        }
+    }
+    # Medium, project and export are unchanged.
+    assert [i["id"] for i in client.get("/api/media").json()["items"]] == [used, unused]
+    assert (settings.data_dir / "media" / used).is_dir()
+    assert client.get(f"/api/media/{used}/preview").status_code == 200
+    assert client.get("/api/project").json() == project
+    assert client.get(f"/api/exports/{export_id}").json() == running
+
+    # The snapshot counts, not the current project: still rejected after the
+    # medium left the storyboard.
+    assert client.put("/api/project", json={"schemaVersion": 1, "slides": []}).status_code == 200
+    assert client.delete(f"/api/media/{used}").status_code == 409
+
+    # A medium the export does not use can be deleted.
+    assert client.delete(f"/api/media/{unused}").status_code == 200
+
+    fake_export.release()
+    _wait_status(client, export_id, "done")
+    res = client.delete(f"/api/media/{used}")
+    assert res.status_code == 200, res.text
+    assert client.get("/api/media").json() == {"items": []}
+    assert not (settings.data_dir / "media" / used).exists()
+    # The finished movie is not affected by deleting its source.
+    assert client.get(f"/api/exports/{export_id}/file").content == b"fake mp4"
+
+
+def test_delete_is_allowed_after_the_export_was_cancelled(
+    client: TestClient, fake_export: FakeExport
+) -> None:
+    [media_id] = _upload(client, ["x.png"])
+    project = {"schemaVersion": 1, "slides": [_slide("s1", media_id)]}
+    assert client.put("/api/project", json=project).status_code == 200
+    res = client.post("/api/exports", json={"profile": "small", "fileName": "Movie"})
+    assert res.status_code == 202, res.text
+    export_id = res.json()["id"]
+    assert fake_export.running.wait(TIMEOUT)
+    assert client.delete(f"/api/media/{media_id}").status_code == 409
+
+    assert client.delete(f"/api/exports/{export_id}").status_code == 204
+    assert client.get(f"/api/exports/{export_id}").json()["status"] == "cancelled"
+    assert client.delete(f"/api/media/{media_id}").status_code == 200
+
+
 def test_openapi_documents_media_endpoints(client: TestClient) -> None:
     paths = client.get("/openapi.json").json()["paths"]
     assert {"get", "post"} <= set(paths["/api/media"])
@@ -208,6 +328,6 @@ def test_openapi_documents_media_endpoints(client: TestClient) -> None:
     )
     assert "404" in paths["/api/media/{media_id}/preview"]["get"]["responses"]
     delete = paths["/api/media/{media_id}"]["delete"]["responses"]
-    assert {"200", "404"} <= set(delete)
+    assert {"200", "404", "409"} <= set(delete)
     schema = delete["200"]["content"]["application/json"]["schema"]
     assert schema == {"$ref": "#/components/schemas/MediaDeleteResponse"}

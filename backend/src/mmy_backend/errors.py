@@ -43,6 +43,7 @@ class ErrorCode(StrEnum):
     MEDIA_UNSUPPORTED_TYPE = "media.unsupportedType"
     MEDIA_TOO_LARGE = "media.tooLarge"
     MEDIA_TOO_MANY_PIXELS = "media.tooManyPixels"
+    MEDIA_IN_USE_BY_EXPORT = "media.inUseByExport"
     PROJECT_SLIDE_DURATION_OUT_OF_RANGE = "project.slideDuration.outOfRange"
     PROJECT_SLIDE_DURATION_OFF_GRID = "project.slideDuration.offGrid"
     PROJECT_TRANSITION_DURATION_OUT_OF_RANGE = "project.transitionDuration.outOfRange"
@@ -98,6 +99,12 @@ _SPECS: dict[str, ErrorSpec] = {
     "media.tooManyPixels": ErrorSpec(
         "The image has too many pixels (at most {maxMegapixels} megapixels).",
         ("maxMegapixels",),
+    ),
+    # 409 on delete while a queued or running export uses the medium (design.md D5).
+    "media.inUseByExport": ErrorSpec(
+        "The image cannot be deleted while it is being exported. "
+        "Wait for the export to finish or cancel it first.",
+        ("mediaId", "exportId"),
     ),
     # --- Project: rule violations while parsing PUT /api/project (native 422 list) --
     "project.slideDuration.outOfRange": ErrorSpec(

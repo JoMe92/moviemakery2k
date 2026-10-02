@@ -208,6 +208,7 @@
           "media.unsupportedType",
           "media.tooLarge",
           "media.tooManyPixels",
+          "media.inUseByExport",
           "project.slideDuration.outOfRange",
           "project.slideDuration.offGrid",
           "project.transitionDuration.outOfRange",
@@ -1296,7 +1297,7 @@
     },
     "/api/media/{media_id}": {
       "delete": {
-        "description": "Deletes a medium with its files and removes it from the project (cascade).\n\nAll storyboard elements using this medium are dropped together with their\nincoming transitions; the new first element has no transition.\n\nThe response is 200 with the updated project (instead of 204) so that the\nclient can adopt its state without another GET /api/project.\n\nOrder: first from the media store, then from the project. A concurrent\nPUT /api/project validates against the media store and therefore cannot\nre-insert the ID afterwards.",
+        "description": "Deletes a medium with its files and removes it from the project (cascade).\n\nAll storyboard elements using this medium are dropped together with their\nincoming transitions; the new first element has no transition.\n\nThe response is 200 with the updated project (instead of 204) so that the\nclient can adopt its state without another GET /api/project.\n\nOrder: first from the media store, then from the project. A concurrent\nPUT /api/project validates against the media store and therefore cannot\nre-insert the ID afterwards.\n\nWhile a `queued` or `running` export has the medium in its snapshot, the\nresponse is 409 (`media.inUseByExport`); medium, project and export stay\nunchanged (design.md D5).",
         "operationId": "delete_media_api_media__media_id__delete",
         "parameters": [
           {
@@ -1329,6 +1330,16 @@
               }
             },
             "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "A queued or running export uses the medium (`media.inUseByExport`)"
           },
           "422": {
             "content": {
