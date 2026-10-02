@@ -34,8 +34,10 @@ export class StoryboardPointerSensor extends PointerSensor {
       },
     });
     const doc = getOwnerDocument(props.event.target);
-    // Internal of @dnd-kit/core 6.x (private in its typings): the document
-    // listeners holding the click guard.
+    // Internal of @dnd-kit/core 6.3 (private in its typings): the document
+    // listeners holding the click guard. This is why apps/web/package.json pins
+    // @dnd-kit/core to ~6.3.1; on an upgrade re-check `documentListeners` in
+    // AbstractPointerSensor and the e2e test for selecting a tile right after a drop.
     const guard = (this as unknown as { documentListeners?: GuardListeners }).documentListeners;
     const onPointerDown = () => {
       if (!ended) return;

@@ -15,7 +15,7 @@ importers:
   apps/web:
     dependencies:
       '@dnd-kit/core':
-        specifier: ^6.3.1
+        specifier: ~6.3.1
         version: 6.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@dnd-kit/sortable':
         specifier: ^10.0.0
