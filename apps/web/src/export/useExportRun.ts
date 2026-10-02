@@ -4,7 +4,10 @@
  * Abbruch, Zurücksetzen und beim Aushängen der Komponente.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, type ExportApi, type ExportJob, type ExportProfile } from "../lib/apiClient";
+import { describeError, jobFailureInfo, translateError } from "../i18n/errors";
+import type { Locale } from "../i18n/locale";
+import { translate } from "../i18n/t";
+import type { ExportApi, ExportJob, ExportProfile } from "../lib/apiClient";
 
 export const POLL_INTERVAL_MS = 500;
 
@@ -18,15 +21,26 @@ export type ExportRun =
   | { phase: "starting"; request: ExportRequest }
   | { phase: "running"; request: ExportRequest; job: ExportJob; startedAt: number }
   | { phase: "done"; request: ExportRequest; job: ExportJob }
-  | { phase: "failed"; request: ExportRequest; message: string };
+  | { phase: "failed"; request: ExportRequest; failure: ExportFailure };
 
-export const OFFLINE_MESSAGE = "Das Backend ist nicht erreichbar. Bitte versuchen Sie es erneut.";
-export const FAILED_MESSAGE = "Der Film konnte nicht gespeichert werden.";
-export const CANCELLED_MESSAGE = "Der Export wurde abgebrochen.";
+/** Why an export failed; turned into text in the UI language by `failureMessage`. */
+export type ExportFailure =
+  | { kind: "error"; error: unknown }
+  | { kind: "job"; job: ExportJob }
+  | { kind: "cancelled" };
 
-function messageOf(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  return OFFLINE_MESSAGE;
+/** Text of a failure in `locale`: translated error codes, else the backend message. */
+export function failureMessage(failure: ExportFailure, locale: Locale): string {
+  switch (failure.kind) {
+    case "error":
+      return describeError(failure.error, locale, translate(locale, "export.offline"));
+    case "job": {
+      const info = jobFailureInfo(failure.job);
+      return info ? translateError(info, locale) : translate(locale, "export.failed");
+    }
+    case "cancelled":
+      return translate(locale, "export.cancelled");
+  }
 }
 
 export interface UseExportRunOptions {
@@ -62,7 +76,7 @@ export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = 
           job = await api.getExport(id);
         } catch (error) {
           if (gen === generation.current) {
-            setRun({ phase: "failed", request, message: messageOf(error) });
+            setRun({ phase: "failed", request, failure: { kind: "error", error } });
           }
           return;
         }
@@ -72,10 +86,10 @@ export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = 
             setRun({ phase: "done", request, job });
             return;
           case "failed":
-            setRun({ phase: "failed", request, message: job.error || FAILED_MESSAGE });
+            setRun({ phase: "failed", request, failure: { kind: "job", job } });
             return;
           case "cancelled":
-            setRun({ phase: "failed", request, message: CANCELLED_MESSAGE });
+            setRun({ phase: "failed", request, failure: { kind: "cancelled" } });
             return;
           default:
             setRun({ phase: "running", request, job, startedAt });
@@ -98,7 +112,7 @@ export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = 
         job = await api.startExport(request);
       } catch (error) {
         if (gen === generation.current) {
-          setRun({ phase: "failed", request, message: messageOf(error) });
+          setRun({ phase: "failed", request, failure: { kind: "error", error } });
         }
         return;
       }

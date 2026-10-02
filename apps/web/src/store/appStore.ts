@@ -3,15 +3,18 @@
  * Projektänderungen werden entprellt gespeichert (Autosave, 500 ms).
  */
 import { createStore, type StoreApi } from "zustand/vanilla";
+import { uploadFailureInfo } from "../i18n/errors";
 import { applyDocumentLocale, initialLocale, type Locale, writeStoredLocale } from "../i18n/locale";
-import type {
-  AppApi,
-  ExportApi,
-  Health,
-  MediaItem,
-  Project,
-  Slide,
-  Transition,
+import {
+  ApiError,
+  type ApiErrorInfo,
+  type AppApi,
+  type ExportApi,
+  type Health,
+  type MediaItem,
+  type Project,
+  type Slide,
+  type Transition,
 } from "../lib/apiClient";
 import {
   advance,
@@ -50,7 +53,8 @@ export interface UploadEntry {
   key: string;
   filename: string;
   status: "pending" | "uploading" | "done" | "error";
-  message?: string;
+  /** Why the upload failed; translated by the UI (localization design.md D5). */
+  failure?: ApiErrorInfo;
   /** Upload failed because the backend was unreachable (text comes from the catalog). */
   offline?: boolean;
 }
@@ -339,10 +343,15 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
               set({ media: [...get().media, result.item] });
               patch(entry.key, { status: "done" });
             } else {
-              patch(entry.key, { status: "error", message: result.message });
+              patch(entry.key, { status: "error", failure: uploadFailureInfo(result) });
             }
-          } catch {
-            patch(entry.key, { status: "error", offline: true });
+          } catch (error) {
+            if (error instanceof ApiError) {
+              const failure = error.info ?? { code: null, params: {}, message: error.message };
+              patch(entry.key, { status: "error", failure });
+            } else {
+              patch(entry.key, { status: "error", offline: true });
+            }
           }
         }
       },

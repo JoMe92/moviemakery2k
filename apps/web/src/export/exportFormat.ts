@@ -1,10 +1,13 @@
 /**
  * Reine Hilfsfunktionen des Assistenten „Film speichern“ (design.md D6):
- * Dateinamenprüfung, Größenschätzung, Prozent und Restzeit.
+ * Dateinamenprüfung, Größenschätzung, Prozent und Restzeit. Texts come from
+ * the message catalogs; file name errors use the backend's error codes.
  */
-import type { ExportProfile } from "../lib/apiClient";
+import { formatNumber } from "../i18n/format";
+import type { Locale } from "../i18n/locale";
+import { translate } from "../i18n/t";
+import type { ApiErrorInfo, ExportProfile } from "../lib/apiClient";
 
-export const DEFAULT_FILE_NAME = "Mein Film";
 export const FILE_EXTENSION = ".mp4";
 /** Wie im Backend (`normalize_file_name`). */
 export const MAX_FILE_NAME_LENGTH = 120;
@@ -12,17 +15,22 @@ export const FORBIDDEN_CHARS = '/\\:*?"<>|';
 
 export interface ProfileOption {
   value: ExportProfile;
-  label: string;
   /** Gemessene mittlere Gesamtbitrate in Bit/s (Video + stumme Tonspur). */
   bitrate: number;
 }
 
 export const PROFILES: readonly ProfileOption[] = [
-  { value: "high", label: "Hohe Qualität (960×720)", bitrate: 600_000 },
-  { value: "small", label: "Kleine Datei (640×480)", bitrate: 320_000 },
+  { value: "high", bitrate: 600_000 },
+  { value: "small", bitrate: 320_000 },
 ];
 
-export type FileNameCheck = { ok: true; name: string } | { ok: false; message: string };
+/** On failure, `error` carries the same code and params the backend would report. */
+export type FileNameCheck = { ok: true; name: string } | { ok: false; error: ApiErrorInfo };
+
+const fail = (code: string, params: Record<string, string | number> = {}): FileNameCheck => ({
+  ok: false,
+  error: { code, params, message: "" },
+});
 
 /**
  * Prüft den Dateinamen wie das Backend: Rand-Leerraum und eine angehängte
@@ -34,24 +42,18 @@ export function checkFileName(raw: string): FileNameCheck {
   if (name.toLowerCase().endsWith(FILE_EXTENSION)) {
     name = name.slice(0, -FILE_EXTENSION.length).trimEnd();
   }
-  if (!name) return { ok: false, message: "Bitte geben Sie einen Dateinamen ein." };
+  if (!name) return fail("export.fileName.empty");
   const forbidden = [...new Set([...name].filter((ch) => FORBIDDEN_CHARS.includes(ch)))];
   if (forbidden.length > 0) {
-    return {
-      ok: false,
-      message: `Der Dateiname enthält unerlaubte Zeichen: ${forbidden.join(" ")} (nicht erlaubt sind ${[...FORBIDDEN_CHARS].join(" ")}).`,
-    };
+    return fail("export.fileName.invalidChars", { chars: forbidden.join(" ") });
   }
   // Steuer- und Formatzeichen (Unicode Cc/Cf) lehnt auch das Backend ab.
   if (/[\p{Cc}\p{Cf}]/u.test(name)) {
-    return { ok: false, message: "Der Dateiname enthält Steuerzeichen." };
+    return fail("export.fileName.controlChars");
   }
-  if (name === "." || name === "..") return { ok: false, message: "Der Dateiname ist ungültig." };
+  if (name === "." || name === "..") return fail("export.fileName.invalid");
   if (name.length > MAX_FILE_NAME_LENGTH) {
-    return {
-      ok: false,
-      message: `Der Dateiname ist zu lang (höchstens ${MAX_FILE_NAME_LENGTH} Zeichen).`,
-    };
+    return fail("export.fileName.tooLong", { max: MAX_FILE_NAME_LENGTH });
   }
   return { ok: true, name };
 }
@@ -62,13 +64,15 @@ export function estimateBytes(duration: number, profile: ExportProfile): number 
   return (Math.max(0, duration) * (option?.bitrate ?? 0)) / 8;
 }
 
-const MB = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const KB = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
-
-/** „ca. 3,4 MB“ bzw. unter 1 MB „ca. 850 KB“ (dezimale Einheiten). */
-export function formatSize(bytes: number): string {
-  if (bytes < 1_000_000) return `ca. ${KB.format(Math.max(1, Math.round(bytes / 1000)))} KB`;
-  return `ca. ${MB.format(bytes / 1_000_000)} MB`;
+/** "ca. 3,4 MB" / "approx. 3.4 MB", below 1 MB "ca. 850 KB" (decimal units). */
+export function formatSize(bytes: number, locale: Locale): string {
+  if (bytes < 1_000_000) {
+    const kb = formatNumber(locale, Math.max(1, Math.round(bytes / 1000)), 0);
+    return translate(locale, "units.kilobytes", { value: kb });
+  }
+  return translate(locale, "units.megabytes", {
+    value: formatNumber(locale, bytes / 1_000_000, 1),
+  });
 }
 
 /** Ganze Prozent 0…100 (abgerundet, damit 100 % erst am Ende erscheint). */
@@ -86,12 +90,14 @@ export function estimateRemaining(elapsedMs: number, progress: number): number |
   return ((elapsedMs / 1000) * (1 - progress)) / progress;
 }
 
-/** „ca. 45 Sek.“, „ca. 2 Min. 5 Sek.“ oder „wird berechnet…“. */
-export function formatRemaining(seconds: number | null): string {
-  if (seconds === null) return "wird berechnet…";
+/** "ca. 45 Sek." / "approx. 45 sec", "ca. 2 Min. 5 Sek." or "wird berechnet…". */
+export function formatRemaining(seconds: number | null, locale: Locale): string {
+  if (seconds === null) return translate(locale, "export.remainingCalculating");
   const total = Math.max(1, Math.ceil(seconds));
   const min = Math.floor(total / 60);
   const sec = total % 60;
-  if (min === 0) return `ca. ${sec} Sek.`;
-  return sec === 0 ? `ca. ${min} Min.` : `ca. ${min} Min. ${sec} Sek.`;
+  if (min === 0) return translate(locale, "export.remainingSeconds", { sec });
+  return sec === 0
+    ? translate(locale, "export.remainingMinutes", { min })
+    : translate(locale, "export.remainingMinutesSeconds", { min, sec });
 }

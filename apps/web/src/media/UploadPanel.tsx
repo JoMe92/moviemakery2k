@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { translateError } from "../i18n/errors";
 import { useT } from "../i18n/useT";
 import { useAppStore } from "../store/useAppStore";
 import { Button } from "../ui/Button";
@@ -9,7 +10,7 @@ import styles from "./UploadPanel.module.css";
  * Fehler bleiben bis „Schließen“ stehen; ein fehlerfreier Import räumt sich selbst ab.
  */
 export function UploadPanel() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const uploads = useAppStore((s) => s.uploads);
   const clearUploads = useAppStore((s) => s.clearUploads);
 
@@ -53,7 +54,11 @@ export function UploadPanel() {
             {errors.map((u) => (
               <li key={u.key}>
                 <span className={styles.filename}>{u.filename}</span>:{" "}
-                {u.offline ? t("upload.offline") : (u.message ?? t("upload.unknownError"))}
+                {u.offline
+                  ? t("upload.offline")
+                  : u.failure
+                    ? translateError(u.failure, locale)
+                    : t("upload.unknownError")}
               </li>
             ))}
           </ul>
