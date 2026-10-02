@@ -5,7 +5,7 @@ FROM ghcr.io/prefix-dev/pixi:0.81.0 AS build
 
 WORKDIR /app
 COPY pixi.toml pixi.lock ./
-COPY backend/pyproject.toml backend/README.md* backend/
+COPY backend/pyproject.toml backend/
 COPY backend/src backend/src
 RUN pixi install --locked -e prod \
     && pixi shell-hook -e prod -s bash > /shell-hook \
