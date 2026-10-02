@@ -194,6 +194,7 @@ export const de = {
     next: "Nächstes Bild",
     time: "Zeit",
     canvas: "Vorschaubild",
+    sample: "Beispiel: {name}",
     webgl2Missing: "Die Vorschau benötigt WebGL2. Import und Storyboard funktionieren weiterhin.",
   },
   duration: {

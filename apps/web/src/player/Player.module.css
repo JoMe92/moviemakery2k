@@ -22,3 +22,20 @@
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
+
+/* "Sample: <name>" label over the monitor during a transition demo (design.md D7). */
+.sample {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  max-width: calc(100% - 12px);
+  margin: 0;
+  padding: 1px 6px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-face);
+  color: var(--y2k-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}

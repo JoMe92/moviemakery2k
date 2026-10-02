@@ -65,6 +65,9 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     page.get_by_role("list", name="Übergänge").get_by_role("button", name="Kreis").dblclick()
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
     expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+    # The click starts the demo, labelled as a sample (design.md D7).
+    sample = page.get_by_text("Beispiel: Kreis", exact=True)
+    expect(sample).to_be_visible()
 
     # Playback: total duration 15 - 1.25 = 13.75 s.
     # Selecting picture 2 while stopped jumps to its start
@@ -74,6 +77,7 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     monitor = page.get_by_role("img", name="Vorschaubild")
     page.get_by_role("button", name="Stopp").click()
     expect(time).to_have_text("0:00:00,00 / 0:00:13,75")
+    expect(sample).to_have_count(0)
     start = mean_rgb(monitor)
     assert start[0] > 150 and start[2] < 80, f"start should be red: {start}"
 

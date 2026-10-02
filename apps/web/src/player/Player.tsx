@@ -8,6 +8,7 @@ import type { ImageSource } from "../render/Renderer";
 import { MonitorPane } from "../shell/MonitorPane";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { frameAt } from "../timeline/timeline";
+import { transitionName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon, StopIcon } from "../ui/icons";
 import { startClock } from "./clock";
@@ -52,10 +53,12 @@ function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
 
 /**
  * Preview monitor with player: rAF clock, control bar, seek bar, time display,
- * space bar and transition demo for the catalog.
+ * space bar and transition demo for the catalog. During the demo the monitor
+ * is labelled "Sample: <name>"; play, seek and filmstrip selection return to
+ * the project (design.md D7).
  */
 export function Player() {
-  const { t, formatTime } = useT();
+  const { t, formatTime, locale } = useT();
   const store = useAppStoreApi();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
@@ -188,6 +191,11 @@ export function Player() {
       }
     >
       <PreviewCanvas frame={frame} images={images} params={params} />
+      {demoTransition ? (
+        <p className={styles.sample} role="status">
+          {t("player.sample", { name: transitionName(demoTransition, locale) })}
+        </p>
+      ) : null}
     </MonitorPane>
   );
 }

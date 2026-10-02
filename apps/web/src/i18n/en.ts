@@ -197,6 +197,7 @@ export const en = {
     next: "Next picture",
     time: "Time",
     canvas: "Preview picture",
+    sample: "Sample: {name}",
     webgl2Missing: "The preview requires WebGL2. Import and storyboard keep working.",
   },
   duration: {
