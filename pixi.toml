@@ -21,6 +21,8 @@ pillow = ">=12"
 [activation.env]
 # Keine Pakete aus ~/.local einmischen: die Umgebung kommt ausschließlich aus pixi.lock.
 PYTHONNOUSERSITE = "1"
+# Playwright-Browser im Projekt statt in ~/.cache (siehe README: Cache-Probleme).
+PLAYWRIGHT_BROWSERS_PATH = "$PIXI_PROJECT_ROOT/.pixi/playwright-browsers"
 
 [pypi-dependencies]
 mmy-backend = { path = "backend", editable = true }
@@ -34,6 +36,8 @@ biome = "2.5.*"
 glslang = ">=16"
 jsonschema = ">=4.23"
 types-jsonschema = "*"
+playwright = ">=1.55"
+pytest-playwright = ">=0.7"
 
 [environments]
 default = { features = ["dev"], solve-group = "default" }
@@ -67,6 +71,8 @@ build = { cmd = "pnpm -r build", depends-on = ["install-web"] }
 demo = { cmd = "python scripts/dev.py demo", depends-on = ["build"], description = "Gebaute Web-App + API aus einem Prozess (MMY_API_PORT, Standard 8000)" }
 
 gen-api = { cmd = "python -m mmy_backend.openapi apps/web/src/generated/openapi.json && pnpm --filter @mmy/web exec openapi-typescript src/generated/openapi.json -o src/generated/schema.d.ts", depends-on = ["install-web"], description = "TS-Typen aus dem OpenAPI-Dokument des Backends erzeugen" }
+
+e2e-browsers = { cmd = "playwright install chromium", description = "Chromium für die E2E-Tests (nach .pixi/playwright-browsers)" }
 
 check-shaders = { cmd = "python scripts/check_shaders.py", description = "GLSL-ES-3.00-Shader kompilieren und mit dem Katalog abgleichen" }
 
