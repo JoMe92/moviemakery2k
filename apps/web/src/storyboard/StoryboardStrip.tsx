@@ -1,9 +1,11 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { timelineOf } from "../player/controls";
 import { STORYBOARD_EMPTY_HINT } from "../shell/StoryboardPane";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
+import { slideIndexAt } from "../timeline/timeline";
 import { Button } from "../ui/Button";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import { DurationDialog } from "../ui/DurationDialog";
@@ -31,6 +33,10 @@ export function StoryboardStrip() {
   const setTransitionDuration = useAppStore((s) => s.setTransitionDuration);
   const removeTransition = useAppStore((s) => s.removeTransition);
   const insertIndex = useInsertIndex();
+  // Während der Wiedergabe: das gerade sichtbare Bild (ändert sich nur beim Bildwechsel).
+  const playingIndex = useAppStore((s) =>
+    s.playback.playing ? slideIndexAt(timelineOf(s.slides), s.playback.time) : null,
+  );
   const { setNodeRef, isOver } = useDroppable({
     id: STRIP_DROPPABLE_ID,
     data: { type: "strip" },
@@ -80,6 +86,15 @@ export function StoryboardStrip() {
     ];
   };
 
+  const playingId = playingIndex === null ? null : (slides[playingIndex]?.id ?? null);
+  useEffect(() => {
+    if (playingId) {
+      tiles.current
+        .get(playingId)
+        ?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    }
+  }, [playingId]);
+
   const empty = slides.length === 0;
 
   return (
@@ -101,6 +116,7 @@ export function StoryboardStrip() {
                 number={i + 1}
                 media={media.find((m) => m.id === slide.mediaId)}
                 selected={selection?.slideId === slide.id}
+                playing={playingId === slide.id}
                 marker={
                   insertIndex === i
                     ? "before"

@@ -13,6 +13,8 @@ export interface SlideTileProps {
   number: number;
   media: MediaItem | undefined;
   selected: boolean;
+  /** Gerade in der Wiedergabe sichtbar (Hervorhebung). */
+  playing?: boolean;
   onSelect: () => void;
   onRemove: () => void;
   onMenu: (x: number, y: number) => void;
@@ -33,6 +35,7 @@ export function SlideTile({
   number,
   media,
   selected,
+  playing = false,
   onSelect,
   onRemove,
   onMenu,
@@ -117,6 +120,8 @@ export function SlideTile({
         {...listeners}
         className={styles.tile}
         aria-pressed={selected}
+        aria-current={playing ? "true" : undefined}
+        data-playing={playing || undefined}
         aria-label={`Bild ${number}: ${name}, ${duration}`}
         title={name}
         onKeyDown={onKeyDown}

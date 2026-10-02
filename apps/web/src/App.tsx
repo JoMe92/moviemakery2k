@@ -1,10 +1,9 @@
-import styles from "./App.module.css";
+import { useMemo } from "react";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
-import { PreviewCanvas } from "./render/PreviewCanvas";
+import { Player } from "./player/Player";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
-import { MonitorPane } from "./shell/MonitorPane";
 import { StatusBar } from "./shell/StatusBar";
 import { StoryboardPane } from "./shell/StoryboardPane";
 import { TaskPane } from "./shell/TaskPane";
@@ -14,18 +13,12 @@ import { describeBackend, describeSave } from "./store/status";
 import { useAppStore } from "./store/useAppStore";
 import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
-import type { Frame } from "./timeline/timeline";
 import { TransitionCollection } from "./transitions/TransitionCollection";
-import { Button } from "./ui/Button";
 import {
   EffectsIcon,
   FilmIcon,
   FolderIcon,
   ImportImageIcon,
-  NextIcon,
-  PlayIcon,
-  PrevIcon,
-  StopIcon,
   TitleIcon,
   TransitionsIcon,
 } from "./ui/icons";
@@ -33,11 +26,6 @@ import { TaskGroup } from "./ui/TaskGroup";
 import { TaskLink } from "./ui/TaskLink";
 
 export const APP_TITLE = "moviemakerY2K – Unbenanntes Projekt";
-
-// Bis die Wiedergabe angebunden ist (TASK-WEB-010), zeigt der Monitor ein leeres Bild.
-const EMPTY_FRAME: Frame = { kind: "empty" };
-const noImage = () => undefined;
-const noParams = () => ({});
 
 const COLLECTIONS: readonly (CollectionOption & { id: CollectionId })[] = [
   { id: "media", label: "Meine Bilder" },
@@ -55,13 +43,17 @@ export function App() {
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
 
+  const togglePlay = useAppStore((s) => s.togglePlay);
+  const stop = useAppStore((s) => s.stop);
+  const playerMenu = useMemo(() => ({ togglePlay, stop }), [togglePlay, stop]);
+
   const collectionName = COLLECTIONS.find((c) => c.id === collection)?.label ?? "";
 
   return (
     <StoryboardDnd>
       <AppWindow
         title={APP_TITLE}
-        menuBar={<AppMenus />}
+        menuBar={<AppMenus extra={playerMenu} />}
         toolbar={
           <Toolbar
             collections={COLLECTIONS}
@@ -111,21 +103,7 @@ export function App() {
             {collection === "media" ? <MediaCollection /> : <TransitionCollection />}
           </LibraryPane>
         }
-        monitor={
-          <MonitorPane
-            controls={
-              <>
-                <Button variant="toolbar" icon={<PlayIcon />} label="Wiedergabe" disabled />
-                <Button variant="toolbar" icon={<StopIcon />} label="Stopp" disabled />
-                <Button variant="toolbar" icon={<PrevIcon />} label="Zurück" disabled />
-                <Button variant="toolbar" icon={<NextIcon />} label="Weiter" disabled />
-                <span className={styles.time}>0:00:00,00 / 0:00:00,00</span>
-              </>
-            }
-          >
-            <PreviewCanvas frame={EMPTY_FRAME} images={noImage} params={noParams} />
-          </MonitorPane>
-        }
+        monitor={<Player />}
         storyboard={
           <StoryboardPane>
             <StoryboardStrip />

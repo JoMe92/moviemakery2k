@@ -157,7 +157,7 @@ describe("Storyboard", () => {
     within(strip())
       .getByRole("button", { name: /^Bild 3:/ })
       .focus();
-    await user.keyboard("[Space]");
+    await user.keyboard("[Enter]");
     await tick();
     await user.keyboard("[ArrowLeft]");
     await tick();
@@ -176,7 +176,7 @@ describe("Storyboard", () => {
     const { store } = await setup([slide("s1", "a"), slide("s2", "a")]);
     const collection = screen.getByRole("region", { name: "Sammlung: Meine Bilder" });
     within(collection).getByRole("button", { name: "b.jpg" }).focus();
-    await user.keyboard("[Space]");
+    await user.keyboard("[Enter]");
     await tick();
     await user.keyboard("[ArrowDown]"); // ans Ende des Bildstreifens
     await tick();
@@ -194,7 +194,7 @@ describe("Storyboard", () => {
     const { store } = await setup([]);
     const collection = screen.getByRole("region", { name: "Sammlung: Meine Bilder" });
     within(collection).getByRole("button", { name: "a.jpg" }).focus();
-    await user.keyboard("[Space]");
+    await user.keyboard("[Enter]");
     await tick();
     await user.keyboard("[ArrowDown]");
     await tick();
@@ -214,7 +214,7 @@ describe("Storyboard", () => {
     act(() => store.getState().setCollection("transitions"));
     const collection = screen.getByRole("region", { name: "Sammlung: Videoübergänge" });
     within(collection).getByRole("button", { name: "Kreis" }).focus();
-    await user.keyboard("[Space]");
+    await user.keyboard("[Enter]");
     await tick();
     await user.keyboard("[ArrowDown]"); // erster Platz: vor Bild 2
     await tick();

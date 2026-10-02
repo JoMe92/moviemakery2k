@@ -5,6 +5,18 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { Api, Health, MediaItem, Project, Slide, Transition } from "../lib/apiClient";
 import {
+  advance,
+  clampTime,
+  demoDuration,
+  nextSlideTime,
+  type Playback,
+  prevSlideTime,
+  STOPPED,
+  startPlayback,
+  timelineOf,
+} from "../player/controls";
+import { slideStartTime } from "../timeline/timeline";
+import {
   insertSlide,
   isValidSlideDuration,
   isValidTransitionDuration,
@@ -44,13 +56,29 @@ export interface AppState {
   /** ausgewählter Übergang in der Sammlung (Demo im Monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
+  /** Wiedergabe der Diashow im Monitor. */
+  playback: Playback;
+  /** Übergangsdemo im Monitor (nur zusammen mit previewTransitionId). */
+  demo: Playback | null;
   /** Zähler: jede Erhöhung öffnet den Dateidialog „Bilder importieren“ (Aufgabe, Datei-Menü). */
   importRequest: number;
 
   init(): Promise<void>;
   setCollection(collection: CollectionId): void;
   select(selection: Selection): void;
+  /** Kachel im Katalog auswählen: startet die Übergangsdemo im Monitor (null beendet sie). */
   setPreviewTransition(id: string | null): void;
+
+  play(): void;
+  pause(): void;
+  togglePlay(): void;
+  /** Anhalten und an den Anfang springen. */
+  stop(): void;
+  seek(time: number): void;
+  nextSlide(): void;
+  prevSlide(): void;
+  /** Uhrschritt in Sekunden (rAF-Uhr). */
+  tick(dt: number): void;
 
   /** Dateidialog „Bilder importieren“ anfordern (wird von der Sammlung geöffnet). */
   requestImport(): void;
@@ -116,12 +144,23 @@ export function createAppStore(api: Api): AppStore {
       }, AUTOSAVE_DELAY_MS);
     }
 
+    /** Wiedergabezeit an eine geänderte Diashow anpassen (Spec „Synchronität“). */
+    function playbackFor(slides: readonly Slide[]): Playback {
+      const { playback } = get();
+      const duration = timelineOf(slides).duration;
+      if (duration <= 0) return STOPPED;
+      return { playing: playback.playing, time: clampTime(playback.time, duration) };
+    }
+
     function commit(slides: Slide[]): void {
       const { selection } = get();
       const stillThere = selection && slides.some((s) => s.id === selection.slideId);
-      set({ slides, selection: stillThere ? selection : null });
+      set({ slides, selection: stillThere ? selection : null, playback: playbackFor(slides) });
       scheduleSave();
     }
+
+    const duration = () => timelineOf(get().slides).duration;
+    const noDemo = { previewTransitionId: null, demo: null } as const;
 
     function defaultTransitionDuration(transitionId: string): number {
       return get().catalog.find((t) => t.id === transitionId)?.defaultDuration ?? 1.25;
@@ -137,6 +176,8 @@ export function createAppStore(api: Api): AppStore {
       collection: "media",
       selection: null,
       previewTransitionId: null,
+      playback: STOPPED,
+      demo: null,
       uploads: [],
       importRequest: 0,
 
@@ -162,13 +203,75 @@ export function createAppStore(api: Api): AppStore {
       },
 
       setCollection(collection) {
-        set({ collection });
+        set(collection === "media" ? { collection, ...noDemo } : { collection });
       },
       select(selection) {
-        set({ selection });
+        // Bei angehaltener Wiedergabe zeigt der Monitor das ausgewählte Bild.
+        const { playback, slides } = get();
+        const index = selection ? slides.findIndex((s) => s.id === selection.slideId) : -1;
+        if (index >= 0 && !playback.playing) {
+          set({
+            selection,
+            ...noDemo,
+            playback: { playing: false, time: slideStartTime(timelineOf(slides), index) },
+          });
+        } else {
+          set({ selection });
+        }
       },
       setPreviewTransition(id) {
-        set({ previewTransitionId: id });
+        if (id === null) {
+          set(noDemo);
+          return;
+        }
+        const { playback } = get();
+        set({
+          previewTransitionId: id,
+          demo: { playing: true, time: 0 },
+          playback: { ...playback, playing: false },
+        });
+      },
+
+      play() {
+        set({ ...noDemo, playback: startPlayback(get().playback, duration()) });
+      },
+      pause() {
+        set({ playback: { ...get().playback, playing: false } });
+      },
+      togglePlay() {
+        const { playback, demo } = get();
+        if (playback.playing && !demo) get().pause();
+        else get().play();
+      },
+      stop() {
+        set({ ...noDemo, playback: STOPPED });
+      },
+      seek(time) {
+        set({ ...noDemo, playback: { ...get().playback, time: clampTime(time, duration()) } });
+      },
+      nextSlide() {
+        const { playback, slides } = get();
+        const time = nextSlideTime(timelineOf(slides), playback.time);
+        // Am Ende hält die Wiedergabe an (wie beim normalen Ablauf).
+        const playing = playback.playing && time < duration();
+        set({ ...noDemo, playback: { playing, time } });
+      },
+      prevSlide() {
+        const { playback, slides } = get();
+        set({
+          ...noDemo,
+          playback: { ...playback, time: prevSlideTime(timelineOf(slides), playback.time) },
+        });
+      },
+      tick(dt) {
+        const { demo, playback, previewTransitionId, catalog } = get();
+        if (demo && previewTransitionId) {
+          if (!demo.playing) return;
+          const t = catalog.find((c) => c.id === previewTransitionId)?.defaultDuration ?? 1.25;
+          set({ demo: advance(demo, dt, demoDuration(t)) });
+          return;
+        }
+        if (playback.playing) set({ playback: advance(playback, dt, duration()) });
       },
 
       requestImport() {
@@ -218,6 +321,7 @@ export function createAppStore(api: Api): AppStore {
           media: get().media.filter((m) => m.id !== id),
           slides: project.slides,
           selection: stillThere ? selection : null,
+          playback: playbackFor(project.slides),
         });
       },
 

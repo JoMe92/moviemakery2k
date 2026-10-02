@@ -214,7 +214,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
 
   const announcements: Announcements = {
     onDragStart: ({ active: a }) =>
-      `${describe(store.getState(), dragItem(a))} aufgenommen. Pfeiltasten bewegen, Leertaste legt ab, Escape bricht ab.`,
+      `${describe(store.getState(), dragItem(a))} aufgenommen. Pfeiltasten bewegen, Eingabe- oder Leertaste legt ab, Escape bricht ab.`,
     onDragOver: ({ over }) => {
       const slot = over?.data.current as DropTarget | undefined;
       if (slot?.type === "transitionSlot") {
@@ -268,7 +268,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
         announcements,
         screenReaderInstructions: {
           draggable:
-            "Leertaste nimmt das Element auf. Mit den Pfeiltasten verschieben (aus der Sammlung: Pfeil nach unten ins Storyboard), Leertaste legt ab, Escape bricht ab.",
+            "Eingabetaste nimmt das Element auf. Mit den Pfeiltasten verschieben (aus der Sammlung: Pfeil nach unten ins Storyboard), Eingabe- oder Leertaste legt ab, Escape bricht ab.",
         },
       }}
       onDragStart={onDragStart}

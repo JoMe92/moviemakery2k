@@ -1,0 +1,24 @@
+.controls {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.seek {
+  width: 100%;
+  margin: 2px 0;
+  accent-color: var(--y2k-select);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.time {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}

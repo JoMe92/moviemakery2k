@@ -195,4 +195,109 @@ describe("appStore", () => {
     st().removeTransition(second);
     expect(tIn()).toBeNull();
   });
+
+  describe("Wiedergabe", () => {
+    async function threeSlides() {
+      const store = createAppStore(
+        mockApi({
+          getProject: vi.fn(async () => ({
+            schemaVersion: 1 as const,
+            slides: [
+              { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+              {
+                id: "s2",
+                mediaId: "b",
+                duration: 5,
+                transitionIn: { transitionId: "fade", duration: 1.25 },
+              },
+              {
+                id: "s3",
+                mediaId: "a",
+                duration: 5,
+                transitionIn: { transitionId: "fade", duration: 1.25 },
+              },
+            ],
+          })),
+        }),
+      );
+      await store.getState().init();
+      return store;
+    }
+
+    it("spielt ab, pausiert, hält am Ende an und Stopp springt an den Anfang", async () => {
+      const store = await threeSlides();
+      const st = () => store.getState();
+      st().togglePlay();
+      expect(st().playback).toEqual({ playing: true, time: 0 });
+      st().tick(0.2);
+      st().togglePlay();
+      expect(st().playback).toEqual({ playing: false, time: 0.2 });
+      st().tick(0.2);
+      expect(st().playback.time).toBe(0.2);
+      st().play();
+      for (let i = 0; i < 1000 && st().playback.playing; i++) st().tick(1 / 30);
+      expect(st().playback).toEqual({ playing: false, time: 12.5 });
+      st().stop();
+      expect(st().playback).toEqual({ playing: false, time: 0 });
+    });
+
+    it("Nächstes/Vorheriges Bild und Suchen mit Begrenzung", async () => {
+      const store = await threeSlides();
+      const st = () => store.getState();
+      st().seek(6);
+      st().nextSlide();
+      expect(st().playback.time).toBe(8.75);
+      st().prevSlide();
+      expect(st().playback.time).toBe(5);
+      st().seek(99);
+      expect(st().playback.time).toBe(12.5);
+      st().seek(-1);
+      expect(st().playback.time).toBe(0);
+    });
+
+    it("Spec: Auswahl bei gestoppter Wiedergabe springt an die Startzeit des Bildes", async () => {
+      const store = await threeSlides();
+      const st = () => store.getState();
+      st().select({ kind: "slide", slideId: "s3" });
+      expect(st().playback).toEqual({ playing: false, time: 8.75 });
+      // Während der Wiedergabe ändert die Auswahl die Zeit nicht.
+      st().seek(1);
+      st().play();
+      st().select({ kind: "slide", slideId: "s2" });
+      expect(st().playback.time).toBe(1);
+      expect(st().playback.playing).toBe(true);
+    });
+
+    it("Projektänderung begrenzt die Zeit; leerer Bildstreifen stoppt", async () => {
+      const store = await threeSlides();
+      const st = () => store.getState();
+      st().seek(12);
+      st().removeSlide("s3");
+      expect(st().playback.time).toBe(8.75);
+      st().play();
+      st().newProject();
+      expect(st().playback).toEqual({ playing: false, time: 0 });
+      st().play();
+      expect(st().playback.playing).toBe(false);
+    });
+
+    it("Übergangsdemo: startet beim Auswählen, läuft einmal, endet mit Wiedergabe oder Sammlungswechsel", async () => {
+      const store = await threeSlides();
+      const st = () => store.getState();
+      st().play();
+      st().setPreviewTransition("circle");
+      expect(st().playback.playing).toBe(false);
+      expect(st().demo).toEqual({ playing: true, time: 0 });
+      for (let i = 0; i < 200 && st().demo?.playing; i++) st().tick(0.05);
+      expect(st().demo).toEqual({ playing: false, time: 2.5 }); // 0,5 + 1,5 (Kreis) + 0,5
+      st().play();
+      expect(st().demo).toBeNull();
+      expect(st().previewTransitionId).toBeNull();
+      expect(st().playback.playing).toBe(true);
+
+      st().setPreviewTransition("fade");
+      st().setCollection("media");
+      expect(st().demo).toBeNull();
+    });
+  });
 });

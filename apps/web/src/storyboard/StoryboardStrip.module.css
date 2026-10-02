@@ -58,6 +58,14 @@
   outline-offset: -1px;
 }
 
+/* Gerade wiedergegebenes Bild. */
+.tile[data-playing="true"] {
+  border-color: var(--y2k-focus);
+  box-shadow:
+    0 0 0 2px var(--y2k-focus),
+    0 0 8px var(--y2k-button-hover-glow);
+}
+
 .tile:focus-visible {
   outline: 2px solid var(--y2k-focus);
   outline-offset: 1px;
