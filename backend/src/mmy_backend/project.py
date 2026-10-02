@@ -1,4 +1,4 @@
-"""Project model and project store (spec "Projektmodell", design.md D3 and D7).
+"""Project model and project store (spec slideshow-project "Projektmodell", design.md D3 and D7).
 
 `<data_dir>/project.json` contains a `Project` with `schemaVersion: 1`. Every
 element (slide) refers to a medium and optionally carries its incoming
@@ -40,6 +40,7 @@ from pydantic.alias_generators import to_camel
 from mmy_backend.errors import (
     ApiErrorIssue,
     ApiErrorWithIssues,
+    ErrorCode,
     Params,
     ParamValue,
     error_message,
@@ -159,16 +160,18 @@ class ProjectValidationError(Exception):
         """The `project.invalid` error collecting all issues."""
         params: Params = {"count": len(self.issues), "summary": str(self)}
         return ApiErrorWithIssues(
-            code="project.invalid",
+            code=ErrorCode.PROJECT_INVALID,
             params=params,
-            message=error_message("project.invalid", params),
+            message=error_message(ErrorCode.PROJECT_INVALID, params),
             issues=self.issues,
         )
 
 
-def _issue(loc: tuple[str | int, ...], code: str, **params: ParamValue) -> ApiErrorIssue:
+def _issue(
+    loc: tuple[str | int, ...], code: ErrorCode | str, **params: ParamValue
+) -> ApiErrorIssue:
     return ApiErrorIssue(
-        code=code, params=params, message=error_message(code, params), loc=["body", *loc]
+        code=ErrorCode(code), params=params, message=error_message(code, params), loc=["body", *loc]
     )
 
 

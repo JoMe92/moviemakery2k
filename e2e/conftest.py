@@ -1,7 +1,7 @@
-"""E2E-Infrastruktur: echtes Backend + gebaute Web-App, Chromium über Playwright.
+"""E2E infrastructure: real backend + built web app, Chromium via Playwright.
 
-Aufruf über `pixi run test-e2e` (baut die Web-App vorher). Jeder Test bekommt ein
-eigenes Datenverzeichnis und einen eigenen Port.
+Run through `pixi run test-e2e` (builds the web app first). Every test gets its
+own data directory and its own port.
 """
 
 import os
@@ -29,10 +29,14 @@ def _free_port() -> int:
 
 @pytest.fixture(scope="session")
 def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
-    # WebGL2 ohne GPU: SwiftShader (design.md Risiken).
+    # WebGL2 without a GPU: SwiftShader (design.md, risks).
     return {
         **browser_type_launch_args,
-        "args": ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
+        "args": [
+            "--use-angle=swiftshader",
+            "--enable-unsafe-swiftshader",
+            "--ignore-gpu-blocklist",
+        ],
     }
 
 
@@ -45,7 +49,7 @@ def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]
 @pytest.fixture
 def server(tmp_path: Path) -> Iterator[str]:
     if not (WEB_DIST / "index.html").is_file():
-        pytest.fail("apps/web/dist fehlt – bitte über `pixi run test-e2e` starten (baut vorher).")
+        pytest.fail("apps/web/dist is missing - run via `pixi run test-e2e` (builds it first).")
     port = _free_port()
     env = {
         **os.environ,
@@ -67,7 +71,7 @@ def server(tmp_path: Path) -> Iterator[str]:
             except OSError:
                 time.sleep(0.1)
         else:
-            pytest.fail("Backend ist nicht gestartet")
+            pytest.fail("Backend did not start")
         yield base
     finally:
         proc.terminate()
@@ -76,7 +80,7 @@ def server(tmp_path: Path) -> Iterator[str]:
 
 @pytest.fixture
 def images(tmp_path: Path) -> dict[str, Path]:
-    """Einfarbige Testbilder (eins hochkant)."""
+    """Single-colour test images (one in portrait orientation)."""
     specs = {
         "rot.png": ((640, 480), (255, 0, 0)),
         "gruen.png": ((640, 480), (0, 255, 0)),

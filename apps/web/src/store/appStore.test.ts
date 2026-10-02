@@ -90,7 +90,8 @@ describe("appStore", () => {
           ? {
               ok: false as const,
               filename: file.name,
-              error: "unsupported" as const,
+              errorCode: "media.unsupportedType" as const,
+              errorParams: {},
               message: "Kein unterstütztes Bild.",
             }
           : {

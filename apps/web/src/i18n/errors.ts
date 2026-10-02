@@ -1,16 +1,18 @@
 /**
- * Translation of backend errors (localization design.md D5). Known codes map
- * to the catalog keys `errors.<code>`; unknown codes show the backend's
- * English `message`. The API names the code differently per place — this
- * module hides that:
+ * Translation of backend errors (localization design.md D5). Every code of
+ * the contract's `ErrorCode` maps to the catalog key `errors.<code>`
+ * (harden-export-and-ui design.md D4: a missing text is a type error, see
+ * `errorKey`); codes outside it show the backend's English `message`.
+ * Where the code comes from:
  * - HTTP errors: `detail.code` / `detail.params` (`ApiError.info`),
  * - FastAPI's native 422 list: `type` / `ctx` per entry (`info.issues`),
- * - upload results: `error` / `errorParams`,
- * - export jobs: `errorCode` / `errorParams`.
+ * - upload results and export jobs alike: `errorCode` / `errorParams` /
+ *   `message` (design.md D3).
  */
 import {
   ApiError,
   type ApiErrorInfo,
+  type ErrorCode,
   type ErrorParams,
   type ExportJob,
   type UploadResult,
@@ -18,11 +20,19 @@ import {
 import { formatNumber } from "./format";
 import type { Locale } from "./locale";
 import { translate, translateDynamic } from "./t";
+import type { MessageKey } from "./types";
 
 type UploadFailure = Extract<UploadResult, { ok: false }>;
 
-/** Catalog key of a backend error code. */
-export const errorKey = (code: string) => `errors.${code}`;
+/**
+ * Catalog key of a backend error code. The return type is checked against the
+ * catalog: if `errors` in `en.ts` (and thus `de.ts`, which satisfies the same
+ * shape) lacks a text for any `ErrorCode`, this line fails `tsc` with the
+ * missing key — the catalog cannot fall behind the contract.
+ */
+export function errorKey(code: ErrorCode): MessageKey {
+  return `errors.${code}`;
+}
 
 function formatParams(locale: Locale, params: ErrorParams): Record<string, string> {
   const out: Record<string, string> = {};
@@ -43,7 +53,9 @@ function translateCode(
 ): string | null {
   if (!code) return null;
   const missing = "\u0000";
-  const text = translateDynamic(locale, errorKey(code), params, missing);
+  // `code` may lie outside the contract (FastAPI's own types, newer backends),
+  // so the lookup is dynamic and a missing text falls back to the message.
+  const text = translateDynamic(locale, `errors.${code}`, params, missing);
   return text === missing ? null : text;
 }
 
@@ -80,13 +92,13 @@ export function describeError(error: unknown, locale: Locale, offlineText?: stri
   return offlineText ?? translate(locale, "errors.client.offline");
 }
 
-/** Structured error of a failed upload result (`error` is the code). */
+/** Structured error of a failed upload result. */
 export function uploadFailureInfo(result: UploadFailure): ApiErrorInfo {
-  return { code: result.error, params: result.errorParams ?? {}, message: result.message };
+  return { code: result.errorCode, params: result.errorParams ?? {}, message: result.message };
 }
 
 /** Structured error of a failed export job, or null if it carries none. */
 export function jobFailureInfo(job: ExportJob): ApiErrorInfo | null {
-  if (!job.errorCode && !job.error) return null;
-  return { code: job.errorCode ?? null, params: job.errorParams ?? {}, message: job.error ?? "" };
+  if (!job.errorCode && !job.message) return null;
+  return { code: job.errorCode ?? null, params: job.errorParams ?? {}, message: job.message ?? "" };
 }

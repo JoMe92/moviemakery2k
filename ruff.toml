@@ -1,0 +1,7 @@
+# Ruff settings for the Python outside `backend/` (`e2e/`, `scripts/`).
+# `backend/pyproject.toml` stays the single source of the rules; the backend
+# itself is linted with that file directly (it is the closer configuration).
+extend = "backend/pyproject.toml"
+
+[lint.isort]
+known-first-party = ["canvas"]

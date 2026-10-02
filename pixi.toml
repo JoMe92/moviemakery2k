@@ -5,7 +5,7 @@
 name = "moviemakery2k"
 version = "0.1.0"
 channels = ["conda-forge"]
-platforms = ["linux-64", "osx-arm64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "win-64"]
 requires-pixi = ">=0.81"
 
 [dependencies]
@@ -22,7 +22,8 @@ pillow = ">=12"
 moderngl = ">=5.12"
 glcontext = ">=3"
 
-[target.linux-64.dependencies]
+[target.linux.dependencies]
+# Both Linux targets (linux-64, linux-aarch64; design.md D1 of harden-export-and-ui).
 # Mesa with the llvmpipe software renderer: EGL without a display, GPU or system packages.
 mesalib = "*"
 
@@ -32,7 +33,8 @@ PYTHONNOUSERSITE = "1"
 # Playwright browsers inside the project instead of ~/.cache (see README: cache problems).
 PLAYWRIGHT_BROWSERS_PATH = "$PIXI_PROJECT_ROOT/.pixi/playwright-browsers"
 
-[target.linux-64.activation.env]
+[target.linux.activation.env]
+# Both Linux targets (linux-64, linux-aarch64).
 # Headless EGL from the Pixi environment instead of system packages (design.md D1, D8):
 # otherwise glvnd only looks for the Mesa ICD under /usr/share/glvnd/egl_vendor.d and
 # glcontext only finds libEGL/libGL in the system via ldconfig.
@@ -71,9 +73,10 @@ dev = { cmd = "python scripts/dev.py", depends-on = ["install-web"], description
 
 lint-web = "biome check ."
 lint-backend = { cmd = "ruff check . && ruff format --check .", cwd = "backend" }
-lint = { depends-on = ["lint-web", "lint-backend"] }
+lint-scripts = { cmd = "ruff check e2e scripts && ruff format --check e2e scripts", description = "Ruff for e2e/ and scripts/ (config: ruff.toml, extends backend/pyproject.toml)" }
+lint = { depends-on = ["lint-web", "lint-backend", "lint-scripts"] }
 
-format = { cmd = "biome check --write . && ruff format backend && ruff check --fix backend" }
+format = { cmd = "biome check --write . && ruff format backend e2e scripts && ruff check --fix backend e2e scripts" }
 
 typecheck-web = { cmd = "pnpm -r typecheck", depends-on = ["install-web"] }
 typecheck-backend = { cmd = "mypy src tests", cwd = "backend" }

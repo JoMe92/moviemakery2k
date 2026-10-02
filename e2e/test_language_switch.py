@@ -1,4 +1,4 @@
-"""End to end: UI language (spec localization, TASK-WEB-020).
+"""End to end: UI language (spec localization "Wahl der Sprache", TASK-WEB-020).
 
 The default `page` runs with browser locale `de-DE` (conftest.py), so the app
 starts in German. One test switches to English via Tools → Options and checks
@@ -74,7 +74,7 @@ def test_switch_to_english_via_options(page: Page, server: str, images: dict[str
         ).to_be_visible()
     expect(page.get_by_text("Saved", exact=True)).to_be_visible()
 
-    # Time display with "." as decimal separator: 15 − 2 × 1.25 = 12.50 s.
+    # Time display with "." as decimal separator: 15 - 2 x 1.25 = 12.50 s.
     page.get_by_role("button", name="Stop").click()
     expect(time).to_have_text("0:00:00.00 / 0:00:12.50")
     page.get_by_role("button", name="Next picture").click()

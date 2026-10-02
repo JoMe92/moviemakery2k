@@ -7,14 +7,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from mmy_backend.config import Settings
-from mmy_backend.errors import ERRORS, api_error, error_message
+from mmy_backend.errors import ERRORS, ErrorCode, api_error, error_message
 from mmy_backend.main import create_app
 
 CODE = re.compile(r"^(media|project|export)(\.[a-z][A-Za-z]*)+$")
 
 
 @pytest.mark.parametrize("code", sorted(ERRORS))
-def test_code_is_dotted_and_message_uses_only_declared_params(code: str) -> None:
+def test_code_is_dotted_and_message_uses_only_declared_params(code: ErrorCode) -> None:
     assert CODE.fullmatch(code), code
     spec = ERRORS[code]
     used = {name for _, name, _, _ in string.Formatter().parse(spec.template) if name}
@@ -22,6 +22,12 @@ def test_code_is_dotted_and_message_uses_only_declared_params(code: str) -> None
     message = error_message(code, dict.fromkeys(spec.params, 1))
     assert message.isascii() or "“" in message  # English, typographic quotes allowed
     assert message.strip() and "{" not in message
+
+
+def test_error_code_enum_matches_errors() -> None:
+    assert set(ERRORS) == set(ErrorCode)
+    assert all(isinstance(code, ErrorCode) for code in ERRORS)
+    assert ErrorCode.EXPORT_EMPTY_PROJECT.value == "export.emptyProject"
 
 
 def test_api_error_shape() -> None:
@@ -42,9 +48,25 @@ def test_openapi_documents_api_error(settings: Settings) -> None:
     schemas = spec["components"]["schemas"]
     assert set(schemas["ApiError"]["required"]) == {"code", "params", "message"}
     assert "issues" in schemas["ApiErrorWithIssues"]["properties"]
-    assert "errorCode" in schemas["ExportJob"]["properties"]
-    assert "errorParams" in schemas["ExportJob"]["properties"]
-    assert "errorParams" in schemas["MediaUploadFailure"]["properties"]
+
+    # design.md D4: the codes are an enum of the contract.
+    enum = schemas["ErrorCode"]
+    assert enum["type"] == "string"
+    assert enum["enum"] == [code.value for code in ErrorCode]
+    code_ref = {"$ref": "#/components/schemas/ErrorCode"}
+    assert schemas["ApiError"]["properties"]["code"]["$ref"] == code_ref["$ref"]
+
+    # design.md D3: upload results and export jobs report errors in the same fields.
+    job = schemas["ExportJob"]["properties"]
+    failure = schemas["MediaUploadFailure"]["properties"]
+    for name in ("ExportJob", "MediaUploadFailure"):
+        fields = {"errorCode", "errorParams", "message"}
+        assert fields <= set(schemas[name]["properties"]), name
+        assert fields <= set(schemas[name]["required"]), name
+        assert "error" not in schemas[name]["properties"], name
+    assert code_ref in job["errorCode"]["anyOf"]
+    assert {"type": "null"} in job["errorCode"]["anyOf"]
+    assert failure["errorCode"]["$ref"] == code_ref["$ref"]
 
     def ref(path: str, method: str, status: str) -> str:
         content = spec["paths"][path][method]["responses"][status]["content"]

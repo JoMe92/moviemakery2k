@@ -1,10 +1,10 @@
-"""Hilfen zum Auslesen eines WebGL-Canvas im Browser."""
+"""Helpers for reading back a WebGL canvas in the browser."""
 
 from typing import Any
 
 from playwright.sync_api import Page
 
-# Zeichnet das (WebGL-)Canvas in ein 2D-Canvas und liefert Pixelstatistiken.
+# Draws the (WebGL) canvas into a 2D canvas and returns pixel statistics.
 _READ = """
 (selector) => {
   const src = document.querySelector(selector);
@@ -31,7 +31,7 @@ def canvas_stats(page: Page, selector: str) -> dict[str, Any]:
 
 
 def pixel(page: Page, selector: str, x: float, y: float) -> list[int]:
-    """RGB an relativer Position (0..1, Ursprung oben links)."""
+    """RGB at a relative position (0..1, origin top left)."""
     return page.evaluate(  # type: ignore[no-any-return]
         """([sel, x, y]) => {
           const src = document.querySelector(sel);
@@ -39,7 +39,9 @@ def pixel(page: Page, selector: str, x: float, y: float) -> list[int]:
           c.width = src.width; c.height = src.height;
           const ctx = c.getContext('2d');
           ctx.drawImage(src, 0, 0);
-          const px = ctx.getImageData(Math.floor(x * (c.width - 1)), Math.floor(y * (c.height - 1)), 1, 1).data;
+          const px = ctx.getImageData(
+            Math.floor(x * (c.width - 1)), Math.floor(y * (c.height - 1)), 1, 1
+          ).data;
           return [px[0], px[1], px[2]];
         }""",
         [selector, x, y],
@@ -47,7 +49,7 @@ def pixel(page: Page, selector: str, x: float, y: float) -> list[int]:
 
 
 def distinct_in_row(page: Page, selector: str, y: float) -> int:
-    """Anzahl der Farbwechsel entlang einer Zeile (relativ, Ursprung oben)."""
+    """Number of colour runs along a row (relative y, origin at the top)."""
     return page.evaluate(  # type: ignore[no-any-return]
         """([sel, y]) => {
           const src = document.querySelector(sel);

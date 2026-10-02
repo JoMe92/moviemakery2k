@@ -45,7 +45,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from mmy_backend.catalog import TransitionCatalog
-from mmy_backend.errors import Params, error_message, validation_error
+from mmy_backend.errors import ErrorCode, Params, error_message, validation_error
 from mmy_backend.media import MediaStore
 from mmy_backend.project import Project
 from mmy_backend.render.context import RenderContextError
@@ -77,8 +77,8 @@ MAX_JOB_ENTRIES = 20
 CANCEL_TIMEOUT_SECONDS = 30.0
 """The longest `cancel` waits for the worker to clean up."""
 
-MESSAGE_GL_UNAVAILABLE = error_message("export.glUnavailable")
-MESSAGE_UNEXPECTED = error_message("export.unexpected")
+MESSAGE_GL_UNAVAILABLE = error_message(ErrorCode.EXPORT_GL_UNAVAILABLE)
+MESSAGE_UNEXPECTED = error_message(ErrorCode.EXPORT_UNEXPECTED)
 
 
 class ExportStatus(StrEnum):
@@ -150,17 +150,22 @@ class ExportRequest(_ExportModel):
 
 
 class ExportJob(_ExportModel):
+    # The error fields are always sent; mark them required in the schema (design.md D3).
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     id: Annotated[str, Field(pattern=EXPORT_ID_PATTERN)]
     status: ExportStatus
     progress: float = Field(ge=0.0, le=1.0, description="Progress 0..1")
     profile: ExportProfile
     file_name: str = Field(description="File name without extension")
-    error: str | None = Field(description="English message when `failed`, otherwise null")
-    error_code: str | None = Field(
-        default=None, description="Stable error code when `failed` (design.md D5), otherwise null"
+    error_code: ErrorCode | None = Field(
+        default=None, description="Stable error code when `failed` (design.md D3), otherwise null"
     )
     error_params: Params = Field(
         default_factory=dict, description="Values of the error message; empty without error"
+    )
+    message: str | None = Field(
+        default=None, description="English error message when `failed`, otherwise null"
     )
     created_at: datetime
 
@@ -191,9 +196,9 @@ class _Job:
     project: Project
     status: ExportStatus = ExportStatus.QUEUED
     progress: float = 0.0
-    error: str | None = None
-    error_code: str | None = None
+    error_code: ErrorCode | None = None
     error_params: Params = field(default_factory=dict)
+    message: str | None = None
     cancel: threading.Event = field(default_factory=threading.Event)
     thread: threading.Thread | None = None
 
@@ -208,9 +213,9 @@ class _Job:
             progress=self.progress,
             profile=self.profile,
             file_name=self.file_name,
-            error=self.error,
             error_code=self.error_code,
             error_params=dict(self.error_params),
+            message=self.message,
             created_at=self.created_at,
         )
 
@@ -288,6 +293,16 @@ class ExportManager:
             job = self._jobs.get(export_id)
             return job.model() if job is not None else None
 
+    def export_using_media(self, media_id: str) -> str | None:
+        """ID of a `queued`/`running` job whose snapshot uses `media_id`, else None."""
+        with self._lock:
+            for job in self._jobs.values():
+                if not job.status.active:
+                    continue
+                if any(s.media_id == media_id for s in job.project.slides):
+                    return job.id
+            return None
+
     def file_path(self, export_id: str) -> Path | None:
         """Path of the finished file; only with status `done`, otherwise None."""
         with self._lock:
@@ -339,13 +354,13 @@ class ExportManager:
             if job.status is ExportStatus.RUNNING:
                 job.progress = max(job.progress, min(fraction, 1.0))
 
-    def _fail(self, job: _Job, code: str, params: Params) -> None:
+    def _fail(self, job: _Job, code: ErrorCode, params: Params) -> None:
         self._set(
             job,
             status=ExportStatus.FAILED,
-            error=error_message(code, params),
             error_code=code,
             error_params=params,
+            message=error_message(code, params),
         )
 
     def _run(self, job: _Job) -> None:
@@ -378,18 +393,18 @@ class ExportManager:
             logger.info("Export %s cancelled", job.id)
         except ExportFailed as exc:
             self._discard(job)
-            code: str
+            code: ErrorCode
             params: Params
             if isinstance(exc.__cause__, RenderContextError):
-                code, params = "export.glUnavailable", {"reason": str(exc.__cause__)}
+                code, params = ErrorCode.EXPORT_GL_UNAVAILABLE, {"reason": str(exc.__cause__)}
             else:
-                code, params = exc.code, exc.params
+                code, params = ErrorCode(exc.code), exc.params
             logger.error("Export %s failed: %s %s", job.id, exc, params)
             self._fail(job, code, params)
         except Exception:
             self._discard(job)
             logger.exception("Export %s failed unexpectedly", job.id)
-            self._fail(job, "export.unexpected", {})
+            self._fail(job, ErrorCode.EXPORT_UNEXPECTED, {})
         else:
             self._set(job, status=ExportStatus.DONE, progress=1.0)
             logger.info("Export %s done: %s", job.id, job.output)

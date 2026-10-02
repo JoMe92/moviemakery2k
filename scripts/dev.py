@@ -18,8 +18,15 @@ import time
 PORT = os.environ.get("MMY_API_PORT", "8000")
 COMMANDS = {
     "backend": [
-        sys.executable, "-m", "uvicorn", "mmy_backend.main:app",
-        "--reload", "--reload-dir", "backend/src", "--port", PORT,
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "mmy_backend.main:app",
+        "--reload",
+        "--reload-dir",
+        "backend/src",
+        "--port",
+        PORT,
     ],
     "web": ["pnpm", "--filter", "@mmy/web", "dev"],
 }

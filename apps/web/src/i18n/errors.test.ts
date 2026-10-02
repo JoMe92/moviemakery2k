@@ -1,66 +1,41 @@
 import { describe, expect, it } from "vitest";
-// The backend's list of error codes (design.md D5) is the contract to check against.
-import errorsPy from "../../../../backend/src/mmy_backend/errors.py?raw";
 import { ApiError, type ApiErrorInfo } from "../lib/apiClient";
 import { exportJob } from "../store/testApi";
 import { de } from "./de";
 import { en } from "./en";
-import { describeError, jobFailureInfo, translateError, uploadFailureInfo } from "./errors";
+import {
+  describeError,
+  errorKey,
+  jobFailureInfo,
+  translateError,
+  uploadFailureInfo,
+} from "./errors";
+import { translate } from "./t";
 
-/** Body of the call starting at `open` (index of "("), honouring Python string literals. */
-function callBody(text: string, open: number): string {
-  let depth = 0;
-  let quote: string | null = null;
-  for (let i = open; i < text.length; i++) {
-    const ch = text[i];
-    if (quote) {
-      if (ch === "\\") i++;
-      else if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") quote = ch;
-    else if (ch === "(") depth++;
-    else if (ch === ")" && --depth === 0) return text.slice(open + 1, i);
-  }
-  throw new Error("unbalanced ErrorSpec call");
+// Completeness of the catalog against the backend's codes is a type check
+// (`errorKey`, design.md D4), not a test.
+
+/** All `[dotted key, text]` leaves below `node`. */
+function leaves(node: object, prefix: string): [string, string][] {
+  return Object.entries(node).flatMap(([name, value]): [string, string][] =>
+    typeof value === "string"
+      ? [[`${prefix}.${name}`, value]]
+      : leaves(value as object, `${prefix}.${name}`),
+  );
 }
 
-/** Codes and their params from `"code": ErrorSpec("template", ("param", …))` in errors.py. */
-function backendCodes(): Map<string, string[]> {
-  const codes = new Map<string, string[]>();
-  for (const match of errorsPy.matchAll(/"([a-z]+(?:\.[A-Za-z]+)+)": ErrorSpec\(/g)) {
-    const body = callBody(errorsPy, (match.index ?? 0) + match[0].length - 1);
-    // The params tuple is the trailing `("a", "b")` group, if any.
-    const tuple = /\(((?:\s*"[A-Za-z]+"\s*,?)+)\)\s*,?\s*$/.exec(body)?.[1] ?? "";
-    codes.set(
-      match[1] ?? "",
-      [...tuple.matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1] ?? ""),
-    );
-  }
-  return codes;
-}
+const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 
-function lookup(catalog: object, key: string): unknown {
-  return key.split(".").reduce<unknown>((node, part) => {
-    return node && typeof node === "object" ? (node as Record<string, unknown>)[part] : undefined;
-  }, catalog);
-}
-
-describe("backend error codes", () => {
-  const codes = backendCodes();
-
-  it("reads the code list from errors.py", () => {
-    expect(codes.size).toBeGreaterThanOrEqual(30);
-    expect(codes.has("export.emptyProject")).toBe(true);
-    expect(codes.get("export.ffmpegInputClosed")).toEqual(["frame", "total"]);
+describe("error catalog", () => {
+  it("maps a code to its catalog key", () => {
+    expect(errorKey("export.fileName.tooLong")).toBe("errors.export.fileName.tooLong");
+    expect(translate("en", errorKey("media.notFound"))).toBe("Media item not found.");
   });
 
-  it("every code has a German and an English text with only known placeholders", () => {
-    for (const [code, params] of codes) {
-      for (const catalog of [de, en]) {
-        const text = lookup(catalog, `errors.${code}`);
-        expect(typeof text, code).toBe("string");
-        const used = [...String(text).matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
-        for (const name of used) expect(params, `${code}: {${name}}`).toContain(name);
-      }
+  it("German texts use the same placeholders as the English ones", () => {
+    const german = new Map(leaves(de.errors, "errors"));
+    for (const [key, text] of leaves(en.errors, "errors")) {
+      expect(placeholders(german.get(key) ?? ""), key).toEqual(placeholders(text));
     }
   });
 });
@@ -151,18 +126,18 @@ describe("error sources", () => {
     );
   });
 
-  it("unifies `error` (upload) and `errorCode` (export job)", () => {
+  it("reads the same fields from upload results and export jobs", () => {
     const upload = uploadFailureInfo({
       ok: false,
       filename: "a.gif",
-      error: "media.tooLarge",
+      errorCode: "media.tooLarge",
       errorParams: { maxMegabytes: 25 },
       message: "The file is too large (at most 25 MB).",
     });
     expect(translateError(upload, "de")).toBe("Die Datei ist zu groß (höchstens 25 MB).");
     const job = exportJob({
       status: "failed",
-      error: "FFmpeg failed with exit code 1.",
+      message: "FFmpeg failed with exit code 1.",
       errorCode: "export.ffmpegFailed",
       errorParams: { returnCode: 1 },
     });
