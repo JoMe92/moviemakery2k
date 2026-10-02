@@ -149,6 +149,8 @@ export const en = {
     deleteAudioTitle: "Delete Audio Clip",
     deleteAudioQuestion:
       "Are you sure you want to delete “{name}”? It will also be removed from the music track.",
+    audioDraggable: "draggable audio",
+    addToMusicTrack: "Add to Music Track",
   },
   upload: {
     progress: "Importing {current} of {total} …",
@@ -179,6 +181,9 @@ export const en = {
     transition: "Transition:",
   },
   dnd: {
+    audio: "Audio “{name}”",
+    musicClip: "Music clip {number}",
+    overMusic: "Over the music track.",
     element: "Element",
     transition: "Transition “{name}”",
     picture: "Picture “{name}”",
@@ -191,6 +196,19 @@ export const en = {
     cancelled: "Dragging cancelled.",
     instructions:
       "Enter picks up the element. Move it with the arrow keys (from the collection: arrow down into the storyboard), Enter or Space drops, Escape cancels.",
+  },
+  musicTrack: {
+    label: "Audio/Music",
+    list: "Music track",
+    emptyHint: "Drag music from “My Music” here.",
+    sortable: "sortable music clip",
+    clip: "Music clip {number}: {name}, {duration}",
+    clipMenu: "Music clip {number} of the music track",
+    missingAudio: "missing audio file",
+    remove: "Remove",
+    rejectAudio: "Audio cannot be placed in the storyboard. Drag it onto the music track.",
+    rejectPicture: "Only audio can be placed on the music track.",
+    cutHint: "Music {music} / Movie {movie} – will be cut at the end",
   },
   transitions: {
     unavailable: "The transition catalog is not available.",

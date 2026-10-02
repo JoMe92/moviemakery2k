@@ -30,6 +30,13 @@ import {
 } from "../player/controls";
 import { slideStartTime } from "../timeline/timeline";
 import {
+  insertMusicClip,
+  MUSIC_TRACK_MAX,
+  moveMusicClip as moveMusicClipOp,
+  newMusicClip,
+  removeMusicClip as removeMusicClipOp,
+} from "./musicOps";
+import {
   insertSlide,
   isValidSlideDuration,
   isValidTransitionDuration,
@@ -77,6 +84,8 @@ export interface AppState {
   saveState: SaveState;
   collection: CollectionId;
   selection: Selection;
+  /** Selected clip on the music track (exclusive with `selection`). */
+  musicSelection: string | null;
   /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
@@ -130,6 +139,16 @@ export interface AppState {
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
   removeTransition(slideId: string): void;
+
+  /** Select a clip on the music track (null clears); ends a picture selection. */
+  selectMusicClip(clipId: string | null): void;
+  /**
+   * Add an audio medium to the music track at `index` (default: end).
+   * Pictures and a full track (100 clips) are refused; returns whether it was added.
+   */
+  addMusicClip(mediaId: string, index?: number): boolean;
+  moveMusicClip(from: number, to: number): void;
+  removeMusicClip(clipId: string): void;
   newProject(): void;
 
   /** Run the autosave immediately (tests, page change). */
@@ -207,6 +226,14 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       scheduleSave();
     }
 
+    /** Store a changed music track; keeps the music selection if the clip is still there. */
+    function commitMusic(music: MusicClip[]): void {
+      const { musicSelection } = get();
+      const stillThere = musicSelection !== null && music.some((c) => c.id === musicSelection);
+      set({ music, musicSelection: stillThere ? musicSelection : null });
+      scheduleSave();
+    }
+
     const duration = () => timelineOf(get().slides).duration;
     const noDemo = { previewTransitionId: null, demo: null } as const;
 
@@ -224,6 +251,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       saveState: "idle",
       collection: "media",
       selection: null,
+      musicSelection: null,
       previewTransitionId: null,
       playback: STOPPED,
       demo: null,
@@ -276,6 +304,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         // Selecting in the filmstrip always ends a transition demo (design.md D7).
         const { playback, slides } = get();
         const index = selection ? slides.findIndex((s) => s.id === selection.slideId) : -1;
+        // One selection at a time: a picture ends the music selection.
+        if (selection) set({ musicSelection: null });
         if (index >= 0 && !playback.playing) {
           set({
             selection,
@@ -397,11 +427,14 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         const project = await api.deleteMedia(id);
         const { selection } = get();
         const stillThere = selection && project.slides.some((s) => s.id === selection.slideId);
+        const { musicSelection } = get();
+        const musicStillThere = project.music.some((c) => c.id === musicSelection);
         set({
           media: get().media.filter((m) => m.id !== id),
           slides: project.slides,
           music: project.music,
           selection: stillThere ? selection : null,
+          musicSelection: musicStillThere ? musicSelection : null,
           playback: playbackFor(project.slides),
         });
       },
@@ -451,8 +484,29 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       removeTransition(slideId) {
         commit(updateSlide(get().slides, slideId, (s) => ({ ...s, transitionIn: null })));
       },
+
+      selectMusicClip(clipId) {
+        set(
+          clipId === null ? { musicSelection: null } : { musicSelection: clipId, selection: null },
+        );
+      },
+      addMusicClip(mediaId, index) {
+        // Only audio belongs on the music track (spec music-track "Musikleiste").
+        const { media, music } = get();
+        if (media.find((m) => m.id === mediaId)?.kind !== "audio") return false;
+        if (music.length >= MUSIC_TRACK_MAX) return false;
+        commitMusic(insertMusicClip(music, newMusicClip(mediaId), index ?? music.length));
+        return true;
+      },
+      moveMusicClip(from, to) {
+        commitMusic(moveMusicClipOp(get().music, from, to));
+      },
+      removeMusicClip(clipId) {
+        commitMusic(removeMusicClipOp(get().music, clipId));
+      },
+
       newProject() {
-        set({ music: [] });
+        set({ music: [], musicSelection: null });
         commit([]);
       },
 

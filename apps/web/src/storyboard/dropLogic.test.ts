@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Slide } from "../lib/apiClient";
-import { formatDuration, insertionIndex, resolveDrop } from "./dropLogic";
+import type { MusicClip, Slide } from "../lib/apiClient";
+import { formatDuration, insertionIndex, musicInsertionIndex, resolveDrop } from "./dropLogic";
 
 const s = (id: string): Slide => ({ id, mediaId: `m${id}`, duration: 5, transitionIn: null });
 const slides = [s("1"), s("2"), s("3")];
@@ -78,5 +78,63 @@ describe("dropLogic", () => {
       kind: "none",
     });
     expect(insertionIndex({ type: "transitionSlot", slideId: "2" }, slides)).toBeNull();
+  });
+});
+
+describe("dropLogic: music track", () => {
+  const c = (id: string): MusicClip => ({
+    id,
+    mediaId: `a${id}`,
+    trimStart: 0,
+    trimEnd: null,
+    volume: 1,
+    fadeIn: false,
+    fadeOut: false,
+  });
+  const music = [c("1"), c("2")];
+  const audio = { type: "audio", mediaId: "song" } as const;
+
+  it("inserts audio at the marker or at the end of the track", () => {
+    expect(resolveDrop(audio, { type: "musicClip", clipId: "1", after: true }, [], music)).toEqual({
+      kind: "insertMusic",
+      mediaId: "song",
+      index: 1,
+    });
+    expect(resolveDrop(audio, { type: "musicStrip" }, [], music)).toEqual({
+      kind: "insertMusic",
+      mediaId: "song",
+      index: 2,
+    });
+    expect(musicInsertionIndex({ type: "musicStrip" }, [])).toBe(0);
+    expect(musicInsertionIndex({ type: "strip" }, music)).toBeNull();
+  });
+
+  it("refuses audio on the storyboard and pictures on the music track", () => {
+    for (const target of [
+      { type: "strip" },
+      { type: "slide", slideId: "1", after: false },
+      { type: "transitionSlot", slideId: "2" },
+    ] as const) {
+      expect(resolveDrop(audio, target, slides, music)).toEqual({
+        kind: "reject",
+        reason: "audioOnStoryboard",
+      });
+    }
+    expect(resolveDrop(media, { type: "musicStrip" }, slides, music)).toEqual({
+      kind: "reject",
+      reason: "pictureOnMusic",
+    });
+    expect(resolveDrop({ type: "slide", slideId: "1" }, { type: "musicStrip" }, slides)).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("reorders clips on the music track only", () => {
+    const item = { type: "music", clipId: "2" } as const;
+    expect(
+      resolveDrop(item, { type: "musicClip", clipId: "1", after: false }, slides, music),
+    ).toEqual({ kind: "moveMusic", from: 1, to: 0 });
+    expect(resolveDrop(item, { type: "musicStrip" }, slides, music)).toEqual({ kind: "none" });
+    expect(resolveDrop(item, { type: "strip" }, slides, music)).toEqual({ kind: "none" });
   });
 });

@@ -238,7 +238,7 @@ describe("“My Music” collection", () => {
     expect(input).toHaveAttribute("accept", IMPORT_ACCEPT.any);
   });
 
-  it("never adds audio to the filmstrip (double-click, context menu, store)", async () => {
+  it("adds audio to the music track, never to the filmstrip (double-click, context menu, store)", async () => {
     const user = userEvent.setup();
     const { ready, store } = renderApp(importApi([mediaItem("a"), audioItem("song")]));
     await act(() => ready);
@@ -248,6 +248,7 @@ describe("“My Music” collection", () => {
     await user.dblClick(tile);
     act(() => store.getState().addSlide("song"));
     expect(store.getState().slides).toEqual([]);
+    expect(store.getState().music.map((c) => c.mediaId)).toEqual(["song"]);
 
     fireEvent.contextMenu(tile, { clientX: 10, clientY: 10 });
     const menu = screen.getByRole("menu", { name: LABELS.de.menu });
@@ -255,9 +256,11 @@ describe("“My Music” collection", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((m) => m.textContent),
-    ).toEqual(["Löschen"]);
-    // Not a dnd-kit draggable: nothing can be dragged into the filmstrip.
-    expect(tile).not.toHaveAttribute("aria-roledescription");
+    ).toEqual(["Zur Musikleiste hinzufügen", "Löschen"]);
+    await user.click(within(menu).getByRole("menuitem", { name: "Zur Musikleiste hinzufügen" }));
+    expect(store.getState().music.map((c) => c.mediaId)).toEqual(["song", "song"]);
+    // A dnd-kit draggable for the music track (the filmstrip refuses it).
+    expect(tile).toHaveAttribute("aria-roledescription", "ziehbares Audio");
 
     // Pictures still work.
     act(() => store.getState().addSlide("a"));

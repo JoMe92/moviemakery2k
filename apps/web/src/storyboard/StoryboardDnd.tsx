@@ -18,17 +18,30 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { createContext, type ReactNode, useContext, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { translator } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
 import { catalogName } from "../transitions/transitionName";
+import { AudioIcon } from "../ui/icons";
 import {
   type DragItem,
+  type DropRejection,
   type DropTarget,
   insertionIndex,
+  MUSIC_DROPPABLE_ID,
+  musicInsertionIndex,
   resolveDrop,
   STRIP_DROPPABLE_ID,
 } from "./dropLogic";
@@ -39,6 +52,25 @@ import styles from "./StoryboardStrip.module.css";
 const InsertIndexContext = createContext<number | null>(null);
 export const useInsertIndex = () => useContext(InsertIndexContext);
 
+/** Insertion marker for audio on the music track (0…n) or null. */
+const MusicInsertIndexContext = createContext<number | null>(null);
+export const useMusicInsertIndex = () => useContext(MusicInsertIndexContext);
+
+/** How long the hint about a refused drop stays visible. */
+export const DROP_NOTICE_MS = 6000;
+
+interface DropNoticeValue {
+  /** Last refused drop (audio on the storyboard, picture on the music track) or null. */
+  notice: DropRejection | null;
+  /** Show a hint without a drag (e.g. double-click); null hides it. */
+  setNotice: (notice: DropRejection | null) => void;
+}
+const DropNoticeContext = createContext<DropNoticeValue>({
+  notice: null,
+  setNotice: () => undefined,
+});
+export const useDropNotice = () => useContext(DropNoticeContext);
+
 const dragItem = (active: Active | null): DragItem | null =>
   (active?.data.current as DragItem | undefined) ?? null;
 
@@ -47,6 +79,11 @@ const isSlideContainer = (c: DroppableContainer) =>
 
 const isSlotContainer = (c: DroppableContainer) =>
   (c.data.current as DropTarget | undefined)?.type === "transitionSlot";
+
+const isMusicContainer = (c: DroppableContainer) =>
+  (c.data.current as DragItem | undefined)?.type === "music";
+
+const isMusicArea = (c: DroppableContainer) => c.id === MUSIC_DROPPABLE_ID || isMusicContainer(c);
 
 function center(rect: ClientRect) {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
@@ -66,12 +103,29 @@ function pointRect(p: { x: number; y: number }): ClientRect {
  * Transitions only target transition slots (the nearest slot).
  */
 const collisionDetection: CollisionDetection = (args) => {
+  const point = args.pointerCoordinates ?? center(args.collisionRect);
+  const type = dragItem(args.active)?.type;
+  // Music track (add-music-track D7): audio and music clips find the nearest
+  // clip (or the empty track); a picture only hits the track itself so the
+  // drop is refused with a hint.
+  const musicRect = args.droppableRects.get(MUSIC_DROPPABLE_ID);
+  const musicStrip = args.droppableContainers.find((c) => c.id === MUSIC_DROPPABLE_ID);
+  if (musicRect && musicStrip && contains(musicRect, point)) {
+    const whole = [{ id: musicStrip.id, data: { droppableContainer: musicStrip, value: 0 } }];
+    if (type === "media") return whole;
+    if (type !== "audio" && type !== "music") return [];
+    const clips = args.droppableContainers.filter(isMusicContainer);
+    if (clips.length === 0) return whole;
+    return closestCenter({ ...args, collisionRect: pointRect(point), droppableContainers: clips });
+  }
+  if (type === "music") return [];
   const stripRect = args.droppableRects.get(STRIP_DROPPABLE_ID);
   const strip = args.droppableContainers.find((c) => c.id === STRIP_DROPPABLE_ID);
   if (!stripRect || !strip) return [];
-  const point = args.pointerCoordinates ?? center(args.collisionRect);
   if (!contains(stripRect, point)) return [];
-  if (dragItem(args.active)?.type === "transition") {
+  // Audio only hits the strip itself: refused with a hint, no insertion marker.
+  if (type === "audio") return [{ id: strip.id, data: { droppableContainer: strip, value: 0 } }];
+  if (type === "transition") {
     const slots = args.droppableContainers.filter(isSlotContainer);
     if (slots.length === 0) return [];
     return closestCenter({ ...args, collisionRect: pointRect(point), droppableContainers: slots });
@@ -115,25 +169,66 @@ const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => 
   return undefined;
 };
 
+type Containers = Parameters<KeyboardCoordinateGetter>[1]["context"]["droppableContainers"];
+
+/** The droppable containers reduced to `keep` (same interface as dnd-kit's map). */
+function onlyContainers(all: Containers, keep: (c: DroppableContainer) => boolean): Containers {
+  const kept = new Map(Array.from(all.entries()).filter(([, c]) => keep(c)));
+  return Object.assign(kept, {
+    toArray: () => Array.from(kept.values()),
+    getEnabled: () => Array.from(kept.values()).filter((c) => !c.disabled),
+    getNodeFor: (id: DroppableContainer["id"]) => kept.get(id)?.node.current ?? undefined,
+  }) as unknown as Containers;
+}
+
+/**
+ * Keyboard reordering inside one row: storyboard tiles never jump to the
+ * music track and music clips only move among music clips.
+ */
+const sortableInRow =
+  (keep: (c: DroppableContainer) => boolean): KeyboardCoordinateGetter =>
+  (event, args) =>
+    sortableKeyboardCoordinates(event, {
+      ...args,
+      context: {
+        ...args.context,
+        droppableContainers: onlyContainers(args.context.droppableContainers, keep),
+      },
+    });
+const slideCoordinates = sortableInRow((c) => !isMusicArea(c));
+const musicCoordinates = sortableInRow(isMusicContainer);
+
 /**
  * Keyboard: tiles in the strip are sortable as usual; a picture from the
  * collection jumps to the end of the strip with arrow down and moves there
  * from insertion position to insertion position with arrow left/right.
+ * Audio does the same on the music track; music clips are sortable there.
  */
 const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
-  const { context } = args;
-  const type = dragItem(context.active)?.type;
+  const type = dragItem(args.context.active)?.type;
   if (type === "transition") return transitionCoordinates(event, args);
-  if (type !== "media") return sortableKeyboardCoordinates(event, args);
+  if (type === "media") return insertCoordinates(event, args, STRIP_DROPPABLE_ID, isSlideContainer);
+  if (type === "audio") return insertCoordinates(event, args, MUSIC_DROPPABLE_ID, isMusicContainer);
+  if (type === "music") return musicCoordinates(event, args);
+  return slideCoordinates(event, args);
+};
+
+/** Insertion positions of a row (storyboard or music track) for an item from the collection. */
+function insertCoordinates(
+  event: KeyboardEvent,
+  { context }: Parameters<KeyboardCoordinateGetter>[1],
+  rowId: string,
+  isItem: (c: DroppableContainer) => boolean,
+) {
   if (!ARROWS.includes(event.code)) return undefined;
   event.preventDefault();
   const rect = context.collisionRect;
-  const stripRect = context.droppableRects.get(STRIP_DROPPABLE_ID);
+  const stripRect = context.droppableRects.get(rowId);
   if (!rect || !stripRect) return undefined;
 
   const slideRects = context.droppableContainers
     .getEnabled()
-    .filter(isSlideContainer)
+    .filter(isItem)
     .map((c) => context.droppableRects.get(c.id))
     .filter((r): r is ClientRect => r !== undefined)
     .sort((a, b) => a.left - b.left);
@@ -166,7 +261,7 @@ const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   if (event.code === KeyboardCode.Right) return slots[Math.min(current + 1, slots.length - 1)];
   if (event.code === KeyboardCode.Left) return slots[Math.max(current - 1, 0)];
   return undefined;
-};
+}
 
 /** Target from a dnd-kit event: tile with side (pointer left/right of the centre) or strip. */
 function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
@@ -175,7 +270,10 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   const slot = over.data.current as DropTarget | undefined;
   if (slot?.type === "transitionSlot") return { type: "transitionSlot", slideId: slot.slideId };
   const data = over.data.current as DragItem | undefined;
-  if (data?.type !== "slide") return over.id === STRIP_DROPPABLE_ID ? { type: "strip" } : null;
+  if (data?.type !== "slide" && data?.type !== "music") {
+    if (over.id === STRIP_DROPPABLE_ID) return { type: "strip" };
+    return over.id === MUSIC_DROPPABLE_ID ? { type: "musicStrip" } : null;
+  }
   const activator = event.activatorEvent;
   const translated = event.active.rect.current.translated;
   const x =
@@ -184,7 +282,10 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
       : translated
         ? center(translated).x
         : center(over.rect).x;
-  return { type: "slide", slideId: data.slideId, after: x > center(over.rect).x };
+  const after = x > center(over.rect).x;
+  return data.type === "music"
+    ? { type: "musicClip", clipId: data.clipId, after }
+    : { type: "slide", slideId: data.slideId, after };
 }
 
 function describe(state: AppState, item: DragItem | null): string {
@@ -200,6 +301,14 @@ function describe(state: AppState, item: DragItem | null): string {
       name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
     });
   }
+  if (item.type === "audio") {
+    return t("dnd.audio", {
+      name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
+    });
+  }
+  if (item.type === "music") {
+    return t("dnd.musicClip", { number: state.music.findIndex((c) => c.id === item.clipId) + 1 });
+  }
   const index = state.slides.findIndex((s) => s.id === item.slideId);
   return t("storyboard.slideMenu", { number: index + 1 });
 }
@@ -209,9 +318,24 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   const store = useAppStoreApi();
   const { t } = useT();
   const slides = useAppStore((s) => s.slides);
+  const music = useAppStore((s) => s.music);
   const media = useAppStore((s) => s.media);
   const [active, setActive] = useState<DragItem | null>(null);
   const [target, setTarget] = useState<DropTarget | null>(null);
+  const [notice, setNoticeState] = useState<DropRejection | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setNotice = useCallback((next: DropRejection | null) => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = next ? setTimeout(() => setNoticeState(null), DROP_NOTICE_MS) : null;
+    setNoticeState(next);
+  }, []);
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
+  const noticeValue = useMemo(() => ({ notice, setNotice }), [notice, setNotice]);
 
   const sensors = useSensors(
     // Small threshold keeps click and double-click working; the own sensor lets
@@ -221,6 +345,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   );
 
   const insertIndex = active?.type === "media" ? insertionIndex(target, slides) : null;
+  const musicInsertIndex = active?.type === "audio" ? musicInsertionIndex(target, music) : null;
 
   // Announcements read the locale at call time from the store.
   const tNow = () => translator(store.getState().locale);
@@ -233,7 +358,11 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
         const n = store.getState().slides.findIndex((s) => s.id === slot.slideId);
         return tNow()("dnd.overSlot", { number: n + 1 });
       }
-      return over ? tNow()("dnd.overStoryboard") : tNow()("dnd.outside");
+      if (!over) return tNow()("dnd.outside");
+      const onMusic =
+        over.id === MUSIC_DROPPABLE_ID ||
+        (over.data.current as DragItem | undefined)?.type === "music";
+      return tNow()(onMusic ? "dnd.overMusic" : "dnd.overStoryboard");
     },
     onDragEnd: ({ active: a, over }) =>
       over
@@ -243,6 +372,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   };
 
   const onDragStart = (event: DragStartEvent) => {
+    setNotice(null);
     setActive(dragItem(event.active));
     setTarget(null);
   };
@@ -252,10 +382,18 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   };
   const onDragEnd = (event: DragEndEvent) => {
     const state = store.getState();
-    const action = resolveDrop(dragItem(event.active), dropTarget(event), state.slides);
+    const action = resolveDrop(
+      dragItem(event.active),
+      dropTarget(event),
+      state.slides,
+      state.music,
+    );
     setActive(null);
     setTarget(null);
-    if (action.kind === "insert") state.addSlide(action.mediaId, action.index);
+    if (action.kind === "reject") setNotice(action.reason);
+    else if (action.kind === "insertMusic") state.addMusicClip(action.mediaId, action.index);
+    else if (action.kind === "moveMusic") state.moveMusicClip(action.from, action.to);
+    else if (action.kind === "insert") state.addSlide(action.mediaId, action.index);
     else if (action.kind === "move") state.moveSlide(action.from, action.to);
     else if (action.kind === "setTransition")
       state.setTransition(action.slideId, action.transitionId);
@@ -271,6 +409,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
       : active?.type === "slide"
         ? media.find((m) => m.id === slides.find((s) => s.id === active.slideId)?.mediaId)
         : undefined;
+  const overlayAudio = active?.type === "audio" || active?.type === "music";
 
   return (
     <DndContext
@@ -288,11 +427,22 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
-      <InsertIndexContext.Provider value={insertIndex}>{children}</InsertIndexContext.Provider>
+      <DropNoticeContext.Provider value={noticeValue}>
+        <InsertIndexContext.Provider value={insertIndex}>
+          <MusicInsertIndexContext.Provider value={musicInsertIndex}>
+            {children}
+          </MusicInsertIndexContext.Provider>
+        </InsertIndexContext.Provider>
+      </DropNoticeContext.Provider>
       <DragOverlay dropAnimation={null}>
         {active ? (
           <div className={styles.overlay} data-testid="drag-overlay">
             {overlayMedia?.kind === "image" ? <img src={overlayMedia.thumbnailUrl} alt="" /> : null}
+            {overlayAudio ? (
+              <span className={styles.overlayAudio}>
+                <AudioIcon size={36} />
+              </span>
+            ) : null}
             {active.type === "transition" ? (
               <TransitionIcon transitionId={active.transitionId} size={94} />
             ) : null}

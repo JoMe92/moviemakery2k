@@ -228,3 +228,14 @@
 .dialogInfo {
   margin: 0 0 10px;
 }
+
+/* Drag preview for audio and music clips. */
+.overlayAudio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--y2k-pane);
+  color: var(--y2k-border-strong);
+}

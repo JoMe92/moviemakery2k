@@ -145,6 +145,8 @@ export const de = {
     deleteAudioTitle: "Audioclip löschen",
     deleteAudioQuestion:
       "Möchten Sie „{name}“ wirklich löschen? Es wird auch aus der Musikleiste entfernt.",
+    audioDraggable: "ziehbares Audio",
+    addToMusicTrack: "Zur Musikleiste hinzufügen",
   },
   upload: {
     progress: "Importiere {current} von {total} …",
@@ -175,6 +177,9 @@ export const de = {
     transition: "Übergang:",
   },
   dnd: {
+    audio: "Audio „{name}“",
+    musicClip: "Musikstück {number}",
+    overMusic: "Über der Musikleiste.",
     element: "Element",
     transition: "Übergang „{name}“",
     picture: "Bild „{name}“",
@@ -188,6 +193,20 @@ export const de = {
     cancelled: "Ziehen abgebrochen.",
     instructions:
       "Eingabetaste nimmt das Element auf. Mit den Pfeiltasten verschieben (aus der Sammlung: Pfeil nach unten ins Storyboard), Eingabe- oder Leertaste legt ab, Escape bricht ab.",
+  },
+  musicTrack: {
+    label: "Audio/Musik",
+    list: "Musikleiste",
+    emptyHint: "Ziehen Sie Musik aus „Meine Musik“ hierher.",
+    sortable: "verschiebbares Musikstück",
+    clip: "Musikstück {number}: {name}, {duration}",
+    clipMenu: "Musikstück {number} der Musikleiste",
+    missingAudio: "fehlende Audiodatei",
+    remove: "Entfernen",
+    rejectAudio:
+      "Audio kann nicht in den Bildstreifen gelegt werden. Ziehen Sie es auf die Musikleiste.",
+    rejectPicture: "Auf der Musikleiste kann nur Audio abgelegt werden.",
+    cutHint: "Musik {music} / Film {movie} – wird am Ende gekürzt",
   },
   transitions: {
     unavailable: "Der Übergangskatalog ist nicht verfügbar.",

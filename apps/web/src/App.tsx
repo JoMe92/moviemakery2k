@@ -3,6 +3,7 @@ import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { useT } from "./i18n/useT";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
+import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
@@ -117,7 +118,7 @@ export function App() {
         }
         monitor={<Player />}
         storyboard={
-          <StoryboardPane>
+          <StoryboardPane musicTrack={<MusicTrack />}>
             <StoryboardStrip />
           </StoryboardPane>
         }

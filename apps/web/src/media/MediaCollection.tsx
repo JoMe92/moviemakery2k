@@ -5,7 +5,7 @@ import { formatClipDuration } from "../i18n/format";
 import { useT } from "../i18n/useT";
 import { ApiError, type AudioItem, type ImageItem, type MediaItem } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
-import { type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
+import { audioDraggableId, type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
@@ -62,15 +62,35 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
 }
 
 /**
- * "My Music" tile: own audio icon, file name and duration. Not draggable into
- * the filmstrip (pictures only); the music track gets its own drop target.
+ * "My Music" tile: own audio icon, file name and duration. Draggable onto the
+ * music track via dnd-kit (pointer and keyboard); the filmstrip refuses it.
  */
-function AudioTile({ item, tileRef, ...handlers }: TileHandlers & { item: AudioItem }) {
+function AudioTile({
+  item,
+  selected,
+  tileRef,
+  onKeyDown,
+  ...handlers
+}: TileHandlers & { item: AudioItem }) {
   const { t, locale } = useT();
   const duration = formatClipDuration(locale, item.duration);
+  const data: DragItem = { type: "audio", mediaId: item.id };
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: audioDraggableId(item.id),
+    data,
+    attributes: { roleDescription: t("media.audioDraggable") },
+  });
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
+  const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   return (
     <Tile
-      ref={tileRef}
+      ref={(el: HTMLButtonElement | null) => {
+        setNodeRef(el);
+        tileRef(el);
+      }}
+      {...dragAttributes}
+      {...listeners}
+      selected={selected}
       caption={item.filename}
       aria-label={t("media.audioTile", { name: item.filename, duration })}
       title={item.filename}
@@ -81,6 +101,10 @@ function AudioTile({ item, tileRef, ...handlers }: TileHandlers & { item: AudioI
         </span>
       }
       {...handlers}
+      onKeyDown={(event) => {
+        onKeyDown(event);
+        if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
+      }}
     />
   );
 }
@@ -104,8 +128,9 @@ export interface MediaCollectionProps {
 
 /**
  * "My Pictures" or "My Music" collection: tiles of one media kind in import
- * order. Double-click appends a picture to the storyboard (audio is never
- * added to the filmstrip); Delete or the context menu deletes after confirmation.
+ * order. Double-click appends a picture to the storyboard and audio to the
+ * music track (never the other way round); Delete or the context menu deletes
+ * after confirmation.
  */
 export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
   const { t, locale } = useT();
@@ -113,6 +138,7 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
   const media = useMemo(() => allMedia.filter((m) => m.kind === kind), [allMedia, kind]);
   const audio = kind === "audio";
   const addSlide = useAppStore((s) => s.addSlide);
+  const addMusicClip = useAppStore((s) => s.addMusicClip);
   const deleteMedia = useAppStore((s) => s.deleteMedia);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -186,6 +212,7 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
               onClick: () => setSelectedId(item.id),
               onDoubleClick: () => {
                 if (item.kind === "image") addSlide(item.id);
+                else addMusicClip(item.id);
               },
               onContextMenu: onContextMenu(item),
               onKeyDown: onKeyDown(item),
@@ -213,7 +240,9 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
           items={[
             ...(menu.item.kind === "image"
               ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
-              : []),
+              : [
+                  { label: t("media.addToMusicTrack"), onSelect: () => addMusicClip(menu.item.id) },
+                ]),
             { label: t("media.delete"), onSelect: () => setPendingDelete(menu.item) },
           ]}
         />

@@ -1,0 +1,193 @@
+/* "Audio/Music" track below the storyboard strip (add-music-track D7). */
+.track {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  height: 48px;
+  border-top: 1px solid var(--y2k-border);
+  background: var(--y2k-storyboard-bg);
+}
+
+.label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 84px;
+  margin: 0;
+  padding: 0 6px;
+  border-right: 1px solid var(--y2k-separator);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-face));
+  font-size: inherit;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Drop area: scrolls horizontally on its own. */
+.lane {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.lane[data-over="true"] {
+  outline: 2px dashed var(--y2k-select);
+  outline-offset: -3px;
+  background: var(--y2k-select-soft);
+}
+
+.hint {
+  flex: 1;
+  margin: 0;
+  color: var(--y2k-text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+/* Block: width set inline, proportional to the played length. */
+.block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 4px;
+  height: 38px;
+  padding: 0 4px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-border-strong);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-storyboard-slot));
+  color: var(--y2k-text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.block[aria-pressed="true"] {
+  border-color: var(--y2k-select);
+  outline: 2px solid var(--y2k-select);
+  outline-offset: -1px;
+  background: var(--y2k-select-soft);
+}
+
+.block:focus-visible {
+  outline: 2px solid var(--y2k-focus);
+  outline-offset: 1px;
+}
+
+.slot[data-dragging="true"] .block {
+  opacity: 0.4;
+}
+
+.name,
+.duration {
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name {
+  font-weight: bold;
+}
+
+.duration {
+  color: var(--y2k-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mini waveform behind the text. */
+.waveform {
+  position: absolute;
+  inset: 2px 0;
+  width: 100%;
+  height: calc(100% - 4px);
+  pointer-events: none;
+}
+
+.waveformAxis {
+  stroke: var(--y2k-edge-dark);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.waveformBars {
+  stroke: var(--y2k-border);
+  stroke-opacity: 0.55;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.block[aria-pressed="true"] .waveformBars {
+  stroke: var(--y2k-select);
+}
+
+/* Insertion marker for audio from the collection. */
+.marker {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 4px;
+  height: 40px;
+  margin-top: -20px;
+  border-radius: 2px;
+  background: var(--y2k-select);
+  box-shadow: 0 0 0 1px var(--y2k-pane);
+  pointer-events: none;
+}
+
+.markerBefore {
+  left: -3px;
+}
+
+.markerAfter {
+  right: -3px;
+}
+
+/* Hints on the right: refused drop and cut at the end of the movie. */
+.status {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 280px;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.status:has(.notice:empty):not(:has(.cut)) {
+  padding: 0;
+}
+
+.notice {
+  margin: 0;
+  color: var(--y2k-icon-red);
+}
+
+.cut {
+  margin: 0;
+  color: var(--y2k-text-muted);
+}
