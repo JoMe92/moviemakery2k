@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import styles from "./App.module.css";
 import { describeHealth, fetchHealth, type Health } from "./api";
+import { PreviewCanvas } from "./render/PreviewCanvas";
 import { AppWindow } from "./shell/AppWindow";
 import { CollectionPane } from "./shell/CollectionPane";
 import { MenuBar } from "./shell/MenuBar";
@@ -9,6 +10,7 @@ import { StatusBar } from "./shell/StatusBar";
 import { StoryboardPane } from "./shell/StoryboardPane";
 import { TaskPane } from "./shell/TaskPane";
 import { type CollectionOption, Toolbar } from "./shell/Toolbar";
+import type { Frame } from "./timeline/timeline";
 import { Button } from "./ui/Button";
 import {
   EffectsIcon,
@@ -26,6 +28,11 @@ import { TaskGroup } from "./ui/TaskGroup";
 import { TaskLink } from "./ui/TaskLink";
 
 export const APP_TITLE = "moviemakerY2K – Unbenanntes Projekt";
+
+// Bis die Wiedergabe angebunden ist (TASK-WEB-010), zeigt der Monitor ein leeres Bild.
+const EMPTY_FRAME: Frame = { kind: "empty" };
+const noImage = () => undefined;
+const noParams = () => ({});
 
 const COLLECTIONS: readonly CollectionOption[] = [
   { id: "media", label: "Meine Bilder" },
@@ -117,7 +124,9 @@ export function App() {
               <span className={styles.time}>0:00:00,00 / 0:00:00,00</span>
             </>
           }
-        />
+        >
+          <PreviewCanvas frame={EMPTY_FRAME} images={noImage} params={noParams} />
+        </MonitorPane>
       }
       storyboard={<StoryboardPane />}
       statusBar={<StatusBar items={[describeHealth(health)]} />}
