@@ -23,10 +23,13 @@ Sammlungsbereich in der Mitte, Vorschaumonitor rechts, darunter das Storyboard
 ### Requirement: Aufgabenbereich mit drei Schritten
 Der Aufgabenbereich MUST die Gruppen „1. Aufnehmen“, „2. Film bearbeiten“ und
 „3. Film fertig stellen“ zeigen, jeweils ein- und ausklappbar. Funktional MUST
-sein: „Bilder importieren“, „Sammlungen anzeigen“ und „Videoübergänge
-anzeigen“. Alle anderen Einträge (u. a. Video importieren, Audio oder Musik
-importieren, Videoeffekte anzeigen, Titel oder Nachspann erstellen und alle
-Einträge unter Schritt 3) MUST sichtbar, aber deaktiviert sein.
+sein: „Bilder importieren“, „Sammlungen anzeigen“, „Videoübergänge anzeigen“
+und „Auf dem Computer speichern“ (öffnet den Assistenten „Film speichern“,
+Spec movie-export). „Auf dem Computer speichern“ MUST deaktiviert sein,
+solange der Bildstreifen leer ist. Alle anderen Einträge (u. a. Video
+importieren, Audio oder Musik importieren, Videoeffekte anzeigen, Titel oder
+Nachspann erstellen, Im Web veröffentlichen) MUST sichtbar, aber deaktiviert
+sein.
 
 #### Scenario: Deaktivierter Eintrag
 - **WHEN** ein Benutzer auf „Videoeffekte anzeigen“ klickt
@@ -38,14 +41,27 @@ Einträge unter Schritt 3) MUST sichtbar, aber deaktiviert sein.
 - **THEN** zeigt der Sammlungsbereich den Übergangskatalog, und die
   Sammlungsauswahl in der Symbolleiste steht auf „Videoübergänge“
 
+#### Scenario: Film fertig stellen
+- **WHEN** der Bildstreifen mindestens ein Bild enthält und ein Benutzer auf
+  „Auf dem Computer speichern“ klickt
+- **THEN** öffnet sich der Assistent „Film speichern“ im Schritt „Dateiname“
+
+#### Scenario: Leerer Bildstreifen
+- **WHEN** der Bildstreifen leer ist
+- **THEN** ist „Auf dem Computer speichern“ deaktiviert und für
+  Hilfstechnologien als deaktiviert ausgezeichnet
+
 ### Requirement: Menüs mit funktionalem Kern
 Die Menüleiste MUST sich per Maus und Tastatur bedienen lassen. Funktional
 MUST sein: Datei → „Neues Projekt“ (fragt nach, leert danach den
 Bildstreifen; die Mediensammlung bleibt erhalten), Datei → „In Sammlungen
-importieren…“, Bearbeiten → „Löschen“ (entfernt das gewählte
-Storyboard-Element), Wiedergabe → „Wiedergabe/Pause“ und „Stopp“, Hilfe →
-„Info“ (Dialog mit Name, Version und dem Hinweis, dass kein Bezug zu Microsoft
-besteht). Alle anderen Menüeinträge MUST sichtbar und deaktiviert sein.
+importieren…“, Datei → „Film speichern…“ (öffnet den Assistenten „Film
+speichern“; deaktiviert, solange der Bildstreifen leer ist), Bearbeiten →
+„Löschen“ (entfernt das gewählte Storyboard-Element), Wiedergabe →
+„Wiedergabe/Pause“ und „Stopp“, Extras → „Optionen…“ (Dialog mit der
+Spracheinstellung, Spec localization), Hilfe → „Info“ (Dialog mit Name,
+Version und dem Hinweis, dass kein Bezug zu Microsoft besteht). Alle anderen
+Menüeinträge MUST sichtbar und deaktiviert sein.
 
 #### Scenario: Neues Projekt
 - **WHEN** ein Benutzer Datei → „Neues Projekt“ wählt und die Rückfrage
@@ -57,6 +73,17 @@ besteht). Alle anderen Menüeinträge MUST sichtbar und deaktiviert sein.
 - **WHEN** ein Benutzer Hilfe → „Info“ wählt
 - **THEN** erscheint ein modaler Dialog mit dem Hinweis, dass moviemakerY2K
   vom klassischen Movie Maker inspiriert ist und kein Microsoft-Produkt ist
+
+#### Scenario: Film speichern über das Menü
+- **WHEN** der Bildstreifen mindestens ein Bild enthält und ein Benutzer
+  Datei → „Film speichern…“ wählt
+- **THEN** öffnet sich der Assistent „Film speichern“
+
+#### Scenario: Optionen öffnen
+- **WHEN** ein Benutzer Extras → „Optionen…“ wählt
+- **THEN** erscheint ein modaler Y2K-Dialog mit der Auswahl „Deutsch“ und
+  „English“, in dem die aktuelle Sprache ausgewählt ist, und „Abbrechen“
+  schließt ihn ohne Änderung
 
 ### Requirement: Y2K-Theme ohne Original-Assets
 Das Erscheinungsbild MUST an den Stil von Windows XP/Luna erinnern
