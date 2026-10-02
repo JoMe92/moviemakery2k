@@ -40,8 +40,10 @@ What works today:
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
   toggles playback.
-- **Transition preview** — selecting a transition in the collection plays it
-  in the monitor with sample pictures.
+- **Transition preview** — clicking a transition in the collection plays it
+  once in the monitor with sample pictures, labelled *Sample: <name>*
+  (*Beispiel: <Name>*); opening the collection shows the project, and play,
+  seek or selecting a picture returns to it.
 - **Autosave** — the project is saved in the backend and restored after a
   reload.
 - **Save movie** — a Movie Maker-style wizard exports the storyboard as an MP4
@@ -130,19 +132,27 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 
 | Profile | Resolution | Video | Audio |
 |---|---|---|---|
-| `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p, faststart) | silent AAC, 48 kHz stereo, 128 kbit/s |
+| `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p BT.709, faststart) | silent AAC, 48 kHz stereo, 128 kbit/s |
 | `small` | 640×480, 30 fps | same | same |
 
 Pictures are letterboxed onto black exactly like in the preview monitor, and
 the export uses the same timing model, so the movie matches what you saw.
-Errors (backend, rendering, FFmpeg) appear in a dialog that offers to try
-again. The same flow is available over the API (`POST /api/exports`, see
+Colours are converted to YUV with the **BT.709** matrix in limited range and
+the MP4 is tagged accordingly (matrix, primaries, transfer `bt709`, range
+`tv`) — what browsers and players assume for HD material, so the movie's
+colours match the preview. The last five finished exports are kept, also
+across a backend restart. While an export is waiting or running, its
+pictures cannot be deleted (the UI explains why). Errors (backend,
+rendering, FFmpeg) appear in a dialog that offers to try again. The same flow is available over the API (`POST /api/exports`, see
 [docs/architecture.md](docs/architecture.md#export-jobs)).
 
 **Platform support.** The export renders with headless OpenGL 3.3 through EGL
 and Mesa's **llvmpipe** software renderer, which Pixi installs on Linux — no
-GPU, display server or system packages needed. **Linux (x86-64) is the officially
-supported platform** for exporting (CI and the Docker image).
+GPU, display server or system packages needed. **Linux is the officially
+supported platform** for exporting: x86-64 (CI and the Docker image) and
+aarch64, e.g. a Raspberry Pi (`linux-aarch64` is a Pixi platform; the CI job
+`render-arm64` runs the render/export tests on a hosted ARM runner once the
+repository is public — until then aarch64 is verified by a manual run on a Raspberry Pi).
 On macOS and Windows the export tries the native OpenGL context without any
 guarantee; if no context can be created, the export fails with a readable
 message instead of crashing. Check a machine with:
@@ -186,24 +196,29 @@ catalogs under [`apps/web/src/i18n/`](apps/web/src/i18n):
   have the same keys and no empty values.
 - Components get text from `useT()` (`t("menu.file.label")`); never put
   visible text directly into component code.
-- Backend errors carry a stable code; the UI shows the catalog entry
-  `errors.<code>` (e.g. `errors.export.emptyProject`) and falls back to the
-  backend's English message for unknown codes. A new backend error code
-  therefore needs an entry under `errors` in both catalogs.
+- Backend errors carry a stable code from the backend's `ErrorCode` enum;
+  the UI shows the catalog entry `errors.<code>` (e.g.
+  `errors.export.emptyProject`). The enum is part of the OpenAPI schema, so
+  the generated TypeScript type `ErrorCode` lists every code and the
+  `errors` catalog is keyed by it: after `pixi run gen-api`, a new backend
+  code without a text in both catalogs is a type error. Validation errors
+  about a storyboard picture are prefixed with its number (*Picture 2: …*).
 - Transition names live in the catalog
   ([`packages/catalog/transitions.json`](packages/catalog/transitions.json)),
   not in the web app.
 
-**Breaking API changes for contributors** (from the localisation work; the
-TypeScript types are regenerated with `pixi run gen-api`):
+**Breaking API changes for contributors** (the TypeScript types are
+regenerated with `pixi run gen-api`):
 
 - Catalog entries replace `name` (string) with `names`
   (`{"de": "Kreis", "en": "Circle"}`, both required).
 - The backend's own errors answer with
   `{"detail": {"code": "export.emptyProject", "params": {…}, "message": "<English>"}}`
-  instead of a German `detail` string; export jobs report `errorCode`,
-  `errorParams` and an English `error`. FastAPI's own `422` validation lists
+  instead of a German `detail` string. FastAPI's own `422` validation lists
   are unchanged.
+- Failed upload results and export jobs carry the same three fields:
+  `errorCode`, `errorParams` and an English `message`; the former `error`
+  field is gone (it held the code for uploads and the message for exports).
 
 Code comments, docstrings, Pixi task descriptions and CI step names are in
 English; German text belongs only in `de.ts`, in tests of the German UI and
@@ -316,7 +331,7 @@ All commands are Pixi tasks (`pixi task list` shows them all):
 |---|---|
 | `pixi run dev` | Backend with live reload + Vite dev server |
 | `pixi run demo` | Build the web app and serve it together with the API |
-| `pixi run check` | Quality gate: lint, typecheck, unit tests, shader check, build (same as CI) |
+| `pixi run check` | Quality gate: lint (incl. Ruff on `e2e/` and `scripts/`), typecheck, unit tests, shader check, build (same as CI) |
 | `pixi run test` | Unit tests (Vitest for the web app, pytest for the backend) |
 | `pixi run test-e2e` | Browser tests with Playwright/Chromium, incl. golden frames |
 | `pixi run gen-api` | Regenerate the TypeScript API types from the backend's OpenAPI schema |

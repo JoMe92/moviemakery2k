@@ -101,7 +101,14 @@ flowchart LR
   unchanged. Files are written atomically (temp file + `os.replace`) under an
   `asyncio.Lock`.
 - Deleting a medium cascades: all storyboard entries using it are removed
-  together with their incoming transitions.
+  together with their incoming transitions. While a `queued` or `running`
+  export has the medium in its snapshot, `DELETE /api/media/{id}` answers
+  `409` with `media.inUseByExport` and nothing changes; the web app removes
+  the picture only after the backend confirmed the delete and otherwise shows
+  the translated reason. The in-use check and the in-memory removal happen in
+  one step under the media store's lock, so an export starting at the same
+  moment either makes the delete fail or fails itself with
+  `export.missingMedia` — it never renders a missing picture as black.
 
 ### 3. Timeline
 
@@ -150,7 +157,7 @@ flowchart LR
   TLp --> Draw
   Tex --> Draw["moderngl, OpenGL 3.3 core<br/>EGL + Mesa llvmpipe"]
   SH["packages/shaders<br/>#version 300 es → 330 core"] --> Draw
-  Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>libx264 + aac (anullsrc)"]
+  Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>BT.709 · libx264 + aac (anullsrc)"]
   FFm --> Part["exports/&lt;id&gt;/out.mp4.part"] -- "os.replace" --> MP4["out.mp4"]
 ```
 
@@ -172,10 +179,15 @@ flowchart LR
    full-screen triangle without a vertex buffer are mirrored.
 4. **Headless GL.** `moderngl.create_context(standalone=True,
    backend="egl")` with Mesa's llvmpipe software renderer from the Pixi
-   environment (`mesalib`, linux-64 only): no GPU, display or system
-   packages. Pixi's linux-64 activation sets `__EGL_VENDOR_LIBRARY_DIRS`,
-   `GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` so that glvnd finds
-   the Mesa ICD and glcontext loads `libEGL`/`libGL` from the environment.
+   environment (`mesalib`, for both Linux targets `linux-64` and
+   `linux-aarch64`): no GPU, display or system packages. Pixi's Linux
+   activation sets `__EGL_VENDOR_LIBRARY_DIRS`, `GLCONTEXT_LINUX_LIBEGL` and
+   `GLCONTEXT_LINUX_LIBGL` so that glvnd finds the Mesa ICD and glcontext
+   loads `libEGL`/`libGL` from the environment. `render/context.py` passes
+   these library paths to glcontext explicitly (falling back to
+   `sys.prefix/lib`), because glcontext would otherwise call
+   `ctypes.util.find_library` first and spawn `ldconfig`/`gcc` for every
+   context.
    The context is created, used and released in the export worker thread
    (EGL contexts are bound to a thread).
 5. **Encoding.** The frames are read back (flipped vertically so the top row
@@ -185,14 +197,28 @@ flowchart LR
    encoded as `libx264 -preset medium -crf 20 -pix_fmt yuv420p -profile:v
    high -movflags +faststart` and `aac -b:a 128k`. The audio input is a
    replaceable slot for the coming music feature.
+   **Colour space:** the filter
+   `scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,setparams=…`
+   converts RGB → YUV with the BT.709 matrix in limited range (swscale would
+   otherwise use BT.601), and `-colorspace bt709 -color_primaries bt709
+   -color_trc bt709 -color_range tv` tags the stream. `setparams` is needed
+   because FFmpeg takes the frames' colour properties over the encoder
+   options; without it primaries and transfer would stay `unknown`. BT.709
+   is what browsers and players assume for HD material, so preview and movie
+   match in colour.
 6. **Output.** FFmpeg writes `out.mp4.part`; only a complete file is renamed
    atomically to `out.mp4`. On cancel or error FFmpeg is stopped and the
    partial file deleted.
 
 Profiles: `high` 960×720 (default) and `small` 640×480, both 30 fps.
 
-**Platform and errors.** Linux (x86-64) is the officially supported export
-platform (CI and the Docker image). On macOS and Windows moderngl tries the
+**Platform and errors.** Linux is the officially supported export platform:
+x86-64 (CI and the Docker image) and aarch64 (e.g. a Raspberry Pi;
+`linux-aarch64` is a Pixi platform with the same Mesa/EGL setup). The CI job
+`render-arm64` runs `check-render-env` and the backend render/export tests on
+`ubuntu-24.04-arm`; hosted ARM runners are free only for public
+repositories, so the job is skipped while the repository is private and
+aarch64 is verified by a manual run on a Raspberry Pi instead. On macOS and Windows moderngl tries the
 native standalone context without any guarantee. If no OpenGL 3.3 context can
 be created, the job ends as `failed` with a readable message (the export is
 not available on this system because no OpenGL context could be created;
@@ -224,7 +250,7 @@ stateDiagram-v2
   shaders and the FFmpeg process live in that thread. The status goes
   `queued → running → done | failed | cancelled` with `progress` 0..1.
 - **Polling.** `GET /api/exports/{id}` returns status, progress and, for
-  `failed`, `errorCode`, `errorParams` and an English `error` message. The wizard polls every 500 ms (no SSE).
+  `failed`, `errorCode`, `errorParams` and an English `message`. The wizard polls every 500 ms (no SSE).
 - **Download.** `GET /api/exports/{id}/file` returns the MP4 with a
   `Content-Disposition` carrying the requested name (`<fileName>.mp4`, with
   an ASCII fallback and an RFC 5987 UTF-8 name). Before `done` → `409`; a
@@ -234,10 +260,17 @@ stateDiagram-v2
   as `cancelled`) or deletes a finished one with its file (afterwards `404`).
 - **Storage and retention.** Files live in `MMY_DATA_DIR/exports/<id>/`. The
   last **5** finished exports are kept; older ones are deleted with their
-  files (at most 20 job entries in total). Jobs live in memory only, so on
-  startup the backend empties `exports/`, removing orphaned `.part` files and
-  exports of earlier runs (logged). On shutdown running exports are
-  cancelled.
+  files (at most 20 job entries in total). A job switches to `done` and
+  retention is applied in one step under the same lock, so the list never
+  shows more than five finished exports.
+- **Job index.** Finished exports are listed in `exports/index.json`
+  (`id`, `fileName`, `profile`, `createdAt`), written atomically (temp file +
+  `os.replace`) whenever that set changes. On startup the backend loads the
+  entries whose `out.mp4` exists as `done` jobs and removes everything else
+  under `exports/` — partial files, orphaned directories, jobs without a
+  file (logged). A damaged index is logged and treated as empty. Queued,
+  running, failed and cancelled jobs live in memory only; on shutdown running
+  exports are cancelled.
 
 ## Shader contract
 
@@ -295,18 +328,24 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `POST` | `/api/media` | Upload pictures (multipart field `files`; JPEG, PNG, WebP); per-file result |
 | `GET` | `/api/media/{id}/thumbnail` | Thumbnail JPEG (`Cache-Control: immutable`) |
 | `GET` | `/api/media/{id}/preview` | Preview JPEG, longest edge ≤ 1920 (`Cache-Control: immutable`) |
-| `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project |
+| `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
 | `PUT` | `/api/project` | Replace the project; `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
-| `GET` | `/api/exports` | All known exports of this backend run, oldest first |
+| `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |
 | `GET` | `/api/exports/{id}/file` | The finished MP4 as a download; `409` until `done` |
 | `DELETE` | `/api/exports/{id}` | Cancel a running export or delete a finished one (`204`) |
 
-Errors raised by the backend itself (media, project, export) answer with
+**Error contract.** Errors raised by the backend itself (media, project,
+export) answer with
 `{"detail": {"code": "<area.error>", "params": {…}, "message": "<English>"}}`;
-FastAPI's own `422` validation errors keep their list format. The web app
+FastAPI's own `422` validation errors keep their list format (`type` = code,
+`ctx` = params, `msg` = English message). Failed upload results and export
+jobs carry the same information as `errorCode`, `errorParams` and `message`.
+All codes are members of the `StrEnum` `ErrorCode`
+(`backend/src/mmy_backend/errors.py`), which OpenAPI exposes as an enum on
+`ApiError.code` and `errorCode`; a code is never renamed, only added. The web app
 translates the code (see [Localisation](#localisation)); the backend has no
 notion of a UI language.
 
@@ -323,7 +362,7 @@ FastAPI's interactive docs are available at `/docs` while the backend runs.
 | `MMY_WEB_DIST` | `apps/web/dist/` | Built web app served at `/` if present |
 | `MMY_SHADERS_DIR` | `packages/shaders/` | Shader files read by the export renderer |
 
-On linux-64, Pixi's activation also sets `__EGL_VENDOR_LIBRARY_DIRS`,
+On Linux, Pixi's activation also sets `__EGL_VENDOR_LIBRARY_DIRS`,
 `GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` to the environment's
 Mesa (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
 `MMY_CATALOG_DIR`, `MMY_SHADERS_DIR` and `MMY_DATA_DIR=/data`, sources Pixi's
@@ -349,7 +388,9 @@ over the network.
   `navigator.languages` starting with `de` or `en` → `en`. The locale lives in
   the Zustand store; `setLocale` (Tools → Options) persists it and updates
   `<html lang>`. Switching takes effect at once and leaves the project
-  untouched.
+  untouched. A small dependency-free inline script in `apps/web/index.html`
+  applies the same rule before the app bundle runs, so `<html lang>` is
+  right from the first paint (a unit test keeps both rules in sync).
 - **`useT()`.** Components read `t(key, params)`, `locale`, `formatNumber` and
   `formatTime` from `i18n/useT.ts` and re-render when the locale changes.
   Numbers follow `Intl.NumberFormat`; the time display is `h:mm:ss,cc` (de) or
@@ -359,11 +400,17 @@ over the network.
   collection, storyboard and dialogs show `names[locale]`.
 - **Error translation.** `i18n/errors.ts` maps a backend code to the catalog
   key `errors.<code>` and fills its params (decimals formatted per locale).
-  It reads the code from HTTP errors (`detail.code`), upload results
-  (`error`/`errorParams`), export jobs (`errorCode`/`errorParams`) and the
-  entries of FastAPI's `422` list (their `type`; anything unknown there gets a
-  general "invalid input" text). Any other unknown code falls back to the
-  backend's English `message`.
+  The `errors` catalog is keyed by the generated `ErrorCode` union, so a code
+  without a text is a type error (`pixi run typecheck`). It reads the code
+  from HTTP errors (`detail.code`), upload results and export jobs
+  (`errorCode`/`errorParams`/`message`) and the entries of FastAPI's `422`
+  list (their `type`; anything unknown there gets a general "invalid input"
+  text). A `422` entry whose `loc` is `["body","slides",<i>,…]` is prefixed
+  with the picture number *i + 1* (`errors.atPicture`: "Picture 2: …" /
+  "Bild 2: …"). Any other unknown code falls back to the backend's English
+  `message`.
+- **Accessible names.** The dialog title-bar button is named "Close dialog"
+  ("Dialog schließen"), so no dialog has two buttons called "Close".
 
 Unit tests run in German (`apps/web/src/test/setup.ts` stores `de`); the E2E
 suite runs with browser locale `de-DE`, and `e2e/test_language_switch.py`
@@ -373,13 +420,13 @@ covers the switch to English and the browser-language detection.
 
 | Layer | Tooling | What it covers |
 |---|---|---|
-| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, media library, cascade delete, project validation, catalog loading, OpenAPI, export jobs (snapshot, cancel, retention, startup cleanup) |
-| Export renderer | pytest under llvmpipe | Time model against the shared vectors, all six programs compile, golden boundary frames and letterboxing, MP4 streams and duration via ffprobe, PSNR of a mid-transition frame against the raw frame |
+| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, media library, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
+| Export renderer | pytest under llvmpipe | Time model against the shared vectors, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
 | Web | Vitest + Testing Library | Timeline maths, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
 | E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; language switch and detection; export wizard incl. cancel; golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |
-| Static | Biome, Ruff, mypy (strict), TypeScript (strict) | Lint, formatting, types |
+| Static | Biome, Ruff (backend, `e2e/`, `scripts/`), mypy (strict), TypeScript (strict) | Lint, formatting, types |
 
 **Golden frames.** A test hook (`/?debug-progress=<id>:<p>`) renders a single
 transition frame between two solid-colour pictures onto a 640×480 canvas.
@@ -394,12 +441,18 @@ the original, for which no reference installation is available.
 suite renders one frame in the browser (SwiftShader) and one with the backend
 renderer from the same inputs. They must agree within 2 levels per channel on
 at least 99.5 % of the pixels; bit-exact equality between SwiftShader and
-llvmpipe is not realistic.
+llvmpipe is not realistic. Because solid colours say little about Pixelate
+and Dissolve, `?debug-progress=<id>:<p>:pattern` renders a built-in, exactly
+640×480 test pattern (integer ramps and checkerboards, no scaling;
+`apps/web/src/render/testPattern.ts`). `e2e/test_export_golden_pattern.py`
+builds the same pattern in Python, checks exact equality at progress 0 and 1
+and compares Pixelate and Dissolve at 0.25, 0.5 and 0.75 with the same
+tolerance.
 
 `pixi run check` is the quality gate (lint, typecheck, unit tests, shader
 check, build) and runs in CI on every push and pull request, after
-`pixi run check-render-env`. CI also runs the E2E suite and the Docker export
-smoke test.
+`pixi run check-render-env`. CI also runs the E2E suite, the Docker export
+smoke test and (for public repositories) the `render-arm64` job.
 
 ## Next
 
