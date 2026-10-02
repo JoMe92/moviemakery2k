@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { renderApp } from "../test/renderApp";
 
-describe("Menüleiste", () => {
-  it("öffnet ein Menü per Tastatur und navigiert mit den Pfeiltasten", async () => {
+describe("Menu bar", () => {
+  it("opens a menu by keyboard and navigates with the arrow keys", async () => {
     const user = userEvent.setup();
     renderApp();
     const datei = screen.getByRole("menuitem", { name: "Datei" });
@@ -21,7 +21,7 @@ describe("Menüleiste", () => {
     expect(datei).toHaveFocus();
   });
 
-  it("deaktivierte Einträge sind markiert und lösen nichts aus", async () => {
+  it("disabled items are marked and trigger nothing", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
@@ -31,7 +31,7 @@ describe("Menüleiste", () => {
     expect(screen.getByRole("menu", { name: "Bearbeiten" })).toBeInTheDocument();
   });
 
-  it("Hilfe → Info zeigt den Hinweis zu Microsoft", async () => {
+  it("Help → About shows the Microsoft notice", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("menuitem", { name: "Hilfe" }));
@@ -44,7 +44,7 @@ describe("Menüleiste", () => {
     ).toBeInTheDocument();
   });
 
-  it("Spec: Neues Projekt leert nach Rückfrage nur den Bildstreifen", async () => {
+  it("Spec: New Project clears only the storyboard after confirmation", async () => {
     const user = userEvent.setup();
     const { store, ready } = renderApp();
     await ready;
@@ -63,7 +63,7 @@ describe("Menüleiste", () => {
     expect(store.getState().saveState).toBe("saved");
   });
 
-  it("Datei → In Sammlungen importieren fordert den Dateidialog an", async () => {
+  it("File → Import into Collections requests the file dialog", async () => {
     const user = userEvent.setup();
     const { store } = renderApp();
     const before = store.getState().importRequest;
@@ -72,7 +72,7 @@ describe("Menüleiste", () => {
     expect(store.getState().importRequest).toBe(before + 1);
   });
 
-  it("Bearbeiten → Löschen entfernt das gewählte Storyboard-Element", async () => {
+  it("Edit → Delete removes the selected storyboard item", async () => {
     const user = userEvent.setup();
     const { store, ready } = renderApp();
     await ready;
@@ -84,7 +84,7 @@ describe("Menüleiste", () => {
     expect(store.getState().slides).toEqual([]);
   });
 
-  it("zeigt Menüeinträge und Dialoge auf Englisch", async () => {
+  it("shows menu items and dialogs in English", async () => {
     localStorage.setItem("mmy.locale", "en");
     const user = userEvent.setup();
     const { ready, store } = renderApp();

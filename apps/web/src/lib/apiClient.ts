@@ -1,5 +1,5 @@
 /**
- * Typisierter Zugriff auf das Backend. Die Typen kommen aus dem OpenAPI-Dokument
+ * Typed access to the backend. The types come from the OpenAPI document
  * (`pixi run gen-api` → src/generated/schema.d.ts).
  */
 import createClient from "openapi-fetch";
@@ -18,31 +18,31 @@ export type ExportProfile = Schemas["ExportProfile"];
 export type ExportStatus = Schemas["ExportStatus"];
 export type ApiErrorBody = Schemas["ApiError"];
 
-/** Export-Jobs (design.md D5); eigener Teil, damit der Assistent nur ihn braucht. */
+/** Export jobs (design.md D5); a separate part so the wizard needs only this one. */
 export interface ExportApi {
-  /** Startet einen Export (202); 409/422 werfen einen ApiError mit der Meldung des Backends. */
+  /** Starts an export (202); 409/422 throw an ApiError with the backend's message. */
   startExport(request: { profile: ExportProfile; fileName: string }): Promise<ExportJob>;
   getExport(id: string): Promise<ExportJob>;
-  /** Bricht einen laufenden Export ab bzw. löscht ein Ergebnis (204). */
+  /** Cancels a running export or deletes a result (204). */
   cancelExport(id: string): Promise<void>;
-  /** Adresse der fertigen MP4 (Content-Disposition mit „<Name>.mp4“). */
+  /** URL of the finished MP4 (Content-Disposition with "<name>.mp4"). */
   exportFileUrl(id: string): string;
 }
 
-/** Schmale, mockbare Schnittstelle, die der Store nutzt. */
+/** Narrow, mockable interface used by the store. */
 export interface Api {
   health(): Promise<Health>;
   catalog(): Promise<Transition[]>;
   listMedia(): Promise<MediaItem[]>;
-  /** Lädt genau eine Datei hoch und liefert ihr Ergebnis. */
+  /** Uploads exactly one file and returns its result. */
   uploadMedia(file: File): Promise<UploadResult>;
-  /** Löscht ein Medium und liefert das (ggf. kaskadiert geänderte) Projekt. */
+  /** Deletes a media item and returns the (possibly cascade-modified) project. */
   deleteMedia(id: string): Promise<Project>;
   getProject(): Promise<Project>;
   putProject(project: Project): Promise<Project>;
 }
 
-/** Alle Backend-Zugriffe der Web-App. */
+/** All backend access of the web app. */
 export type AppApi = Api & ExportApi;
 
 /** Values an error message is built from (`params`, `ctx`, `errorParams`). */

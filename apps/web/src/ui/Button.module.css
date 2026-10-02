@@ -21,7 +21,7 @@
   filter: grayscale(1);
 }
 
-/* Plastische Standard-Schaltfläche mit abgerundeten Ecken. */
+/* Raised standard button with rounded corners. */
 .default {
   min-width: 75px;
   min-height: 23px;
@@ -53,7 +53,7 @@
   box-shadow: none;
 }
 
-/* Flache Symbolleisten-/Icon-Schaltfläche: Rahmen erst bei Hover. */
+/* Flat toolbar/icon button: border only on hover. */
 .toolbar {
   min-width: 24px;
   min-height: 22px;

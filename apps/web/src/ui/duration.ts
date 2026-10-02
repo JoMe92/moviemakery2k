@@ -18,7 +18,7 @@ export function durationInputValue(seconds: number, locale: Locale): string {
   return locale === "de" ? text.replace(".", ",") : text;
 }
 
-/** Hint on the allowed range, e.g. "Erlaubt sind 0,25 bis 5 Sekunden in Schritten von 0,25." */
+/** Hint on the allowed range, e.g. "Allowed: 0.25 to 5 seconds in steps of 0.25." */
 export function rangeMessage(
   range: { min: number; max: number; step: number },
   locale: Locale,

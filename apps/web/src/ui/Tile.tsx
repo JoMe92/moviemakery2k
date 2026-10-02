@@ -3,14 +3,14 @@ import styles from "./Tile.module.css";
 
 export interface TileProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   caption: string;
-  /** Vorschaubild-URL; alternativ eigener Inhalt über `thumbnail`. */
+  /** Thumbnail URL; alternatively custom content via `thumbnail`. */
   src?: string;
   thumbnail?: ReactNode;
   selected?: boolean;
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** Kachel mit Vorschaubild und Beschriftung; auswählbar und fokussierbar. */
+/** Tile with thumbnail and caption; selectable and focusable. */
 export function Tile({
   caption,
   src,

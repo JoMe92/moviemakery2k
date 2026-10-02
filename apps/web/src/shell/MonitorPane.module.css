@@ -9,7 +9,7 @@
   container-type: size;
 }
 
-/* Größte 4:3-Fläche, die in die Bühne passt. */
+/* Largest 4:3 area that fits the stage. */
 .screen {
   position: relative;
   width: min(100cqw, 100cqh * 4 / 3);

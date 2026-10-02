@@ -30,8 +30,8 @@ import { TaskLink } from "./ui/TaskLink";
 const COLLECTION_IDS: readonly CollectionId[] = ["media", "transitions"];
 
 /*
- * Komponiert das Hauptfenster. Der Zustand liegt im App-Store (store/appStore.ts),
- * der in main.tsx erzeugt und geladen wird.
+ * Composes the main window. State lives in the app store (store/appStore.ts),
+ * which is created and loaded in main.tsx.
  */
 export function App() {
   const collection = useAppStore((s) => s.collection);

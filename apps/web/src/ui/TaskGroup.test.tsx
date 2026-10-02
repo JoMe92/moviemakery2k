@@ -5,7 +5,7 @@ import { TaskGroup } from "./TaskGroup";
 import { TaskLink } from "./TaskLink";
 
 describe("TaskGroup", () => {
-  it("klappt per Klick ein und wieder aus", async () => {
+  it("collapses and expands on click", async () => {
     const user = userEvent.setup();
     render(
       <TaskGroup title="1. Aufnehmen">
@@ -24,7 +24,7 @@ describe("TaskGroup", () => {
     expect(header).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("meldet den neuen Zustand im kontrollierten Modus nur über onToggle", async () => {
+  it("reports the new state only via onToggle in controlled mode", async () => {
     const user = userEvent.setup();
     const onToggle = vi.fn();
     render(
@@ -40,7 +40,7 @@ describe("TaskGroup", () => {
 });
 
 describe("TaskLink", () => {
-  it("löst im deaktivierten Zustand keine Aktion aus", async () => {
+  it("triggers no action when disabled", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     render(
@@ -58,7 +58,7 @@ describe("TaskLink", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("ruft onClick im aktiven Zustand auf", async () => {
+  it("calls onClick when enabled", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     render(

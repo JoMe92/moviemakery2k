@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { mockApi } from "./store/testApi";
 import { renderApp } from "./test/renderApp";
 
-describe("App-Shell", () => {
-  it("zeigt alle Bereiche des Movie-Maker-Layouts", async () => {
+describe("App shell", () => {
+  it("shows all areas of the Movie Maker layout", async () => {
     renderApp();
 
     const titlebar = screen.getByRole("banner");
@@ -50,12 +50,12 @@ describe("App-Shell", () => {
     expect(await within(statusbar).findByText("Backend bereit · FFmpeg 9.0")).toBeInTheDocument();
   });
 
-  it("zeigt nach dem Laden „Gespeichert“", async () => {
+  it("shows 'Gespeichert' after loading", async () => {
     renderApp();
     expect(await within(screen.getByRole("contentinfo")).findByText("Gespeichert")).toBeVisible();
   });
 
-  it("meldet ein nicht erreichbares Backend in der Statusleiste", async () => {
+  it("reports an unreachable backend in the status bar", async () => {
     renderApp(
       mockApi({
         health: vi.fn(async () => {
@@ -67,7 +67,7 @@ describe("App-Shell", () => {
     expect(await within(statusbar).findByText("Backend nicht erreichbar")).toBeInTheDocument();
   });
 
-  it("markiert „Videoeffekte anzeigen“ als deaktiviert", () => {
+  it("marks 'Videoeffekte anzeigen' as disabled", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "Videoeffekte anzeigen" })).toHaveAttribute(
       "aria-disabled",
@@ -75,7 +75,7 @@ describe("App-Shell", () => {
     );
   });
 
-  it("schaltet über „Videoübergänge anzeigen“ die Sammlungsauswahl um", async () => {
+  it("switches the collection picker via 'Videoübergänge anzeigen'", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("button", { name: "Videoübergänge anzeigen" }));
@@ -83,7 +83,7 @@ describe("App-Shell", () => {
     expect(screen.getByRole("region", { name: "Sammlung: Videoübergänge" })).toBeInTheDocument();
   });
 
-  it("bewegt den Fokus in der Menüleiste mit den Pfeiltasten", async () => {
+  it("moves focus in the menu bar with the arrow keys", async () => {
     const user = userEvent.setup();
     renderApp();
     const [datei, bearbeiten] = screen.getAllByRole("menuitem");
@@ -97,7 +97,7 @@ describe("App-Shell", () => {
     expect(screen.getByRole("menuitem", { name: "Hilfe" })).toHaveFocus();
   });
 
-  it("Spec localization: zeigt die Shell auf Englisch", async () => {
+  it("Spec localization: shows the shell in English", async () => {
     localStorage.setItem("mmy.locale", "en");
     const { ready } = renderApp();
     await ready;

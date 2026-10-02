@@ -16,8 +16,8 @@ afterEach(() => {
   cleanup();
 });
 
-// jsdom kennt kein Canvas: getContext liefert wie in einem Browser ohne
-// Unterstützung null (statt einer „Not implemented“-Meldung).
+// jsdom has no canvas: getContext returns null like a browser without
+// support (instead of a "Not implemented" message).
 Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
   configurable: true,
   writable: true,

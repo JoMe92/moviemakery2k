@@ -6,7 +6,7 @@ import { MenuBar } from "./MenuBar";
 import { buildMenus, type MenuHandlers } from "./menus";
 import { OptionsDialog } from "./OptionsDialog";
 
-/** Menüleiste samt der Dialoge, die sie öffnet (Info, Optionen, Neues Projekt). */
+/** Menu bar together with the dialogs it opens (About, Options, New Project). */
 export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const [about, setAbout] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);

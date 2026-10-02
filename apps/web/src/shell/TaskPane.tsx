@@ -6,7 +6,7 @@ export interface TaskPaneProps {
   children: ReactNode;
 }
 
-/** Aufgabenbereich links („Filmaufgaben“) mit blau hinterlegten Gruppen. */
+/** Task pane on the left ("Movie Tasks") with blue-backed groups. */
 export function TaskPane({ children }: TaskPaneProps) {
   const { t } = useT();
   const headingId = useId();

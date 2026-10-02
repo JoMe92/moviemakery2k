@@ -8,19 +8,19 @@ import { durationInputValue, parseDuration, rangeMessage } from "./duration";
 export interface DurationDialogProps {
   open: boolean;
   title: string;
-  /** Beschriftung des Eingabefelds, z. B. „Bilddauer (Sekunden)“. */
+  /** Label of the input field, e.g. "Picture duration (seconds)". */
   label: string;
   value: number;
   range: { min: number; max: number; step: number };
-  /** Übernimmt den Wert; `false` = ungültig (Dialog bleibt offen und nennt den Bereich). */
+  /** Applies the value; `false` = invalid (the dialog stays open and states the range). */
   onConfirm: (value: number) => boolean;
   onClose: () => void;
-  /** Zusätzliche Aktion links in der Schaltflächenzeile (z. B. „Übergang entfernen“). */
+  /** Extra action on the left of the button row (e.g. "Remove transition"). */
   extraAction?: ReactNode;
   children?: ReactNode;
 }
 
-/** Eigenschaftendialog für eine Dauer in Sekunden mit Bereichsprüfung. */
+/** Properties dialog for a duration in seconds with a range check. */
 export function DurationDialog({
   open,
   title,

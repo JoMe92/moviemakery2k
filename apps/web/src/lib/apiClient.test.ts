@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError, createApi, errorDetail, parseErrorBody } from "./apiClient";
 
-// openapi-fetch baut Request-Objekte; Node braucht dafür absolute URLs.
+// openapi-fetch builds Request objects; Node needs absolute URLs for them.
 const BASE = "http://backend.test";
 
 const json = (status: number, body: unknown) =>
@@ -11,7 +11,7 @@ const json = (status: number, body: unknown) =>
   });
 
 describe("errorDetail", () => {
-  it("liest die englische Meldung eines ApiError (design.md D5)", () => {
+  it("reads the English message of an ApiError (design.md D5)", () => {
     expect(
       errorDetail({
         detail: {
@@ -24,7 +24,7 @@ describe("errorDetail", () => {
     expect(errorDetail({ detail: { code: "export.busy", params: {}, message: "" } })).toBeNull();
   });
 
-  it("liest Text- und Listenform von FastAPI", () => {
+  it("reads FastAPI's text and list forms", () => {
     expect(errorDetail({ detail: "Export nicht möglich: Der Bildstreifen ist leer." })).toBe(
       "Export nicht möglich: Der Bildstreifen ist leer.",
     );
@@ -42,8 +42,8 @@ describe("errorDetail", () => {
   });
 });
 
-describe("Export-Schnittstelle", () => {
-  it("startet, fragt ab, bricht ab und baut die Download-Adresse", async () => {
+describe("Export interface", () => {
+  it("starts, polls, cancels and builds the download URL", async () => {
     const job = {
       id: "abc",
       status: "queued",
@@ -71,7 +71,7 @@ describe("Export-Schnittstelle", () => {
     expect(api.exportFileUrl("abc")).toBe(`${BASE}/api/exports/abc/file`);
   });
 
-  it("wirft bei 409 und 422 die Meldung des Backends", async () => {
+  it("throws the backend's message on 409 and 422", async () => {
     const busy = "An export is already running. Wait for it to finish or cancel it first.";
     const fetchImpl = vi
       .fn()
@@ -111,7 +111,7 @@ describe("Export-Schnittstelle", () => {
 });
 
 describe("parseErrorBody", () => {
-  it("liefert Code, Parameter und Meldung strukturiert", () => {
+  it("returns code, params and message in structured form", () => {
     expect(
       parseErrorBody({
         detail: {
@@ -127,7 +127,7 @@ describe("parseErrorBody", () => {
     });
   });
 
-  it("liest FastAPIs Liste mit `type` als Code und `ctx` als Parameter", () => {
+  it("reads FastAPI's list with `type` as code and `ctx` as params", () => {
     const info = parseErrorBody({
       detail: [
         {
@@ -150,7 +150,7 @@ describe("parseErrorBody", () => {
     ]);
   });
 
-  it("liest die Einzelfehler von project.invalid", () => {
+  it("reads the individual errors of project.invalid", () => {
     const info = parseErrorBody({
       detail: {
         code: "project.invalid",
@@ -174,8 +174,8 @@ describe("parseErrorBody", () => {
   });
 });
 
-describe("Upload-Fehler", () => {
-  it("wirft bei 413 einen ApiError mit Code", async () => {
+describe("Upload errors", () => {
+  it("throws an ApiError with a code on 413", async () => {
     const fetchImpl = vi.fn(async () =>
       json(413, {
         detail: { code: "media.tooManyFiles", params: { max: 50, count: 51 }, message: "Too many" },

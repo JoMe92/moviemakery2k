@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ContextMenu } from "./ContextMenu";
 
 describe("ContextMenu", () => {
-  it("ist per Tastatur bedienbar und schließt mit Escape", async () => {
+  it("is keyboard-operable and closes with Escape", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const first = vi.fn();
@@ -38,7 +38,7 @@ describe("ContextMenu", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it("schließt bei Klick daneben", async () => {
+  it("closes on a click outside", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     render(

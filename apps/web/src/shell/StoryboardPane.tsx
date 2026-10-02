@@ -6,11 +6,11 @@ import pane from "./Pane.module.css";
 import styles from "./StoryboardPane.module.css";
 
 export interface StoryboardPaneProps {
-  /** Elemente des Bildstreifens; leer → Hinweistext. */
+  /** Storyboard items; empty → hint text. */
   children?: ReactNode;
 }
 
-/** Storyboard über die volle Breite. Die Zeitachse ist im MVP deaktiviert. */
+/** Full-width storyboard. The timeline is disabled in the MVP. */
 export function StoryboardPane({ children }: StoryboardPaneProps) {
   const { t } = useT();
   const headingId = useId();

@@ -4,14 +4,14 @@ import styles from "./CollectionPane.module.css";
 import pane from "./Pane.module.css";
 
 export interface CollectionPaneProps extends Omit<HTMLAttributes<HTMLElement>, "children"> {
-  /** Name der angezeigten Sammlung, z. B. „Meine Bilder“. */
+  /** Name of the collection shown, e.g. "My Pictures". */
   name: string;
   children: ReactNode;
-  /** Feste Leiste unter dem scrollbaren Inhalt (z. B. Importfortschritt). */
+  /** Fixed bar below the scrollable content (e.g. import progress). */
   footer?: ReactNode;
 }
 
-/** Sammlungsbereich in der Mitte; zeigt Medien oder den Übergangskatalog. */
+/** Collection pane in the middle; shows media or the transition catalog. */
 export function CollectionPane({
   name,
   children,

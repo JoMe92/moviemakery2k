@@ -12,8 +12,8 @@ async function openOptionsWithMouse(user: ReturnType<typeof userEvent.setup>) {
   return screen.getByRole("dialog", { name: /^(Optionen|Options)$/ });
 }
 
-describe("Optionen-Dialog", () => {
-  it("Spec: öffnet per Maus mit der aktuellen Sprache ausgewählt", async () => {
+describe("Options dialog", () => {
+  it("Spec: opens by mouse with the current language selected", async () => {
     const user = userEvent.setup();
     renderApp();
     const dialog = await openOptionsWithMouse(user);
@@ -21,7 +21,7 @@ describe("Optionen-Dialog", () => {
     expect(within(dialog).getByRole("radio", { name: "English" })).not.toBeChecked();
   });
 
-  it("öffnet per Tastatur", async () => {
+  it("opens by keyboard", async () => {
     const user = userEvent.setup();
     renderApp();
     screen.getByRole("menuitem", { name: "Extras" }).focus();
@@ -44,7 +44,7 @@ describe("Optionen-Dialog", () => {
     expect(document.documentElement.lang).toBe("en");
   });
 
-  it("Spec: OK wechselt sofort, ohne den Bildstreifen zu ändern, und speichert die Wahl", async () => {
+  it("Spec: OK switches at once without changing the storyboard and stores the choice", async () => {
     const user = userEvent.setup();
     const { store, ready } = renderApp();
     await ready;
@@ -69,7 +69,7 @@ describe("Optionen-Dialog", () => {
     expect(within(english).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("Spec: Abbrechen schließt ohne Änderung", async () => {
+  it("Spec: Cancel closes without a change", async () => {
     const user = userEvent.setup();
     const { store } = renderApp();
     const dialog = await openOptionsWithMouse(user);
@@ -84,7 +84,7 @@ describe("Optionen-Dialog", () => {
     expect(within(again).getByRole("radio", { name: "Deutsch" })).toBeChecked();
   });
 
-  it("Spec: die gewählte Sprache bleibt nach einem Neuladen erhalten", async () => {
+  it("Spec: the chosen language survives a reload", async () => {
     const user = userEvent.setup();
     renderApp();
     const dialog = await openOptionsWithMouse(user);

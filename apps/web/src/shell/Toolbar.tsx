@@ -10,14 +10,14 @@ export interface CollectionOption {
 
 export interface ToolbarProps {
   collections: readonly CollectionOption[];
-  /** Kontrollierter Wert: ID der aktuell angezeigten Sammlung. */
+  /** Controlled value: ID of the collection currently shown. */
   collection: string;
   onCollectionChange: (id: string) => void;
-  /** Zusätzliche Symbolleisten-Schaltflächen links der Sammlungsauswahl. */
+  /** Additional toolbar buttons to the left of the collection picker. */
   children?: ReactNode;
 }
 
-/** Symbolleiste mit Sammlungsauswahl. */
+/** Toolbar with the collection picker. */
 export function Toolbar({ collections, collection, onCollectionChange, children }: ToolbarProps) {
   const { t } = useT();
   const selectId = useId();

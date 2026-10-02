@@ -10,10 +10,10 @@ export interface MenuBarProps {
 type Item = Extract<MenuEntry, { kind: "item" }>;
 
 /**
- * Menüleiste mit aufklappbaren Menüs (WAI-ARIA Menubar-Muster).
- * Ein Tab-Stopp; ←/→, Pos1/Ende wechseln Hauptmenüs, ↓/Enter/Leertaste öffnet,
- * im Menü ↑/↓ wählen, Enter aktiviert, Escape schließt. Deaktivierte Einträge
- * sind fokussierbar, lösen aber nichts aus.
+ * Menu bar with drop-down menus (WAI-ARIA menubar pattern).
+ * One tab stop; ←/→, Home/End switch top-level menus, ↓/Enter/Space opens,
+ * inside a menu ↑/↓ select, Enter activates, Escape closes. Disabled items
+ * are focusable but trigger nothing.
  */
 export function MenuBar({ menus }: MenuBarProps) {
   const { t } = useT();
@@ -45,7 +45,7 @@ export function MenuBar({ menus }: MenuBarProps) {
     if (refocus && was !== null) topRefs.current[was]?.focus();
   };
 
-  // Klick außerhalb schließt das Menü.
+  // A click outside closes the menu.
   useEffect(() => {
     if (open === null) return;
     const onDown = (event: MouseEvent) => {
@@ -139,7 +139,7 @@ export function MenuBar({ menus }: MenuBarProps) {
               })()}
               {menu.entries.map((entry, n) => {
                 if (entry.kind === "separator") {
-                  // biome-ignore lint/suspicious/noArrayIndexKey: Trenner haben keine ID
+                  // biome-ignore lint/suspicious/noArrayIndexKey: separators have no ID
                   return <hr key={`sep-${n}`} className={styles.separator} />;
                 }
                 itemIndex += 1;

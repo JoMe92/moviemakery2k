@@ -1,6 +1,6 @@
 /**
- * Inhalt der Menüleiste (Spec app-shell „Menüs mit funktionalem Kern“).
- * Einträge ohne Handler sind sichtbar, aber deaktiviert. Labels come from the
+ * Menu bar content (spec app-shell requirement "Menüs mit funktionalem Kern").
+ * Items without a handler are visible but disabled. Labels come from the
  * message catalogs via the passed `t`.
  */
 import type { Translate } from "../i18n/t";
@@ -18,7 +18,7 @@ export interface MenuDef {
 export interface MenuHandlers {
   newProject?: () => void;
   importImages?: () => void;
-  /** Assistent „Film speichern“; fehlt bei leerem Bildstreifen (Eintrag deaktiviert). */
+  /** "Save Movie" wizard; absent when the storyboard is empty (item disabled). */
   saveMovie?: () => void;
   deleteSelection?: () => void;
   togglePlay?: () => void;
