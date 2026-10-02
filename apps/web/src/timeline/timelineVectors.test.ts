@@ -1,6 +1,6 @@
 /**
- * Gemeinsame Testvektoren des Zeitmodells (design.md D3).
- * Dieselbe Datei prüft später auch die Python-Portierung; Format:
+ * Shared test vectors of the time model (design.md D3).
+ * The same file later also checks the Python port; format:
  * packages/fixtures/README.md.
  */
 import { describe, expect, it } from "vitest";
@@ -22,8 +22,8 @@ const TOLERANCE: number = vectors.tolerance;
 const cases = vectors.cases as VectorCase[];
 
 /**
- * Vergleicht rekursiv; Zahlen mit absoluter Toleranz, alles andere exakt.
- * Liefert die Abweichungen als lesbare Pfade (leer = gleich).
+ * Compares recursively; numbers with absolute tolerance, everything else exactly.
+ * Returns the differences as readable paths (empty = equal).
  */
 function diff(actual: unknown, expected: unknown, path = "$"): string[] {
   if (typeof expected === "number") {
@@ -59,14 +59,14 @@ function diff(actual: unknown, expected: unknown, path = "$"): string[] {
 }
 
 describe("timeline-vectors.json", () => {
-  it("hat Version 1, eindeutige Namen und deckt die Pflichtfälle ab", () => {
+  it("has version 1, unique names and covers the required cases", () => {
     expect(vectors.version).toBe(1);
     const names = cases.map((c) => c.name);
     expect(new Set(names).size).toBe(names.length);
     expect(cases.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("der Vergleich erkennt Abweichungen über der Toleranz", () => {
+  it("the comparison detects differences above the tolerance", () => {
     expect(diff({ a: [1, "x"] }, { a: [1 + TOLERANCE / 2, "x"] })).toEqual([]);
     expect(diff({ a: [1.001, "x"] }, { a: [1, "x"] })).toHaveLength(1);
     expect(diff({ kind: "still" }, { kind: "transition" })).toHaveLength(1);
@@ -76,11 +76,11 @@ describe("timeline-vectors.json", () => {
   describe.each(cases.map((c) => [c.name, c] as const))("%s", (_name, c) => {
     const tl = buildTimeline(c.slides);
 
-    it("Gesamtdauer", () => {
+    it("total duration", () => {
       expect(diff(tl.duration, c.expected.totalDuration)).toEqual([]);
     });
 
-    it("platzierte Bilder", () => {
+    it("placed images", () => {
       const placed = tl.slides.map(({ index, start, end, transitionIn }) => ({
         index,
         start,
@@ -90,7 +90,7 @@ describe("timeline-vectors.json", () => {
       expect(diff(placed, c.expected.placed)).toEqual([]);
     });
 
-    it("Segmente", () => {
+    it("segments", () => {
       expect(diff(tl.segments, c.expected.segments)).toEqual([]);
     });
 

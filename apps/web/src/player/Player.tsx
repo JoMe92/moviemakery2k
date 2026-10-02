@@ -15,7 +15,7 @@ import { demoFrame, shouldToggleOnSpace, timelineOf } from "./controls";
 import styles from "./Player.module.css";
 import { sampleImages } from "./sampleImages";
 
-/** Vorschaubilder (previewUrl) aller Bilder im Bildstreifen laden, in Reihenfolge. */
+/** Load the preview images (previewUrl) of all images in the filmstrip, in order. */
 function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
   const [loaded, setLoaded] = useState<ReadonlyMap<string, ImageSource>>(new Map());
 
@@ -32,7 +32,7 @@ function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
           setLoaded((prev) => (prev.get(mediaId) === img ? prev : new Map(prev).set(mediaId, img)));
         },
         () => {
-          // Nicht ladbar: an dieser Stelle bleibt der Monitor schwarz.
+          // Not loadable: the monitor stays black at this point.
         },
       );
     }
@@ -51,8 +51,8 @@ function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
 }
 
 /**
- * Vorschaumonitor mit Player: rAF-Uhr, Steuerleiste, Suchleiste, Zeitanzeige,
- * Leertaste und Übergangsdemo für den Katalog.
+ * Preview monitor with player: rAF clock, control bar, seek bar, time display,
+ * space bar and transition demo for the catalog.
  */
 export function Player() {
   const { t, formatTime } = useT();
@@ -81,14 +81,14 @@ export function Player() {
     [catalog],
   );
 
-  // rAF-Uhr nur, solange etwas läuft.
+  // rAF clock only while something is playing.
   const running = playback.playing || Boolean(demo?.playing);
   useEffect(() => {
     if (!running) return;
     return startClock((dt) => store.getState().tick(dt));
   }, [running, store]);
 
-  // Leertaste: Wiedergabe/Pause (außer in Eingabefeldern, Dialogen, Menüs und beim Ziehen).
+  // Space bar: play/pause (except in input fields, dialogs, menus and while dragging).
   const draggingRef = useRef(false);
   useDndMonitor({
     onDragStart: () => {
@@ -111,7 +111,7 @@ export function Player() {
         dragging: draggingRef.current,
       });
       if (!ok) return;
-      // Vor Schaltflächen und dnd-kit abfangen, damit nichts doppelt auslöst.
+      // Intercept before buttons and dnd-kit so nothing fires twice.
       event.preventDefault();
       event.stopPropagation();
       swallowKeyUp = true;

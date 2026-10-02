@@ -15,7 +15,7 @@ interface TransitionTileProps {
   onApply: () => void;
 }
 
-/** Katalogkachel, per dnd-kit auf einen Übergangsplatz ziehbar. */
+/** Catalog tile, draggable onto a transition slot via dnd-kit. */
 function TransitionTile({ transition, selected, onSelect, onApply }: TransitionTileProps) {
   const { t, locale } = useT();
   const name = transitionName(transition, locale);
@@ -43,9 +43,9 @@ function TransitionTile({ transition, selected, onSelect, onApply }: TransitionT
 }
 
 /**
- * Sammlung „Videoübergänge“: alle Katalogeinträge als Kacheln. Auswahl zeigt
- * den Übergang im Monitor (previewTransitionId); Ziehen auf einen
- * Übergangsplatz setzt ihn; Doppelklick setzt ihn vor das ausgewählte Bild.
+ * "Video Transitions" collection: all catalog entries as tiles. Selecting one
+ * shows the transition in the monitor (previewTransitionId); dragging onto a
+ * transition slot sets it; double-click sets it before the selected image.
  */
 export function TransitionCollection() {
   const { t } = useT();

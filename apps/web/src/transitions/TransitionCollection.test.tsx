@@ -21,8 +21,8 @@ async function setup() {
   return { ...view, collection };
 }
 
-describe("Sammlung „Videoübergänge“", () => {
-  it("zeigt alle Katalogeinträge als Kacheln mit Vorschausymbol", async () => {
+describe("'Video Transitions' collection", () => {
+  it("shows all catalog entries as tiles with a preview icon", async () => {
     const { collection } = await setup();
     const tiles = within(within(collection).getByRole("list", { name: "Übergänge" })).getAllByRole(
       "button",
@@ -31,7 +31,7 @@ describe("Sammlung „Videoübergänge“", () => {
     for (const tile of tiles) expect(tile.querySelector("svg")).not.toBeNull();
   });
 
-  it("Auswahl einer Kachel setzt den Vorschau-Übergang", async () => {
+  it("selecting a tile sets the preview transition", async () => {
     const user = userEvent.setup();
     const { collection, store } = await setup();
     const kreis = within(collection).getByRole("button", { name: "Kreis" });
@@ -40,7 +40,7 @@ describe("Sammlung „Videoübergänge“", () => {
     expect(kreis).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("Doppelklick setzt den Übergang vor das ausgewählte Bild (nicht vor das erste)", async () => {
+  it("double-click sets the transition before the selected image (not before the first)", async () => {
     const user = userEvent.setup();
     const { collection, store } = await setup();
     act(() => store.getState().select({ kind: "slide", slideId: "s1" }));
@@ -55,7 +55,7 @@ describe("Sammlung „Videoübergänge“", () => {
     });
   });
 
-  it("Spec localization: zeigt die Katalognamen auf Englisch und wechselt ohne Neuladen", async () => {
+  it("Spec localization: shows the catalog names in English and switches without reloading", async () => {
     const user = userEvent.setup();
     const { collection, store } = await setup();
     expect(within(collection).getByRole("button", { name: "Kreis" })).toHaveTextContent("Kreis");

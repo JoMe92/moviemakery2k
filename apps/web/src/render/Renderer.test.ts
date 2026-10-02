@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Renderer, WebGL2UnsupportedError } from "./Renderer";
 
 /**
- * Minimaler WebGL2-Ersatz: zeichnet Aufrufe auf und lässt Fragment-Shader
- * scheitern, deren Quelltext `failMarker` enthält.
+ * Minimal WebGL2 stand-in: records calls and fails fragment shaders whose
+ * source contains `failMarker`.
  */
 function fakeGl(failMarker?: string) {
   const calls: { name: string; args: unknown[] }[] = [];
@@ -60,22 +60,22 @@ afterEach(() => {
 });
 
 describe("Renderer", () => {
-  it("meldet fehlendes WebGL2 mit eigenem Fehler", () => {
+  it("reports missing WebGL2 with a dedicated error", () => {
     const canvas = document.createElement("canvas");
     expect(() => new Renderer(canvas)).toThrow(WebGL2UnsupportedError);
   });
 
-  it("kompiliert jedes Programm nur einmal (Cache)", () => {
+  it("compiles each program only once (cache)", () => {
     const { gl, calls } = fakeGl();
     const r = new Renderer(canvasWith(gl));
     r.precompile(["circle", "circle", "fade"]);
     r.precompile(["circle"]);
     expect(calls.filter((c) => c.name === "linkProgram")).toHaveLength(2);
-    // Vertex-Shader wird geteilt: 1× Vertex + 2× Fragment
+    // Vertex shader is shared: 1× vertex + 2× fragment
     expect(calls.filter((c) => c.name === "compileShader")).toHaveLength(3);
   });
 
-  it("fällt bei Kompilierfehler auf Überblenden zurück und loggt", () => {
+  it("falls back to Fade on a compile error and logs", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const { gl, calls, programs } = fakeGl("borderSoftness");
     const r = new Renderer(canvasWith(gl));
@@ -85,12 +85,12 @@ describe("Renderer", () => {
     expect(linked).toHaveLength(1);
     const fs = programs.get(linked[0] as object)?.[1] ?? "";
     expect(fs).toContain("mix(getFromColor(uv), getToColor(uv), progress)");
-    // Erneuter Zugriff kompiliert nicht noch einmal.
+    // Accessing it again does not compile again.
     r.precompile(["circle", "fade"]);
     expect(calls.filter((c) => c.name === "linkProgram")).toHaveLength(1);
   });
 
-  it("fällt bei unbekanntem Übergang auf Überblenden zurück", () => {
+  it("falls back to Fade for an unknown transition", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { gl, calls } = fakeGl();
     const r = new Renderer(canvasWith(gl));
@@ -98,7 +98,7 @@ describe("Renderer", () => {
     expect(calls.filter((c) => c.name === "linkProgram")).toHaveLength(1);
   });
 
-  it("hält den Puffer ganzzahlig in 4:3", () => {
+  it("keeps the buffer integer-valued at 4:3", () => {
     const { gl } = fakeGl();
     const canvas = canvasWith(gl);
     const r = new Renderer(canvas);
@@ -106,7 +106,7 @@ describe("Renderer", () => {
     expect([canvas.width, canvas.height]).toEqual([1000, 750]);
   });
 
-  it("zeichnet nach Kontextverlust nicht mehr", () => {
+  it("stops drawing after context loss", () => {
     const { gl, calls } = fakeGl();
     const canvas = canvasWith(gl);
     const r = new Renderer(canvas);
@@ -119,12 +119,12 @@ describe("Renderer", () => {
     expect(calls.filter((c) => c.name === "clear")).toHaveLength(0);
   });
 
-  it("setzt Uniforms und Parameter für einen Übergang", () => {
+  it("sets uniforms and parameters for a transition", () => {
     const { gl, calls } = fakeGl();
     const canvas = canvasWith(gl);
     const r = new Renderer(canvas);
     r.resize(640, 480, 1);
-    // Frame-Texturen ohne Canvas2D: letterbox-Schritt umgehen.
+    // Frame textures without Canvas2D: bypass the letterbox step.
     const frame = { source: canvas, texture: {}, width: 640, height: 480, disposed: false };
     r.drawTransition(frame as never, frame as never, "checkerboard", 0.25, {
       squaresX: 12,
