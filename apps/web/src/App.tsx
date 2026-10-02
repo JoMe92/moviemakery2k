@@ -1,8 +1,9 @@
 import styles from "./App.module.css";
+import { LibraryPane } from "./media/LibraryPane";
+import { MediaCollection } from "./media/MediaCollection";
 import { PreviewCanvas } from "./render/PreviewCanvas";
+import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
-import { CollectionPane } from "./shell/CollectionPane";
-import { MenuBar } from "./shell/MenuBar";
 import { MonitorPane } from "./shell/MonitorPane";
 import { StatusBar } from "./shell/StatusBar";
 import { StoryboardPane } from "./shell/StoryboardPane";
@@ -47,6 +48,7 @@ const COLLECTIONS: readonly (CollectionOption & { id: CollectionId })[] = [
 export function App() {
   const collection = useAppStore((s) => s.collection);
   const setCollection = useAppStore((s) => s.setCollection);
+  const requestImport = useAppStore((s) => s.requestImport);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
 
@@ -55,7 +57,7 @@ export function App() {
   return (
     <AppWindow
       title={APP_TITLE}
-      menuBar={<MenuBar />}
+      menuBar={<AppMenus />}
       toolbar={
         <Toolbar
           collections={COLLECTIONS}
@@ -69,7 +71,9 @@ export function App() {
             <TaskLink icon={<FilmIcon />} disabled>
               Video importieren
             </TaskLink>
-            <TaskLink icon={<ImportImageIcon />}>Bilder importieren</TaskLink>
+            <TaskLink icon={<ImportImageIcon />} onClick={requestImport}>
+              Bilder importieren
+            </TaskLink>
             <TaskLink icon={<FolderIcon />} disabled>
               Audio oder Musik importieren
             </TaskLink>
@@ -99,13 +103,13 @@ export function App() {
         </TaskPane>
       }
       collection={
-        <CollectionPane name={collectionName}>
-          <p className={styles.hint}>
-            {collection === "media"
-              ? "Diese Sammlung ist leer. Wählen Sie „Bilder importieren“, um Bilder hinzuzufügen."
-              : "Der Übergangskatalog wird hier angezeigt."}
-          </p>
-        </CollectionPane>
+        <LibraryPane name={collectionName}>
+          {collection === "media" ? (
+            <MediaCollection />
+          ) : (
+            <p className={styles.hint}>Der Übergangskatalog wird hier angezeigt.</p>
+          )}
+        </LibraryPane>
       }
       monitor={
         <MonitorPane

@@ -44,12 +44,16 @@ export interface AppState {
   /** ausgewählter Übergang in der Sammlung (Demo im Monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
+  /** Zähler: jede Erhöhung öffnet den Dateidialog „Bilder importieren“ (Aufgabe, Datei-Menü). */
+  importRequest: number;
 
   init(): Promise<void>;
   setCollection(collection: CollectionId): void;
   select(selection: Selection): void;
   setPreviewTransition(id: string | null): void;
 
+  /** Dateidialog „Bilder importieren“ anfordern (wird von der Sammlung geöffnet). */
+  requestImport(): void;
   importFiles(files: readonly File[]): Promise<void>;
   clearUploads(): void;
   deleteMedia(id: string): Promise<void>;
@@ -134,6 +138,7 @@ export function createAppStore(api: Api): AppStore {
       selection: null,
       previewTransitionId: null,
       uploads: [],
+      importRequest: 0,
 
       async init() {
         try {
@@ -164,6 +169,10 @@ export function createAppStore(api: Api): AppStore {
       },
       setPreviewTransition(id) {
         set({ previewTransitionId: id });
+      },
+
+      requestImport() {
+        set({ importRequest: get().importRequest + 1 });
       },
 
       async importFiles(files) {

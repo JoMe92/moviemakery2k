@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import styles from "./Tile.module.css";
 
 export interface TileProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
@@ -7,6 +7,7 @@ export interface TileProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>,
   src?: string;
   thumbnail?: ReactNode;
   selected?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 }
 
 /** Kachel mit Vorschaubild und Beschriftung; auswählbar und fokussierbar. */
