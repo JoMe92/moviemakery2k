@@ -60,23 +60,28 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 ## Build & Test
 
-_Add your build and test commands here_
-
 ```bash
-# Example:
-# npm install
-# npm test
+make install    # pnpm install + (cd backend && uv sync)
+make dev        # Backend :8000 + Vite-Dev-Server (Proxy /api)
+make check      # Quality-Gate: lint, typecheck, test, build (Web + Backend)
 ```
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+moviemakerY2K: ein Video-Editor im Movie-Maker-2.x-Stil. Im Fokus stehen Übergänge
+und Effekte. Monorepo: `apps/web` (Vite/React/TS, WebGL2-Vorschau),
+`backend/` (Python 3.13, FastAPI, FFmpeg als Subprozess), `packages/shaders`
+(GLSL ES 3.00, für Vorschau und Export geteilt), `packages/catalog`
+(Effekt-Katalog, Single Source of Truth). Begründung: `docs/adr/0001-architektur.md`.
+Recherche zum Original: `docs/research/movie-maker-klon.md`.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- Effekte und Übergänge werden nur im Katalog plus Shader definiert, nie doppelt in Web oder Backend.
+- Keine Microsoft-Assets (Icons, Sounds, Texte, `Parity.fx`). Die XMLs in `docs/research/sources/` sind nur Referenz.
+- Pydantic-Modelle sind der API-Vertrag; TS-Typen werden daraus generiert.
+- Bead-Token in Commits großgeschrieben, z. B. `[MMY-6kz]` für `mmy-6kz` (der Hook verlangt `[A-Z]…`).
 
-<!-- nogging:begin -->
 ## Nogging
 
 This repository uses the Nogging operating model. **`AGENTS.md` is the

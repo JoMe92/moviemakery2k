@@ -1,0 +1,62 @@
+/*
+ * Y2K-Theme: eigene Interpretation des XP/Luna-Looks. Keine Original-Assets
+ * (siehe docs/research/movie-maker-klon.md, Abschnitt „Rechtliches“).
+ * Alle Farben laufen über Tokens, damit das Theme austauschbar bleibt.
+ */
+:root {
+  --y2k-title-from: #0a246a;
+  --y2k-title-to: #3a6ea5;
+  --y2k-title-text: #ffffff;
+  --y2k-face: #ece9d8;
+  --y2k-pane: #ffffff;
+  --y2k-border: #7f9db9;
+  --y2k-text: #000000;
+  --y2k-font: "Tahoma", "Verdana", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--y2k-face);
+  color: var(--y2k-text);
+  font: 12px / 1.4 var(--y2k-font);
+}
+
+.window {
+  display: grid;
+  grid-template-rows: auto 1fr 160px auto;
+  height: 100vh;
+}
+
+.titlebar {
+  padding: 4px 8px;
+  background: linear-gradient(to bottom, var(--y2k-title-to), var(--y2k-title-from));
+  color: var(--y2k-title-text);
+  font-weight: bold;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  min-height: 0;
+}
+
+.pane {
+  background: var(--y2k-pane);
+  border: 1px solid var(--y2k-border);
+  padding: 6px;
+}
+
+.storyboard {
+  margin: 0 4px;
+}
+
+.statusbar {
+  padding: 2px 8px;
+  border-top: 1px solid var(--y2k-border);
+}
