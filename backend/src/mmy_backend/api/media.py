@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
+from mmy_backend.errors import api_exception, error_response
 from mmy_backend.media import (
     MAX_FILES_PER_REQUEST,
     MediaListResponse,
@@ -26,12 +27,11 @@ from mmy_backend.project import Project, ProjectStore
 
 # Abgeleitete Bilder ändern sich nie (neue Datei = neue ID), design.md D7.
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
-NOT_FOUND_DETAIL = "Medium nicht gefunden."
 
 _IMAGE_FILES: dict[str, str] = {"thumbnail": "thumb.jpg", "preview": "preview.jpg"}
 
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
-    status.HTTP_404_NOT_FOUND: {"description": "Unbekannte oder ungültige Medien-ID"}
+    status.HTTP_404_NOT_FOUND: error_response("Unknown or invalid media id (`media.notFound`)")
 }
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -57,13 +57,17 @@ def list_media(store: Annotated[MediaStore, Depends(get_media_store)]) -> MediaL
     return MediaListResponse(items=store.list())
 
 
+def _not_found(media_id: str) -> HTTPException:
+    return api_exception(status.HTTP_404_NOT_FOUND, "media.notFound", mediaId=media_id)
+
+
 def _image_response(store: MediaStore, media_id: str, kind: Literal["thumbnail", "preview"]) -> Any:
     # get() prüft das ID-Format; erst danach wird ein Pfad gebaut.
     if store.get(media_id) is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+        raise _not_found(media_id)
     path = store.item_dir(media_id) / _IMAGE_FILES[kind]
     if not path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+        raise _not_found(media_id)
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": IMMUTABLE_CACHE})
 
 
@@ -104,7 +108,7 @@ async def delete_media(
     die ID danach nicht wieder einfügen.
     """
     if not await store.remove(media_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+        raise _not_found(media_id)
     project = await projects.remove_media(media_id)
     return MediaDeleteResponse(project=project)
 
@@ -112,9 +116,9 @@ async def delete_media(
 @router.post(
     "",
     responses={
-        status.HTTP_413_CONTENT_TOO_LARGE: {
-            "description": f"Mehr als {MAX_FILES_PER_REQUEST} Dateien in einer Anfrage"
-        }
+        status.HTTP_413_CONTENT_TOO_LARGE: error_response(
+            f"More than {MAX_FILES_PER_REQUEST} files in one request (`media.tooManyFiles`)"
+        )
     },
 )
 async def upload_media(
@@ -122,12 +126,11 @@ async def upload_media(
     files: Annotated[list[UploadFile], File(description="Bilddateien (JPEG, PNG, WebP)")],
 ) -> MediaUploadResponse:
     if len(files) > MAX_FILES_PER_REQUEST:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=(
-                f"Zu viele Dateien: höchstens {MAX_FILES_PER_REQUEST} pro Import "
-                f"({len(files)} gesendet)."
-            ),
+        raise api_exception(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            "media.tooManyFiles",
+            max=MAX_FILES_PER_REQUEST,
+            count=len(files),
         )
     results: list[MediaUploadResult] = []
     for upload in files:

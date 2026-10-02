@@ -23,12 +23,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, BinaryIO, Literal
+from typing import Annotated, BinaryIO, Literal, get_args
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.alias_generators import to_camel
 
+from mmy_backend.errors import Params, error_message
 from mmy_backend.storage import write_bytes_atomic
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -47,14 +48,12 @@ _MEDIA_ID_RE = re.compile(MEDIA_ID_PATTERN)
 _CHUNK = 1024 * 1024
 _EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 
-ErrorCode = Literal["unsupported", "too_large", "too_many_pixels"]
+UploadErrorCode = Literal["media.unsupportedType", "media.tooLarge", "media.tooManyPixels"]
 
-ERROR_MESSAGES: dict[ErrorCode, str] = {
-    "unsupported": "Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP).",
-    "too_large": f"Die Datei ist zu groß (höchstens {MAX_FILE_BYTES // (1024 * 1024)} MB).",
-    "too_many_pixels": (
-        f"Das Bild hat zu viele Pixel (höchstens {MAX_PIXELS // 1_000_000} Megapixel)."
-    ),
+UPLOAD_ERROR_PARAMS: dict[UploadErrorCode, Params] = {
+    "media.unsupportedType": {},
+    "media.tooLarge": {"maxMegabytes": MAX_FILE_BYTES // (1024 * 1024)},
+    "media.tooManyPixels": {"maxMegapixels": MAX_PIXELS // 1_000_000},
 }
 
 
@@ -88,8 +87,11 @@ class MediaUploadSuccess(_MediaModel):
 class MediaUploadFailure(_MediaModel):
     filename: str
     ok: Literal[False]
-    error: ErrorCode
-    message: str
+    error: str = Field(
+        description="Stable error code (design.md D5): " + ", ".join(get_args(UploadErrorCode))
+    )
+    error_params: Params = Field(default_factory=dict, description="Values of the message")
+    message: str = Field(description="English message")
 
 
 # Absichtlich ohne Pydantic-Discriminator: dessen OpenAPI-Mapping hätte die
@@ -110,11 +112,12 @@ _INDEX_ADAPTER = TypeAdapter(list[MediaItem])
 
 
 class MediaError(Exception):
-    """Eine Datei wird abgelehnt; `code` geht als Fehlercode an den Client."""
+    """A file is rejected; `code` goes to the client as its error code."""
 
-    def __init__(self, code: ErrorCode) -> None:
-        super().__init__(ERROR_MESSAGES[code])
-        self.code: ErrorCode = code
+    def __init__(self, code: UploadErrorCode) -> None:
+        self.code: UploadErrorCode = code
+        self.params: Params = dict(UPLOAD_ERROR_PARAMS[code])
+        super().__init__(error_message(code, self.params))
 
 
 def is_media_id(value: str) -> bool:
@@ -155,7 +158,7 @@ def _copy_limited(source: BinaryIO, target: BinaryIO) -> None:
     while chunk := source.read(_CHUNK):
         total += len(chunk)
         if total > MAX_FILE_BYTES:
-            raise MediaError("too_large")
+            raise MediaError("media.tooLarge")
         target.write(chunk)
 
 
@@ -164,10 +167,10 @@ def _check_and_load(path: Path) -> tuple[str, Image.Image]:
         with Image.open(path) as probe:
             fmt = probe.format
             if fmt not in _EXTENSIONS:
-                raise MediaError("unsupported")
+                raise MediaError("media.unsupportedType")
             width, height = probe.size
             if width * height > MAX_PIXELS:
-                raise MediaError("too_many_pixels")
+                raise MediaError("media.tooManyPixels")
             probe.verify()
         # verify() macht das Objekt unbrauchbar - neu öffnen und vollständig laden.
         with Image.open(path) as opened:
@@ -175,9 +178,9 @@ def _check_and_load(path: Path) -> tuple[str, Image.Image]:
             oriented = ImageOps.exif_transpose(opened)
             oriented.load()
     except Image.DecompressionBombError as exc:
-        raise MediaError("too_many_pixels") from exc
+        raise MediaError("media.tooManyPixels") from exc
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError) as exc:
-        raise MediaError("unsupported") from exc
+        raise MediaError("media.unsupportedType") from exc
     return _EXTENSIONS[fmt], oriented
 
 
@@ -251,7 +254,13 @@ class MediaStore:
         try:
             prepared = self._prepare(source)
         except MediaError as exc:
-            return MediaUploadFailure(filename=display, ok=False, error=exc.code, message=str(exc))
+            return MediaUploadFailure(
+                filename=display,
+                ok=False,
+                error=exc.code,
+                error_params=exc.params,
+                message=str(exc),
+            )
         item = MediaItem(
             id=prepared.id,
             filename=display,

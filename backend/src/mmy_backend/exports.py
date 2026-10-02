@@ -46,6 +46,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 from mmy_backend.catalog import TransitionCatalog
+from mmy_backend.errors import Params, error_message, validation_error
 from mmy_backend.media import MediaStore
 from mmy_backend.project import Project
 from mmy_backend.render.context import RenderContextError
@@ -77,12 +78,8 @@ MAX_JOB_ENTRIES = 20
 CANCEL_TIMEOUT_SECONDS = 30.0
 """So lange wartet `cancel` höchstens auf das Aufräumen des Workers."""
 
-MESSAGE_GL_UNAVAILABLE = (
-    "Der Export ist auf diesem System nicht verfügbar: Es konnte kein OpenGL-Kontext "
-    "für das Rendern erzeugt werden. Unterstützt wird Linux mit Software-Rendering "
-    "(Mesa llvmpipe)."
-)
-MESSAGE_UNEXPECTED = "Der Export ist unerwartet fehlgeschlagen."
+MESSAGE_GL_UNAVAILABLE = error_message("export.glUnavailable")
+MESSAGE_UNEXPECTED = error_message("export.unexpected")
 
 
 class ExportStatus(StrEnum):
@@ -108,20 +105,16 @@ def normalize_file_name(value: str) -> str:
     if name.lower().endswith(FILE_EXTENSION):
         name = name[: -len(FILE_EXTENSION)].rstrip()
     if not name:
-        raise ValueError("Der Dateiname darf nicht leer sein.")
+        raise validation_error("export.fileName.empty")
     forbidden = sorted({ch for ch in name if ch in FORBIDDEN_FILE_NAME_CHARS})
     if forbidden:
-        raise ValueError(
-            "Der Dateiname enthält unerlaubte Zeichen: "
-            + " ".join(forbidden)
-            + ' (nicht erlaubt sind / \\ : * ? " < > |).'
-        )
+        raise validation_error("export.fileName.invalidChars", chars=" ".join(forbidden))
     if any(unicodedata.category(ch) in ("Cc", "Cf") for ch in name):
-        raise ValueError("Der Dateiname enthält Steuerzeichen.")
+        raise validation_error("export.fileName.controlChars")
     if name in (".", ".."):
-        raise ValueError("Der Dateiname ist ungültig.")
+        raise validation_error("export.fileName.invalid")
     if len(name) > MAX_FILE_NAME_LENGTH:
-        raise ValueError(f"Der Dateiname ist zu lang (höchstens {MAX_FILE_NAME_LENGTH} Zeichen).")
+        raise validation_error("export.fileName.tooLong", max=MAX_FILE_NAME_LENGTH)
     return name
 
 
@@ -163,7 +156,13 @@ class ExportJob(_ExportModel):
     progress: float = Field(ge=0.0, le=1.0, description="Fortschritt 0..1")
     profile: ExportProfile
     file_name: str = Field(description="Dateiname ohne Endung")
-    error: str | None = Field(description="Verständliche Meldung bei `failed`, sonst null")
+    error: str | None = Field(description="English message when `failed`, otherwise null")
+    error_code: str | None = Field(
+        default=None, description="Stable error code when `failed` (design.md D5), otherwise null"
+    )
+    error_params: Params = Field(
+        default_factory=dict, description="Values of the error message; empty without error"
+    )
     created_at: datetime
 
 
@@ -175,7 +174,7 @@ class ExportBusy(Exception):
     """Es läuft schon ein Export."""
 
     def __init__(self, job: ExportJob) -> None:
-        super().__init__("Es läuft bereits ein Export. Bitte warten oder ihn zuerst abbrechen.")
+        super().__init__(error_message("export.busy", {"exportId": job.id}))
         self.job = job
 
 
@@ -194,6 +193,8 @@ class _Job:
     status: ExportStatus = ExportStatus.QUEUED
     progress: float = 0.0
     error: str | None = None
+    error_code: str | None = None
+    error_params: Params = field(default_factory=dict)
     cancel: threading.Event = field(default_factory=threading.Event)
     thread: threading.Thread | None = None
 
@@ -209,6 +210,8 @@ class _Job:
             profile=self.profile,
             file_name=self.file_name,
             error=self.error,
+            error_code=self.error_code,
+            error_params=dict(self.error_params),
             created_at=self.created_at,
         )
 
@@ -337,6 +340,15 @@ class ExportManager:
             if job.status is ExportStatus.RUNNING:
                 job.progress = max(job.progress, min(fraction, 1.0))
 
+    def _fail(self, job: _Job, code: str, params: Params) -> None:
+        self._set(
+            job,
+            status=ExportStatus.FAILED,
+            error=error_message(code, params),
+            error_code=code,
+            error_params=params,
+        )
+
     def _run(self, job: _Job) -> None:
         try:
             self._export(job)
@@ -367,16 +379,18 @@ class ExportManager:
             logger.info("Export %s abgebrochen", job.id)
         except ExportFailed as exc:
             self._discard(job)
+            code: str
+            params: Params
             if isinstance(exc.__cause__, RenderContextError):
-                message = MESSAGE_GL_UNAVAILABLE
+                code, params = "export.glUnavailable", {"reason": str(exc.__cause__)}
             else:
-                message = str(exc).split("\n", 1)[0]
-            logger.error("Export %s fehlgeschlagen: %s", job.id, exc)
-            self._set(job, status=ExportStatus.FAILED, error=message)
+                code, params = exc.code, exc.params
+            logger.error("Export %s fehlgeschlagen: %s %s", job.id, exc, params)
+            self._fail(job, code, params)
         except Exception:
             self._discard(job)
             logger.exception("Export %s unerwartet fehlgeschlagen", job.id)
-            self._set(job, status=ExportStatus.FAILED, error=MESSAGE_UNEXPECTED)
+            self._fail(job, "export.unexpected", {})
         else:
             self._set(job, status=ExportStatus.DONE, progress=1.0)
             logger.info("Export %s fertig: %s", job.id, job.output)

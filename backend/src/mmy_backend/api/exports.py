@@ -15,7 +15,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 
-from mmy_backend.api.project import _GermanValidationRoute
+from mmy_backend.errors import ApiValidationResponse, api_exception, error_response
 from mmy_backend.exports import (
     FILE_EXTENSION,
     ExportBusy,
@@ -28,14 +28,11 @@ from mmy_backend.exports import (
 from mmy_backend.media import MediaStore
 from mmy_backend.project import Project, ProjectStore
 
-NOT_FOUND_DETAIL = "Export nicht gefunden."
-EMPTY_PROJECT_DETAIL = "Export nicht möglich: Der Bildstreifen ist leer."
-
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
-    status.HTTP_404_NOT_FOUND: {"description": "Unbekannter oder gelöschter Export"}
+    status.HTTP_404_NOT_FOUND: error_response("Unknown or deleted export (`export.notFound`)")
 }
 
-router = APIRouter(prefix="/exports", tags=["exports"], route_class=_GermanValidationRoute)
+router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 def get_export_manager(request: Request) -> ExportManager:
@@ -50,26 +47,27 @@ def get_media_store(request: Request) -> MediaStore:
     return cast(MediaStore, request.app.state.media)
 
 
-def _not_found() -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+def _not_found(export_id: str) -> HTTPException:
+    return api_exception(status.HTTP_404_NOT_FOUND, "export.notFound", exportId=export_id)
 
 
 def _check_exportable(project: Project, media: MediaStore) -> None:
-    """422, wenn das Projekt leer ist oder auf fehlende Medien verweist."""
+    """422 if the project is empty or refers to missing media."""
     if not project.slides:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=EMPTY_PROJECT_DETAIL
-        )
+        raise api_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, "export.emptyProject")
     known = {item.id for item in media.list()}
     missing = [
-        f"Element {index + 1} (Medium „{slide.media_id}“)"
+        (index + 1, slide.media_id)
         for index, slide in enumerate(project.slides)
         if slide.media_id not in known
     ]
     if missing:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Export nicht möglich: Fehlende Medien in " + ", ".join(missing) + ".",
+        raise api_exception(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "export.missingMedia",
+            count=len(missing),
+            slides=", ".join(str(position) for position, _ in missing),
+            mediaIds=", ".join(dict.fromkeys(media_id for _, media_id in missing)),
         )
 
 
@@ -101,9 +99,13 @@ def content_disposition(file_name: str) -> str:
     "",
     status_code=status.HTTP_202_ACCEPTED,
     responses={
-        status.HTTP_409_CONFLICT: {"description": "Es läuft bereits ein Export"},
+        status.HTTP_409_CONFLICT: error_response("An export is already running (`export.busy`)"),
         status.HTTP_422_UNPROCESSABLE_CONTENT: {
-            "description": "Ungültige Anfrage, leeres Projekt oder fehlende Medien"
+            "model": ApiValidationResponse,
+            "description": (
+                "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) "
+                "or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
+            ),
         },
     },
 )
@@ -123,7 +125,7 @@ async def start_export(
     try:
         return exports.start(project, body.profile, body.file_name)
     except ExportBusy as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise api_exception(status.HTTP_409_CONFLICT, "export.busy", exportId=exc.job.id) from exc
 
 
 @router.get("")
@@ -141,7 +143,7 @@ def get_export(
     """Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler."""
     job = exports.get(export_id) if is_export_id(export_id) else None
     if job is None:
-        raise _not_found()
+        raise _not_found(export_id)
     return job
 
 
@@ -150,7 +152,7 @@ def get_export(
     response_class=FileResponse,
     responses={
         status.HTTP_200_OK: {"content": {"video/mp4": {}}, "description": "Fertiger Film (MP4)"},
-        status.HTTP_409_CONFLICT: {"description": "Der Export ist (noch) nicht fertig"},
+        status.HTTP_409_CONFLICT: error_response("The export is not done (`export.notReady`)"),
         **_NOT_FOUND,
     },
 )
@@ -164,15 +166,12 @@ def get_export_file(
     """
     job = exports.get(export_id) if is_export_id(export_id) else None
     if job is None:
-        raise _not_found()
+        raise _not_found(export_id)
     path = exports.file_path(export_id)
     if path is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Der Film ist nicht verfügbar: Der Export hat den Status „{job.status}“.",
-        )
+        raise api_exception(status.HTTP_409_CONFLICT, "export.notReady", status=job.status.value)
     if not path.is_file():
-        raise _not_found()
+        raise _not_found(export_id)
     return FileResponse(
         path,
         media_type="video/mp4",
@@ -192,8 +191,8 @@ async def delete_export(
     - `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.
     """
     if not is_export_id(export_id):
-        raise _not_found()
+        raise _not_found(export_id)
     result = await asyncio.to_thread(exports.cancel, export_id)
     if result is None:
-        raise _not_found()
+        raise _not_found(export_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

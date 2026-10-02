@@ -1,41 +1,15 @@
-"""GET/PUT /api/project - das eine Projekt laden und speichern (TASK-API-004)."""
+"""GET/PUT /api/project - load and save the one project (TASK-API-004)."""
 
-from collections.abc import Callable, Coroutine
-from typing import Annotated, Any, cast
+from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from mmy_backend.catalog import TransitionCatalog
+from mmy_backend.errors import ProjectValidationResponse
 from mmy_backend.media import MediaStore
-from mmy_backend.project import (
-    Project,
-    ProjectStore,
-    ProjectValidationError,
-    translate_validation_errors,
-)
+from mmy_backend.project import Project, ProjectStore, ProjectValidationError
 
-
-class _GermanValidationRoute(APIRoute):
-    """Liefert Strukturfehler des Projekts als 422 mit deutschen Meldungen."""
-
-    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
-        handler = super().get_route_handler()
-
-        async def route_handler(request: Request) -> Response:
-            try:
-                return await handler(request)
-            except RequestValidationError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=translate_validation_errors(exc.errors(), exc.body),
-                ) from exc
-
-        return route_handler
-
-
-router = APIRouter(prefix="/project", tags=["project"], route_class=_GermanValidationRoute)
+router = APIRouter(prefix="/project", tags=["project"])
 
 
 def get_project_store(request: Request) -> ProjectStore:
@@ -56,7 +30,18 @@ def get_project(store: Annotated[ProjectStore, Depends(get_project_store)]) -> P
     return store.get()
 
 
-@router.put("")
+@router.put(
+    "",
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": ProjectValidationResponse,
+            "description": (
+                "Invalid project: `project.invalid` with one issue per broken reference, "
+                "or FastAPI's native list (rule violations carry an error code as `type`)"
+            ),
+        }
+    },
+)
 async def put_project(
     project: Project,
     store: Annotated[ProjectStore, Depends(get_project_store)],
@@ -72,5 +57,6 @@ async def put_project(
         )
     except ProjectValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.issues
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=exc.api_error().model_dump(),
         ) from exc

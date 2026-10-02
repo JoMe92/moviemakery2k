@@ -31,6 +31,7 @@ from typing import IO
 
 from mmy_backend.catalog import TransitionCatalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR
+from mmy_backend.errors import Params, ParamValue, error_message
 from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.render.context import RenderContextError, create_render_context
 from mmy_backend.render.frames import FrameRenderer, ImageLoader
@@ -87,10 +88,17 @@ class ExportCancelled(ExportError):
 
 
 class ExportFailed(ExportError):
-    """Der Export ist fehlgeschlagen; es bleibt keine Datei zurück."""
+    """Der Export ist fehlgeschlagen; es bleibt keine Datei zurück.
 
-    def __init__(self, message: str, stderr_tail: str = "") -> None:
+    `code` and `params` identify the error (design.md D5, `mmy_backend.errors`);
+    the exception text is the English message plus the FFmpeg stderr tail.
+    """
+
+    def __init__(self, code: str, stderr_tail: str = "", **params: ParamValue) -> None:
+        self.code = code
+        self.params: Params = params
         self.stderr_tail = stderr_tail
+        message = error_message(code, params)
         super().__init__(f"{message}\n{stderr_tail}".rstrip() if stderr_tail else message)
 
 
@@ -218,26 +226,26 @@ def export_movie(
     spec = profile.spec
     total = frame_count(timeline.duration, spec.fps)
     if total == 0:
-        raise ExportFailed("Export nicht möglich: Das Projekt enthält keine Bilder.")
+        raise ExportFailed("export.noImages")
     binary = ffmpeg_binary()
     if binary is None:
-        raise ExportFailed("Export nicht möglich: FFmpeg wurde nicht gefunden.")
+        raise ExportFailed("export.ffmpegMissing")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     part = part_path(out_path)
 
     try:
         ctx = create_render_context()
     except RenderContextError as exc:
-        raise ExportFailed(str(exc)) from exc
+        raise ExportFailed("export.glUnavailable", reason=str(exc)) from exc
 
     proc: subprocess.Popen[bytes] | None = None
     tail: _StderrTail | None = None
     reporter = _Progress(progress)
 
-    def failed(message: str) -> ExportFailed:
+    def failed(code: str, **params: ParamValue) -> ExportFailed:
         if proc is not None:
             _stop(proc)
-        return ExportFailed(message, tail.text() if tail is not None else "")
+        return ExportFailed(code, tail.text() if tail is not None else "", **params)
 
     try:
         with ctx:
@@ -255,7 +263,7 @@ def export_movie(
                             stderr=subprocess.PIPE,
                         )
                     except OSError as exc:
-                        raise ExportFailed(f"FFmpeg ließ sich nicht starten: {exc}") from exc
+                        raise ExportFailed("export.ffmpegStartFailed", reason=str(exc)) from exc
                     assert proc.stdin is not None and proc.stderr is not None
                     tail = _StderrTail(proc.stderr)
                     tail.start()
@@ -267,14 +275,14 @@ def export_movie(
                             proc.stdin.write(frame)
                         except (BrokenPipeError, ConnectionResetError) as exc:
                             raise failed(
-                                f"FFmpeg hat die Eingabe bei Bild {n + 1}/{total} beendet."
+                                "export.ffmpegInputClosed", frame=n + 1, total=total
                             ) from exc
                         reporter.update((n + 1) / total)
 
                     try:
                         proc.stdin.close()
                     except (BrokenPipeError, ConnectionResetError) as exc:
-                        raise failed("FFmpeg hat die Eingabe vorzeitig beendet.") from exc
+                        raise failed("export.ffmpegInputClosedEarly") from exc
                     while True:
                         try:
                             returncode = proc.wait(timeout=_POLL_SECONDS)
@@ -283,7 +291,7 @@ def export_movie(
                             if cancel is not None and cancel.is_set():
                                 raise ExportCancelled() from None
                     if returncode != 0:
-                        raise failed(f"FFmpeg ist mit Code {returncode} fehlgeschlagen.")
+                        raise failed("export.ffmpegFailed", returnCode=returncode)
             finally:
                 library.release()
     except BaseException as exc:
@@ -293,7 +301,7 @@ def export_movie(
         if isinstance(exc, ExportError) or not isinstance(exc, Exception):
             raise
         detail = str(exc) if isinstance(exc, ShaderError) else repr(exc)
-        raise ExportFailed(f"Export fehlgeschlagen: {detail}") from exc
+        raise ExportFailed("export.renderFailed", reason=detail) from exc
     finally:
         ctx.release()
 
@@ -301,7 +309,7 @@ def export_movie(
         os.replace(part, out_path)
     except OSError as exc:
         part.unlink(missing_ok=True)
-        raise ExportFailed(f"Export konnte nicht gespeichert werden: {exc}") from exc
+        raise ExportFailed("export.saveFailed", reason=str(exc)) from exc
     logger.info("Export %s fertig: %d Bilder, %s", profile.value, total, out_path)
     reporter.done()
     return out_path

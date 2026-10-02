@@ -83,9 +83,9 @@ def to_desktop_glsl(source: str) -> str:
     """
     first_line, newline, rest = source.partition("\n")
     if first_line.rstrip("\r") != ES_HEADER or not newline:
-        raise ShaderError(f"Shader beginnt nicht mit der Zeile {ES_HEADER!r}.")
+        raise ShaderError(f"Shader does not start with the line {ES_HEADER!r}.")
     if "#version" in rest:
-        raise ShaderError("Shader enthält mehr als eine #version-Direktive.")
+        raise ShaderError("Shader contains more than one #version directive.")
     return CORE_HEADER + first_line[len(ES_HEADER) :] + newline + rest
 
 
@@ -107,7 +107,7 @@ class ShaderSources:
     def _required(self, name: str) -> str:
         text = self._read(self.shaders_dir / name)
         if text is None:
-            raise ShaderError(f"Shader-Datei {self.shaders_dir / name} fehlt.")
+            raise ShaderError(f"Shader file {self.shaders_dir / name} is missing.")
         return text
 
     @property
@@ -221,7 +221,7 @@ class ShaderLibrary:
         if program is None:
             if transition_id == FALLBACK_TRANSITION_ID:
                 raise ShaderError(
-                    f"Rückfall-Shader {FALLBACK_TRANSITION_ID!r} fehlt oder ist fehlerhaft "
+                    f"Fallback shader {FALLBACK_TRANSITION_ID!r} is missing or broken "
                     f"({self.sources.shaders_dir})."
                 )
             program = self.get(FALLBACK_TRANSITION_ID)
