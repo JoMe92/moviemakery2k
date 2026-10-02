@@ -17,6 +17,7 @@ import { useDropNotice, useMusicInsertIndex } from "../storyboard/StoryboardDnd"
 import { musicDuration } from "../timeline/music";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import { MusicClipBlock } from "./MusicClipBlock";
+import { TrimDialog, VolumeDialog } from "./MusicClipDialogs";
 import styles from "./MusicTrack.module.css";
 
 interface MenuState {
@@ -25,21 +26,46 @@ interface MenuState {
   y: number;
 }
 
+type DialogState = { kind: "volume" | "trim"; clipId: string };
+
 export interface MusicClipMenuActions {
   remove: (clipId: string) => void;
+  volume: (clipId: string) => void;
+  /** Absent if the audio file is missing (no duration to trim against). */
+  trim?: (clipId: string) => void;
+  setFade: (clipId: string, patch: { fadeIn: boolean } | { fadeOut: boolean }) => void;
 }
 
 /**
- * Context menu entries of a music clip. Extension point for WEB-029
- * (spec music-track "Musikstücke bearbeiten"): "Volume…", "Fade In",
- * "Fade Out" (toggles) and "Trim…" are appended here.
+ * Context menu entries of a music clip (spec music-track "Musikstücke
+ * bearbeiten"): "Remove", "Volume…", "Fade In" and "Fade Out" (toggles with a
+ * check mark) and "Trim…".
  */
 export function musicClipMenuItems(
   clip: MusicClip,
   t: Translate,
   actions: MusicClipMenuActions,
 ): ContextMenuItem[] {
-  return [{ label: t("musicTrack.remove"), onSelect: () => actions.remove(clip.id) }];
+  const { trim } = actions;
+  return [
+    { label: t("musicTrack.remove"), onSelect: () => actions.remove(clip.id) },
+    { label: t("musicTrack.volume"), onSelect: () => actions.volume(clip.id) },
+    {
+      label: t("musicTrack.fadeIn"),
+      checked: clip.fadeIn,
+      onSelect: () => actions.setFade(clip.id, { fadeIn: !clip.fadeIn }),
+    },
+    {
+      label: t("musicTrack.fadeOut"),
+      checked: clip.fadeOut,
+      onSelect: () => actions.setFade(clip.id, { fadeOut: !clip.fadeOut }),
+    },
+    {
+      label: t("musicTrack.trim"),
+      disabled: trim === undefined,
+      onSelect: () => trim?.(clip.id),
+    },
+  ];
 }
 
 const NOTICE_KEY = {
@@ -63,6 +89,7 @@ export function MusicTrack() {
   const musicSelection = useAppStore((s) => s.musicSelection);
   const selectMusicClip = useAppStore((s) => s.selectMusicClip);
   const removeMusicClip = useAppStore((s) => s.removeMusicClip);
+  const updateMusicClip = useAppStore((s) => s.updateMusicClip);
   const insertIndex = useMusicInsertIndex();
   const { notice } = useDropNotice();
   const { setNodeRef, isOver } = useDroppable({
@@ -70,6 +97,7 @@ export function MusicTrack() {
     data: { type: "musicStrip" },
   });
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
   const tiles = useRef(new Map<string, HTMLButtonElement>());
 
   const durations = useMemo(() => audioDurations(media), [media]);
@@ -90,6 +118,13 @@ export function MusicTrack() {
 
   const empty = music.length === 0;
   const menuClip = menu ? music.find((c) => c.id === menu.clipId) : undefined;
+  const audioOf = (clip: MusicClip | undefined) =>
+    clip
+      ? media.find((m): m is AudioItem => m.id === clip.mediaId && m.kind === "audio")
+      : undefined;
+  const dialogClip = dialog ? music.find((c) => c.id === dialog.clipId) : undefined;
+  const dialogNumber = dialogClip ? music.indexOf(dialogClip) + 1 : 0;
+  const dialogAudio = audioOf(dialogClip);
 
   return (
     <section className={styles.track} aria-labelledby={headingId}>
@@ -162,7 +197,31 @@ export function MusicTrack() {
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
-          items={musicClipMenuItems(menuClip, t, { remove })}
+          items={musicClipMenuItems(menuClip, t, {
+            remove,
+            volume: (clipId) => setDialog({ kind: "volume", clipId }),
+            trim: audioOf(menuClip) ? (clipId) => setDialog({ kind: "trim", clipId }) : undefined,
+            setFade: (clipId, patch) => updateMusicClip(clipId, patch),
+          })}
+        />
+      ) : null}
+      {dialog?.kind === "volume" && dialogClip ? (
+        <VolumeDialog
+          open
+          number={dialogNumber}
+          volume={dialogClip.volume}
+          onConfirm={(volume) => updateMusicClip(dialogClip.id, { volume })}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+      {dialog?.kind === "trim" && dialogClip && dialogAudio ? (
+        <TrimDialog
+          open
+          number={dialogNumber}
+          clip={dialogClip}
+          fileDuration={dialogAudio.duration}
+          onConfirm={(trimStart, trimEnd) => updateMusicClip(dialogClip.id, { trimStart, trimEnd })}
+          onClose={() => setDialog(null)}
         />
       ) : null}
     </section>

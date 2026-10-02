@@ -49,3 +49,41 @@ export function audioDurations(media: readonly MediaItem[]): MediaDurations {
   for (const m of media) if (m.kind === "audio") durations[m.id] = m.duration;
   return durations;
 }
+
+/** Volume range of a music clip as linear gain (API contract: 0–2 = 0–200 %). */
+export const MUSIC_VOLUME = { min: 0, max: 2 } as const;
+/** Shortest played length of a trimmed clip in seconds (spec music-track "Musikstücke bearbeiten"). */
+export const MUSIC_CLIP_MIN_LENGTH = 0.5;
+/** Tolerance when comparing trim values with the media duration (as in the backend). */
+export const TRIM_EPSILON = 1e-6;
+
+/** Editable fields of a music clip. */
+export type MusicClipPatch = Partial<Omit<MusicClip, "id" | "mediaId">>;
+
+export function isValidMusicVolume(volume: number): boolean {
+  return Number.isFinite(volume) && volume >= MUSIC_VOLUME.min && volume <= MUSIC_VOLUME.max;
+}
+
+/**
+ * Trim check of the spec: `0 ≤ start < end ≤ file duration` and a played
+ * length of at least 0.5 s. `trimEnd` null means the end of the file.
+ */
+export function isValidMusicTrim(
+  trimStart: number,
+  trimEnd: number | null,
+  fileDuration: number,
+): boolean {
+  if (!Number.isFinite(trimStart) || trimStart < 0) return false;
+  if (!Number.isFinite(fileDuration) || fileDuration <= 0) return false;
+  const end = trimEnd ?? fileDuration;
+  if (!Number.isFinite(end) || end > fileDuration + TRIM_EPSILON) return false;
+  return trimStart < end && end - trimStart >= MUSIC_CLIP_MIN_LENGTH - TRIM_EPSILON;
+}
+
+export function updateMusicClip(
+  music: readonly MusicClip[],
+  id: string,
+  patch: MusicClipPatch,
+): MusicClip[] {
+  return music.map((c) => (c.id === id ? { ...c, ...patch } : c));
+}

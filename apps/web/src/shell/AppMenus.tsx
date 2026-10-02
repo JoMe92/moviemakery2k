@@ -17,6 +17,8 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const newProject = useAppStore((s) => s.newProject);
   const removeSlide = useAppStore((s) => s.removeSlide);
   const selection = useAppStore((s) => s.selection);
+  const musicSelection = useAppStore((s) => s.musicSelection);
+  const removeMusicClip = useAppStore((s) => s.removeMusicClip);
   const requestImport = useAppStore((s) => s.requestImport);
   const hasSlides = useAppStore((s) => s.slides.length > 0);
   const openExportWizard = useAppStore((s) => s.openExportWizard);
@@ -36,7 +38,12 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
           options: () => setOptions(true),
           importImages: () => requestImport("any"),
           saveMovie: hasSlides ? openExportWizard : undefined,
-          deleteSelection: selection ? () => removeSlide(selection.slideId) : undefined,
+          // Picture or music clip, whichever is selected (the selections are exclusive).
+          deleteSelection: selection
+            ? () => removeSlide(selection.slideId)
+            : musicSelection !== null
+              ? () => removeMusicClip(musicSelection)
+              : undefined,
           fitToMusic: canFit
             ? () => {
                 const result = fitToMusic();
@@ -53,6 +60,8 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
       extra,
       selection,
       removeSlide,
+      musicSelection,
+      removeMusicClip,
       requestImport,
       hasSlides,
       openExportWizard,

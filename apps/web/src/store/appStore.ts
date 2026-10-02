@@ -33,10 +33,14 @@ import { musicDuration } from "../timeline/music";
 import { slideStartTime } from "../timeline/timeline";
 import {
   insertMusicClip,
+  isValidMusicTrim,
+  isValidMusicVolume,
   MUSIC_TRACK_MAX,
+  type MusicClipPatch,
   moveMusicClip as moveMusicClipOp,
   newMusicClip,
   removeMusicClip as removeMusicClipOp,
+  updateMusicClip as updateMusicClipOp,
 } from "./musicOps";
 import {
   insertSlide,
@@ -151,6 +155,13 @@ export interface AppState {
   addMusicClip(mediaId: string, index?: number): boolean;
   moveMusicClip(from: number, to: number): void;
   removeMusicClip(clipId: string): void;
+  /**
+   * Change volume, trim or fades of a music clip (spec music-track
+   * "Musikstücke bearbeiten"; autosaved). An invalid volume or trim range
+   * (`0 ≤ start < end ≤ file duration`, length ≥ 0.5 s) changes nothing;
+   * returns whether the change was applied.
+   */
+  updateMusicClip(clipId: string, patch: MusicClipPatch): boolean;
   /**
    * Clip → "Fit movie to music" (add-music-track D8): sets all picture
    * durations at once (one change, autosaved). Changes nothing if the music
@@ -521,6 +532,20 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       removeMusicClip(clipId) {
         commitMusic(removeMusicClipOp(get().music, clipId));
+      },
+      updateMusicClip(clipId, patch) {
+        const { music, media } = get();
+        const clip = music.find((c) => c.id === clipId);
+        if (!clip) return false;
+        const next = { ...clip, ...patch };
+        if (!isValidMusicVolume(next.volume)) return false;
+        if (patch.trimStart !== undefined || patch.trimEnd !== undefined) {
+          const item = media.find((m) => m.id === clip.mediaId);
+          if (item?.kind !== "audio") return false;
+          if (!isValidMusicTrim(next.trimStart, next.trimEnd, item.duration)) return false;
+        }
+        commitMusic(updateMusicClipOp(music, clipId, patch));
+        return true;
       },
 
       fitToMusic() {

@@ -5,7 +5,12 @@ export interface ContextMenuItem {
   label: string;
   onSelect: () => void;
   disabled?: boolean;
+  /** Toggle item with a check mark (`menuitemcheckbox`); undefined = plain item. */
+  checked?: boolean;
 }
+
+const ITEM_SELECTOR =
+  '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]:not([aria-disabled="true"])';
 
 export interface ContextMenuProps {
   /** Accessible name of the menu. */
@@ -41,9 +46,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    ref.current
-      ?.querySelector<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])')
-      ?.focus();
+    ref.current?.querySelector<HTMLElement>(ITEM_SELECTOR)?.focus();
 
     const onPointerDown = (event: PointerEvent | MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) onCloseRef.current();
@@ -68,10 +71,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
   }, []);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const menuItems = Array.from(
-      ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])') ??
-        [],
-    );
+    const menuItems = Array.from(ref.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
     const index = menuItems.indexOf(document.activeElement as HTMLElement);
     const focusAt = (i: number) => menuItems[(i + menuItems.length) % menuItems.length]?.focus();
     switch (event.key) {
@@ -110,23 +110,28 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
       onKeyDown={onKeyDown}
       onContextMenu={(event) => event.preventDefault()}
     >
-      {items.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          role="menuitem"
-          tabIndex={-1}
-          className={styles.item}
-          aria-disabled={item.disabled || undefined}
-          onClick={() => {
+      {items.map((item) => {
+        const common = {
+          type: "button",
+          tabIndex: -1,
+          className: styles.item,
+          "aria-disabled": item.disabled || undefined,
+          onClick: () => {
             if (item.disabled) return;
             onClose();
             item.onSelect();
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
+          },
+        } as const;
+        return item.checked === undefined ? (
+          <button key={item.label} role="menuitem" {...common}>
+            {item.label}
+          </button>
+        ) : (
+          <button key={item.label} role="menuitemcheckbox" aria-checked={item.checked} {...common}>
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

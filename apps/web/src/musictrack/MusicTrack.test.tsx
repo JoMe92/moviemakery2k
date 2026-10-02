@@ -337,7 +337,7 @@ describe("Music track", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((m) => m.textContent),
-    ).toEqual(["Entfernen"]);
+    ).toEqual(["Entfernen", "Lautstärke…", "Kürzen…"]);
     await user.click(within(menu).getByRole("menuitem", { name: "Entfernen" }));
     expect(store.getState().music.map((c) => c.id)).toEqual(["c1"]);
 
