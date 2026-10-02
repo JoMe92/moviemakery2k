@@ -1,12 +1,12 @@
-"""Prüft die Render-Umgebung des Exports (Aufruf: `pixi run check-render-env`).
+"""Checks the export's render environment (invocation: `pixi run check-render-env`).
 
-1. moderngl erzeugt über EGL einen Kontext ohne Display (design.md D1); unter
-   Linux muss der Renderer Mesa llvmpipe aus der Pixi-Umgebung sein.
-2. Ein Vollbild-Dreieck ohne Vertex-Buffer mit `#version 330 core` wird in ein
-   Offscreen-Framebuffer gerendert und ein Pixel zurückgelesen (design.md D2).
-3. FFmpeg bietet die Encoder `libx264` und `aac` (design.md D4, D8).
+1. moderngl creates a context without a display via EGL (design.md D1); on
+   Linux the renderer must be Mesa llvmpipe from the Pixi environment.
+2. A full-screen triangle without a vertex buffer using `#version 330 core` is
+   rendered into an offscreen framebuffer and one pixel is read back (design.md D2).
+3. FFmpeg provides the encoders `libx264` and `aac` (design.md D4, D8).
 
-Exit-Code != 0 bei jedem Fehler.
+Exit code != 0 on any error.
 """
 
 import subprocess
@@ -38,16 +38,16 @@ def check_gl() -> list[str]:
     try:
         import moderngl
     except ImportError as exc:
-        return [f"moderngl nicht importierbar: {exc}"]
+        return [f"moderngl cannot be imported: {exc}"]
 
     try:
         ctx = moderngl.create_context(standalone=True, backend="egl")
-    except Exception as exc:  # noqa: BLE001 – glcontext wirft nur generische Exceptions
+    except Exception as exc:  # noqa: BLE001 – glcontext only raises generic exceptions
         return [
             (
-                f"EGL-Kontext fehlgeschlagen: {exc}\n"
-                "  Erwartet: Mesa llvmpipe aus der Pixi-Umgebung (mesalib, nur linux-64);\n"
-                "  __EGL_VENDOR_LIBRARY_DIRS und GLCONTEXT_LINUX_LIBEGL setzt pixi.toml."
+                f"EGL context failed: {exc}\n"
+                "  Expected: Mesa llvmpipe from the Pixi environment (mesalib, linux-64 only);\n"
+                "  __EGL_VENDOR_LIBRARY_DIRS and GLCONTEXT_LINUX_LIBEGL are set by pixi.toml."
             )
         ]
 
@@ -56,7 +56,7 @@ def check_gl() -> list[str]:
     print(f"GL_VERSION:  {ctx.info['GL_VERSION']}")
     problems: list[str] = []
     if sys.platform.startswith("linux") and "llvmpipe" not in renderer:
-        problems.append(f"Renderer ist nicht llvmpipe: {renderer}")
+        problems.append(f"Renderer is not llvmpipe: {renderer}")
 
     try:
         program = ctx.program(vertex_shader=VERTEX, fragment_shader=FRAGMENT)
@@ -66,14 +66,14 @@ def check_gl() -> list[str]:
         fbo.clear(0.0, 0.0, 0.0, 0.0)
         vao.render(moderngl.TRIANGLES, vertices=3)
         pixel = tuple(fbo.read(viewport=(1, 1, 1, 1), components=4))
-    except Exception as exc:  # noqa: BLE001 – moderngl.Error und ctypes-Fehler gleichermaßen
-        return [*problems, f"Rendern fehlgeschlagen: {exc}"]
+    except Exception as exc:  # noqa: BLE001 – moderngl.Error and ctypes errors alike
+        return [*problems, f"Rendering failed: {exc}"]
     finally:
         ctx.release()
 
     print(f"Pixel (1,1): {pixel}")
     if any(abs(a - b) > 1 for a, b in zip(pixel, EXPECTED_PIXEL, strict=True)):
-        problems.append(f"Pixel {pixel} != erwartet {EXPECTED_PIXEL}")
+        problems.append(f"Pixel {pixel} != expected {EXPECTED_PIXEL}")
     return problems
 
 
@@ -86,9 +86,9 @@ def check_ffmpeg() -> list[str]:
             check=False,
         )
     except FileNotFoundError:
-        return ["ffmpeg nicht gefunden"]
+        return ["ffmpeg not found"]
     if res.returncode != 0:
-        return [f"ffmpeg -encoders fehlgeschlagen:\n{res.stderr.strip()}"]
+        return [f"ffmpeg -encoders failed:\n{res.stderr.strip()}"]
     names = {
         parts[1]
         for line in res.stdout.splitlines()
@@ -97,9 +97,9 @@ def check_ffmpeg() -> list[str]:
     problems = []
     for encoder in ENCODERS:
         if encoder in names:
-            print(f"FFmpeg-Encoder: {encoder}")
+            print(f"FFmpeg encoder: {encoder}")
         else:
-            problems.append(f"FFmpeg-Encoder fehlt: {encoder}")
+            problems.append(f"FFmpeg encoder missing: {encoder}")
     return problems
 
 
@@ -108,7 +108,7 @@ def main() -> int:
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1
-    print("Render-Umgebung OK.")
+    print("Render environment OK.")
     return 0
 
 

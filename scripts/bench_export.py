@@ -1,12 +1,12 @@
-"""Laufzeit des Exports messen (Aufruf: `pixi run bench-export`; TASK-RENDER-004).
+"""Measure the export runtime (invocation: `pixi run bench-export`; TASK-RENDER-004).
 
-Projekt: 12 Bilder à 5 s, Übergänge reihum aus dem Katalog mit 1,25 s, Eingabe
-12 fotoähnliche JPEG-Vorschaubilder (1920x1280 bzw. Hochkant 1080x1920). Pro
-Profil wird einmal nur gerendert (ohne FFmpeg) und einmal komplett exportiert
-(Rendern + Kodieren, `export_movie`). Ausgabe: Sekunden, Bilder/s und
-Echtzeitfaktor.
+Project: 12 images of 5 s each, transitions taken in turn from the catalog at 1.25 s,
+input 12 photo-like JPEG previews (1920x1280 or portrait 1080x1920). Per profile
+there is one render-only pass (without FFmpeg) and one full export
+(render + encode, `export_movie`). Output: seconds, frames/s and
+real-time factor.
 
-Optionen: `--profile high|small` (mehrfach), `--keep DIR` behält die MP4-Dateien.
+Options: `--profile high|small` (repeatable), `--keep DIR` keeps the MP4 files.
 """
 
 import argparse
@@ -44,7 +44,7 @@ def make_previews(directory: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--profile", action="append", choices=[p.value for p in ExportProfile])
-    parser.add_argument("--keep", type=Path, help="Verzeichnis für die MP4-Dateien")
+    parser.add_argument("--keep", type=Path, help="Directory for the MP4 files")
     args = parser.parse_args()
     profiles = [ExportProfile(p) for p in args.profile or ["small", "high"]]
 
@@ -70,10 +70,10 @@ def main() -> None:
             with Image.open(work / f"{media_id}.jpg") as image:
                 return image.convert("RGB")
 
-        print(f"Rechner: {platform.machine()}, {os.cpu_count()} CPUs, {platform.platform()}")
+        print(f"Machine: {platform.machine()}, {os.cpu_count()} CPUs, {platform.platform()}")
         print(
-            f"Projekt: {SLIDES} Bilder x {SLIDE_SECONDS:g} s, Übergänge {TRANSITION_SECONDS:g} s, "
-            f"Videodauer {timeline.duration:.2f} s"
+            f"Project: {SLIDES} images x {SLIDE_SECONDS:g} s, "
+            f"transitions {TRANSITION_SECONDS:g} s, video duration {timeline.duration:.2f} s"
         )
         for profile in profiles:
             spec = profile.spec
@@ -99,9 +99,9 @@ def main() -> None:
             size_mb = out.stat().st_size / 1e6
             print(
                 f"{profile.value:5} {spec.width}x{spec.height}@{spec.fps} ({renderer_name}): "
-                f"{frames} Bilder | nur Rendern {render_s:.2f} s ({frames / render_s:.0f} B/s) | "
-                f"Export gesamt {export_s:.2f} s ({frames / export_s:.0f} B/s, "
-                f"{timeline.duration / export_s:.1f}x Echtzeit) | {size_mb:.1f} MB"
+                f"{frames} frames | render only {render_s:.2f} s ({frames / render_s:.0f} fps) | "
+                f"export total {export_s:.2f} s ({frames / export_s:.0f} fps, "
+                f"{timeline.duration / export_s:.1f}x real time) | {size_mb:.1f} MB"
             )
 
 
