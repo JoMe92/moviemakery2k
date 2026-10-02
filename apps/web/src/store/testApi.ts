@@ -1,5 +1,12 @@
 import { vi } from "vitest";
-import type { AppApi, ExportJob, ImageItem, Project, Transition } from "../lib/apiClient";
+import type {
+  AppApi,
+  AudioItem,
+  ExportJob,
+  ImageItem,
+  Project,
+  Transition,
+} from "../lib/apiClient";
 
 export function mediaItem(id: string): ImageItem {
   return {
@@ -11,6 +18,21 @@ export function mediaItem(id: string): ImageItem {
     createdAt: "2026-10-02T00:00:00Z",
     thumbnailUrl: `/api/media/${id}/thumbnail`,
     previewUrl: `/api/media/${id}/preview`,
+  };
+}
+
+export function audioItem(id: string, duration = 192.4, filename = `${id}.mp3`): AudioItem {
+  return {
+    id,
+    kind: "audio",
+    filename,
+    duration,
+    sampleRate: 44100,
+    channels: 2,
+    codec: "mp3",
+    createdAt: "2026-10-02T00:00:00Z",
+    audioUrl: `/api/media/${id}/audio`,
+    peaksUrl: `/api/media/${id}/peaks`,
   };
 }
 

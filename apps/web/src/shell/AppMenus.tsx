@@ -27,7 +27,7 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
           newProject: () => setConfirmNew(true),
           about: () => setAbout(true),
           options: () => setOptions(true),
-          importImages: requestImport,
+          importImages: () => requestImport("any"),
           saveMovie: hasSlides ? openExportWizard : undefined,
           deleteSelection: selection ? () => removeSlide(selection.slideId) : undefined,
         },

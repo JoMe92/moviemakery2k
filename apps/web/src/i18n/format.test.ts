@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatNumber, formatTime, parseDecimal } from "./format";
+import { formatClipDuration, formatNumber, formatTime, parseDecimal } from "./format";
 
 describe("formatTime", () => {
   it.each([
@@ -33,5 +33,19 @@ describe("parseDecimal", () => {
     ["-1", null],
   ])("%j → %j", (text, expected) => {
     expect(parseDecimal(text)).toBe(expected);
+  });
+});
+
+describe("formatClipDuration", () => {
+  it.each([
+    [0, "0:00"],
+    [4.4, "0:04"],
+    [59.6, "1:00"],
+    [192.4, "3:12"],
+    [900, "15:00"],
+    [3725, "1:02:05"],
+  ])("%d s → %s", (seconds, expected) => {
+    expect(formatClipDuration("de", seconds)).toBe(expected);
+    expect(formatClipDuration("en", seconds)).toBe(expected);
   });
 });

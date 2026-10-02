@@ -47,7 +47,13 @@ export type BackendState =
   | { kind: "ok"; health: Health }
   | { kind: "offline" };
 export type SaveState = "idle" | "saving" | "saved" | "error";
-export type CollectionId = "media" | "transitions";
+/** `media` is "My Pictures" (images only), `music` is "My Music" (audio only). */
+export type CollectionId = "media" | "music" | "transitions";
+/**
+ * File dialog requested: `any` (File menu: pictures and audio), `pictures`
+ * ("Import pictures") or `audio` ("Import audio or music").
+ */
+export type ImportKind = "any" | "pictures" | "audio";
 export type Selection = { kind: "slide"; slideId: string } | null;
 
 export interface UploadEntry {
@@ -78,8 +84,10 @@ export interface AppState {
   playback: Playback;
   /** Transition demo in the monitor (only together with previewTransitionId). */
   demo: Playback | null;
-  /** Counter: every increment opens the "Import pictures" file dialog (task, File menu). */
+  /** Counter: every increment opens the import file dialog (tasks, File menu). */
   importRequest: number;
+  /** Kind of the last requested file dialog (file types it offers). */
+  importKind: ImportKind;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -106,8 +114,8 @@ export interface AppState {
   /** Clock step in seconds (rAF clock). */
   tick(dt: number): void;
 
-  /** Request the "Import pictures" file dialog (opened by the collection). */
-  requestImport(): void;
+  /** Request the import file dialog (opened by the collection); default `any`. */
+  requestImport(kind?: ImportKind): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -221,6 +229,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       demo: null,
       uploads: [],
       importRequest: 0,
+      importKind: "any",
       exportWizardOpen: false,
       locale,
       setLocale(next) {
@@ -332,8 +341,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         if (playback.playing) set({ playback: advance(playback, dt, duration()) });
       },
 
-      requestImport() {
-        set({ importRequest: get().importRequest + 1 });
+      requestImport(kind = "any") {
+        set({ importRequest: get().importRequest + 1, importKind: kind });
       },
 
       async importFiles(files) {
@@ -398,6 +407,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       addSlide(mediaId, index) {
+        // Only pictures belong in the filmstrip; audio goes to the music track.
+        if (get().media.find((m) => m.id === mediaId)?.kind === "audio") return;
         const slide: Slide = {
           id: newSlideId(),
           mediaId,

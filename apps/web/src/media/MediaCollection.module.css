@@ -21,3 +21,25 @@
 .reason {
   margin: 6px 0 0;
 }
+
+/* "My Music" tile: audio icon with the duration below it. */
+.audio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  background: var(--y2k-pane);
+  color: var(--y2k-border-strong);
+}
+
+.audioIcon {
+  flex: none;
+}
+
+.duration {
+  color: var(--y2k-text-muted);
+  font-variant-numeric: tabular-nums;
+}

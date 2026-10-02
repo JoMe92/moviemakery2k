@@ -35,6 +35,7 @@ export const en = {
   },
   collections: {
     media: "My Pictures",
+    music: "My Music",
     transitions: "Video Transitions",
   },
   menu: {
@@ -140,6 +141,14 @@ export const en = {
     deleteQuestion:
       "Are you sure you want to delete “{name}”? It will also be removed from the storyboard.",
     deleteFailed: "“{name}” could not be deleted.",
+    musicEmptyHint:
+      "This collection is empty. Choose “Import audio or music” or drag audio files here.",
+    musicList: "Music",
+    audioTile: "{name}, {duration}",
+    audioMenu: "Audio clip “{name}”",
+    deleteAudioTitle: "Delete Audio Clip",
+    deleteAudioQuestion:
+      "Are you sure you want to delete “{name}”? It will also be removed from the music track.",
   },
   upload: {
     progress: "Importing {current} of {total} …",

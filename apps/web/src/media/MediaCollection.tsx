@@ -1,24 +1,29 @@
 import { useDraggable } from "@dnd-kit/core";
-import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
+import { type KeyboardEvent, type MouseEvent, useMemo, useRef, useState } from "react";
 import { translateError } from "../i18n/errors";
+import { formatClipDuration } from "../i18n/format";
 import { useT } from "../i18n/useT";
-import { ApiError, type MediaItem } from "../lib/apiClient";
+import { ApiError, type AudioItem, type ImageItem, type MediaItem } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
+import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
 import styles from "./MediaCollection.module.css";
 
-interface MediaTileProps {
-  item: MediaItem;
+interface TileHandlers {
   selected: boolean;
   tileRef: (el: HTMLButtonElement | null) => void;
   onClick: () => void;
   onDoubleClick: () => void;
   onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}
+
+interface MediaTileProps extends TileHandlers {
+  item: ImageItem;
 }
 
 /** Collection tile, draggable into the storyboard via dnd-kit (pointer and keyboard). */
@@ -44,9 +49,7 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
       aria-label={item.filename}
       title={item.filename}
       thumbnail={
-        item.kind === "image" ? (
-          <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
-        ) : null
+        <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
       }
       selected={selected}
       {...handlers}
@@ -54,6 +57,30 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
         onKeyDown(event);
         if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
       }}
+    />
+  );
+}
+
+/**
+ * "My Music" tile: own audio icon, file name and duration. Not draggable into
+ * the filmstrip (pictures only); the music track gets its own drop target.
+ */
+function AudioTile({ item, tileRef, ...handlers }: TileHandlers & { item: AudioItem }) {
+  const { t, locale } = useT();
+  const duration = formatClipDuration(locale, item.duration);
+  return (
+    <Tile
+      ref={tileRef}
+      caption={item.filename}
+      aria-label={t("media.audioTile", { name: item.filename, duration })}
+      title={item.filename}
+      thumbnail={
+        <span className={styles.audio}>
+          <AudioIcon size={36} className={styles.audioIcon} />
+          <span className={styles.duration}>{duration}</span>
+        </span>
+      }
+      {...handlers}
     />
   );
 }
@@ -70,13 +97,21 @@ interface MenuState {
   y: number;
 }
 
+export interface MediaCollectionProps {
+  /** `image` shows "My Pictures", `audio` shows "My Music". */
+  kind?: MediaItem["kind"];
+}
+
 /**
- * "My Pictures" collection: tiles in import order. Double-click appends the
- * picture to the storyboard; Delete or the context menu deletes after confirmation.
+ * "My Pictures" or "My Music" collection: tiles of one media kind in import
+ * order. Double-click appends a picture to the storyboard (audio is never
+ * added to the filmstrip); Delete or the context menu deletes after confirmation.
  */
-export function MediaCollection() {
+export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
   const { t, locale } = useT();
-  const media = useAppStore((s) => s.media);
+  const allMedia = useAppStore((s) => s.media);
+  const media = useMemo(() => allMedia.filter((m) => m.kind === kind), [allMedia, kind]);
+  const audio = kind === "audio";
   const addSlide = useAppStore((s) => s.addSlide);
   const deleteMedia = useAppStore((s) => s.deleteMedia);
 
@@ -138,42 +173,54 @@ export function MediaCollection() {
   return (
     <>
       {media.length === 0 ? (
-        <p className={styles.hint}>{t("media.emptyHint")}</p>
+        <p className={styles.hint}>{t(audio ? "media.musicEmptyHint" : "media.emptyHint")}</p>
       ) : (
-        <ul className={styles.grid} aria-label={t("media.list")}>
-          {media.map((item) => (
-            <li key={item.id}>
-              <MediaTile
-                item={item}
-                tileRef={(el) => {
-                  if (el) tiles.current.set(item.id, el);
-                  else tiles.current.delete(item.id);
-                }}
-                selected={selectedId === item.id}
-                onClick={() => setSelectedId(item.id)}
-                onDoubleClick={() => addSlide(item.id)}
-                onContextMenu={onContextMenu(item)}
-                onKeyDown={onKeyDown(item)}
-              />
-            </li>
-          ))}
+        <ul className={styles.grid} aria-label={t(audio ? "media.musicList" : "media.list")}>
+          {media.map((item) => {
+            const handlers: TileHandlers = {
+              tileRef: (el) => {
+                if (el) tiles.current.set(item.id, el);
+                else tiles.current.delete(item.id);
+              },
+              selected: selectedId === item.id,
+              onClick: () => setSelectedId(item.id),
+              onDoubleClick: () => {
+                if (item.kind === "image") addSlide(item.id);
+              },
+              onContextMenu: onContextMenu(item),
+              onKeyDown: onKeyDown(item),
+            };
+            return (
+              <li key={item.id}>
+                {item.kind === "audio" ? (
+                  <AudioTile item={item} {...handlers} />
+                ) : (
+                  <MediaTile item={item} {...handlers} />
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {menu ? (
         <ContextMenu
-          label={t("media.menu", { name: menu.item.filename })}
+          label={t(menu.item.kind === "audio" ? "media.audioMenu" : "media.menu", {
+            name: menu.item.filename,
+          })}
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            { label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) },
+            ...(menu.item.kind === "image"
+              ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
+              : []),
             { label: t("media.delete"), onSelect: () => setPendingDelete(menu.item) },
           ]}
         />
       ) : null}
       <Dialog
         open={pendingDelete !== null}
-        title={t("media.deleteTitle")}
+        title={t(pendingDelete?.kind === "audio" ? "media.deleteAudioTitle" : "media.deleteTitle")}
         onClose={() => {
           if (!deleting) setPendingDelete(null);
         }}
@@ -190,13 +237,16 @@ export function MediaCollection() {
       >
         {pendingDelete ? (
           <p className={styles.question}>
-            {t("media.deleteQuestion", { name: pendingDelete.filename })}
+            {t(
+              pendingDelete.kind === "audio" ? "media.deleteAudioQuestion" : "media.deleteQuestion",
+              { name: pendingDelete.filename },
+            )}
           </p>
         ) : null}
       </Dialog>
       <Dialog
         open={error !== null}
-        title={t("media.deleteTitle")}
+        title={t(audio ? "media.deleteAudioTitle" : "media.deleteTitle")}
         onClose={() => setError(null)}
         footer={<Button onClick={() => setError(null)}>{t("common.ok")}</Button>}
       >

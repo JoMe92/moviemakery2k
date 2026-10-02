@@ -51,3 +51,17 @@ export function parseDecimal(text: string): number | null {
   const value = Number(cleaned);
   return Number.isFinite(value) ? value : null;
 }
+
+/**
+ * Short duration of an audio clip, rounded to whole seconds: `m:ss`, from one
+ * hour on `h:mm:ss` (e.g. 192.4 → "3:12"). Same notation in every UI language;
+ * `locale` keeps the signature in line with the other formatters.
+ */
+export function formatClipDuration(_locale: Locale, seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  const s = total % 60;
+  const m = Math.floor(total / 60) % 60;
+  const h = Math.floor(total / 3600);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
