@@ -37,20 +37,6 @@ def drag(page: Page, source: Locator, target: Locator) -> None:
     page.mouse.up()
 
 
-def select(tile: Locator) -> None:
-    """Klickt eine Storyboard-Kachel, bis sie ausgewählt ist.
-
-    Direkt nach einem Drop kann die Drop-Animation von dnd-kit noch über der
-    Kachel liegen und den ersten Klick schlucken.
-    """
-    for _ in range(5):
-        tile.click()
-        if tile.get_attribute("aria-pressed") == "true":
-            return
-        tile.page.wait_for_timeout(200)
-    expect(tile).to_have_attribute("aria-pressed", "true")
-
-
 def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, Path]) -> None:
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(server)
@@ -70,10 +56,16 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     strip = page.get_by_role("list", name="Bildstreifen")
     expect(strip.get_by_role("button", name="Bild 2: blau.png, 5,00 s")).to_be_visible()
     drag(page, collection.get_by_role("button", name="gruen.png"), strip)
+    # Select tile 2 with the very first click right after the drop, without waiting
+    # (mmy-fa5); the exact 50 ms timing is covered by the Vitest storyboard test.
+    second = strip.get_by_role("button", name="Bild 2: blau.png, 5,00 s")
+    box = second.bounding_box()
+    assert box
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    expect(second).to_have_attribute("aria-pressed", "true")
     expect(strip.get_by_role("button", name="Bild 3: gruen.png, 5,00 s")).to_be_visible()
 
-    # Übergang „Kreis“ vor Bild 2: Bild wählen, Katalog öffnen, Doppelklick auf die Kachel
-    select(strip.get_by_role("button", name="Bild 2: blau.png, 5,00 s"))
+    # Übergang „Kreis“ vor Bild 2: Katalog öffnen, Doppelklick auf die Kachel
     page.get_by_role("button", name="Videoübergänge anzeigen").click()
     page.get_by_role("list", name="Übergänge").get_by_role("button", name="Kreis").dblclick()
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
