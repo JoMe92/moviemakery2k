@@ -14,6 +14,7 @@ auf Schwarz gelegt - passend zum schwarzen Monitor der Wiedergabe.
 
 import asyncio
 import os
+import re
 import shutil
 import tempfile
 import unicodedata
@@ -39,6 +40,9 @@ PREVIEW_QUALITY = 90
 THUMB_QUALITY = 85
 MAX_FILENAME_LENGTH = 255
 FALLBACK_FILENAME = "bild"
+
+MEDIA_ID_PATTERN = r"^[0-9a-f]{32}$"
+_MEDIA_ID_RE = re.compile(MEDIA_ID_PATTERN)
 
 _CHUNK = 1024 * 1024
 _EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
@@ -66,7 +70,7 @@ class _MediaModel(BaseModel):
 
 
 class MediaItem(_MediaModel):
-    id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
+    id: Annotated[str, Field(pattern=MEDIA_ID_PATTERN)]
     filename: str = Field(description="Original-Dateiname, nur zur Anzeige")
     width: int = Field(description="Breite nach EXIF-Ausrichtung")
     height: int = Field(description="Höhe nach EXIF-Ausrichtung")
@@ -98,6 +102,10 @@ class MediaUploadResponse(_MediaModel):
     items: list[MediaUploadResult]
 
 
+class MediaListResponse(_MediaModel):
+    items: list[MediaItem] = Field(description="Alle Medien in Importreihenfolge")
+
+
 _INDEX_ADAPTER = TypeAdapter(list[MediaItem])
 
 
@@ -107,6 +115,11 @@ class MediaError(Exception):
     def __init__(self, code: ErrorCode) -> None:
         super().__init__(ERROR_MESSAGES[code])
         self.code: ErrorCode = code
+
+
+def is_media_id(value: str) -> bool:
+    """Hat `value` das Format einer Medien-ID (uuid4().hex)? Nur dann wird ein Pfad gebaut."""
+    return _MEDIA_ID_RE.fullmatch(value) is not None
 
 
 def sanitize_filename(raw: str | None) -> str:
@@ -187,7 +200,15 @@ class MediaStore:
         """Alle Medien in Importreihenfolge."""
         return list(self._items)
 
+    def get(self, media_id: str) -> MediaItem | None:
+        """Das Medium mit dieser ID oder None (auch bei ungültigem ID-Format)."""
+        if not is_media_id(media_id):
+            return None
+        return next((item for item in self._items if item.id == media_id), None)
+
     def item_dir(self, media_id: str) -> Path:
+        if not is_media_id(media_id):
+            raise ValueError(f"Ungültige Medien-ID: {media_id!r}")
         return self.media_dir / media_id
 
     def _write_index(self, items: Sequence[MediaItem]) -> None:
@@ -250,3 +271,21 @@ class MediaStore:
             updated = [*self._items, *items]
             await asyncio.to_thread(self._write_index, updated)
             self._items = updated
+
+    async def remove(self, media_id: str) -> bool:
+        """Entfernt ein Medium aus dem Index und löscht sein Verzeichnis.
+
+        Erst wird der Index atomar geschrieben, dann das Verzeichnis gelöscht
+        (ein schon fehlendes Verzeichnis ist kein Fehler). Liefert False, wenn
+        die ID unbekannt ist. Die Kaskade ins Projekt ist Sache des Aufrufers.
+        """
+        if not is_media_id(media_id):
+            return False
+        async with self._lock:
+            if not any(item.id == media_id for item in self._items):
+                return False
+            updated = [item for item in self._items if item.id != media_id]
+            await asyncio.to_thread(self._write_index, updated)
+            self._items = updated
+            await asyncio.to_thread(shutil.rmtree, self.item_dir(media_id), ignore_errors=True)
+            return True
