@@ -29,11 +29,15 @@ Standards.
 
 ## Architecture
 
+Abhängigkeiten und Befehle laufen über **Pixi** (`pixi.toml`, `pixi run …`);
+pnpm nur für npm-Pakete, die es nicht auf conda-forge gibt.
+
+
 Siehe `docs/adr/0001-architektur.md`.
 
 - `apps/web`: Vite + React + TypeScript (strict). Die Vorschau läuft über
   WebGL2, das Y2K-Theme über CSS-Tokens.
-- `backend/`: Python 3.13 + FastAPI + Pydantic v2 (uv). FFmpeg läuft nur als
+- `backend/`: Python 3.13 + FastAPI + Pydantic v2. FFmpeg läuft nur als
   Subprozess. Export: FFmpeg-Decode → headless GL (EGL) mit den geteilten
   Shadern → FFmpeg-Encode.
 - `packages/shaders`: GLSL ES 3.00, gemeinsam für Vorschau und Export.
@@ -54,4 +58,4 @@ Siehe `docs/adr/0001-architektur.md`.
   SMIL-Wipe-Nummer) und definiert einen Golden-Frame-Test.
 - Keine Microsoft-Assets ausliefern. Die Dateien in `docs/research/sources/`
   sind nur Referenz.
-- Quality-Gate: `make check`.
+- Quality-Gate: `pixi run check`.
