@@ -107,7 +107,7 @@ describe("Menu bar", () => {
     await user.click(within(file).getByRole("menuitem", { name: "New Project" }));
     const confirm = screen.getByRole("dialog", { name: "New Project" });
     expect(within(confirm).getByRole("button", { name: "Yes" })).toBeInTheDocument();
-    expect(within(confirm).getByRole("button", { name: "Close" })).toBeInTheDocument();
+    expect(within(confirm).getByRole("button", { name: "Close dialog" })).toBeInTheDocument();
     await user.click(within(confirm).getByRole("button", { name: "No" }));
     expect(store.getState().slides).toHaveLength(1);
 

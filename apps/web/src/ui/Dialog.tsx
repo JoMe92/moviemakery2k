@@ -100,7 +100,7 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         <button
           type="button"
           className={styles.close}
-          aria-label={t("common.close")}
+          aria-label={t("common.closeDialog")}
           onClick={onClose}
         >
           <CloseIcon size={12} />

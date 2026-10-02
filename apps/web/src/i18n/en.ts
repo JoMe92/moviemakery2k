@@ -309,6 +309,7 @@ export const en = {
     ok: "OK",
     cancel: "Cancel",
     close: "Close",
+    closeDialog: "Close dialog",
     yes: "Yes",
     no: "No",
     back: "< Back",

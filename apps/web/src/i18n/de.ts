@@ -306,6 +306,7 @@ export const de = {
     ok: "OK",
     cancel: "Abbrechen",
     close: "Schließen",
+    closeDialog: "Dialog schließen",
     yes: "Ja",
     no: "Nein",
     back: "< Zurück",
