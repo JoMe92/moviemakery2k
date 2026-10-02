@@ -65,4 +65,6 @@ test = { depends-on = ["test-web", "test-backend"] }
 
 build = { cmd = "pnpm -r build", depends-on = ["install-web"] }
 
-check = { depends-on = ["lint", "typecheck", "test", "build"], description = "Quality-Gate: lint, typecheck, test, build" }
+check-shaders = { cmd = "python scripts/check_shaders.py", description = "GLSL-ES-3.00-Shader kompilieren und mit dem Katalog abgleichen" }
+
+check = { depends-on = ["lint", "typecheck", "test", "check-shaders", "build"], description = "Quality-Gate: lint, typecheck, test, Shader, build" }
