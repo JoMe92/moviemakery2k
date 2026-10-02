@@ -7,8 +7,8 @@ import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 async function openOptionsWithMouse(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("menuitem", { name: "Extras" }));
-  await user.click(screen.getByRole("menuitem", { name: "Optionen…" }));
+  await user.click(screen.getByRole("menuitem", { name: /^(Extras|Tools)$/ }));
+  await user.click(screen.getByRole("menuitem", { name: /^(Optionen|Options)…$/ }));
   return screen.getByRole("dialog", { name: /^(Optionen|Options)$/ });
 }
 
@@ -59,7 +59,7 @@ describe("Optionen-Dialog", () => {
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("en");
 
     // The dialog itself now appears in English, still naming each language in itself.
-    // The Tools menu itself is localized in a later task, so it is still German here.
+    // The menus switch too: Tools → Options….
     await openOptionsWithMouse(user);
     const english = screen.getByRole("dialog", { name: "Options" });
     expect(within(english).getByRole("radio", { name: "English" })).toBeChecked();

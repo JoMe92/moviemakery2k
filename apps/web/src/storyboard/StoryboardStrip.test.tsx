@@ -2,7 +2,6 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
-import { STORYBOARD_EMPTY_HINT } from "../shell/StoryboardPane";
 import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
@@ -84,7 +83,9 @@ const tick = () => act(() => new Promise((r) => setTimeout(r, 20)));
 describe("Storyboard", () => {
   it("zeigt den Hinweis, solange der Bildstreifen leer ist", async () => {
     await setup([]);
-    expect(within(storyboard()).getByText(STORYBOARD_EMPTY_HINT)).toBeInTheDocument();
+    expect(
+      within(storyboard()).getByText("Ziehen Sie Bilder hierher, um eine Diashow zu erstellen."),
+    ).toBeInTheDocument();
   });
 
   it("zeigt Kacheln mit Nummer, Dauer, Thumbnail, deaktiviertem Effekt-Platz und Übergangsplätzen", async () => {
