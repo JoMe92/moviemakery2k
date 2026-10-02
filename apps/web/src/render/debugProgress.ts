@@ -4,6 +4,8 @@
  * solid-colour frames at progress p. For E2E boundary-value and determinism
  * checks. Optional: `&from=<CSS colour>&to=<CSS colour>`,
  * `&fromPortrait=1` (portrait test image as the source frame).
+ * `?debug-progress=<transitionId>:<p>:pattern` (design.md D10) uses the built-in
+ * 640×480 test pattern (`testPattern.ts`) for both frames instead of solid colours.
  */
 export interface DebugProgress {
   transitionId: string;
@@ -11,12 +13,15 @@ export interface DebugProgress {
   from: string;
   to: string;
   fromPortrait: boolean;
+  pattern: boolean;
 }
 
 export function parseDebugProgress(search: string): DebugProgress | null {
   const query = new URLSearchParams(search);
-  const raw = query.get("debug-progress");
+  let raw = query.get("debug-progress");
   if (raw === null) return null;
+  const pattern = raw.endsWith(":pattern");
+  if (pattern) raw = raw.slice(0, -":pattern".length);
   const sep = raw.lastIndexOf(":");
   const transitionId = (sep >= 0 ? raw.slice(0, sep) : raw).trim();
   const p = sep >= 0 ? Number(raw.slice(sep + 1)) : 0;
@@ -26,5 +31,6 @@ export function parseDebugProgress(search: string): DebugProgress | null {
     from: query.get("from") || "#ff0000",
     to: query.get("to") || "#0000ff",
     fromPortrait: query.get("fromPortrait") === "1",
+    pattern,
   };
 }

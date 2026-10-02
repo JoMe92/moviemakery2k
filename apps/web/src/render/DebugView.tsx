@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import catalog from "../../../../packages/catalog/transitions.json";
 import type { DebugProgress } from "./debugProgress";
 import { Renderer } from "./Renderer";
+import { patternCanvas } from "./testPattern";
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -68,8 +69,14 @@ export default function DebugView({ spec }: { spec: DebugProgress }) {
       return;
     }
     renderer.resize(WIDTH, HEIGHT, 1);
-    const from = renderer.createFrame(spec.fromPortrait ? portraitPattern() : solid(spec.from));
-    const to = renderer.createFrame(solid(spec.to));
+    // Pattern mode (design.md D10): exact 640×480 test pattern on both sides, no scaling.
+    const fromSource = spec.pattern
+      ? patternCanvas("from")
+      : spec.fromPortrait
+        ? portraitPattern()
+        : solid(spec.from);
+    const from = renderer.createFrame(fromSource);
+    const to = renderer.createFrame(spec.pattern ? patternCanvas("to") : solid(spec.to));
     renderer.drawTransition(
       from,
       to,

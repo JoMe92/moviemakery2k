@@ -14,6 +14,7 @@ describe("parseDebugProgress", () => {
       from: "#ff0000",
       to: "#0000ff",
       fromPortrait: false,
+      pattern: false,
     });
   });
 
@@ -29,5 +30,19 @@ describe("parseDebugProgress", () => {
       fromPortrait: true,
     });
     expect(parseDebugProgress("?debug-progress=fade:abc")?.progress).toBe(0);
+  });
+
+  it("reads the pattern mode", () => {
+    expect(parseDebugProgress("?debug-progress=pixelate:0.5:pattern")).toMatchObject({
+      transitionId: "pixelate",
+      progress: 0.5,
+      pattern: true,
+    });
+    expect(parseDebugProgress("?debug-progress=dissolve:pattern")).toMatchObject({
+      transitionId: "dissolve",
+      progress: 0,
+      pattern: true,
+    });
+    expect(parseDebugProgress("?debug-progress=fade:0.5")?.pattern).toBe(false);
   });
 });
