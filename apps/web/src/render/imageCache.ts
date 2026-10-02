@@ -14,7 +14,15 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.decoding = "async";
     img.src = url;
-    pending = img.decode().then(
+    // decode() fehlt in manchen Umgebungen (jsdom): dann auf load/error warten.
+    const decoded =
+      typeof img.decode === "function"
+        ? img.decode()
+        : new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error(`Bild nicht ladbar: ${url}`));
+          });
+    pending = decoded.then(
       () => img,
       (err: unknown) => {
         cache.delete(url);
