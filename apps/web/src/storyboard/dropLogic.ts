@@ -2,6 +2,9 @@
  * Reine Drop-Logik des Storyboards (Spec slideshow-project „Bilder in den
  * Bildstreifen ziehen“, „Bildstreifen bearbeiten“). Unabhängig von dnd-kit testbar.
  */
+import { formatNumber } from "../i18n/format";
+import type { Locale } from "../i18n/locale";
+import { translate } from "../i18n/t";
 import type { Slide } from "../lib/apiClient";
 
 /** Daten der ziehbaren Elemente (dnd-kit `data`). */
@@ -70,7 +73,7 @@ export function resolveDrop(
   return { kind: "move", from, to };
 }
 
-/** Bilddauer in der Kachel, z. B. „5,00 s“. */
-export function formatDuration(seconds: number): string {
-  return `${seconds.toFixed(2).replace(".", ",")} s`;
+/** Duration on a tile, e.g. "5,00 s" (de) / "5.00 s" (en). */
+export function formatDuration(seconds: number, locale: Locale): string {
+  return translate(locale, "units.seconds", { value: formatNumber(locale, seconds, 2) });
 }

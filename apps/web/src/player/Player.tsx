@@ -1,12 +1,13 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { loadImage } from "../render/imageCache";
 import { PreviewCanvas } from "../render/PreviewCanvas";
 import type { ImageSource } from "../render/Renderer";
 import { MonitorPane } from "../shell/MonitorPane";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
-import { formatTime, frameAt } from "../timeline/timeline";
+import { frameAt } from "../timeline/timeline";
 import { Button } from "../ui/Button";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon, StopIcon } from "../ui/icons";
 import { startClock } from "./clock";
@@ -54,6 +55,7 @@ function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
  * Leertaste und Übergangsdemo für den Katalog.
  */
 export function Player() {
+  const { t, formatTime } = useT();
   const store = useAppStoreApi();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
@@ -140,7 +142,7 @@ export function Player() {
           <input
             className={styles.seek}
             type="range"
-            aria-label="Suchleiste"
+            aria-label={t("player.seek")}
             min={0}
             max={timeline.duration}
             step={0.01}
@@ -153,32 +155,32 @@ export function Player() {
             <Button
               variant="toolbar"
               icon={playing ? <PauseIcon /> : <PlayIcon />}
-              label={playing ? "Pause" : "Wiedergabe"}
+              label={playing ? t("player.pause") : t("player.play")}
               disabled={empty}
               onClick={() => state().togglePlay()}
             />
             <Button
               variant="toolbar"
               icon={<StopIcon />}
-              label="Stopp"
+              label={t("player.stop")}
               disabled={empty}
               onClick={() => state().stop()}
             />
             <Button
               variant="toolbar"
               icon={<PrevIcon />}
-              label="Vorheriges Bild"
+              label={t("player.previous")}
               disabled={empty}
               onClick={() => state().prevSlide()}
             />
             <Button
               variant="toolbar"
               icon={<NextIcon />}
-              label="Nächstes Bild"
+              label={t("player.next")}
               disabled={empty}
               onClick={() => state().nextSlide()}
             />
-            <output className={styles.time} aria-label="Zeit">
+            <output className={styles.time} aria-label={t("player.time")}>
               {formatTime(playback.time)} / {formatTime(timeline.duration)}
             </output>
           </div>

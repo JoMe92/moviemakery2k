@@ -1,5 +1,6 @@
 import { useDndContext, useDroppable } from "@dnd-kit/core";
 import type { KeyboardEvent, MouseEvent } from "react";
+import { useT } from "../i18n/useT";
 import type { TransitionRef } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
@@ -30,6 +31,7 @@ export function TransitionSlot({
   onRemove,
   onMenu,
 }: TransitionSlotProps) {
+  const { t, locale } = useT();
   const data: DropTarget = { type: "transitionSlot", slideId };
   // Nur für Übergänge ein Ziel; sonst würde die Tastatursteuerung beim
   // Umsortieren von Kacheln auf den Plätzen stehen bleiben.
@@ -43,15 +45,15 @@ export function TransitionSlot({
   const dropping = isOver && accepts;
   const name = useAppStore((s) =>
     transitionIn
-      ? (s.catalog.find((t) => t.id === transitionIn.transitionId)?.name ??
+      ? (s.catalog.find((c) => c.id === transitionIn.transitionId)?.name ??
         transitionIn.transitionId)
       : null,
   );
-  const label = `Übergang vor Bild ${number}`;
+  const label = t("storyboard.transitionBefore", { number });
   const description =
     transitionIn && name
-      ? `${name}, ${formatDuration(transitionIn.duration)}`
-      : "keiner (harter Schnitt)";
+      ? `${name}, ${formatDuration(transitionIn.duration, locale)}`
+      : t("storyboard.noTransition");
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "Enter" && transitionIn) {
@@ -93,7 +95,9 @@ export function TransitionSlot({
         <>
           <TransitionIcon transitionId={transitionIn.transitionId} size={24} />
           <span className={styles.transitionName}>{name}</span>
-          <span className={styles.transitionDuration}>{formatDuration(transitionIn.duration)}</span>
+          <span className={styles.transitionDuration}>
+            {formatDuration(transitionIn.duration, locale)}
+          </span>
         </>
       ) : (
         <span aria-hidden="true">–</span>

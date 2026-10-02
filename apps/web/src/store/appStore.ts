@@ -51,6 +51,8 @@ export interface UploadEntry {
   filename: string;
   status: "pending" | "uploading" | "done" | "error";
   message?: string;
+  /** Upload failed because the backend was unreachable (text comes from the catalog). */
+  offline?: boolean;
 }
 
 export interface AppState {
@@ -340,7 +342,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
               patch(entry.key, { status: "error", message: result.message });
             }
           } catch {
-            patch(entry.key, { status: "error", message: "Backend nicht erreichbar." });
+            patch(entry.key, { status: "error", offline: true });
           }
         }
       },

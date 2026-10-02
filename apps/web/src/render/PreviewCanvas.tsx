@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import type { Frame } from "../timeline/timeline";
 import styles from "./PreviewCanvas.module.css";
 import { type FrameTexture, type ImageSource, Renderer, WebGL2UnsupportedError } from "./Renderer";
 import { transitionSources } from "./shaderSource";
-
-export const WEBGL2_MISSING_MESSAGE =
-  "Die Vorschau benötigt WebGL2. Import und Storyboard funktionieren weiterhin.";
 
 export interface PreviewCanvasProps {
   frame: Frame;
@@ -30,6 +28,7 @@ function isReady(source: ImageSource): boolean {
  * Größe (DPR-bewusst) und zeichnet höchstens einmal pro Animationsframe.
  */
 export function PreviewCanvas(props: PreviewCanvasProps) {
+  const { t } = useT();
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
@@ -164,10 +163,15 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
           <span className={styles.messageIcon} aria-hidden="true">
             !
           </span>
-          <p className={styles.messageText}>{WEBGL2_MISSING_MESSAGE}</p>
+          <p className={styles.messageText}>{t("player.webgl2Missing")}</p>
         </div>
       ) : (
-        <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label="Vorschaubild" />
+        <canvas
+          ref={canvasRef}
+          className={styles.canvas}
+          role="img"
+          aria-label={t("player.canvas")}
+        />
       )}
     </div>
   );

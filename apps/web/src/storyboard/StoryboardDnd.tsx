@@ -19,6 +19,8 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { createContext, type ReactNode, useContext, useState } from "react";
+import { translator } from "../i18n/t";
+import { useT } from "../i18n/useT";
 import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
@@ -185,20 +187,25 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
 }
 
 function describe(state: AppState, item: DragItem | null): string {
-  if (!item) return "Element";
+  const t = translator(state.locale);
+  if (!item) return t("dnd.element");
   if (item.type === "transition") {
-    return `Übergang „${state.catalog.find((t) => t.id === item.transitionId)?.name ?? ""}“`;
+    const name = state.catalog.find((c) => c.id === item.transitionId)?.name ?? "";
+    return t("dnd.transition", { name });
   }
   if (item.type === "media") {
-    return `Bild „${state.media.find((m) => m.id === item.mediaId)?.filename ?? ""}“`;
+    return t("dnd.picture", {
+      name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
+    });
   }
   const index = state.slides.findIndex((s) => s.id === item.slideId);
-  return `Bild ${index + 1} des Storyboards`;
+  return t("storyboard.slideMenu", { number: index + 1 });
 }
 
 /** Drag & Drop für Sammlung und Storyboard (design.md D2: dnd-kit, Zeiger und Tastatur). */
 export function StoryboardDnd({ children }: { children: ReactNode }) {
   const store = useAppStoreApi();
+  const { t } = useT();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const [active, setActive] = useState<DragItem | null>(null);
@@ -213,22 +220,24 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
 
   const insertIndex = active?.type === "media" ? insertionIndex(target, slides) : null;
 
+  // Announcements read the locale at call time from the store.
+  const tNow = () => translator(store.getState().locale);
   const announcements: Announcements = {
     onDragStart: ({ active: a }) =>
-      `${describe(store.getState(), dragItem(a))} aufgenommen. Pfeiltasten bewegen, Eingabe- oder Leertaste legt ab, Escape bricht ab.`,
+      tNow()("dnd.pickedUp", { item: describe(store.getState(), dragItem(a)) }),
     onDragOver: ({ over }) => {
       const slot = over?.data.current as DropTarget | undefined;
       if (slot?.type === "transitionSlot") {
         const n = store.getState().slides.findIndex((s) => s.id === slot.slideId);
-        return `Über dem Übergangsplatz vor Bild ${n + 1}.`;
+        return tNow()("dnd.overSlot", { number: n + 1 });
       }
-      return over ? "Über dem Storyboard." : "Außerhalb des Storyboards.";
+      return over ? tNow()("dnd.overStoryboard") : tNow()("dnd.outside");
     },
     onDragEnd: ({ active: a, over }) =>
       over
-        ? `${describe(store.getState(), dragItem(a))} abgelegt.`
-        : "Ablegen abgebrochen: kein Ziel.",
-    onDragCancel: () => "Ziehen abgebrochen.",
+        ? tNow()("dnd.dropped", { item: describe(store.getState(), dragItem(a)) })
+        : tNow()("dnd.noTarget"),
+    onDragCancel: () => tNow()("dnd.cancelled"),
   };
 
   const onDragStart = (event: DragStartEvent) => {
@@ -268,8 +277,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
       accessibility={{
         announcements,
         screenReaderInstructions: {
-          draggable:
-            "Eingabetaste nimmt das Element auf. Mit den Pfeiltasten verschieben (aus der Sammlung: Pfeil nach unten ins Storyboard), Eingabe- oder Leertaste legt ab, Escape bricht ab.",
+          draggable: t("dnd.instructions"),
         },
       }}
       onDragStart={onDragStart}

@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { KeyboardEvent, MouseEvent } from "react";
+import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { EffectsIcon } from "../ui/icons";
 import { type DragItem, formatDuration } from "./dropLogic";
@@ -46,16 +47,17 @@ export function SlideTile({
   tileRef,
   marker = null,
 }: SlideTileProps) {
+  const { t, locale } = useT();
   const data: DragItem = { type: "slide", slideId: slide.id };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slide.id,
     data,
-    attributes: { roleDescription: "verschiebbare Kachel" },
+    attributes: { roleDescription: t("storyboard.sortable") },
   });
   // aria-pressed zeigt die Auswahl; die Rolle ergibt sich aus <button>.
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
-  const name = media?.filename ?? "fehlendes Bild";
-  const duration = formatDuration(slide.duration);
+  const name = media?.filename ?? t("storyboard.missingImage");
+  const duration = formatDuration(slide.duration, locale);
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (isDragging) return;
@@ -122,7 +124,7 @@ export function SlideTile({
         aria-pressed={selected}
         aria-current={playing ? "true" : undefined}
         data-playing={playing || undefined}
-        aria-label={`Bild ${number}: ${name}, ${duration}`}
+        aria-label={t("storyboard.slide", { number, name, duration })}
         title={name}
         onKeyDown={onKeyDown}
         onClick={onSelect}
@@ -142,8 +144,8 @@ export function SlideTile({
         type="button"
         className={styles.effect}
         aria-disabled="true"
-        aria-label={`Effekt-Platz für Bild ${number}`}
-        title="Videoeffekte folgen später"
+        aria-label={t("storyboard.effectSlot", { number })}
+        title={t("storyboard.effectsLater")}
         tabIndex={-1}
       >
         <EffectsIcon size={12} />
