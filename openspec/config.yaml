@@ -11,7 +11,7 @@ context: |
   Dependency-Management: Pixi (conda-forge) für alles Verfügbare, pnpm nur für npm-Pakete;
   Befehle als Pixi-Tasks (pixi run check).
   Lizenz GPL-3.0-or-later. Keine Microsoft-Assets. Recherche:
-  docs/research/movie-maker-klon.md. Architektur: docs/adr/0001-architektur.md.
+  docs/research/movie-maker-reference.md. Architektur: docs/adr/0001-architecture.md.
   Sprache der Artefakte: Deutsch; Code-Bezeichner Englisch.
 
 rules:

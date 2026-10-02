@@ -17,7 +17,7 @@ Standards.
   Titel-Assistent, Export-Assistent.
 - **Referenzkatalog 2.x:** 60 Übergänge, ca. 28–30 Videoeffekte, 43
   Titel-/Abspann-Animationen (Phasen Entrance → Main → Exit). Details:
-  `docs/research/movie-maker-klon.md`.
+  `docs/research/movie-maker-reference.md`.
 - **Entschieden:** Name moviemakerY2K · Lizenz GPL-3.0-or-later · eigener
   Y2K-Look (an XP/Luna angelehnt, keine Original-Assets, keine pixelgenaue
   Kopie) · keine Referenzinstallation, die Treue richtet sich nach den
@@ -33,7 +33,7 @@ Abhängigkeiten und Befehle laufen über **Pixi** (`pixi.toml`, `pixi run …`);
 pnpm nur für npm-Pakete, die es nicht auf conda-forge gibt.
 
 
-Siehe `docs/adr/0001-architektur.md`.
+Siehe `docs/adr/0001-architecture.md`.
 
 - `apps/web`: Vite + React + TypeScript (strict). Die Vorschau läuft über
   WebGL2, das Y2K-Theme über CSS-Tokens.
