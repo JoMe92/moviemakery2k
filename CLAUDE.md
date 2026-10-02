@@ -85,6 +85,18 @@ Research on the original: `docs/research/movie-maker-reference.md`.
 - Bead token in commits upper-cased, e.g. `[MMY-6kz]` for `mmy-6kz` (the hook requires `[A-Z]…`).
 - Public documentation (README, docs/, package READMEs, CONTRIBUTING.md) is written in English.
 
+## Cloud Sessions (temporary, until JoMe92/nogging#26)
+
+Claude Code on the web assigns each session a `claude/*` branch, which fails
+`scripts/check-branch-name` (CI `invariants`). In a cloud session:
+
+- The assigned `claude/*` branch is never a PR source; it may only carry backups.
+- Work each Bead in the worktree from `./scripts/nogg worktree implement` on its
+  `<type>/<slug>` branch. You may push that branch and open a PR into `develop`
+  from it.
+- `bd dolt push` does not work from the cloud (the git proxy only allows branch
+  pushes). Hand the user the `bd` commands to replay Beads changes on a local machine.
+
 ## Nogging
 
 This repository uses the Nogging operating model. **`AGENTS.md` is the
