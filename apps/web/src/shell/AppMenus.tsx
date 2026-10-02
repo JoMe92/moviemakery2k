@@ -12,6 +12,8 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const removeSlide = useAppStore((s) => s.removeSlide);
   const selection = useAppStore((s) => s.selection);
   const requestImport = useAppStore((s) => s.requestImport);
+  const hasSlides = useAppStore((s) => s.slides.length > 0);
+  const openExportWizard = useAppStore((s) => s.openExportWizard);
 
   const menus = useMemo(
     () =>
@@ -20,9 +22,10 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
         newProject: () => setConfirmNew(true),
         about: () => setAbout(true),
         importImages: requestImport,
+        saveMovie: hasSlides ? openExportWizard : undefined,
         deleteSelection: selection ? () => removeSlide(selection.slideId) : undefined,
       }),
-    [extra, selection, removeSlide, requestImport],
+    [extra, selection, removeSlide, requestImport, hasSlides, openExportWizard],
   );
 
   return (

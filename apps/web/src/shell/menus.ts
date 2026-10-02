@@ -15,6 +15,8 @@ export interface MenuDef {
 export interface MenuHandlers {
   newProject?: () => void;
   importImages?: () => void;
+  /** Assistent „Film speichern“; fehlt bei leerem Bildstreifen (Eintrag deaktiviert). */
+  saveMovie?: () => void;
   deleteSelection?: () => void;
   togglePlay?: () => void;
   stop?: () => void;
@@ -42,7 +44,7 @@ export function buildMenus(h: MenuHandlers): MenuDef[] {
         separator,
         item("import", "In Sammlungen importieren…", h.importImages),
         separator,
-        item("save-movie", "Film speichern…"),
+        item("save-movie", "Film speichern…", h.saveMovie),
         separator,
         item("exit", "Beenden"),
       ],
