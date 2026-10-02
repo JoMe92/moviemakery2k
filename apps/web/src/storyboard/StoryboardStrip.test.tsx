@@ -128,6 +128,32 @@ describe("Storyboard", () => {
     expect(store.getState().selection).toEqual({ kind: "slide", slideId: "s2" });
   });
 
+  it("selects a tile with the first click right after a pointer drop (mmy-fa5)", async () => {
+    const { store } = await setup([slide("s1", "a"), slide("s2", "b"), slide("s3", "a")]);
+    const third = within(strip()).getByRole("button", { name: /^Bild 3:/ });
+    const pointer = { pointerId: 1, isPrimary: true, button: 0 };
+    // Drag tile 3 in front of tile 1 (past the 5 px activation distance).
+    fireEvent.pointerDown(third, { ...pointer, clientX: 392, clientY: 570 });
+    fireEvent.pointerMove(document, { ...pointer, clientX: 380, clientY: 570 });
+    await tick();
+    fireEvent.pointerMove(document, { ...pointer, clientX: 40, clientY: 570 });
+    await tick();
+    fireEvent.pointerUp(document, { ...pointer, clientX: 40, clientY: 570 });
+    expect(store.getState().slides.map((s) => s.id)).toEqual(["s3", "s1", "s2"]);
+
+    // The click that ends the drag gesture is still swallowed ...
+    fireEvent.click(third);
+    expect(store.getState().selection).toBeNull();
+
+    // ... but a new click immediately after the drop selects (no 50 ms dead time).
+    const target = within(strip()).getByRole("button", { name: /^Bild 2:/ });
+    fireEvent.pointerDown(target, { ...pointer, clientX: 200, clientY: 570 });
+    fireEvent.pointerUp(target, { ...pointer, clientX: 200, clientY: 570 });
+    fireEvent.click(target);
+    expect(target).toHaveAttribute("aria-pressed", "true");
+    expect(store.getState().selection).toEqual({ kind: "slide", slideId: "s1" });
+  });
+
   it("entfernt über das Kontextmenü", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b")]);
