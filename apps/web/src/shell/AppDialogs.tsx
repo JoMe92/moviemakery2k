@@ -13,7 +13,7 @@ export function AboutDialog({ open, onClose }: { open: boolean; onClose: () => v
       footer={<Button onClick={onClose}>OK</Button>}
     >
       <p>
-        <strong>moviemakerY2K</strong> · Version 0.0.0
+        <strong>moviemakerY2K</strong> · Version 0.1.0
       </p>
       <p>{ABOUT_TEXT}</p>
       <p>Lizenz: GPL-3.0-or-later</p>
