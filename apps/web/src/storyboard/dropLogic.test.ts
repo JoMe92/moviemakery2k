@@ -55,8 +55,9 @@ describe("dropLogic", () => {
   });
 
   it("formatiert Dauern deutsch mit zwei Nachkommastellen", () => {
-    expect(formatDuration(5)).toBe("5,00 s");
-    expect(formatDuration(2.25)).toBe("2,25 s");
+    expect(formatDuration(5, "de")).toBe("5,00 s");
+    expect(formatDuration(2.25, "de")).toBe("2,25 s");
+    expect(formatDuration(2.5, "en")).toBe("2.50 s");
   });
 
   it("Übergang auf einen Platz → setzen (ersetzt); nicht am ersten Bild, nicht auf Kacheln", () => {

@@ -106,4 +106,31 @@ describe("Player", () => {
     expect(store.getState().demo).toBeNull();
     expect(store.getState().playback.playing).toBe(true);
   });
+
+  it("Spec: zeigt die Zeit auf Englisch als 0:00:12.50", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const view = renderApp(
+      mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 1 as const, slides: SLIDES })) }),
+    );
+    await act(() => view.ready);
+    const monitor = screen.getByRole("region", { name: "Preview" });
+    const display = within(monitor).getByRole("status", { name: "Time" });
+    expect(display).toHaveTextContent("0:00:00.00 / 0:00:12.50");
+    for (const name of ["Play", "Stop", "Previous picture", "Next picture"]) {
+      expect(within(monitor).getByRole("button", { name })).toBeEnabled();
+    }
+    fireEvent.change(within(monitor).getByRole("slider", { name: "Seek bar" }), {
+      target: { value: "4.38" },
+    });
+    expect(display).toHaveTextContent("0:00:04.38 / 0:00:12.50");
+  });
+
+  it("wechselt die Zeitanzeige ohne Neuladen die Sprache", async () => {
+    const { monitor, store } = await setup();
+    expect(time(monitor)).toHaveTextContent("0:00:00,00 / 0:00:12,50");
+    act(() => store.getState().setLocale("en"));
+    expect(within(monitor).getByRole("status", { name: "Time" })).toHaveTextContent(
+      "0:00:00.00 / 0:00:12.50",
+    );
+  });
 });

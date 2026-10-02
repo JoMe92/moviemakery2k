@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { mediaItem, mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
-import { deleteQuestion, MEDIA_EMPTY_HINT } from "./MediaCollection";
 
 const file = (name: string, type = "image/jpeg") => new File(["x"], name, { type });
 
@@ -47,7 +46,11 @@ describe("Mediensammlung", () => {
   it("zeigt einen Hinweis bei leerer Sammlung", async () => {
     const { ready } = renderApp(importApi());
     await act(() => ready);
-    expect(within(collection()).getByText(MEDIA_EMPTY_HINT)).toBeInTheDocument();
+    expect(
+      within(collection()).getByText(
+        "Diese Sammlung ist leer. Wählen Sie „Bilder importieren“ oder ziehen Sie Bilder hierher.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("importiert per Dateidialog über „Bilder importieren“ und zeigt neue Kacheln", async () => {
@@ -173,7 +176,9 @@ describe("Mediensammlung", () => {
     await user.keyboard("{Delete}");
 
     const dialog = screen.getByRole("dialog", { name: "Bild löschen" });
-    expect(dialog).toHaveTextContent(deleteQuestion("a.jpg"));
+    expect(dialog).toHaveTextContent(
+      "Möchten Sie „a.jpg“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Ja" }));
 
     await waitFor(() => expect(tileNames()).toEqual(["b.jpg"]));
@@ -247,5 +252,28 @@ describe("Mediensammlung", () => {
     await user.dblClick(within(collection()).getByRole("button", { name: "a.jpg" }));
     expect(store.getState().slides).toHaveLength(1);
     expect(store.getState().slides[0]?.mediaId).toBe("a");
+  });
+
+  it("zeigt Import-Texte und den Offline-Fehler auf Englisch", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const api = importApi({
+      uploadMedia: vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    });
+    const user = userEvent.setup();
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    const pane = screen.getByRole("region", { name: "Collection: My Pictures" });
+    expect(pane).toHaveTextContent(
+      "This collection is empty. Choose “Import pictures” or drag pictures here.",
+    );
+    await user.upload(screen.getByTestId("media-import-input"), [file("a.jpg"), file("b.jpg")]);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("2 files were not imported:");
+    expect(within(alert).getAllByRole("listitem")[0]).toHaveTextContent(
+      "a.jpg: Backend not reachable.",
+    );
+    expect(within(alert).getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 });

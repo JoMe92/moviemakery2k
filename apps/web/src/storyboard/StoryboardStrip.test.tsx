@@ -336,4 +336,53 @@ describe("Storyboard", () => {
     expect(store.getState().slides[1]?.duration).toBe(2.5);
     expect(tileLabels()[1]).toBe("Bild 2: b.jpg, 2,50 s");
   });
+
+  it("Spec: Dauer auf Englisch – Kachel „2.50 s“, Eingabe „2,5“ wird angenommen", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const user = userEvent.setup();
+    const { store } = await setup([slide("s1", "a"), slide("s2", "b", 5, "fade")]);
+    const enStrip = within(screen.getByRole("region", { name: "Storyboard" })).getByRole("list", {
+      name: "Storyboard strip",
+    });
+    const tile = within(enStrip).getByRole("button", { name: /^Picture 2:/ });
+    expect(tile).toHaveAttribute("aria-label", "Picture 2: b.jpg, 5.00 s");
+    expect(
+      within(enStrip).getByRole("button", { name: /^Transition before picture 2:/ }),
+    ).toHaveTextContent("1.25 s");
+
+    await user.dblClick(tile);
+    const dialog = screen.getByRole("dialog", { name: "Properties of Picture 2" });
+    expect(dialog).toHaveTextContent("Allowed are 0.5 to 60 seconds in steps of 0.25.");
+    const input = within(dialog).getByRole("textbox", { name: "Picture duration (seconds):" });
+    await user.clear(input);
+    await user.type(input, "2,5");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(enStrip).getByRole("button", { name: /^Picture 2:/ })).toHaveTextContent(
+      "2.50 s",
+    );
+
+    // Reopening shows the value with the English separator.
+    await user.dblClick(within(enStrip).getByRole("button", { name: /^Picture 2:/ }));
+    expect(
+      within(screen.getByRole("dialog", { name: "Properties of Picture 2" })).getByRole("textbox", {
+        name: "Picture duration (seconds):",
+      }),
+    ).toHaveValue("2.5");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+
+  it("Bilddauer: auf Deutsch wird auch „2.5“ angenommen", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup([slide("s1", "a")]);
+    await user.dblClick(within(strip()).getByRole("button", { name: /^Bild 1:/ }));
+    const dialog = screen.getByRole("dialog", { name: "Eigenschaften von Bild 1" });
+    const input = within(dialog).getByRole("textbox", { name: "Bilddauer (Sekunden):" });
+    await user.clear(input);
+    await user.type(input, "2.5");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(store.getState().slides[0]?.duration).toBe(2.5);
+    expect(tileLabels()[0]).toBe("Bild 1: a.jpg, 2,50 s");
+  });
 });

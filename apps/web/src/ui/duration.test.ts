@@ -11,6 +11,7 @@ describe("parseDuration", () => {
     ["0,1", 0.1],
     [",5", 0.5],
     ["60", 60],
+    ["2.5 sec", 2.5],
   ])("„%s“ → %s", (text, value) => {
     expect(parseDuration(text)).toBe(value);
   });
@@ -20,12 +21,19 @@ describe("parseDuration", () => {
   });
 
   it("formatiert Eingabewerte und Bereichshinweise deutsch", () => {
-    expect(durationInputValue(1.25)).toBe("1,25");
-    expect(rangeMessage(SLIDE_DURATION)).toBe(
+    expect(durationInputValue(1.25, "de")).toBe("1,25");
+    expect(rangeMessage(SLIDE_DURATION, "de")).toBe(
       "Erlaubt sind 0,5 bis 60 Sekunden in Schritten von 0,25.",
     );
-    expect(rangeMessage(TRANSITION_DURATION)).toBe(
+    expect(rangeMessage(TRANSITION_DURATION, "de")).toBe(
       "Erlaubt sind 0,25 bis 5 Sekunden in Schritten von 0,25.",
+    );
+  });
+
+  it("formatiert Eingabewerte und Bereichshinweise englisch", () => {
+    expect(durationInputValue(1.25, "en")).toBe("1.25");
+    expect(rangeMessage(SLIDE_DURATION, "en")).toBe(
+      "Allowed are 0.5 to 60 seconds in steps of 0.25.",
     );
   });
 });
