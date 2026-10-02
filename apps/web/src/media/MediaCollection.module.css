@@ -14,14 +14,10 @@
   color: var(--y2k-text-muted);
 }
 
-.error {
-  margin: 0 0 6px;
-  padding: 4px 6px;
-  border: 1px solid var(--y2k-icon-red);
-  background: var(--y2k-face-light);
-  color: var(--y2k-icon-red);
-}
-
 .question {
   margin: 0;
+}
+
+.reason {
+  margin: 6px 0 0;
 }

@@ -1,7 +1,8 @@
 import { useDraggable } from "@dnd-kit/core";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
+import { translateError } from "../i18n/errors";
 import { useT } from "../i18n/useT";
-import type { MediaItem } from "../lib/apiClient";
+import { ApiError, type MediaItem } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
@@ -57,6 +58,12 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
   );
 }
 
+/** Rejected delete: the picture's name and, if the backend said why, the translated reason. */
+interface DeleteError {
+  name: string;
+  reason: string | null;
+}
+
 interface MenuState {
   item: MediaItem;
   x: number;
@@ -68,7 +75,7 @@ interface MenuState {
  * picture to the storyboard; Delete or the context menu deletes after confirmation.
  */
 export function MediaCollection() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const media = useAppStore((s) => s.media);
   const addSlide = useAppStore((s) => s.addSlide);
   const deleteMedia = useAppStore((s) => s.deleteMedia);
@@ -77,7 +84,7 @@ export function MediaCollection() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [pendingDelete, setPendingDelete] = useState<MediaItem | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DeleteError | null>(null);
   const tiles = useRef(new Map<string, HTMLButtonElement>());
 
   const openMenu = (item: MediaItem, x: number, y: number) => {
@@ -116,9 +123,13 @@ export function MediaCollection() {
       setPendingDelete(null);
       // After the dialog closes, focus the neighbouring tile.
       if (neighbour) setTimeout(() => tiles.current.get(neighbour.id)?.focus(), 0);
-    } catch {
+    } catch (err) {
+      // The store only drops the picture after the backend confirmed the
+      // delete, so a rejection (e.g. 409 media.inUseByExport) leaves the
+      // collection and the storyboard untouched.
       setPendingDelete(null);
-      setError(t("media.deleteFailed", { name: item.filename }));
+      const reason = err instanceof ApiError && err.info ? translateError(err.info, locale) : null;
+      setError({ name: item.filename, reason });
     } finally {
       setDeleting(false);
     }
@@ -126,11 +137,6 @@ export function MediaCollection() {
 
   return (
     <>
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
       {media.length === 0 ? (
         <p className={styles.hint}>{t("media.emptyHint")}</p>
       ) : (
@@ -186,6 +192,19 @@ export function MediaCollection() {
           <p className={styles.question}>
             {t("media.deleteQuestion", { name: pendingDelete.filename })}
           </p>
+        ) : null}
+      </Dialog>
+      <Dialog
+        open={error !== null}
+        title={t("media.deleteTitle")}
+        onClose={() => setError(null)}
+        footer={<Button onClick={() => setError(null)}>{t("common.ok")}</Button>}
+      >
+        {error ? (
+          <div role="alert">
+            <p className={styles.question}>{t("media.deleteFailed", { name: error.name })}</p>
+            {error.reason ? <p className={styles.reason}>{error.reason}</p> : null}
+          </div>
         ) : null}
       </Dialog>
     </>

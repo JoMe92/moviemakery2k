@@ -4,9 +4,9 @@ import io
 import shutil
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +14,7 @@ from PIL import Image
 
 from mmy_backend.config import Settings
 from mmy_backend.main import create_app
+from mmy_backend.media import MediaStore
 from mmy_backend.render.encode import ExportCancelled
 
 IMMUTABLE = "public, max-age=31536000, immutable"
@@ -317,6 +318,112 @@ def test_delete_is_allowed_after_the_export_was_cancelled(
     assert client.delete(f"/api/exports/{export_id}").status_code == 204
     assert client.get(f"/api/exports/{export_id}").json()["status"] == "cancelled"
     assert client.delete(f"/api/media/{media_id}").status_code == 200
+
+
+class _BlockedIndexWrite:
+    """Patches `MediaStore._write_index` so that the next write blocks until
+    `release()`; `entered` is set once the write has started (in a worker thread,
+    with the event loop free to serve other requests)."""
+
+    def __init__(self, store: MediaStore, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.entered = threading.Event()
+        self.released = threading.Event()
+        original = store._write_index
+
+        def blocking(items: Any) -> None:
+            if not self.entered.is_set():
+                self.entered.set()
+                assert self.released.wait(TIMEOUT), "test never released the index write"
+            original(items)
+
+        monkeypatch.setattr(store, "_write_index", blocking)
+
+    def release(self) -> None:
+        self.released.set()
+
+
+def _in_thread(call: Callable[[], Any]) -> tuple[threading.Thread, list[Any]]:
+    result: list[Any] = []
+    thread = threading.Thread(target=lambda: result.append(call()), daemon=True)
+    thread.start()
+    return thread, result
+
+
+def test_export_started_while_the_delete_writes_the_index_does_not_see_the_medium(
+    client: TestClient,
+    settings: Settings,
+    fake_export: FakeExport,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Race (mmy-z9f): DELETE passed the in-use check and awaits the index write;
+    a POST /api/exports in that window must not snapshot the medium."""
+    [media_id] = _upload(client, ["x.png"])
+    project = {"schemaVersion": 1, "slides": [_slide("s1", media_id)]}
+    assert client.put("/api/project", json=project).status_code == 200
+    store: MediaStore = cast(Any, client.app).state.media
+    blocked = _BlockedIndexWrite(store, monkeypatch)
+
+    delete_thread, delete_result = _in_thread(lambda: client.delete(f"/api/media/{media_id}"))
+    assert blocked.entered.wait(TIMEOUT)
+    # The delete hangs in the index write; the export start runs meanwhile.
+    res = client.post("/api/exports", json={"profile": "small", "fileName": "Movie"})
+    assert res.status_code == 422, res.text
+    assert res.json()["detail"]["code"] == "export.missingMedia"
+    blocked.release()
+    delete_thread.join(TIMEOUT)
+
+    assert delete_result[0].status_code == 200, delete_result[0].text
+    assert client.get("/api/media").json() == {"items": []}
+    assert not (settings.data_dir / "media" / media_id).exists()
+    assert client.get("/api/exports").json() == {"items": []}
+    assert not fake_export.running.is_set()
+
+
+def test_delete_waiting_for_the_store_lock_rechecks_a_newly_started_export(
+    client: TestClient,
+    settings: Settings,
+    fake_export: FakeExport,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Race (mmy-z9f), other order: the DELETE waits for the media store lock
+    (held by an upload) while an export starts with the medium; the delete must
+    then be rejected instead of removing a medium in the running snapshot."""
+    [media_id] = _upload(client, ["x.png"])
+    project = {"schemaVersion": 1, "slides": [_slide("s1", media_id)]}
+    assert client.put("/api/project", json=project).status_code == 200
+    store: MediaStore = cast(Any, client.app).state.media
+    blocked = _BlockedIndexWrite(store, monkeypatch)
+
+    upload_thread, _ = _in_thread(lambda: _upload(client, ["y.png"]))
+    assert blocked.entered.wait(TIMEOUT)  # the upload now holds the store lock
+
+    remove_entered = threading.Event()
+    original_remove = store.remove
+
+    async def tracking_remove(*args: Any, **kwargs: Any) -> bool:
+        # Set right before remove() blocks on the lock (no await in between).
+        remove_entered.set()
+        return await original_remove(*args, **kwargs)
+
+    monkeypatch.setattr(store, "remove", tracking_remove)
+    delete_thread, delete_result = _in_thread(lambda: client.delete(f"/api/media/{media_id}"))
+    assert remove_entered.wait(TIMEOUT)
+
+    res = client.post("/api/exports", json={"profile": "small", "fileName": "Movie"})
+    assert res.status_code == 202, res.text
+    export_id = res.json()["id"]
+    blocked.release()
+    upload_thread.join(TIMEOUT)
+    delete_thread.join(TIMEOUT)
+
+    assert delete_result[0].status_code == 409, delete_result[0].text
+    assert delete_result[0].json()["detail"]["params"] == {
+        "mediaId": media_id,
+        "exportId": export_id,
+    }
+    assert media_id in [i["id"] for i in client.get("/api/media").json()["items"]]
+    assert (settings.data_dir / "media" / media_id).is_dir()
+    assert client.get("/api/project").json() == project
 
 
 def test_openapi_documents_media_endpoints(client: TestClient) -> None:

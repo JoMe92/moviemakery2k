@@ -248,6 +248,7 @@ export const en = {
   errors: {
     unknown: "An unknown error occurred.",
     invalidInput: "The input is invalid.",
+    atPicture: "Picture {number}: {text}",
     client: {
       offline: "The backend is not reachable.",
       requestFailed: "The request to the backend failed (status {status}).",

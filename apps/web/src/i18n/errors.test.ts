@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, type ApiErrorInfo } from "../lib/apiClient";
+import { ApiError, type ApiErrorInfo, parseErrorBody } from "../lib/apiClient";
 import { exportJob } from "../store/testApi";
 import { de } from "./de";
 import { en } from "./en";
@@ -22,6 +22,13 @@ function leaves(node: object, prefix: string): [string, string][] {
       ? [[`${prefix}.${name}`, value]]
       : leaves(value as object, `${prefix}.${name}`),
   );
+}
+
+/** Parsed error body; fails the test if the body carries no error. */
+function parsed(body: unknown): ApiErrorInfo {
+  const info = parseErrorBody(body);
+  if (!info) throw new Error("no error in body");
+  return info;
 }
 
 const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
@@ -78,6 +85,44 @@ describe("translateError", () => {
         { code: "enum", params: {}, message: "Input should be …" },
       ],
     };
+    expect(translateError(info, "en")).toBe(
+      "The file name is too long (at most 120 characters). The input is invalid.",
+    );
+  });
+
+  it("puts the picture number from `loc` in front of a 422 entry (design.md D6)", () => {
+    const error = new ApiError(
+      "…",
+      422,
+      parsed({
+        detail: [
+          {
+            loc: ["body", "slides", 1, "duration"],
+            msg: "The picture duration must be between 0.5 and 60 s (is 0.1 s).",
+            type: "project.slideDuration.outOfRange",
+            ctx: { min: 0.5, max: 60, value: 0.1 },
+          },
+        ],
+      }),
+    );
+    expect(describeError(error, "de")).toBe(
+      "Bild 2: Die Bilddauer muss zwischen 0,5 und 60 s liegen (ist 0,1 s).",
+    );
+    expect(describeError(error, "en")).toBe(
+      "Picture 2: The picture duration must be between 0.5 and 60 s (is 0.1 s).",
+    );
+  });
+
+  it("adds no picture number to a 422 entry outside the storyboard", () => {
+    const info = parsed({
+      detail: [
+        { loc: ["body", "fileName"], msg: "…", type: "export.fileName.tooLong", ctx: { max: 120 } },
+        { loc: ["body", "slides"], msg: "List too long", type: "too_long" },
+      ],
+    });
+    expect(translateError(info, "de")).toBe(
+      "Der Dateiname ist zu lang (höchstens 120 Zeichen). Die Eingabe ist ungültig.",
+    );
     expect(translateError(info, "en")).toBe(
       "The file name is too long (at most 120 characters). The input is invalid.",
     );

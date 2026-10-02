@@ -28,7 +28,7 @@ import subprocess
 import tempfile
 import unicodedata
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -506,20 +506,36 @@ class MediaStore:
             await asyncio.to_thread(self._write_index, updated)
             self._items = updated
 
-    async def remove(self, media_id: str) -> bool:
+    async def remove(self, media_id: str, guard: Callable[[], None] | None = None) -> bool:
         """Removes a medium from the index and deletes its directory.
 
-        The index is written atomically first, then the directory is deleted
-        (an already missing directory is not an error). Returns False if the
-        ID is unknown. The cascade into the project is the caller's job.
+        `guard` runs under the store lock right before the removal and may raise
+        to veto it (e.g. while an export uses the medium). Guard, check and the
+        in-memory removal happen without an `await` in between, so no other
+        request (such as an export start, which reads `list()`) can interleave:
+        it either ran before (and the guard sees it) or it runs after (and no
+        longer sees the medium). The index is then written atomically; if that
+        fails the medium is restored. Finally the directory is deleted (an
+        already missing directory is not an error). Returns False if the ID is
+        unknown. The cascade into the project is the caller's job.
         """
         if not is_media_id(media_id):
             return False
         async with self._lock:
-            if not any(item.id == media_id for item in self._items):
+            position = next((i for i, item in enumerate(self._items) if item.id == media_id), None)
+            if position is None:
                 return False
+            if guard is not None:
+                guard()
+            removed = self._items[position]
             updated = [item for item in self._items if item.id != media_id]
-            await asyncio.to_thread(self._write_index, updated)
             self._items = updated
+            try:
+                await asyncio.to_thread(self._write_index, updated)
+            except BaseException:
+                restored = list(self._items)
+                restored.insert(min(position, len(restored)), removed)
+                self._items = restored
+                raise
             await asyncio.to_thread(shutil.rmtree, self.item_dir(media_id), ignore_errors=True)
             return True
