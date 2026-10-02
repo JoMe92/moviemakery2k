@@ -131,4 +131,39 @@ describe("appStore", () => {
     expect(store.getState().slides).toEqual([]);
     expect(store.getState().media).toHaveLength(2);
   });
+  it("Storyboard: Einfügen, Umsortieren und Entfernen (Spec slideshow-project) mit Autosave", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = () => store.getState();
+    const media = () => st().slides.map((x) => x.mediaId);
+
+    // Anhängen per Doppelklick: ans Ende mit Standarddauer.
+    st().addSlide("a");
+    st().addSlide("b");
+    expect(st().slides.every((x) => x.duration === 5)).toBe(true);
+    // Einfügen zwischen erstem und zweitem Element → Position 2.
+    st().addSlide("b", 1);
+    expect(media()).toEqual(["a", "b", "b"]);
+
+    const [s1, s2, s3] = st().slides.map((x) => x.id) as [string, string, string];
+    st().setTransition(s2, "fade");
+    st().setTransition(s3, "circle");
+    // Drittes Element an Position 1: sein Übergang entfällt, die anderen behalten ihren.
+    st().moveSlide(2, 0);
+    expect(st().slides.map((x) => x.id)).toEqual([s3, s1, s2]);
+    expect(st().slides[0]?.transitionIn).toBeNull();
+    expect(st().slides[1]?.transitionIn).toBeNull();
+    expect(st().slides[2]?.transitionIn?.transitionId).toBe("fade");
+
+    // Entfernen des ausgewählten Elements hebt die Auswahl auf.
+    st().select({ kind: "slide", slideId: s1 });
+    st().removeSlide(s1);
+    expect(st().slides.map((x) => x.id)).toEqual([s3, s2]);
+    expect(st().selection).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    expect(api.putProject).toHaveBeenCalledTimes(1);
+    expect(api.saved.at(-1)?.slides.map((x) => x.id)).toEqual([s3, s2]);
+  });
 });

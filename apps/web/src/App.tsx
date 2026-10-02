@@ -12,6 +12,8 @@ import { type CollectionOption, Toolbar } from "./shell/Toolbar";
 import type { CollectionId } from "./store/appStore";
 import { describeBackend, describeSave } from "./store/status";
 import { useAppStore } from "./store/useAppStore";
+import { StoryboardDnd } from "./storyboard/StoryboardDnd";
+import { StoryboardStrip } from "./storyboard/StoryboardStrip";
 import type { Frame } from "./timeline/timeline";
 import { Button } from "./ui/Button";
 import {
@@ -55,85 +57,91 @@ export function App() {
   const collectionName = COLLECTIONS.find((c) => c.id === collection)?.label ?? "";
 
   return (
-    <AppWindow
-      title={APP_TITLE}
-      menuBar={<AppMenus />}
-      toolbar={
-        <Toolbar
-          collections={COLLECTIONS}
-          collection={collection}
-          onCollectionChange={(id) => setCollection(id as CollectionId)}
-        />
-      }
-      taskPane={
-        <TaskPane>
-          <TaskGroup title="1. Aufnehmen">
-            <TaskLink icon={<FilmIcon />} disabled>
-              Video importieren
-            </TaskLink>
-            <TaskLink icon={<ImportImageIcon />} onClick={requestImport}>
-              Bilder importieren
-            </TaskLink>
-            <TaskLink icon={<FolderIcon />} disabled>
-              Audio oder Musik importieren
-            </TaskLink>
-          </TaskGroup>
-          <TaskGroup title="2. Film bearbeiten">
-            <TaskLink icon={<FolderIcon />} onClick={() => setCollection("media")}>
-              Sammlungen anzeigen
-            </TaskLink>
-            <TaskLink icon={<EffectsIcon />} disabled>
-              Videoeffekte anzeigen
-            </TaskLink>
-            <TaskLink icon={<TransitionsIcon />} onClick={() => setCollection("transitions")}>
-              Videoübergänge anzeigen
-            </TaskLink>
-            <TaskLink icon={<TitleIcon />} disabled>
-              Titel oder Nachspann erstellen
-            </TaskLink>
-          </TaskGroup>
-          <TaskGroup title="3. Film fertig stellen">
-            <TaskLink icon={<FilmIcon />} disabled>
-              Auf dem Computer speichern
-            </TaskLink>
-            <TaskLink icon={<FilmIcon />} disabled>
-              Im Web veröffentlichen
-            </TaskLink>
-          </TaskGroup>
-        </TaskPane>
-      }
-      collection={
-        <LibraryPane name={collectionName}>
-          {collection === "media" ? (
-            <MediaCollection />
-          ) : (
-            <p className={styles.hint}>Der Übergangskatalog wird hier angezeigt.</p>
-          )}
-        </LibraryPane>
-      }
-      monitor={
-        <MonitorPane
-          controls={
-            <>
-              <Button variant="toolbar" icon={<PlayIcon />} label="Wiedergabe" disabled />
-              <Button variant="toolbar" icon={<StopIcon />} label="Stopp" disabled />
-              <Button variant="toolbar" icon={<PrevIcon />} label="Zurück" disabled />
-              <Button variant="toolbar" icon={<NextIcon />} label="Weiter" disabled />
-              <span className={styles.time}>0:00:00,00 / 0:00:00,00</span>
-            </>
-          }
-        >
-          <PreviewCanvas frame={EMPTY_FRAME} images={noImage} params={noParams} />
-        </MonitorPane>
-      }
-      storyboard={<StoryboardPane />}
-      statusBar={
-        <StatusBar
-          items={[describeBackend(backend), describeSave(saveState)].filter(
-            (x): x is string => x !== null,
-          )}
-        />
-      }
-    />
+    <StoryboardDnd>
+      <AppWindow
+        title={APP_TITLE}
+        menuBar={<AppMenus />}
+        toolbar={
+          <Toolbar
+            collections={COLLECTIONS}
+            collection={collection}
+            onCollectionChange={(id) => setCollection(id as CollectionId)}
+          />
+        }
+        taskPane={
+          <TaskPane>
+            <TaskGroup title="1. Aufnehmen">
+              <TaskLink icon={<FilmIcon />} disabled>
+                Video importieren
+              </TaskLink>
+              <TaskLink icon={<ImportImageIcon />} onClick={requestImport}>
+                Bilder importieren
+              </TaskLink>
+              <TaskLink icon={<FolderIcon />} disabled>
+                Audio oder Musik importieren
+              </TaskLink>
+            </TaskGroup>
+            <TaskGroup title="2. Film bearbeiten">
+              <TaskLink icon={<FolderIcon />} onClick={() => setCollection("media")}>
+                Sammlungen anzeigen
+              </TaskLink>
+              <TaskLink icon={<EffectsIcon />} disabled>
+                Videoeffekte anzeigen
+              </TaskLink>
+              <TaskLink icon={<TransitionsIcon />} onClick={() => setCollection("transitions")}>
+                Videoübergänge anzeigen
+              </TaskLink>
+              <TaskLink icon={<TitleIcon />} disabled>
+                Titel oder Nachspann erstellen
+              </TaskLink>
+            </TaskGroup>
+            <TaskGroup title="3. Film fertig stellen">
+              <TaskLink icon={<FilmIcon />} disabled>
+                Auf dem Computer speichern
+              </TaskLink>
+              <TaskLink icon={<FilmIcon />} disabled>
+                Im Web veröffentlichen
+              </TaskLink>
+            </TaskGroup>
+          </TaskPane>
+        }
+        collection={
+          <LibraryPane name={collectionName}>
+            {collection === "media" ? (
+              <MediaCollection />
+            ) : (
+              <p className={styles.hint}>Der Übergangskatalog wird hier angezeigt.</p>
+            )}
+          </LibraryPane>
+        }
+        monitor={
+          <MonitorPane
+            controls={
+              <>
+                <Button variant="toolbar" icon={<PlayIcon />} label="Wiedergabe" disabled />
+                <Button variant="toolbar" icon={<StopIcon />} label="Stopp" disabled />
+                <Button variant="toolbar" icon={<PrevIcon />} label="Zurück" disabled />
+                <Button variant="toolbar" icon={<NextIcon />} label="Weiter" disabled />
+                <span className={styles.time}>0:00:00,00 / 0:00:00,00</span>
+              </>
+            }
+          >
+            <PreviewCanvas frame={EMPTY_FRAME} images={noImage} params={noParams} />
+          </MonitorPane>
+        }
+        storyboard={
+          <StoryboardPane>
+            <StoryboardStrip />
+          </StoryboardPane>
+        }
+        statusBar={
+          <StatusBar
+            items={[describeBackend(backend), describeSave(saveState)].filter(
+              (x): x is string => x !== null,
+            )}
+          />
+        }
+      />
+    </StoryboardDnd>
   );
 }

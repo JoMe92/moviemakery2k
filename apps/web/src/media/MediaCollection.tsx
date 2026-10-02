@@ -1,6 +1,8 @@
+import { useDraggable } from "@dnd-kit/core";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
 import type { MediaItem } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
+import { type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
@@ -12,6 +14,50 @@ export const MEDIA_EMPTY_HINT =
 
 export function deleteQuestion(filename: string): string {
   return `Möchten Sie „${filename}“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.`;
+}
+
+interface MediaTileProps {
+  item: MediaItem;
+  selected: boolean;
+  tileRef: (el: HTMLButtonElement | null) => void;
+  onClick: () => void;
+  onDoubleClick: () => void;
+  onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+}
+
+/** Kachel der Sammlung, per dnd-kit ins Storyboard ziehbar (Zeiger und Tastatur). */
+function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTileProps) {
+  const data: DragItem = { type: "media", mediaId: item.id };
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: mediaDraggableId(item.id),
+    data,
+    attributes: { roleDescription: "ziehbares Bild" },
+  });
+  // aria-pressed bleibt die Auswahl der Kachel (nicht der Ziehzustand von dnd-kit).
+  const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
+  return (
+    <Tile
+      ref={(el: HTMLButtonElement | null) => {
+        setNodeRef(el);
+        tileRef(el);
+      }}
+      {...dragAttributes}
+      {...listeners}
+      caption={item.filename}
+      aria-label={item.filename}
+      title={item.filename}
+      thumbnail={
+        <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
+      }
+      selected={selected}
+      {...handlers}
+      onKeyDown={(event) => {
+        onKeyDown(event);
+        if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
+      }}
+    />
+  );
 }
 
 interface MenuState {
@@ -93,22 +139,12 @@ export function MediaCollection() {
         <ul className={styles.grid} aria-label="Bilder">
           {media.map((item) => (
             <li key={item.id}>
-              <Tile
-                ref={(el: HTMLButtonElement | null) => {
+              <MediaTile
+                item={item}
+                tileRef={(el) => {
                   if (el) tiles.current.set(item.id, el);
                   else tiles.current.delete(item.id);
                 }}
-                caption={item.filename}
-                aria-label={item.filename}
-                title={item.filename}
-                thumbnail={
-                  <img
-                    src={item.thumbnailUrl}
-                    alt={item.filename}
-                    loading="lazy"
-                    draggable={false}
-                  />
-                }
                 selected={selectedId === item.id}
                 onClick={() => setSelectedId(item.id)}
                 onDoubleClick={() => addSlide(item.id)}

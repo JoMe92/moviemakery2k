@@ -1,0 +1,204 @@
+/* Ablagefläche über die ganze Breite und Höhe des Storyboards. */
+.strip {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
+  align-items: center;
+  min-width: max-content;
+  padding: 0 8px;
+}
+
+.strip[data-over="true"] {
+  outline: 2px dashed var(--y2k-select);
+  outline-offset: -4px;
+  background: var(--y2k-select-soft);
+}
+
+.hint {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  color: var(--y2k-text-muted);
+  text-align: center;
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Kachel: Rahmen wie ein Filmbild, Nummer im Thumbnail, Dauer darunter. */
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 104px;
+  padding: 4px;
+  border: 1px solid var(--y2k-edge-dark);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-storyboard-slot));
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.tile[aria-pressed="true"] {
+  border-color: var(--y2k-select);
+  outline: 2px solid var(--y2k-select);
+  outline-offset: -1px;
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--y2k-focus);
+  outline-offset: 1px;
+}
+
+.thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 94px;
+  height: 70px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-monitor-screen);
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.number {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  min-width: 16px;
+  padding: 0 3px;
+  border-radius: var(--y2k-radius);
+  background: var(--y2k-title-bottom);
+  color: var(--y2k-title-text);
+  font-size: 10px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.duration {
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile[aria-pressed="true"] .duration {
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+}
+
+.slot[data-dragging="true"] .tile {
+  opacity: 0.4;
+}
+
+/* Deaktivierter Effekt-Platz (spätere Videoeffekte) oben rechts auf der Kachel. */
+.effect {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px dashed var(--y2k-edge-dark);
+  border-radius: var(--y2k-radius);
+  background: var(--y2k-face-light);
+  cursor: default;
+  opacity: 0.6;
+  filter: grayscale(1);
+}
+
+/* Übergangsplatz zwischen zwei Kacheln. */
+.transition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 44px;
+  height: 52px;
+  margin: 0 4px;
+  border: 1px solid var(--y2k-separator);
+  border-radius: var(--y2k-radius);
+  background: var(--y2k-face);
+  color: var(--y2k-text-muted);
+  font-size: 10px;
+}
+
+.transition[data-filled="true"] {
+  border-color: var(--y2k-border);
+  background: var(--y2k-select-soft);
+  color: var(--y2k-text);
+}
+
+.transitionName {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Einfügemarke: senkrechter Balken, ohne das Layout zu verschieben. */
+.marker {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  width: 4px;
+  height: 96px;
+  margin-top: -48px;
+  border-radius: 2px;
+  background: var(--y2k-select);
+  box-shadow: 0 0 0 1px var(--y2k-pane);
+  pointer-events: none;
+}
+
+.markerFirst {
+  left: -6px;
+}
+
+.markerGap {
+  left: 24px; /* Mitte des Übergangsplatzes (4 + 44/2 - 2) */
+}
+
+.markerAfter {
+  right: -6px;
+}
+
+/* Vorschau beim Ziehen (DragOverlay). */
+.overlay {
+  width: 94px;
+  height: 70px;
+  overflow: hidden;
+  border: 2px solid var(--y2k-select);
+  background: var(--y2k-monitor-screen);
+  box-shadow: 3px 3px 6px var(--y2k-shadow);
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+.overlay img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
