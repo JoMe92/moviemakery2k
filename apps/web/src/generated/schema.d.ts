@@ -30,16 +30,16 @@ export interface paths {
         };
         /**
          * List Exports
-         * @description Alle bekannten Exporte (seit dem Start des Backends), älteste zuerst.
+         * @description All known exports (since the backend started), oldest first.
          */
         get: operations["list_exports_api_exports_get"];
         put?: never;
         /**
          * Start Export
-         * @description Startet einen Export mit dem gespeicherten Projekt zum jetzigen Zeitpunkt.
+         * @description Starts an export of the saved project as it is right now.
          *
-         *     Spätere Änderungen am Projekt wirken sich nicht auf diesen Export aus.
-         *     Höchstens ein Export läuft gleichzeitig; ein zweiter Start ergibt 409.
+         *     Later changes to the project do not affect this export.
+         *     At most one export runs at a time; a second start returns 409.
          */
         post: operations["start_export_api_exports_post"];
         delete?: never;
@@ -57,19 +57,19 @@ export interface paths {
         };
         /**
          * Get Export
-         * @description Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler.
+         * @description Status (`queued`, `running`, `done`, `failed`, `cancelled`), progress and error.
          */
         get: operations["get_export_api_exports__export_id__get"];
         put?: never;
         post?: never;
         /**
          * Delete Export
-         * @description Bricht einen laufenden Export ab bzw. löscht einen beendeten.
+         * @description Cancels a running export or deletes a finished one.
          *
-         *     - `queued`/`running`: Der Export wird abgebrochen (FFmpeg beendet, Teildatei
-         *       gelöscht); die Antwort kommt erst danach. Der Job bleibt als `cancelled`
-         *       abfragbar, ohne Datei.
-         *     - `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.
+         *     - `queued`/`running`: the export is cancelled (FFmpeg stopped, partial file
+         *       deleted); the response comes only afterwards. The job stays queryable as
+         *       `cancelled`, without a file.
+         *     - `done`/`failed`/`cancelled`: file and job are deleted; 404 afterwards.
          */
         delete: operations["delete_export_api_exports__export_id__delete"];
         options?: never;
@@ -86,10 +86,10 @@ export interface paths {
         };
         /**
          * Get Export File
-         * @description Die fertige MP4 als Download mit dem gewünschten Dateinamen (`<fileName>.mp4`).
+         * @description The finished MP4 as a download with the requested file name (`<fileName>.mp4`).
          *
-         *     Solange der Export nicht `done` ist, antwortet der Server mit 409 und dem
-         *     Status; eine unvollständige Datei wird nie ausgeliefert.
+         *     As long as the export is not `done`, the server answers 409 with the
+         *     status; an incomplete file is never served.
          */
         get: operations["get_export_file_api_exports__export_id__file_get"];
         put?: never;
@@ -126,7 +126,7 @@ export interface paths {
         };
         /**
          * List Media
-         * @description Alle importierten Medien in Importreihenfolge.
+         * @description All imported media in import order.
          */
         get: operations["list_media_api_media_get"];
         put?: never;
@@ -150,17 +150,17 @@ export interface paths {
         post?: never;
         /**
          * Delete Media
-         * @description Löscht ein Medium samt Dateien und entfernt es aus dem Projekt (Kaskade).
+         * @description Deletes a medium with its files and removes it from the project (cascade).
          *
-         *     Alle Elemente des Bildstreifens mit diesem Medium entfallen samt ihrer
-         *     eingehenden Übergänge; das neue erste Element hat keinen Übergang.
+         *     All storyboard elements using this medium are dropped together with their
+         *     incoming transitions; the new first element has no transition.
          *
-         *     Antwort ist 200 mit dem aktualisierten Projekt (statt 204), damit der
-         *     Client seinen Stand ohne erneutes GET /api/project übernehmen kann.
+         *     The response is 200 with the updated project (instead of 204) so that the
+         *     client can adopt its state without another GET /api/project.
          *
-         *     Reihenfolge: erst aus dem Medienspeicher, dann aus dem Projekt. Ein
-         *     gleichzeitiges PUT /api/project prüft gegen den Medienspeicher und kann
-         *     die ID danach nicht wieder einfügen.
+         *     Order: first from the media store, then from the project. A concurrent
+         *     PUT /api/project validates against the media store and therefore cannot
+         *     re-insert the ID afterwards.
          */
         delete: operations["delete_media_api_media__media_id__delete"];
         options?: never;
@@ -177,7 +177,7 @@ export interface paths {
         };
         /**
          * Get Preview
-         * @description Vorschaubild (JPEG, längste Kante <= 1920) mit `Cache-Control: immutable`.
+         * @description Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`.
          */
         get: operations["get_preview_api_media__media_id__preview_get"];
         put?: never;
@@ -197,7 +197,7 @@ export interface paths {
         };
         /**
          * Get Thumbnail
-         * @description Thumbnail (JPEG, passt in 160x120) mit `Cache-Control: immutable`.
+         * @description Thumbnail (JPEG, fits into 160x120) with `Cache-Control: immutable`.
          */
         get: operations["get_thumbnail_api_media__media_id__thumbnail_get"];
         put?: never;
@@ -217,12 +217,12 @@ export interface paths {
         };
         /**
          * Get Project
-         * @description Das gespeicherte Projekt; ohne Datei das leere Projekt.
+         * @description The saved project; without a file, the empty project.
          */
         get: operations["get_project_api_project_get"];
         /**
          * Put Project
-         * @description Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert.
+         * @description Replaces the project. On 422 the saved state stays unchanged.
          */
         put: operations["put_project_api_project_put"];
         post?: never;
@@ -236,11 +236,99 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApiError
+         * @description An error of the backend: stable code, params and English message (design.md D5).
+         */
+        ApiError: {
+            /**
+             * Code
+             * @description Stable dotted error code, e.g. `export.emptyProject`
+             */
+            code: string;
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /**
+         * ApiErrorIssue
+         * @description One rule violation of a request body, with the position of the offending value.
+         */
+        ApiErrorIssue: {
+            /**
+             * Code
+             * @description Stable dotted error code, e.g. `export.emptyProject`
+             */
+            code: string;
+            /**
+             * Loc
+             * @description Position in the body, e.g. ["body", "slides", 2]
+             */
+            loc: (string | number)[];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /** ApiErrorResponse */
+        ApiErrorResponse: {
+            detail: components["schemas"]["ApiError"];
+        };
+        /**
+         * ApiErrorWithIssues
+         * @description An error that collects several rule violations (`project.invalid`).
+         */
+        ApiErrorWithIssues: {
+            /**
+             * Code
+             * @description Stable dotted error code, e.g. `export.emptyProject`
+             */
+            code: string;
+            /** Issues */
+            issues: components["schemas"]["ApiErrorIssue"][];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /**
+         * ApiValidationResponse
+         * @description 422 body: an `ApiError` or FastAPI's native list.
+         */
+        ApiValidationResponse: {
+            /** Detail */
+            detail: components["schemas"]["ApiError"] | components["schemas"]["RequestValidationIssue"][];
+        };
         /** Body_upload_media_api_media_post */
         Body_upload_media_api_media_post: {
             /**
              * Files
-             * @description Bilddateien (JPEG, PNG, WebP)
+             * @description Image files (JPEG, PNG, WebP)
              */
             files: string[];
         };
@@ -253,12 +341,24 @@ export interface components {
             createdAt: string;
             /**
              * Error
-             * @description Verständliche Meldung bei `failed`, sonst null
+             * @description English message when `failed`, otherwise null
              */
             error: string | null;
             /**
+             * Errorcode
+             * @description Stable error code when `failed` (design.md D5), otherwise null
+             */
+            errorCode?: string | null;
+            /**
+             * Errorparams
+             * @description Values of the error message; empty without error
+             */
+            errorParams?: {
+                [key: string]: string | number;
+            };
+            /**
              * Filename
-             * @description Dateiname ohne Endung
+             * @description File name without extension
              */
             fileName: string;
             /** Id */
@@ -266,7 +366,7 @@ export interface components {
             profile: components["schemas"]["ExportProfile"];
             /**
              * Progress
-             * @description Fortschritt 0..1
+             * @description Progress 0..1
              */
             progress: number;
             status: components["schemas"]["ExportStatus"];
@@ -275,13 +375,13 @@ export interface components {
         ExportListResponse: {
             /**
              * Items
-             * @description Alle bekannten Exporte, älteste zuerst
+             * @description All known exports, oldest first
              */
             items: components["schemas"]["ExportJob"][];
         };
         /**
          * ExportProfile
-         * @description Ausgabeprofil des Exports; der Wert ist der Name im API-Vertrag.
+         * @description Output profile of the export; the value is the name in the API contract.
          * @enum {string}
          */
         ExportProfile: "high" | "small";
@@ -289,12 +389,12 @@ export interface components {
         ExportRequest: {
             /**
              * Filename
-             * @description Gewünschter Dateiname ohne Endung; `.mp4` wird beim Herunterladen angehängt. Nicht erlaubt: / \ : * ? " < > | und Steuerzeichen.
-             * @example Mein Film
+             * @description Requested file name without extension; `.mp4` is appended on download. Not allowed: / \ : * ? " < > | and control characters.
+             * @example My Movie
              */
             fileName: string;
             /**
-             * @description `high` = 960x720 (Standard), `small` = 640x480; beide 30 fps
+             * @description `high` = 960x720 (default), `small` = 640x480; both 30 fps
              * @default high
              */
             profile: components["schemas"]["ExportProfile"];
@@ -333,12 +433,12 @@ export interface components {
             createdAt: string;
             /**
              * Filename
-             * @description Original-Dateiname, nur zur Anzeige
+             * @description Original file name, for display only
              */
             filename: string;
             /**
              * Height
-             * @description Höhe nach EXIF-Ausrichtung
+             * @description Height after EXIF orientation
              */
             height: number;
             /** Id */
@@ -349,7 +449,7 @@ export interface components {
             thumbnailUrl: string;
             /**
              * Width
-             * @description Breite nach EXIF-Ausrichtung
+             * @description Width after EXIF orientation
              */
             width: number;
         };
@@ -357,7 +457,7 @@ export interface components {
         MediaListResponse: {
             /**
              * Items
-             * @description Alle Medien in Importreihenfolge
+             * @description All media in import order
              */
             items: components["schemas"]["MediaItem"][];
         };
@@ -365,12 +465,22 @@ export interface components {
         MediaUploadFailure: {
             /**
              * Error
-             * @enum {string}
+             * @description Stable error code (design.md D5): media.unsupportedType, media.tooLarge, media.tooManyPixels
              */
-            error: "unsupported" | "too_large" | "too_many_pixels";
+            error: string;
+            /**
+             * Errorparams
+             * @description Values of the message
+             */
+            errorParams?: {
+                [key: string]: string | number;
+            };
             /** Filename */
             filename: string;
-            /** Message */
+            /**
+             * Message
+             * @description English message
+             */
             message: string;
             /**
              * Ok
@@ -404,47 +514,73 @@ export interface components {
             /** Slides */
             slides: components["schemas"]["Slide"][];
         };
+        /**
+         * ProjectValidationResponse
+         * @description 422 body of PUT /api/project: reference errors or FastAPI's native list.
+         */
+        ProjectValidationResponse: {
+            /** Detail */
+            detail: components["schemas"]["ApiErrorWithIssues"] | components["schemas"]["RequestValidationIssue"][];
+        };
+        /**
+         * RequestValidationIssue
+         * @description One entry of FastAPI's native 422 list. For rule violations of this API,
+         *     `type` is an error code from `ERRORS`, `ctx` its params and `msg` the message.
+         */
+        RequestValidationIssue: {
+            /** Ctx */
+            ctx?: {
+                [key: string]: unknown;
+            } | null;
+            /** Input */
+            input?: unknown;
+            /** Loc */
+            loc: (string | number)[];
+            /** Msg */
+            msg: string;
+            /** Type */
+            type: string;
+        };
         /** Slide */
         Slide: {
             /**
              * Duration
-             * @description Anzeigedauer in Sekunden
+             * @description Display duration in seconds
              */
             duration: number;
             /**
              * Id
-             * @description Vom Client vergeben, eindeutig im Projekt
+             * @description Assigned by the client, unique within the project
              */
             id: string;
             /**
              * Mediaid
-             * @description ID eines Mediums aus /api/media
+             * @description ID of a medium from /api/media
              */
             mediaId: string;
-            /** @description Eingehender Übergang vom vorherigen Element; beim ersten immer null */
+            /** @description Incoming transition from the previous element; always null for the first */
             transitionIn: components["schemas"]["TransitionRef"] | null;
         };
         /** Transition */
         Transition: {
             /**
              * Defaultduration
-             * @description Sekunden
+             * @description Seconds
              */
             defaultDuration: number;
             /** Id */
             id: string;
-            /** Name */
-            name: string;
+            names: components["schemas"]["TransitionNames"];
             /**
              * Params
-             * @description Wird 1:1 zu `uniform float <name>` im Shader
+             * @description Becomes `uniform float <name>` in the shader, 1:1
              */
             params: {
                 [key: string]: number;
             };
             /**
              * Shader
-             * @description Dateiname in packages/shaders/transitions/
+             * @description File name in packages/shaders/transitions/
              */
             shader: string;
             source: components["schemas"]["TransitionSource"];
@@ -459,16 +595,26 @@ export interface components {
             /** Transitions */
             transitions: components["schemas"]["Transition"][];
         };
+        /**
+         * TransitionNames
+         * @description Display name per UI language; both languages are required.
+         */
+        TransitionNames: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
+        };
         /** TransitionRef */
         TransitionRef: {
             /**
              * Duration
-             * @description Solldauer des Übergangs in Sekunden
+             * @description Target duration of the transition in seconds
              */
             duration: number;
             /**
              * Transitionid
-             * @description ID aus dem Übergangskatalog
+             * @description ID from the transition catalog
              */
             transitionId: string;
         };
@@ -476,7 +622,7 @@ export interface components {
         TransitionSource: {
             /**
              * Estimated
-             * @description Parameter, deren Wert nicht belegt, sondern geschätzt ist [E]
+             * @description Parameters whose value is not documented but estimated [E]
              */
             estimated?: string[] | null;
             /**
@@ -571,19 +717,23 @@ export interface operations {
                     "application/json": components["schemas"]["ExportJob"];
                 };
             };
-            /** @description Es läuft bereits ein Export */
+            /** @description An export is already running (`export.busy`) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
-            /** @description Ungültige Anfrage, leeres Projekt oder fehlende Medien */
+            /** @description Empty project (`export.emptyProject`), missing media (`export.missingMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiValidationResponse"];
+                };
             };
         };
     };
@@ -607,12 +757,14 @@ export interface operations {
                     "application/json": components["schemas"]["ExportJob"];
                 };
             };
-            /** @description Unbekannter oder gelöschter Export */
+            /** @description Unknown or deleted export (`export.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -643,12 +795,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Unbekannter oder gelöschter Export */
+            /** @description Unknown or deleted export (`export.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -672,7 +826,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Fertiger Film (MP4) */
+            /** @description Finished movie (MP4) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -681,19 +835,23 @@ export interface operations {
                     "video/mp4": unknown;
                 };
             };
-            /** @description Unbekannter oder gelöschter Export */
+            /** @description Unknown or deleted export (`export.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
-            /** @description Der Export ist (noch) nicht fertig */
+            /** @description The export is not done (`export.notReady`) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -768,12 +926,14 @@ export interface operations {
                     "application/json": components["schemas"]["MediaUploadResponse"];
                 };
             };
-            /** @description Mehr als 50 Dateien in einer Anfrage */
+            /** @description More than 50 files in one request (`media.tooManyFiles`) */
             413: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -806,12 +966,14 @@ export interface operations {
                     "application/json": components["schemas"]["MediaDeleteResponse"];
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -835,7 +997,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description JPEG-Bild */
+            /** @description JPEG image */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -844,12 +1006,14 @@ export interface operations {
                     "image/jpeg": unknown;
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -873,7 +1037,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description JPEG-Bild */
+            /** @description JPEG image */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -882,12 +1046,14 @@ export interface operations {
                     "image/jpeg": unknown;
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -942,13 +1108,13 @@ export interface operations {
                     "application/json": components["schemas"]["Project"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid project: `project.invalid` with one issue per broken reference, or FastAPI's native list (rule violations carry an error code as `type`) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ProjectValidationResponse"];
                 };
             };
         };

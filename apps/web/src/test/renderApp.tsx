@@ -5,7 +5,7 @@ import { createAppStore } from "../store/appStore";
 import { mockApi } from "../store/testApi";
 import { AppStoreContext } from "../store/useAppStore";
 
-/** Rendert die App mit einem Store über eine gemockte API und startet das Laden. */
+/** Renders the app with a store over a mocked API and starts loading. */
 export function renderApp(api: AppApi = mockApi()) {
   const store = createAppStore(api);
   const view = render(

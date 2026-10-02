@@ -10,14 +10,14 @@ export interface LibraryPaneProps {
   children: ReactNode;
 }
 
-/** Nur Datei-Drags aus dem Dateimanager, keine Drags innerhalb der App (dnd-kit). */
+/** Only file drags from the file manager, no drags within the app (dnd-kit). */
 function isFileDrag(event: DragEvent): boolean {
   return Array.from(event.dataTransfer?.types ?? []).includes("Files");
 }
 
 /**
- * Sammlungsbereich mit Import: versteckter Dateidialog (geöffnet über
- * `requestImport()` im Store), Drop von Dateien und Fortschritt/Fehler unten.
+ * Collection area with import: hidden file dialog (opened via
+ * `requestImport()` in the store), dropping files and progress/errors below.
  */
 export function LibraryPane({ name, children }: LibraryPaneProps) {
   const importRequest = useAppStore((s) => s.importRequest);
@@ -79,7 +79,7 @@ export function LibraryPane({ name, children }: LibraryPaneProps) {
         data-testid="media-import-input"
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? []);
-          // Zurücksetzen, damit dieselben Dateien erneut gewählt werden können.
+          // Reset so the same files can be chosen again.
           event.currentTarget.value = "";
           startImport(files);
         }}

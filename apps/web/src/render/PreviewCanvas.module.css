@@ -10,7 +10,7 @@
   height: 100%;
 }
 
-/* Hinweis im Monitor, wenn WebGL2 fehlt: kleines XP-artiges Infofeld. */
+/* Notice in the monitor when WebGL2 is missing: small XP-style info box. */
 .message {
   position: absolute;
   top: 50%;

@@ -1,8 +1,8 @@
-"""Shader-Lader des Exports (TASK-RENDER-002, design.md D1/D2).
+"""Shader loader of the export (TASK-RENDER-002, design.md D1/D2).
 
-Die Quelltext-Tests laufen überall. Die GL-Tests brauchen den EGL/llvmpipe-
-Kontext aus der Pixi-Umgebung und laufen unter Linux (lokal und in CI) immer;
-nur auf anderen Plattformen werden sie übersprungen (Export dort ohne Gewähr).
+The source-text tests run everywhere. The GL tests need the EGL/llvmpipe
+context from the Pixi environment and always run on Linux (locally and in CI);
+they are skipped only on other platforms (export there without guarantee).
 """
 
 import logging
@@ -63,7 +63,7 @@ def _copy_shaders(dest: Path) -> Path:
     return dest
 
 
-# --- Quelltexte (Vertrag shaderSource.ts) -------------------------------------
+# --- Source texts (contract of shaderSource.ts) -------------------------------
 
 
 def test_settings_default_and_env_shaders_dir(tmp_path: Path) -> None:
@@ -77,7 +77,7 @@ def test_catalog_covers_six_transitions_with_shader_files(
 ) -> None:
     assert {t.id for t in catalog.transitions} == EXPECTED_IDS
     for transition in catalog.transitions:
-        # shaderSource.ts schlägt den Body über den Dateinamen nach, also über die ID.
+        # shaderSource.ts looks up the body by file name, i.e. by the ID.
         assert transition.shader == f"{transition.id}.glsl"
         assert sources.body(transition.id) is not None
 
@@ -102,7 +102,7 @@ def test_fragment_source_contains_prelude_body_epilogue(
         assert desktop.startswith(CORE_HEADER + "\n")
         assert desktop.count("#version") == 1
         assert ES_HEADER not in desktop
-        # Genau die erste Zeile ist ersetzt, alles andere bytegleich.
+        # Exactly the first line is replaced, everything else is byte-identical.
         assert desktop.removeprefix(CORE_HEADER) == es.removeprefix(ES_HEADER)
         assert "vec4 transition(vec2 uv)" in desktop
         assert desktop.rstrip().endswith("fragColor = transition(vUv);\n}")
@@ -125,7 +125,7 @@ def test_missing_body_yields_none(sources: ShaderSources) -> None:
     "source",
     [
         "#version 330 core\nvoid main() {}\n",
-        "// Kommentar\n#version 300 es\nvoid main() {}\n",
+        "// comment\n#version 300 es\nvoid main() {}\n",
         "#version 300 es\n#version 300 es\nvoid main() {}\n",
         "#version 300 es",
     ],
@@ -139,7 +139,7 @@ def test_to_desktop_glsl_keeps_crlf() -> None:
     assert to_desktop_glsl("#version 300 es\r\nx\r\n") == "#version 330 core\r\nx\r\n"
 
 
-# --- GL: Kompilieren, Rückfall, Uniforms ---------------------------------------
+# --- GL: compile, fallback, uniforms -------------------------------------------
 
 
 @requires_gl
@@ -154,7 +154,7 @@ def test_all_catalog_transitions_compile_and_link(
 ) -> None:
     for transition in catalog.transitions:
         entry = library.get(transition.id)
-        # Kein Rückfall: jedes Programm ist sein eigener Shader.
+        # No fallback: every program is its own shader.
         assert entry.shader_id == transition.id
         assert library.get(transition.id) is entry
     distinct = {id(library.get(t.id).program) for t in catalog.transitions}
@@ -227,14 +227,14 @@ def test_uniforms_set_for_every_catalog_entry(
         assert _uniform(program, "uTo").value == TO_TEXTURE_UNIT
         assert _uniform(program, "progress").value == pytest.approx(1.0)
         resolution = program.get("resolution", None)
-        # fade, wipe-right und checkerboard lesen `resolution` nicht; der Compiler entfernt sie.
+        # fade, wipe-right and checkerboard do not read `resolution`; the compiler removes it.
         if isinstance(resolution, moderngl.Uniform):
             assert resolution.value == pytest.approx((960.0, 720.0))
         else:
             assert transition.id in {"fade", "checkerboard", "wipe-right"}
         for name, value in transition.params.items():
             uniform = program.get(name, None)
-            # Jeder Katalogparameter ist im Shader ein aktiver `uniform float`.
+            # Every catalog parameter is an active `uniform float` in the shader.
             assert isinstance(uniform, moderngl.Uniform), (transition.id, name)
             assert uniform.dimension == 1
             assert uniform.value == pytest.approx(value)

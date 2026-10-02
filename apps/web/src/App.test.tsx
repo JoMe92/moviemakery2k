@@ -1,17 +1,17 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { APP_TITLE } from "./App";
-import { STORYBOARD_EMPTY_HINT } from "./shell/StoryboardPane";
 import { mockApi } from "./store/testApi";
 import { renderApp } from "./test/renderApp";
 
-describe("App-Shell", () => {
-  it("zeigt alle Bereiche des Movie-Maker-Layouts", async () => {
+describe("App shell", () => {
+  it("shows all areas of the Movie Maker layout", async () => {
     renderApp();
 
     const titlebar = screen.getByRole("banner");
-    expect(within(titlebar).getByRole("heading", { level: 1 })).toHaveTextContent(APP_TITLE);
+    expect(within(titlebar).getByRole("heading", { level: 1 })).toHaveTextContent(
+      "moviemakerY2K – Unbenanntes Projekt",
+    );
 
     const menubar = screen.getByRole("menubar", { name: "Menüleiste" });
     const menus = within(menubar)
@@ -41,19 +41,21 @@ describe("App-Shell", () => {
     expect(screen.getByRole("region", { name: "Sammlung: Meine Bilder" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Vorschau" })).toBeInTheDocument();
     const storyboard = screen.getByRole("region", { name: "Storyboard" });
-    expect(within(storyboard).getByText(STORYBOARD_EMPTY_HINT)).toBeInTheDocument();
+    expect(
+      within(storyboard).getByText("Ziehen Sie Bilder hierher, um eine Diashow zu erstellen."),
+    ).toBeInTheDocument();
     expect(within(storyboard).getByRole("button", { name: "Zeitachse anzeigen" })).toBeDisabled();
 
     const statusbar = screen.getByRole("contentinfo");
     expect(await within(statusbar).findByText("Backend bereit · FFmpeg 9.0")).toBeInTheDocument();
   });
 
-  it("zeigt nach dem Laden „Gespeichert“", async () => {
+  it("shows 'Gespeichert' after loading", async () => {
     renderApp();
     expect(await within(screen.getByRole("contentinfo")).findByText("Gespeichert")).toBeVisible();
   });
 
-  it("meldet ein nicht erreichbares Backend in der Statusleiste", async () => {
+  it("reports an unreachable backend in the status bar", async () => {
     renderApp(
       mockApi({
         health: vi.fn(async () => {
@@ -65,7 +67,7 @@ describe("App-Shell", () => {
     expect(await within(statusbar).findByText("Backend nicht erreichbar")).toBeInTheDocument();
   });
 
-  it("markiert „Videoeffekte anzeigen“ als deaktiviert", () => {
+  it("marks 'Videoeffekte anzeigen' as disabled", () => {
     renderApp();
     expect(screen.getByRole("button", { name: "Videoeffekte anzeigen" })).toHaveAttribute(
       "aria-disabled",
@@ -73,7 +75,7 @@ describe("App-Shell", () => {
     );
   });
 
-  it("schaltet über „Videoübergänge anzeigen“ die Sammlungsauswahl um", async () => {
+  it("switches the collection picker via 'Videoübergänge anzeigen'", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("button", { name: "Videoübergänge anzeigen" }));
@@ -81,7 +83,7 @@ describe("App-Shell", () => {
     expect(screen.getByRole("region", { name: "Sammlung: Videoübergänge" })).toBeInTheDocument();
   });
 
-  it("bewegt den Fokus in der Menüleiste mit den Pfeiltasten", async () => {
+  it("moves focus in the menu bar with the arrow keys", async () => {
     const user = userEvent.setup();
     renderApp();
     const [datei, bearbeiten] = screen.getAllByRole("menuitem");
@@ -93,5 +95,37 @@ describe("App-Shell", () => {
     expect(datei).toHaveAttribute("tabindex", "-1");
     await user.keyboard("{ArrowLeft}{ArrowLeft}");
     expect(screen.getByRole("menuitem", { name: "Hilfe" })).toHaveFocus();
+  });
+
+  it("Spec localization: shows the shell in English", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const { ready } = renderApp();
+    await ready;
+
+    expect(document.documentElement.lang).toBe("en");
+    const titlebar = screen.getByRole("banner");
+    expect(within(titlebar).getByRole("heading", { level: 1 })).toHaveTextContent(
+      "moviemakerY2K – Untitled Project",
+    );
+    const menubar = screen.getByRole("menubar", { name: "Menu bar" });
+    expect(
+      within(menubar)
+        .getAllByRole("menuitem")
+        .map((m) => m.textContent),
+    ).toEqual(["File", "Edit", "View", "Tools", "Clip", "Play", "Help"]);
+
+    const tasks = screen.getByRole("complementary", { name: "Movie Tasks" });
+    for (const group of ["1. Capture Video", "2. Edit Movie", "3. Finish Movie"]) {
+      expect(within(tasks).getByRole("button", { name: group })).toBeInTheDocument();
+    }
+    expect(within(tasks).getByRole("button", { name: "Save to my computer" })).toBeInTheDocument();
+    expect(screen.getByRole("toolbar", { name: "Toolbar" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /Collections/ })).toHaveValue("media");
+    expect(screen.getByRole("region", { name: "Collection: My Pictures" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Preview" })).toBeInTheDocument();
+    expect(screen.getByText("Drag pictures here to create a slide show.")).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole("contentinfo")).findByText("Backend ready · FFmpeg 9.0"),
+    ).toBeInTheDocument();
   });
 });

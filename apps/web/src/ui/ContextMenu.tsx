@@ -8,20 +8,20 @@ export interface ContextMenuItem {
 }
 
 export interface ContextMenuProps {
-  /** Zugänglicher Name des Menüs. */
+  /** Accessible name of the menu. */
   label: string;
-  /** Ankerpunkt in Viewport-Koordinaten (z. B. clientX/clientY des Rechtsklicks). */
+  /** Anchor point in viewport coordinates (e.g. clientX/clientY of the right-click). */
   x: number;
   y: number;
   items: readonly ContextMenuItem[];
-  /** Escape, Tab, Klick daneben oder nach Auswahl; der Aufrufer blendet das Menü aus. */
+  /** Escape, Tab, click outside or after a selection; the caller hides the menu. */
   onClose: () => void;
 }
 
 /**
- * Kleines Y2K-Kontextmenü. Fokus springt beim Öffnen auf den ersten Eintrag,
- * Pfeiltasten/Pos1/Ende bewegen ihn, Escape schließt; danach kehrt der Fokus
- * zum auslösenden Element zurück.
+ * Small Y2K context menu. Focus jumps to the first item on open,
+ * arrow keys/Home/End move it, Escape closes; afterwards focus returns
+ * to the triggering element.
  */
 export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -29,7 +29,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
   onCloseRef.current = onClose;
   const [pos, setPos] = useState({ left: x, top: y });
 
-  // Im Viewport halten.
+  // Keep inside the viewport.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -56,7 +56,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
       document.removeEventListener("mousedown", onPointerDown, true);
       window.removeEventListener("blur", onBlurWindow);
       window.removeEventListener("resize", onBlurWindow);
-      // Fokus nur zurückgeben, wenn er noch im Menü steht (nicht, wenn z. B. ein Dialog ihn übernommen hat).
+      // Return focus only if it is still in the menu (not if, e.g., a dialog has taken it).
       const active = document.activeElement;
       if (
         opener?.isConnected &&

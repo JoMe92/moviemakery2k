@@ -21,8 +21,8 @@ async function setup() {
   return { ...view, collection };
 }
 
-describe("Sammlung „Videoübergänge“", () => {
-  it("zeigt alle Katalogeinträge als Kacheln mit Vorschausymbol", async () => {
+describe("'Video Transitions' collection", () => {
+  it("shows all catalog entries as tiles with a preview icon", async () => {
     const { collection } = await setup();
     const tiles = within(within(collection).getByRole("list", { name: "Übergänge" })).getAllByRole(
       "button",
@@ -31,7 +31,7 @@ describe("Sammlung „Videoübergänge“", () => {
     for (const tile of tiles) expect(tile.querySelector("svg")).not.toBeNull();
   });
 
-  it("Auswahl einer Kachel setzt den Vorschau-Übergang", async () => {
+  it("selecting a tile sets the preview transition", async () => {
     const user = userEvent.setup();
     const { collection, store } = await setup();
     const kreis = within(collection).getByRole("button", { name: "Kreis" });
@@ -40,7 +40,7 @@ describe("Sammlung „Videoübergänge“", () => {
     expect(kreis).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("Doppelklick setzt den Übergang vor das ausgewählte Bild (nicht vor das erste)", async () => {
+  it("double-click sets the transition before the selected image (not before the first)", async () => {
     const user = userEvent.setup();
     const { collection, store } = await setup();
     act(() => store.getState().select({ kind: "slide", slideId: "s1" }));
@@ -53,5 +53,30 @@ describe("Sammlung „Videoübergänge“", () => {
       transitionId: "fade",
       duration: 1.25,
     });
+  });
+
+  it("Spec localization: shows the catalog names in English and switches without reloading", async () => {
+    const user = userEvent.setup();
+    const { collection, store } = await setup();
+    expect(within(collection).getByRole("button", { name: "Kreis" })).toHaveTextContent("Kreis");
+
+    act(() => store.getState().setLocale("en"));
+    const english = screen.getByRole("region", { name: "Collection: Video Transitions" });
+    const list = within(english).getByRole("list", { name: "Transitions" });
+    expect(
+      within(list)
+        .getAllByRole("button")
+        .map((t) => t.getAttribute("aria-label")),
+    ).toEqual(["Fade", "Circle"]);
+    expect(within(list).getByRole("button", { name: "Circle" })).toHaveTextContent("Circle");
+
+    // The name also follows the language in the storyboard and its dialog.
+    act(() => store.getState().setTransition("s2", "circle"));
+    const slot = screen.getByRole("button", { name: /^Transition before picture 2:/ });
+    expect(slot).toHaveAccessibleName("Transition before picture 2: Circle, 1.50 s");
+    await user.dblClick(slot);
+    expect(screen.getByRole("dialog", { name: "Transition before picture 2" })).toHaveTextContent(
+      "Transition: Circle",
+    );
   });
 });

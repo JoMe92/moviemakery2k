@@ -1,21 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import type { Frame } from "../timeline/timeline";
 import styles from "./PreviewCanvas.module.css";
 import { type FrameTexture, type ImageSource, Renderer, WebGL2UnsupportedError } from "./Renderer";
 import { transitionSources } from "./shaderSource";
 
-export const WEBGL2_MISSING_MESSAGE =
-  "Die Vorschau benötigt WebGL2. Import und Storyboard funktionieren weiterhin.";
-
 export interface PreviewCanvasProps {
   frame: Frame;
-  /** Dekodiertes Bild zum Bildstreifen-Index; `undefined`, solange es lädt. */
+  /** Decoded image for the filmstrip index; `undefined` while it is loading. */
   images: (slideIndex: number) => ImageSource | undefined;
-  /** Katalog-Parameter eines Übergangs (`uniform float <name>`). */
+  /** Catalog parameters of a transition (`uniform float <name>`). */
   params: (transitionId: string) => Readonly<Record<string, number>>;
 }
 
-/** So viele Frame-Texturen bleiben zwischen den Zeichnungen erhalten (zuletzt benutzt). */
+/** This many frame textures are kept between draws (most recently used). */
 const FRAME_CACHE_SIZE = 8;
 
 function isReady(source: ImageSource): boolean {
@@ -26,10 +24,11 @@ function isReady(source: ImageSource): boolean {
 }
 
 /**
- * WebGL2-Fläche des Monitors. Füllt die schwarze 4:3-Fläche, folgt deren
- * Größe (DPR-bewusst) und zeichnet höchstens einmal pro Animationsframe.
+ * WebGL2 surface of the monitor. Fills the black 4:3 area, follows its
+ * size (DPR-aware) and draws at most once per animation frame.
  */
 export function PreviewCanvas(props: PreviewCanvasProps) {
+  const { t } = useT();
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Renderer | null>(null);
@@ -46,7 +45,7 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
     const frames = framesRef.current;
     let tex = frames.get(source);
     if (tex) {
-      frames.delete(source); // ans Ende = zuletzt benutzt
+      frames.delete(source); // move to the end = most recently used
     } else {
       tex = renderer.createFrame(source);
     }
@@ -99,7 +98,7 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
     }
   }, [draw]);
 
-  // Renderer anlegen/abbauen; Größe der Fläche beobachten.
+  // Create/tear down the renderer; observe the size of the surface.
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     const root = rootRef.current;
@@ -129,7 +128,7 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
       observer.observe(root);
     }
 
-    // DPR-Wechsel (Zoom, anderer Bildschirm) ändern die Pixelgröße ohne Layoutänderung.
+    // DPR changes (zoom, another screen) change the pixel size without a layout change.
     let media: MediaQueryList | undefined;
     const onDprChange = () => {
       media?.removeEventListener("change", onDprChange);
@@ -151,8 +150,8 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
     };
   }, [schedule]);
 
-  // Bei jeder Änderung von Frame, Bildern oder Parametern neu zeichnen.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Props lösen nur das Neuzeichnen aus; gelesen werden sie über propsRef.
+  // Redraw on every change of frame, images or parameters.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: props only trigger the redraw; they are read via propsRef.
   useEffect(() => {
     schedule();
   }, [props.frame, props.images, props.params, schedule]);
@@ -164,10 +163,15 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
           <span className={styles.messageIcon} aria-hidden="true">
             !
           </span>
-          <p className={styles.messageText}>{WEBGL2_MISSING_MESSAGE}</p>
+          <p className={styles.messageText}>{t("player.webgl2Missing")}</p>
         </div>
       ) : (
-        <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label="Vorschaubild" />
+        <canvas
+          ref={canvasRef}
+          className={styles.canvas}
+          role="img"
+          aria-label={t("player.canvas")}
+        />
       )}
     </div>
   );

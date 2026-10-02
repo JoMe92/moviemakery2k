@@ -1,13 +1,13 @@
 #version 300 es
-// Rahmen vor jedem Übergangs-Shader (siehe README: Shader-Vertrag).
+// Frame placed before every transition shader (see README: Shader contract).
 precision highp float;
 precision highp int;
 
 uniform sampler2D uFrom;
 uniform sampler2D uTo;
-// Fortschritt des Übergangs, 0.0 = nur Ausgangsbild, 1.0 = nur Zielbild.
+// Transition progress, 0.0 = source picture only, 1.0 = target picture only.
 uniform float progress;
-// Ausgabegröße in Pixeln (Frame-Raum, 4:3).
+// Output size in pixels (frame space, 4:3).
 uniform vec2 resolution;
 
 in vec2 vUv;

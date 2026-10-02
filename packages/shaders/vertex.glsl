@@ -1,5 +1,5 @@
 #version 300 es
-// Fullscreen-Dreieck ohne Vertexbuffer: gl.drawArrays(gl.TRIANGLES, 0, 3).
+// Fullscreen triangle without a vertex buffer: gl.drawArrays(gl.TRIANGLES, 0, 3).
 out vec2 vUv;
 
 void main() {

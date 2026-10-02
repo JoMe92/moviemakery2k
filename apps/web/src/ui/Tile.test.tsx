@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Tile } from "./Tile";
 
 describe("Tile", () => {
-  it("ist fokussierbar und zeigt die Auswahl über aria-pressed", async () => {
+  it("is focusable and exposes selection via aria-pressed", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     const { rerender } = render(<Tile caption="Strand.jpg" onClick={onClick} />);

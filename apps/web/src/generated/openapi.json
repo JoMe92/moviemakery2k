@@ -1,10 +1,194 @@
 {
   "components": {
     "schemas": {
+      "ApiError": {
+        "additionalProperties": false,
+        "description": "An error of the backend: stable code, params and English message (design.md D5).",
+        "properties": {
+          "code": {
+            "description": "Stable dotted error code, e.g. `export.emptyProject`",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "ApiErrorIssue": {
+        "additionalProperties": false,
+        "description": "One rule violation of a request body, with the position of the offending value.",
+        "properties": {
+          "code": {
+            "description": "Stable dotted error code, e.g. `export.emptyProject`",
+            "title": "Code",
+            "type": "string"
+          },
+          "loc": {
+            "description": "Position in the body, e.g. [\"body\", \"slides\", 2]",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message",
+          "loc"
+        ],
+        "title": "ApiErrorIssue",
+        "type": "object"
+      },
+      "ApiErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "ApiErrorWithIssues": {
+        "additionalProperties": false,
+        "description": "An error that collects several rule violations (`project.invalid`).",
+        "properties": {
+          "code": {
+            "description": "Stable dotted error code, e.g. `export.emptyProject`",
+            "title": "Code",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ApiErrorIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message",
+          "issues"
+        ],
+        "title": "ApiErrorWithIssues",
+        "type": "object"
+      },
+      "ApiValidationResponse": {
+        "description": "422 body: an `ApiError` or FastAPI's native list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RequestValidationIssue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiValidationResponse",
+        "type": "object"
+      },
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
-            "description": "Bilddateien (JPEG, PNG, WebP)",
+            "description": "Image files (JPEG, PNG, WebP)",
             "items": {
               "contentMediaType": "application/octet-stream",
               "type": "string"
@@ -36,11 +220,41 @@
                 "type": "null"
               }
             ],
-            "description": "Verständliche Meldung bei `failed`, sonst null",
+            "description": "English message when `failed`, otherwise null",
             "title": "Error"
           },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable error code when `failed` (design.md D5), otherwise null",
+            "title": "Errorcode"
+          },
+          "errorParams": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values of the error message; empty without error",
+            "title": "Errorparams",
+            "type": "object"
+          },
           "fileName": {
-            "description": "Dateiname ohne Endung",
+            "description": "File name without extension",
             "title": "Filename",
             "type": "string"
           },
@@ -53,7 +267,7 @@
             "$ref": "#/components/schemas/ExportProfile"
           },
           "progress": {
-            "description": "Fortschritt 0..1",
+            "description": "Progress 0..1",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Progress",
@@ -79,7 +293,7 @@
         "additionalProperties": false,
         "properties": {
           "items": {
-            "description": "Alle bekannten Exporte, älteste zuerst",
+            "description": "All known exports, oldest first",
             "items": {
               "$ref": "#/components/schemas/ExportJob"
             },
@@ -94,7 +308,7 @@
         "type": "object"
       },
       "ExportProfile": {
-        "description": "Ausgabeprofil des Exports; der Wert ist der Name im API-Vertrag.",
+        "description": "Output profile of the export; the value is the name in the API contract.",
         "enum": [
           "high",
           "small"
@@ -106,9 +320,9 @@
         "additionalProperties": false,
         "properties": {
           "fileName": {
-            "description": "Gewünschter Dateiname ohne Endung; `.mp4` wird beim Herunterladen angehängt. Nicht erlaubt: / \\ : * ? \" < > | und Steuerzeichen.",
+            "description": "Requested file name without extension; `.mp4` is appended on download. Not allowed: / \\ : * ? \" < > | and control characters.",
             "examples": [
-              "Mein Film"
+              "My Movie"
             ],
             "title": "Filename",
             "type": "string"
@@ -116,7 +330,7 @@
           "profile": {
             "$ref": "#/components/schemas/ExportProfile",
             "default": "high",
-            "description": "`high` = 960x720 (Standard), `small` = 640x480; beide 30 fps"
+            "description": "`high` = 960x720 (default), `small` = 640x480; both 30 fps"
           }
         },
         "required": [
@@ -197,12 +411,12 @@
             "type": "string"
           },
           "filename": {
-            "description": "Original-Dateiname, nur zur Anzeige",
+            "description": "Original file name, for display only",
             "title": "Filename",
             "type": "string"
           },
           "height": {
-            "description": "Höhe nach EXIF-Ausrichtung",
+            "description": "Height after EXIF orientation",
             "title": "Height",
             "type": "integer"
           },
@@ -220,7 +434,7 @@
             "type": "string"
           },
           "width": {
-            "description": "Breite nach EXIF-Ausrichtung",
+            "description": "Width after EXIF orientation",
             "title": "Width",
             "type": "integer"
           }
@@ -241,7 +455,7 @@
         "additionalProperties": false,
         "properties": {
           "items": {
-            "description": "Alle Medien in Importreihenfolge",
+            "description": "All media in import order",
             "items": {
               "$ref": "#/components/schemas/MediaItem"
             },
@@ -259,19 +473,34 @@
         "additionalProperties": false,
         "properties": {
           "error": {
-            "enum": [
-              "unsupported",
-              "too_large",
-              "too_many_pixels"
-            ],
+            "description": "Stable error code (design.md D5): media.unsupportedType, media.tooLarge, media.tooManyPixels",
             "title": "Error",
             "type": "string"
+          },
+          "errorParams": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values of the message",
+            "title": "Errorparams",
+            "type": "object"
           },
           "filename": {
             "title": "Filename",
             "type": "string"
           },
           "message": {
+            "description": "English message",
             "title": "Message",
             "type": "string"
           },
@@ -362,11 +591,84 @@
         "title": "Project",
         "type": "object"
       },
+      "ProjectValidationResponse": {
+        "description": "422 body of PUT /api/project: reference errors or FastAPI's native list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiErrorWithIssues"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RequestValidationIssue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ProjectValidationResponse",
+        "type": "object"
+      },
+      "RequestValidationIssue": {
+        "description": "One entry of FastAPI's native 422 list. For rule violations of this API,\n`type` is an error code from `ERRORS`, `ctx` its params and `msg` the message.",
+        "properties": {
+          "ctx": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctx"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "RequestValidationIssue",
+        "type": "object"
+      },
       "Slide": {
         "additionalProperties": false,
         "properties": {
           "duration": {
-            "description": "Anzeigedauer in Sekunden",
+            "description": "Display duration in seconds",
             "maximum": 60.0,
             "minimum": 0.5,
             "multipleOf": 0.25,
@@ -374,13 +676,13 @@
             "type": "number"
           },
           "id": {
-            "description": "Vom Client vergeben, eindeutig im Projekt",
+            "description": "Assigned by the client, unique within the project",
             "pattern": "^[A-Za-z0-9_-]{1,64}$",
             "title": "Id",
             "type": "string"
           },
           "mediaId": {
-            "description": "ID eines Mediums aus /api/media",
+            "description": "ID of a medium from /api/media",
             "title": "Mediaid",
             "type": "string"
           },
@@ -393,7 +695,7 @@
                 "type": "null"
               }
             ],
-            "description": "Eingehender Übergang vom vorherigen Element; beim ersten immer null"
+            "description": "Incoming transition from the previous element; always null for the first"
           }
         },
         "required": [
@@ -409,7 +711,7 @@
         "additionalProperties": false,
         "properties": {
           "defaultDuration": {
-            "description": "Sekunden",
+            "description": "Seconds",
             "maximum": 5.0,
             "minimum": 0.25,
             "multipleOf": 0.25,
@@ -421,13 +723,11 @@
             "title": "Id",
             "type": "string"
           },
-          "name": {
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
+          "names": {
+            "$ref": "#/components/schemas/TransitionNames"
           },
           "params": {
-            "description": "Wird 1:1 zu `uniform float <name>` im Shader",
+            "description": "Becomes `uniform float <name>` in the shader, 1:1",
             "patternProperties": {
               "^[a-z][A-Za-z0-9]*$": {
                 "type": "number"
@@ -437,7 +737,7 @@
             "type": "object"
           },
           "shader": {
-            "description": "Dateiname in packages/shaders/transitions/",
+            "description": "File name in packages/shaders/transitions/",
             "pattern": "^[a-z0-9-]+\\.glsl$",
             "title": "Shader",
             "type": "string"
@@ -448,7 +748,7 @@
         },
         "required": [
           "id",
-          "name",
+          "names",
           "shader",
           "defaultDuration",
           "params",
@@ -481,11 +781,33 @@
         "title": "TransitionCatalog",
         "type": "object"
       },
+      "TransitionNames": {
+        "additionalProperties": false,
+        "description": "Display name per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "TransitionNames",
+        "type": "object"
+      },
       "TransitionRef": {
         "additionalProperties": false,
         "properties": {
           "duration": {
-            "description": "Solldauer des Übergangs in Sekunden",
+            "description": "Target duration of the transition in seconds",
             "maximum": 5.0,
             "minimum": 0.25,
             "multipleOf": 0.25,
@@ -493,7 +815,7 @@
             "type": "number"
           },
           "transitionId": {
-            "description": "ID aus dem Übergangskatalog",
+            "description": "ID from the transition catalog",
             "title": "Transitionid",
             "type": "string"
           }
@@ -520,7 +842,7 @@
                 "type": "null"
               }
             ],
-            "description": "Parameter, deren Wert nicht belegt, sondern geschätzt ist [E]",
+            "description": "Parameters whose value is not documented but estimated [E]",
             "title": "Estimated"
           },
           "kind": {
@@ -615,7 +937,7 @@
     },
     "/api/exports": {
       "get": {
-        "description": "Alle bekannten Exporte (seit dem Start des Backends), älteste zuerst.",
+        "description": "All known exports (since the backend started), oldest first.",
         "operationId": "list_exports_api_exports_get",
         "responses": {
           "200": {
@@ -635,7 +957,7 @@
         ]
       },
       "post": {
-        "description": "Startet einen Export mit dem gespeicherten Projekt zum jetzigen Zeitpunkt.\n\nSpätere Änderungen am Projekt wirken sich nicht auf diesen Export aus.\nHöchstens ein Export läuft gleichzeitig; ein zweiter Start ergibt 409.",
+        "description": "Starts an export of the saved project as it is right now.\n\nLater changes to the project do not affect this export.\nAt most one export runs at a time; a second start returns 409.",
         "operationId": "start_export_api_exports_post",
         "requestBody": {
           "content": {
@@ -659,10 +981,24 @@
             "description": "Successful Response"
           },
           "409": {
-            "description": "Es läuft bereits ein Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "An export is already running (`export.busy`)"
           },
           "422": {
-            "description": "Ungültige Anfrage, leeres Projekt oder fehlende Medien"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationResponse"
+                }
+              }
+            },
+            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
           }
         },
         "summary": "Start Export",
@@ -673,7 +1009,7 @@
     },
     "/api/exports/{export_id}": {
       "delete": {
-        "description": "Bricht einen laufenden Export ab bzw. löscht einen beendeten.\n\n- `queued`/`running`: Der Export wird abgebrochen (FFmpeg beendet, Teildatei\n  gelöscht); die Antwort kommt erst danach. Der Job bleibt als `cancelled`\n  abfragbar, ohne Datei.\n- `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.",
+        "description": "Cancels a running export or deletes a finished one.\n\n- `queued`/`running`: the export is cancelled (FFmpeg stopped, partial file\n  deleted); the response comes only afterwards. The job stays queryable as\n  `cancelled`, without a file.\n- `done`/`failed`/`cancelled`: file and job are deleted; 404 afterwards.",
         "operationId": "delete_export_api_exports__export_id__delete",
         "parameters": [
           {
@@ -691,7 +1027,14 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannter oder gelöschter Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
           },
           "422": {
             "content": {
@@ -710,7 +1053,7 @@
         ]
       },
       "get": {
-        "description": "Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler.",
+        "description": "Status (`queued`, `running`, `done`, `failed`, `cancelled`), progress and error.",
         "operationId": "get_export_api_exports__export_id__get",
         "parameters": [
           {
@@ -735,7 +1078,14 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannter oder gelöschter Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
           },
           "422": {
             "content": {
@@ -756,7 +1106,7 @@
     },
     "/api/exports/{export_id}/file": {
       "get": {
-        "description": "Die fertige MP4 als Download mit dem gewünschten Dateinamen (`<fileName>.mp4`).\n\nSolange der Export nicht `done` ist, antwortet der Server mit 409 und dem\nStatus; eine unvollständige Datei wird nie ausgeliefert.",
+        "description": "The finished MP4 as a download with the requested file name (`<fileName>.mp4`).\n\nAs long as the export is not `done`, the server answers 409 with the\nstatus; an incomplete file is never served.",
         "operationId": "get_export_file_api_exports__export_id__file_get",
         "parameters": [
           {
@@ -774,13 +1124,27 @@
             "content": {
               "video/mp4": {}
             },
-            "description": "Fertiger Film (MP4)"
+            "description": "Finished movie (MP4)"
           },
           "404": {
-            "description": "Unbekannter oder gelöschter Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
           },
           "409": {
-            "description": "Der Export ist (noch) nicht fertig"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The export is not done (`export.notReady`)"
           },
           "422": {
             "content": {
@@ -822,7 +1186,7 @@
     },
     "/api/media": {
       "get": {
-        "description": "Alle importierten Medien in Importreihenfolge.",
+        "description": "All imported media in import order.",
         "operationId": "list_media_api_media_get",
         "responses": {
           "200": {
@@ -865,7 +1229,14 @@
             "description": "Successful Response"
           },
           "413": {
-            "description": "Mehr als 50 Dateien in einer Anfrage"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "More than 50 files in one request (`media.tooManyFiles`)"
           },
           "422": {
             "content": {
@@ -886,7 +1257,7 @@
     },
     "/api/media/{media_id}": {
       "delete": {
-        "description": "Löscht ein Medium samt Dateien und entfernt es aus dem Projekt (Kaskade).\n\nAlle Elemente des Bildstreifens mit diesem Medium entfallen samt ihrer\neingehenden Übergänge; das neue erste Element hat keinen Übergang.\n\nAntwort ist 200 mit dem aktualisierten Projekt (statt 204), damit der\nClient seinen Stand ohne erneutes GET /api/project übernehmen kann.\n\nReihenfolge: erst aus dem Medienspeicher, dann aus dem Projekt. Ein\ngleichzeitiges PUT /api/project prüft gegen den Medienspeicher und kann\ndie ID danach nicht wieder einfügen.",
+        "description": "Deletes a medium with its files and removes it from the project (cascade).\n\nAll storyboard elements using this medium are dropped together with their\nincoming transitions; the new first element has no transition.\n\nThe response is 200 with the updated project (instead of 204) so that the\nclient can adopt its state without another GET /api/project.\n\nOrder: first from the media store, then from the project. A concurrent\nPUT /api/project validates against the media store and therefore cannot\nre-insert the ID afterwards.",
         "operationId": "delete_media_api_media__media_id__delete",
         "parameters": [
           {
@@ -911,7 +1282,14 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -932,7 +1310,7 @@
     },
     "/api/media/{media_id}/preview": {
       "get": {
-        "description": "Vorschaubild (JPEG, längste Kante <= 1920) mit `Cache-Control: immutable`.",
+        "description": "Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`.",
         "operationId": "get_preview_api_media__media_id__preview_get",
         "parameters": [
           {
@@ -950,10 +1328,17 @@
             "content": {
               "image/jpeg": {}
             },
-            "description": "JPEG-Bild"
+            "description": "JPEG image"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -974,7 +1359,7 @@
     },
     "/api/media/{media_id}/thumbnail": {
       "get": {
-        "description": "Thumbnail (JPEG, passt in 160x120) mit `Cache-Control: immutable`.",
+        "description": "Thumbnail (JPEG, fits into 160x120) with `Cache-Control: immutable`.",
         "operationId": "get_thumbnail_api_media__media_id__thumbnail_get",
         "parameters": [
           {
@@ -992,10 +1377,17 @@
             "content": {
               "image/jpeg": {}
             },
-            "description": "JPEG-Bild"
+            "description": "JPEG image"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -1016,7 +1408,7 @@
     },
     "/api/project": {
       "get": {
-        "description": "Das gespeicherte Projekt; ohne Datei das leere Projekt.",
+        "description": "The saved project; without a file, the empty project.",
         "operationId": "get_project_api_project_get",
         "responses": {
           "200": {
@@ -1036,7 +1428,7 @@
         ]
       },
       "put": {
-        "description": "Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert.",
+        "description": "Replaces the project. On 422 the saved state stays unchanged.",
         "operationId": "put_project_api_project_put",
         "requestBody": {
           "content": {
@@ -1063,11 +1455,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ProjectValidationResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid project: `project.invalid` with one issue per broken reference, or FastAPI's native list (rule violations carry an error code as `type`)"
           }
         },
         "summary": "Put Project",

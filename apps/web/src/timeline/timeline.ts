@@ -1,19 +1,20 @@
 /**
- * Zeitmodell der Diashow (design.md D3, Spec preview-player „Zeitmodell“).
+ * Time model of the slideshow (design.md D3, spec preview-player "Zeitmodell").
  *
- * Ein Übergang gehört zum Zielbild (`transitionIn`) und überlappt das Ende des
- * Vorgängers mit dem Anfang des Zielbilds. Wirksame Dauer:
+ * A transition belongs to the target image (`transitionIn`) and overlaps the end
+ * of the predecessor with the start of the target image. Effective duration:
  *   t_i = min(T_i, d_{i-1} / 2, d_i / 2)
- * Start von Bild i = Start von Bild i-1 + d_{i-1} − t_i.
+ * Start of image i = start of image i-1 + d_{i-1} − t_i.
  *
- * Reine Funktionen ohne DOM/GL, damit Vorschau und späterer Export identisch
- * rechnen.
+ * Pure functions without DOM/GL so the preview and the later export compute
+ * identically.
  */
+import { formatTime as formatLocalizedTime } from "../i18n/format";
 
 export interface TimelineSlide {
   id: string;
   mediaId: string;
-  /** Sekunden */
+  /** Seconds */
   duration: number;
   transitionIn: { transitionId: string; duration: number } | null;
 }
@@ -21,10 +22,10 @@ export interface TimelineSlide {
 export interface PlacedSlide {
   index: number;
   slide: TimelineSlide;
-  /** Beginn des Bildes (inkl. eingehendem Übergang) */
+  /** Start of the image (including the incoming transition) */
   start: number;
   end: number;
-  /** wirksame Dauer des eingehenden Übergangs (0 = harter Schnitt / erstes Bild) */
+  /** effective duration of the incoming transition (0 = hard cut / first image) */
   transitionIn: number;
 }
 
@@ -57,7 +58,7 @@ export type Frame =
       progress: number;
     };
 
-/** Wirksame Übergangsdauer zwischen zwei Bildern. */
+/** Effective transition duration between two images. */
 export function effectiveTransition(
   requested: number,
   fromDuration: number,
@@ -105,12 +106,12 @@ export function buildTimeline(slides: readonly TimelineSlide[]): Timeline {
   return { slides: placed, segments, duration: cursor };
 }
 
-/** Was zum Zeitpunkt `time` (Sekunden) zu zeichnen ist. Zeiten werden auf [0, Dauer] begrenzt. */
+/** What to draw at time `time` (seconds). Times are clamped to [0, duration]. */
 export function frameAt(timeline: Timeline, time: number): Frame {
   const { segments, duration } = timeline;
   if (segments.length === 0) return { kind: "empty" };
   const t = Math.min(Math.max(time, 0), duration);
-  // Am exakten Ende zählt das letzte Segment (letztes Bild bleibt stehen).
+  // At the exact end the last segment counts (the last image is held).
   const seg =
     segments.find((s) => t >= s.start && t < s.end) ?? (segments[segments.length - 1] as Segment);
   if (seg.kind === "still") return { kind: "still", slideIndex: seg.slideIndex };
@@ -124,7 +125,7 @@ export function frameAt(timeline: Timeline, time: number): Frame {
   };
 }
 
-/** Index des Bildes, das zum Zeitpunkt `time` „aktiv“ ist (für Hervorhebung im Storyboard). */
+/** Index of the image that is "active" at time `time` (for highlighting in the storyboard). */
 export function slideIndexAt(timeline: Timeline, time: number): number | null {
   const frame = frameAt(timeline, time);
   if (frame.kind === "empty") return null;
@@ -132,22 +133,18 @@ export function slideIndexAt(timeline: Timeline, time: number): number | null {
 }
 
 /**
- * Startzeit, an der Bild `index` voll sichtbar ist (Ende seines eingehenden Übergangs).
- * Ziel von „Nächstes/Vorheriges Bild“ und der Auswahl im Storyboard.
+ * Start time at which image `index` is fully visible (end of its incoming transition).
+ * Target of "Next/Previous image" and of selection in the storyboard.
  */
 export function slideStartTime(timeline: Timeline, index: number): number {
   const p = timeline.slides[index];
   return p ? p.start + p.transitionIn : 0;
 }
 
-/** Zeitformat des Monitors: h:mm:ss,cc (Hundertstel, gerundet). */
+/**
+ * Time format of the monitor: h:mm:ss,cc (hundredths, rounded). German default;
+ * localized display uses `formatTime(locale, seconds)` from `i18n/format`.
+ */
 export function formatTime(seconds: number): string {
-  const totalCs = Math.max(0, Math.round(seconds * 100));
-  const cs = totalCs % 100;
-  const totalS = Math.floor(totalCs / 100);
-  const s = totalS % 60;
-  const m = Math.floor(totalS / 60) % 60;
-  const h = Math.floor(totalS / 3600);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${h}:${pad(m)}:${pad(s)},${pad(cs)}`;
+  return formatLocalizedTime("de", seconds);
 }

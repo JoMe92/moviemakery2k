@@ -1,6 +1,6 @@
-"""Konfiguration aus Umgebungsvariablen.
+"""Configuration from environment variables.
 
-MMY_DATA_DIR, MMY_CATALOG_DIR, MMY_WEB_DIST und MMY_SHADERS_DIR (Export-Renderer).
+MMY_DATA_DIR, MMY_CATALOG_DIR, MMY_WEB_DIST and MMY_SHADERS_DIR (export renderer).
 """
 
 import os
@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-# src/mmy_backend/config.py → Repo-Wurzel liegt drei Ebenen über dem Paket.
+# src/mmy_backend/config.py → the repo root is three levels above the package.
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SHADERS_DIR = REPO_ROOT / "packages" / "shaders"
 
@@ -19,7 +19,7 @@ class Settings:
     catalog_dir: Path
     web_dist: Path
     shaders_dir: Path = DEFAULT_SHADERS_DIR
-    """packages/shaders: prelude/epilogue/vertex.glsl und transitions/<id>.glsl"""
+    """packages/shaders: prelude/epilogue/vertex.glsl and transitions/<id>.glsl"""
 
     @property
     def catalog_file(self) -> Path:
@@ -27,7 +27,7 @@ class Settings:
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
-        """Liest die Umgebung; ohne Variable gelten Pfade relativ zur Repo-Wurzel."""
+        """Reads the environment; without a variable, paths relative to the repo root apply."""
         source = os.environ if env is None else env
 
         def path(name: str, default: Path) -> Path:

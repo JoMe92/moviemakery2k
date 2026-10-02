@@ -1,9 +1,9 @@
 import type { CSSProperties, ReactNode, SVGProps } from "react";
 
 /*
- * Eigene, bewusst einfache geometrische Symbole (16×16-Raster). Keine
- * Nachzeichnungen von Windows- oder Movie-Maker-Icons. Farben kommen aus den
- * Theme-Tokens bzw. aus currentColor.
+ * Our own, deliberately simple geometric icons (16×16 grid). No tracings
+ * of Windows or Movie Maker icons. Colours come from the theme tokens or
+ * from currentColor.
  */
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {

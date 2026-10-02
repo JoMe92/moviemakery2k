@@ -1,11 +1,12 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
-import { STORYBOARD_EMPTY_HINT } from "../shell/StoryboardPane";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
+import { catalogName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import { DurationDialog } from "../ui/DurationDialog";
@@ -18,11 +19,12 @@ type Target = { kind: "slide" | "transition"; slideId: string };
 type MenuState = Target & { x: number; y: number };
 
 /**
- * Bildstreifen im Storyboard: sortierbare Kacheln mit Übergangsplätzen
- * dazwischen; nimmt Bilder aus der Sammlung an der Einfügemarke auf.
- * Eigenschaftendialoge für Bilddauer und Übergang.
+ * Storyboard strip: sortable tiles with transition slots in between; accepts
+ * pictures from the collection at the insertion marker.
+ * Properties dialogs for picture duration and transition.
  */
 export function StoryboardStrip() {
+  const { t, locale } = useT();
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const catalog = useAppStore((s) => s.catalog);
@@ -33,7 +35,7 @@ export function StoryboardStrip() {
   const setTransitionDuration = useAppStore((s) => s.setTransitionDuration);
   const removeTransition = useAppStore((s) => s.removeTransition);
   const insertIndex = useInsertIndex();
-  // Während der Wiedergabe: das gerade sichtbare Bild (ändert sich nur beim Bildwechsel).
+  // During playback: the picture currently visible (changes only when the picture changes).
   const playingIndex = useAppStore((s) =>
     s.playback.playing ? slideIndexAt(timelineOf(s.slides), s.playback.time) : null,
   );
@@ -59,14 +61,14 @@ export function StoryboardStrip() {
   const dialogSlide = dialog ? slides.find((s) => s.id === dialog.slideId) : undefined;
   const dialogTransition =
     dialog?.kind === "transition" ? (dialogSlide?.transitionIn ?? null) : null;
-  const transitionName = (id: string) => catalog.find((t) => t.id === id)?.name ?? id;
+  const transitionName = (id: string) => catalogName(catalog, id, locale);
 
   const menuItems = (m: MenuState): ContextMenuItem[] => {
     if (m.kind === "slide") {
       return [
-        { label: "Entfernen", onSelect: () => remove(m.slideId) },
+        { label: t("storyboard.remove"), onSelect: () => remove(m.slideId) },
         {
-          label: "Eigenschaften…",
+          label: t("storyboard.properties"),
           onSelect: () => setDialog({ kind: "slide", slideId: m.slideId }),
         },
       ];
@@ -74,12 +76,12 @@ export function StoryboardStrip() {
     const hasTransition = Boolean(slides.find((s) => s.id === m.slideId)?.transitionIn);
     return [
       {
-        label: "Eigenschaften…",
+        label: t("storyboard.properties"),
         disabled: !hasTransition,
         onSelect: () => setDialog({ kind: "transition", slideId: m.slideId }),
       },
       {
-        label: "Übergang entfernen",
+        label: t("storyboard.removeTransition"),
         disabled: !hasTransition,
         onSelect: () => removeTransition(m.slideId),
       },
@@ -105,10 +107,10 @@ export function StoryboardStrip() {
       data-over={(empty && isOver && insertIndex !== null) || undefined}
     >
       {empty ? (
-        <p className={styles.hint}>{STORYBOARD_EMPTY_HINT}</p>
+        <p className={styles.hint}>{t("shell.storyboardHint")}</p>
       ) : (
         <SortableContext items={slides.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
-          <ol className={styles.list} aria-label="Bildstreifen">
+          <ol className={styles.list} aria-label={t("storyboard.list")}>
             {slides.map((slide, i) => (
               <SlideTile
                 key={slide.id}
@@ -146,8 +148,8 @@ export function StoryboardStrip() {
         <ContextMenu
           label={
             menu.kind === "slide"
-              ? `Bild ${numberOf(menu.slideId)} des Storyboards`
-              : `Übergang vor Bild ${numberOf(menu.slideId)}`
+              ? t("storyboard.slideMenu", { number: numberOf(menu.slideId) })
+              : t("storyboard.transitionBefore", { number: numberOf(menu.slideId) })
           }
           x={menu.x}
           y={menu.y}
@@ -157,8 +159,8 @@ export function StoryboardStrip() {
       ) : null}
       <DurationDialog
         open={dialog?.kind === "slide" && dialogSlide !== undefined}
-        title={`Eigenschaften von Bild ${dialog ? numberOf(dialog.slideId) : ""}`}
-        label="Bilddauer (Sekunden):"
+        title={t("storyboard.slideProperties", { number: dialog ? numberOf(dialog.slideId) : "" })}
+        label={t("storyboard.slideDuration")}
         value={dialogSlide?.duration ?? SLIDE_DURATION.default}
         range={SLIDE_DURATION}
         onConfirm={(value) => (dialog ? setSlideDuration(dialog.slideId, value) : false)}
@@ -166,8 +168,10 @@ export function StoryboardStrip() {
       />
       <DurationDialog
         open={dialogTransition !== null}
-        title={`Übergang vor Bild ${dialog ? numberOf(dialog.slideId) : ""}`}
-        label="Übergangsdauer (Sekunden):"
+        title={t("storyboard.transitionBefore", {
+          number: dialog ? numberOf(dialog.slideId) : "",
+        })}
+        label={t("storyboard.transitionDuration")}
         value={dialogTransition?.duration ?? 1.25}
         range={TRANSITION_DURATION}
         onConfirm={(value) => (dialog ? setTransitionDuration(dialog.slideId, value) : false)}
@@ -179,13 +183,14 @@ export function StoryboardStrip() {
               setDialog(null);
             }}
           >
-            Übergang entfernen
+            {t("storyboard.removeTransition")}
           </Button>
         }
       >
         {dialogTransition ? (
           <p className={styles.dialogInfo}>
-            Übergang: <strong>{transitionName(dialogTransition.transitionId)}</strong>
+            {t("storyboard.transition")}{" "}
+            <strong>{transitionName(dialogTransition.transitionId)}</strong>
           </p>
         ) : null}
       </DurationDialog>

@@ -1,10 +1,10 @@
-"""Headless-GL-Kontext für den Export (design.md D1).
+"""Headless GL context for the export (design.md D1).
 
-Unter Linux (offiziell unterstützt: CI, Docker-Image, Pi) erzeugt moderngl den
-Kontext über EGL ohne Display; die Pixi-Umgebung liefert dafür Mesa llvmpipe.
-Unter macOS und Windows nutzt moderngl ohne Gewähr den nativen Standalone-Kontext.
-Schlägt die Erstellung fehl, wird ein RenderContextError mit verständlicher
-Meldung geworfen, damit der Export-Job sauber scheitert statt abzustürzen.
+On Linux (officially supported: CI, Docker image, Pi) moderngl creates the
+context via EGL without a display; the Pixi environment provides Mesa llvmpipe for it.
+On macOS and Windows moderngl uses the native standalone context, without guarantee.
+If creation fails, a RenderContextError with an understandable message is raised
+so that the export job fails cleanly instead of crashing.
 """
 
 import sys
@@ -12,30 +12,30 @@ from typing import Any
 
 import moderngl
 
-# Die Shader werden auf `#version 330 core` umgeschrieben (design.md D2).
+# The shaders are rewritten to `#version 330 core` (design.md D2).
 REQUIRED_GL_VERSION = 330
 
 
 class RenderContextError(Exception):
-    """Es konnte kein OpenGL-3.3-Kontext für den Export erzeugt werden."""
+    """No OpenGL 3.3 context could be created for the export."""
 
 
 def create_render_context() -> moderngl.Context:
-    """Erzeugt einen headless OpenGL-3.3-Kontext (Linux: EGL, sonst nativ)."""
+    """Creates a headless OpenGL 3.3 context (Linux: EGL, otherwise native)."""
     kwargs: dict[str, Any] = {"standalone": True, "require": REQUIRED_GL_VERSION}
     linux = sys.platform.startswith("linux")
     if linux:
         kwargs["backend"] = "egl"
     try:
         return moderngl.create_context(**kwargs)
-    except Exception as exc:  # glcontext wirft nur generische Exceptions
+    except Exception as exc:  # glcontext only raises generic exceptions
         hint = (
-            "Erwartet wird Mesa llvmpipe über EGL aus der Pixi-Umgebung "
-            "(prüfen mit `pixi run check-render-env`)."
+            "Expected: Mesa llvmpipe via EGL from the Pixi environment "
+            "(check with `pixi run check-render-env`)."
             if linux
-            else "Der Export wird offiziell nur unter Linux unterstützt."
+            else "Export is officially supported on Linux only."
         )
         raise RenderContextError(
-            f"Export nicht möglich: kein OpenGL-{REQUIRED_GL_VERSION // 100}."
-            f"{REQUIRED_GL_VERSION % 100 // 10}-Kontext ({exc}). {hint}"
+            f"Export not possible: no OpenGL {REQUIRED_GL_VERSION // 100}."
+            f"{REQUIRED_GL_VERSION % 100 // 10} context ({exc}). {hint}"
         ) from exc

@@ -1,4 +1,4 @@
-/* Assistent „Film speichern“: feste Breite, damit die Schritte nicht springen. */
+/* "Save Movie" wizard: fixed width so the steps do not jump. */
 .step {
   width: 420px;
   max-width: 100%;
@@ -80,7 +80,7 @@
   color: var(--y2k-text-muted);
 }
 
-/* Segmentierter Y2K-Fortschrittsbalken (wie beim Import). */
+/* Segmented Y2K progress bar (as in the import). */
 .bar {
   height: 18px;
   margin-top: 10px;

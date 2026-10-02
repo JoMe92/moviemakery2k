@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Branch-Namenskonvention
+      - name: Branch naming convention
         if: github.event_name == 'pull_request'
         run: scripts/check-branch-name "${{ github.head_ref }}"
 
@@ -27,16 +27,16 @@ jobs:
           pixi-version: v0.81.0
           locked: true
           cache: true
-      - name: pnpm-Version passt zu packageManager
+      - name: pnpm version matches packageManager
         run: |
           want=$(node -p "require('./package.json').packageManager.split('@')[1]" 2>/dev/null || pixi run node -p "require('./package.json').packageManager.split('@')[1]")
           have=$(pixi run pnpm --version)
           echo "packageManager=$want pixi-pnpm=$have"
           test "$want" = "$have"
-      - name: Render-Umgebung (EGL/llvmpipe, FFmpeg-Encoder)
+      - name: Render environment (EGL/llvmpipe, FFmpeg encoders)
         run: pixi run check-render-env
       - run: pixi run check
-      - name: Generierte API-Typen sind aktuell
+      - name: Generated API types are up to date
         run: |
           pixi run gen-api
           git diff --exit-code -- apps/web/src/generated
@@ -50,10 +50,10 @@ jobs:
           pixi-version: v0.81.0
           locked: true
           cache: true
-      - name: Browser-Abhängigkeiten des Systems
+      - name: System browser dependencies
         run: sudo env "PATH=$PATH" pixi run playwright install-deps chromium
       - run: pixi run test-e2e
-      - name: Screenshots bei Fehlern
+      - name: Screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -65,11 +65,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Smoke-Skript (shellcheck)
+      - name: Smoke script (shellcheck)
         run: shellcheck scripts/docker_export_smoke.sh
-      - name: Image bauen, Export über die API, MP4 mit ffprobe prüfen
+      - name: Build image, export via the API, check MP4 with ffprobe
         run: KEEP_OUTPUT=export-smoke scripts/docker_export_smoke.sh
-      - name: Exportierter Film
+      - name: Exported movie
         if: always()
         uses: actions/upload-artifact@v4
         with:

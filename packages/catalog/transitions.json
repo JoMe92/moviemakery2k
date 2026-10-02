@@ -4,19 +4,19 @@
   "transitions": [
     {
       "id": "fade",
-      "name": "Überblenden",
+      "names": { "de": "Überblenden", "en": "Fade" },
       "shader": "fade.glsl",
       "defaultDuration": 1.25,
       "params": {},
       "source": {
         "kind": "wmm2x-xml",
-        "ref": "DXT Fade {16B280C5-EE70-11D1-9066-00C04FD9189D}, nameID 62814; Overlap 1.0 (kein Zwischenschwarz)",
+        "ref": "DXT Fade {16B280C5-EE70-11D1-9066-00C04FD9189D}, nameID 62814; Overlap 1.0 (no black in between)",
         "estimated": ["defaultDuration"]
       }
     },
     {
       "id": "dissolve",
-      "name": "Auflösen",
+      "names": { "de": "Auflösen", "en": "Dissolve" },
       "shader": "dissolve.glsl",
       "defaultDuration": 1.25,
       "params": { "blockSize": 1, "seed": 7 },
@@ -28,49 +28,49 @@
     },
     {
       "id": "wipe-right",
-      "name": "Wischen, rechts",
+      "names": { "de": "Wischen, rechts", "en": "Wipe right" },
       "shader": "wipe-right.glsl",
       "defaultDuration": 1.25,
       "params": { "gradientSize": 0.5 },
       "source": {
         "kind": "wmm2x-xml",
-        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} „Wipe, Normal right“, nameID 62824; GradientSize 0.5, wipeStyle 0",
+        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} \"Wipe, Normal right\", nameID 62824; GradientSize 0.5, wipeStyle 0",
         "estimated": ["defaultDuration"]
       }
     },
     {
       "id": "circle",
-      "name": "Kreis",
+      "names": { "de": "Kreis", "en": "Circle" },
       "shader": "circle.glsl",
       "defaultDuration": 1.25,
       "params": { "borderSoftness": 20 },
       "source": {
         "kind": "smpte",
-        "ref": "SMPTE 119 „Circle, Out, Soft“ (DxtJpeg MaskNum 119), nameID 62848; BorderSoftness 20 (Pixel bei 640 px Breite)",
+        "ref": "SMPTE 119 \"Circle, Out, Soft\" (DxtJpeg MaskNum 119), nameID 62848; BorderSoftness 20 (pixels at 640 px width)",
         "estimated": ["defaultDuration"]
       }
     },
     {
       "id": "pixelate",
-      "name": "Verpixeln",
+      "names": { "de": "Verpixeln", "en": "Pixelate" },
       "shader": "pixelate.glsl",
       "defaultDuration": 1.25,
       "params": { "maxSquare": 50 },
       "source": {
         "kind": "wmm2x-xml",
-        "ref": "DXT Pixelate {4CCEA634-FBE0-11D1-906A-00C04FD9189D}, nameID 62818; MaxSquare (DXT-Standard 50)",
+        "ref": "DXT Pixelate {4CCEA634-FBE0-11D1-906A-00C04FD9189D}, nameID 62818; MaxSquare (DXT default 50)",
         "estimated": ["defaultDuration", "maxSquare"]
       }
     },
     {
       "id": "checkerboard",
-      "name": "Schachbrett",
+      "names": { "de": "Schachbrett", "en": "Checkerboard" },
       "shader": "checkerboard.glsl",
       "defaultDuration": 1.25,
       "params": { "squaresX": 12, "squaresY": 10 },
       "source": {
         "kind": "wmm2x-xml",
-        "ref": "DXT CheckerBoard {B3EE7802-8224-4787-A1EA-F0DE16DEABD3} „Checkerboard, Across“, nameID 62815; Direction right",
+        "ref": "DXT CheckerBoard {B3EE7802-8224-4787-A1EA-F0DE16DEABD3} \"Checkerboard, Across\", nameID 62815; Direction right",
         "estimated": ["defaultDuration", "squaresX", "squaresY"]
       }
     }

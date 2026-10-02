@@ -1,10 +1,10 @@
-"""Export-Endpunkte (TASK-API-006, design.md D5).
+"""Export endpoints (TASK-API-006, design.md D5).
 
-- POST   /api/exports            Export starten (202), Schnappschuss des Projekts
-- GET    /api/exports            alle bekannten Exporte
-- GET    /api/exports/{id}       Status und Fortschritt (Frontend fragt alle 500 ms)
-- GET    /api/exports/{id}/file  fertige MP4 als Download
-- DELETE /api/exports/{id}       laufenden Export abbrechen bzw. beendeten löschen (204)
+- POST   /api/exports            start an export (202), snapshot of the project
+- GET    /api/exports            all known exports
+- GET    /api/exports/{id}       status and progress (the frontend polls every 500 ms)
+- GET    /api/exports/{id}/file  finished MP4 as a download
+- DELETE /api/exports/{id}       cancel a running export or delete a finished one (204)
 """
 
 import asyncio
@@ -15,7 +15,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import FileResponse
 
-from mmy_backend.api.project import _GermanValidationRoute
+from mmy_backend.errors import ApiValidationResponse, api_exception, error_response
 from mmy_backend.exports import (
     FILE_EXTENSION,
     ExportBusy,
@@ -28,14 +28,11 @@ from mmy_backend.exports import (
 from mmy_backend.media import MediaStore
 from mmy_backend.project import Project, ProjectStore
 
-NOT_FOUND_DETAIL = "Export nicht gefunden."
-EMPTY_PROJECT_DETAIL = "Export nicht möglich: Der Bildstreifen ist leer."
-
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
-    status.HTTP_404_NOT_FOUND: {"description": "Unbekannter oder gelöschter Export"}
+    status.HTTP_404_NOT_FOUND: error_response("Unknown or deleted export (`export.notFound`)")
 }
 
-router = APIRouter(prefix="/exports", tags=["exports"], route_class=_GermanValidationRoute)
+router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 def get_export_manager(request: Request) -> ExportManager:
@@ -50,26 +47,27 @@ def get_media_store(request: Request) -> MediaStore:
     return cast(MediaStore, request.app.state.media)
 
 
-def _not_found() -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_DETAIL)
+def _not_found(export_id: str) -> HTTPException:
+    return api_exception(status.HTTP_404_NOT_FOUND, "export.notFound", exportId=export_id)
 
 
 def _check_exportable(project: Project, media: MediaStore) -> None:
-    """422, wenn das Projekt leer ist oder auf fehlende Medien verweist."""
+    """422 if the project is empty or refers to missing media."""
     if not project.slides:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=EMPTY_PROJECT_DETAIL
-        )
+        raise api_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, "export.emptyProject")
     known = {item.id for item in media.list()}
     missing = [
-        f"Element {index + 1} (Medium „{slide.media_id}“)"
+        (index + 1, slide.media_id)
         for index, slide in enumerate(project.slides)
         if slide.media_id not in known
     ]
     if missing:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Export nicht möglich: Fehlende Medien in " + ", ".join(missing) + ".",
+        raise api_exception(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "export.missingMedia",
+            count=len(missing),
+            slides=", ".join(str(position) for position, _ in missing),
+            mediaIds=", ".join(dict.fromkeys(media_id for _, media_id in missing)),
         )
 
 
@@ -79,8 +77,8 @@ _TRANSLITERATION = str.maketrans(
 
 
 def ascii_file_name(name: str) -> str:
-    """ASCII-Ersatz für `filename=`: Umlaute und ß umschreiben, Akzente weglassen,
-    übrige Nicht-ASCII-Zeichen (und `"`/`\\`) durch `_` ersetzen."""
+    """ASCII fallback for `filename=`: transliterate umlauts and sharp s, drop accents,
+    replace remaining non-ASCII characters (and `"`/`\\`) with `_`."""
     composed = unicodedata.normalize("NFC", name)
     decomposed = unicodedata.normalize("NFKD", composed.translate(_TRANSLITERATION))
     stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
@@ -88,7 +86,7 @@ def ascii_file_name(name: str) -> str:
 
 
 def content_disposition(file_name: str) -> str:
-    """`attachment` mit ASCII-Ersatzname und exaktem RFC-5987-Namen (UTF-8)."""
+    """`attachment` with an ASCII fallback name and the exact RFC 5987 name (UTF-8)."""
     full = file_name + FILE_EXTENSION
     fallback = ascii_file_name(file_name).strip() or "Film"
     return (
@@ -101,9 +99,13 @@ def content_disposition(file_name: str) -> str:
     "",
     status_code=status.HTTP_202_ACCEPTED,
     responses={
-        status.HTTP_409_CONFLICT: {"description": "Es läuft bereits ein Export"},
+        status.HTTP_409_CONFLICT: error_response("An export is already running (`export.busy`)"),
         status.HTTP_422_UNPROCESSABLE_CONTENT: {
-            "description": "Ungültige Anfrage, leeres Projekt oder fehlende Medien"
+            "model": ApiValidationResponse,
+            "description": (
+                "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) "
+                "or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
+            ),
         },
     },
 )
@@ -113,24 +115,24 @@ async def start_export(
     projects: Annotated[ProjectStore, Depends(get_project_store)],
     media: Annotated[MediaStore, Depends(get_media_store)],
 ) -> ExportJob:
-    """Startet einen Export mit dem gespeicherten Projekt zum jetzigen Zeitpunkt.
+    """Starts an export of the saved project as it is right now.
 
-    Spätere Änderungen am Projekt wirken sich nicht auf diesen Export aus.
-    Höchstens ein Export läuft gleichzeitig; ein zweiter Start ergibt 409.
+    Later changes to the project do not affect this export.
+    At most one export runs at a time; a second start returns 409.
     """
     project = projects.get()
     _check_exportable(project, media)
     try:
         return exports.start(project, body.profile, body.file_name)
     except ExportBusy as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise api_exception(status.HTTP_409_CONFLICT, "export.busy", exportId=exc.job.id) from exc
 
 
 @router.get("")
 def list_exports(
     exports: Annotated[ExportManager, Depends(get_export_manager)],
 ) -> ExportListResponse:
-    """Alle bekannten Exporte (seit dem Start des Backends), älteste zuerst."""
+    """All known exports (since the backend started), oldest first."""
     return ExportListResponse(items=exports.list())
 
 
@@ -138,10 +140,10 @@ def list_exports(
 def get_export(
     export_id: str, exports: Annotated[ExportManager, Depends(get_export_manager)]
 ) -> ExportJob:
-    """Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler."""
+    """Status (`queued`, `running`, `done`, `failed`, `cancelled`), progress and error."""
     job = exports.get(export_id) if is_export_id(export_id) else None
     if job is None:
-        raise _not_found()
+        raise _not_found(export_id)
     return job
 
 
@@ -149,30 +151,27 @@ def get_export(
     "/{export_id}/file",
     response_class=FileResponse,
     responses={
-        status.HTTP_200_OK: {"content": {"video/mp4": {}}, "description": "Fertiger Film (MP4)"},
-        status.HTTP_409_CONFLICT: {"description": "Der Export ist (noch) nicht fertig"},
+        status.HTTP_200_OK: {"content": {"video/mp4": {}}, "description": "Finished movie (MP4)"},
+        status.HTTP_409_CONFLICT: error_response("The export is not done (`export.notReady`)"),
         **_NOT_FOUND,
     },
 )
 def get_export_file(
     export_id: str, exports: Annotated[ExportManager, Depends(get_export_manager)]
 ) -> Any:
-    """Die fertige MP4 als Download mit dem gewünschten Dateinamen (`<fileName>.mp4`).
+    """The finished MP4 as a download with the requested file name (`<fileName>.mp4`).
 
-    Solange der Export nicht `done` ist, antwortet der Server mit 409 und dem
-    Status; eine unvollständige Datei wird nie ausgeliefert.
+    As long as the export is not `done`, the server answers 409 with the
+    status; an incomplete file is never served.
     """
     job = exports.get(export_id) if is_export_id(export_id) else None
     if job is None:
-        raise _not_found()
+        raise _not_found(export_id)
     path = exports.file_path(export_id)
     if path is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Der Film ist nicht verfügbar: Der Export hat den Status „{job.status}“.",
-        )
+        raise api_exception(status.HTTP_409_CONFLICT, "export.notReady", status=job.status.value)
     if not path.is_file():
-        raise _not_found()
+        raise _not_found(export_id)
     return FileResponse(
         path,
         media_type="video/mp4",
@@ -184,16 +183,16 @@ def get_export_file(
 async def delete_export(
     export_id: str, exports: Annotated[ExportManager, Depends(get_export_manager)]
 ) -> Response:
-    """Bricht einen laufenden Export ab bzw. löscht einen beendeten.
+    """Cancels a running export or deletes a finished one.
 
-    - `queued`/`running`: Der Export wird abgebrochen (FFmpeg beendet, Teildatei
-      gelöscht); die Antwort kommt erst danach. Der Job bleibt als `cancelled`
-      abfragbar, ohne Datei.
-    - `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.
+    - `queued`/`running`: the export is cancelled (FFmpeg stopped, partial file
+      deleted); the response comes only afterwards. The job stays queryable as
+      `cancelled`, without a file.
+    - `done`/`failed`/`cancelled`: file and job are deleted; 404 afterwards.
     """
     if not is_export_id(export_id):
-        raise _not_found()
+        raise _not_found(export_id)
     result = await asyncio.to_thread(exports.cancel, export_id)
     if result is None:
-        raise _not_found()
+        raise _not_found(export_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

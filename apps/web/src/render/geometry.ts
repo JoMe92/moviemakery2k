@@ -1,4 +1,4 @@
-/** Reine Geometrie für den 4:3-Frame-Raum (design.md D4). */
+/** Pure geometry for the 4:3 frame space (design.md D4). */
 
 export interface Rect {
   x: number;
@@ -7,13 +7,13 @@ export interface Rect {
   height: number;
 }
 
-/** Seitenverhältnis des Monitors und des Exports. */
+/** Aspect ratio of the monitor and the export. */
 export const FRAME_ASPECT = 4 / 3;
 
 /**
- * Größtes Rechteck mit dem Seitenverhältnis der Quelle, das vollständig in das
- * Ziel passt, mittig („contain“). Ganzzahlig, damit die Kanten zu den schwarzen
- * Balken nicht verschwimmen.
+ * Largest rectangle with the source's aspect ratio that fits entirely inside the
+ * target, centred ("contain"). Integer-valued so the edges against the black
+ * bars do not blur.
  */
 export function containRect(srcW: number, srcH: number, dstW: number, dstH: number): Rect {
   if (srcW <= 0 || srcH <= 0 || dstW <= 0 || dstH <= 0) {
@@ -31,8 +31,8 @@ export function containRect(srcW: number, srcH: number, dstW: number, dstH: numb
 }
 
 /**
- * Pixelgröße des Zeichenpuffers: die größte 4:3-Fläche in der CSS-Box, mal
- * DPR, ganzzahlig und exakt 4:3 (Breite durch 4 teilbar), begrenzt auf `maxSize`.
+ * Pixel size of the drawing buffer: the largest 4:3 area in the CSS box, times
+ * DPR, integer-valued and exactly 4:3 (width divisible by 4), capped at `maxSize`.
  */
 export function bufferSize(
   cssWidth: number,

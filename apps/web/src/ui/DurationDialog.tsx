@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
+import { useT } from "../i18n/useT";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 import styles from "./DurationDialog.module.css";
@@ -7,19 +8,19 @@ import { durationInputValue, parseDuration, rangeMessage } from "./duration";
 export interface DurationDialogProps {
   open: boolean;
   title: string;
-  /** Beschriftung des Eingabefelds, z. B. „Bilddauer (Sekunden)“. */
+  /** Label of the input field, e.g. "Picture duration (seconds)". */
   label: string;
   value: number;
   range: { min: number; max: number; step: number };
-  /** Übernimmt den Wert; `false` = ungültig (Dialog bleibt offen und nennt den Bereich). */
+  /** Applies the value; `false` = invalid (the dialog stays open and states the range). */
   onConfirm: (value: number) => boolean;
   onClose: () => void;
-  /** Zusätzliche Aktion links in der Schaltflächenzeile (z. B. „Übergang entfernen“). */
+  /** Extra action on the left of the button row (e.g. "Remove transition"). */
   extraAction?: ReactNode;
   children?: ReactNode;
 }
 
-/** Eigenschaftendialog für eine Dauer in Sekunden mit Bereichsprüfung. */
+/** Properties dialog for a duration in seconds with a range check. */
 export function DurationDialog({
   open,
   title,
@@ -31,22 +32,23 @@ export function DurationDialog({
   extraAction,
   children,
 }: DurationDialogProps) {
+  const { t, locale } = useT();
   const inputId = useId();
   const hintId = useId();
-  const [text, setText] = useState(durationInputValue(value));
+  const [text, setText] = useState(durationInputValue(value, locale));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setText(durationInputValue(value));
+      setText(durationInputValue(value, locale));
       setError(null);
     }
-  }, [open, value]);
+  }, [open, value, locale]);
 
   const confirm = () => {
     const parsed = parseDuration(text);
     if (parsed === null || !onConfirm(parsed)) {
-      setError(rangeMessage(range));
+      setError(rangeMessage(range, locale));
       return;
     }
     onClose();
@@ -60,8 +62,8 @@ export function DurationDialog({
       footer={
         <>
           {extraAction ? <span className={styles.extra}>{extraAction}</span> : null}
-          <Button onClick={confirm}>OK</Button>
-          <Button onClick={onClose}>Abbrechen</Button>
+          <Button onClick={confirm}>{t("common.ok")}</Button>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
         </>
       }
     >
@@ -92,7 +94,7 @@ export function DurationDialog({
         </p>
       ) : (
         <p id={hintId} className={styles.hint}>
-          {rangeMessage(range)}
+          {rangeMessage(range, locale)}
         </p>
       )}
     </Dialog>

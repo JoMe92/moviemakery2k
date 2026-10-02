@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { KeyboardEvent, MouseEvent } from "react";
+import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { EffectsIcon } from "../ui/icons";
 import { type DragItem, formatDuration } from "./dropLogic";
@@ -9,27 +10,27 @@ import { TransitionSlot } from "./TransitionSlot";
 
 export interface SlideTileProps {
   slide: Slide;
-  /** Laufende Nummer (1-basiert). */
+  /** Sequence number (1-based). */
   number: number;
   media: MediaItem | undefined;
   selected: boolean;
-  /** Gerade in der Wiedergabe sichtbar (Hervorhebung). */
+  /** Currently visible during playback (highlight). */
   playing?: boolean;
   onSelect: () => void;
   onRemove: () => void;
   onMenu: (x: number, y: number) => void;
-  /** Eigenschaftendialog (Bilddauer). */
+  /** Properties dialog (picture duration). */
   onProperties: () => void;
-  /** Aktionen am eingehenden Übergangsplatz. */
+  /** Actions on the incoming transition slot. */
   onTransitionProperties: () => void;
   onTransitionRemove: () => void;
   onTransitionMenu: (x: number, y: number) => void;
   tileRef?: (el: HTMLButtonElement | null) => void;
-  /** Einfügemarke vor bzw. hinter dieser Kachel (Ziehen aus der Sammlung). */
+  /** Insertion marker before or after this tile (dragging from the collection). */
   marker?: "before" | "after" | null;
 }
 
-/** Storyboard-Kachel: Thumbnail, Nummer, Dauer und (deaktivierter) Effekt-Platz; sortierbar. */
+/** Storyboard tile: thumbnail, number, duration and (disabled) effect slot; sortable. */
 export function SlideTile({
   slide,
   number,
@@ -46,16 +47,17 @@ export function SlideTile({
   tileRef,
   marker = null,
 }: SlideTileProps) {
+  const { t, locale } = useT();
   const data: DragItem = { type: "slide", slideId: slide.id };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: slide.id,
     data,
-    attributes: { roleDescription: "verschiebbare Kachel" },
+    attributes: { roleDescription: t("storyboard.sortable") },
   });
-  // aria-pressed zeigt die Auswahl; die Rolle ergibt sich aus <button>.
+  // aria-pressed shows the selection; the role comes from <button>.
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
-  const name = media?.filename ?? "fehlendes Bild";
-  const duration = formatDuration(slide.duration);
+  const name = media?.filename ?? t("storyboard.missingImage");
+  const duration = formatDuration(slide.duration, locale);
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (isDragging) return;
@@ -122,7 +124,7 @@ export function SlideTile({
         aria-pressed={selected}
         aria-current={playing ? "true" : undefined}
         data-playing={playing || undefined}
-        aria-label={`Bild ${number}: ${name}, ${duration}`}
+        aria-label={t("storyboard.slide", { number, name, duration })}
         title={name}
         onKeyDown={onKeyDown}
         onClick={onSelect}
@@ -142,8 +144,8 @@ export function SlideTile({
         type="button"
         className={styles.effect}
         aria-disabled="true"
-        aria-label={`Effekt-Platz für Bild ${number}`}
-        title="Videoeffekte folgen später"
+        aria-label={t("storyboard.effectSlot", { number })}
+        title={t("storyboard.effectsLater")}
         tabIndex={-1}
       >
         <EffectsIcon size={12} />

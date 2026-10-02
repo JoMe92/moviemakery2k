@@ -1,10 +1,10 @@
 [project]
 name = "mmy-backend"
 version = "0.1.0"
-description = "moviemakerY2K Backend: Medien, Übergangskatalog, Projekt und (später) FFmpeg-Export"
+description = "moviemakerY2K backend: media, transition catalog, project and FFmpeg export"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.13"
-# Die Pakete installiert Pixi aus conda-forge (pixi.toml); hier stehen sie nur als Metadaten.
+# Pixi installs the packages from conda-forge (pixi.toml); they are listed here as metadata only.
 dependencies = [
     "fastapi>=0.142",
     "uvicorn>=0.54",
@@ -34,5 +34,5 @@ python_version = "3.13"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "slow: kodiert mit FFmpeg (Export-Ende-zu-Ende, einige Sekunden)",
+    "slow: encodes with FFmpeg (end-to-end export, a few seconds)",
 ]

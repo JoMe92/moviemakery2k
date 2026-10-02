@@ -1,9 +1,9 @@
 /**
- * Testhook `?debug-progress=<transitionId>:<p>` (design.md D8): Statt der App
- * wird nur ein 640×480-Canvas gezeigt, das den Übergang zwischen zwei
- * einfarbigen Frames bei Fortschritt p zeichnet. Für E2E-Randwert- und
- * Determinismus-Prüfungen. Optional: `&from=<CSS-Farbe>&to=<CSS-Farbe>`,
- * `&fromPortrait=1` (Hochkant-Testbild als Ausgangsframe).
+ * Test hook `?debug-progress=<transitionId>:<p>` (design.md D8): instead of the
+ * app, only a 640×480 canvas is shown that draws the transition between two
+ * solid-colour frames at progress p. For E2E boundary-value and determinism
+ * checks. Optional: `&from=<CSS colour>&to=<CSS colour>`,
+ * `&fromPortrait=1` (portrait test image as the source frame).
  */
 export interface DebugProgress {
   transitionId: string;

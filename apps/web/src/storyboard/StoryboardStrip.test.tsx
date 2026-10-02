@@ -2,7 +2,6 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
-import { STORYBOARD_EMPTY_HINT } from "../shell/StoryboardPane";
 import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
@@ -30,8 +29,8 @@ const tileLabels = () =>
     .map((b) => b.getAttribute("aria-label"));
 
 /*
- * jsdom hat kein Layout: für die Tastatur-Sensoren von dnd-kit bekommen
- * Bildstreifen, Storyboard-Kacheln und Sammlungskacheln feste Rechtecke.
+ * jsdom has no layout: for the dnd-kit keyboard sensors, the storyboard strip,
+ * storyboard tiles and collection tiles get fixed rectangles.
  */
 function rect(left: number, top: number, width: number, height: number): DOMRect {
   return {
@@ -57,7 +56,7 @@ beforeEach(() => {
     const slotMatch = /^Übergang vor Bild (\d+):/.exec(label);
     if (slotMatch) return rect(20 + (Number(slotMatch[1]) - 1) * 160 - 54, 540, 52, 60);
     if (this.getAttribute("data-testid") === "storyboard-strip") return rect(0, 500, 1200, 150);
-    // DragOverlay: liegt anfangs über der gezogenen (fokussierten) Kachel.
+    // DragOverlay: initially lies over the dragged (focused) tile.
     const isOverlay =
       this.getAttribute("data-testid") === "drag-overlay" ||
       this.querySelector(":scope > [data-testid='drag-overlay']") !== null;
@@ -78,16 +77,18 @@ beforeEach(() => {
 });
 afterEach(() => restoreRects?.());
 
-/** Kleine Pause, damit dnd-kit messen und Listener anhängen kann. */
+/** Short pause so dnd-kit can measure and attach listeners. */
 const tick = () => act(() => new Promise((r) => setTimeout(r, 20)));
 
 describe("Storyboard", () => {
-  it("zeigt den Hinweis, solange der Bildstreifen leer ist", async () => {
+  it("shows the hint while the storyboard is empty", async () => {
     await setup([]);
-    expect(within(storyboard()).getByText(STORYBOARD_EMPTY_HINT)).toBeInTheDocument();
+    expect(
+      within(storyboard()).getByText("Ziehen Sie Bilder hierher, um eine Diashow zu erstellen."),
+    ).toBeInTheDocument();
   });
 
-  it("zeigt Kacheln mit Nummer, Dauer, Thumbnail, deaktiviertem Effekt-Platz und Übergangsplätzen", async () => {
+  it("shows tiles with number, duration, thumbnail, disabled effect slot and transition slots", async () => {
     await setup([slide("s1", "a"), slide("s2", "b", 2.5, "circle"), slide("s3", "a", 0.75)]);
     expect(tileLabels()).toEqual([
       "Bild 1: a.jpg, 5,00 s",
@@ -103,7 +104,7 @@ describe("Storyboard", () => {
     expect(effect).toHaveAttribute("aria-disabled", "true");
     expect(effect).toHaveAttribute("title", "Videoeffekte folgen später");
 
-    // Übergangsplätze nur zwischen Kacheln; der Übergang gehört zum Zielbild.
+    // Transition slots only between tiles; the transition belongs to the target picture.
     expect(within(strip()).queryByRole("button", { name: /^Übergang vor Bild 1/ })).toBeNull();
     expect(slot(2)).toHaveAccessibleName("Übergang vor Bild 2: Kreis, 1,25 s");
     expect(slot(2)).toHaveTextContent("Kreis1,25 s");
@@ -112,7 +113,7 @@ describe("Storyboard", () => {
     expect(screen.getByTestId("transition-slot-s3")).toBeInTheDocument();
   });
 
-  it("wählt per Klick aus und entfernt mit Entf", async () => {
+  it("selects by click and removes with Delete", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b", 5, "fade")]);
     const first = within(strip()).getByRole("button", { name: /^Bild 1:/ });
@@ -122,7 +123,7 @@ describe("Storyboard", () => {
 
     await user.keyboard("{Delete}");
     expect(store.getState().slides.map((s) => s.id)).toEqual(["s2"]);
-    // Neues erstes Element verliert seinen eingehenden Übergang.
+    // The new first item loses its incoming transition.
     expect(store.getState().slides[0]?.transitionIn).toBeNull();
     expect(tileLabels()).toEqual(["Bild 1: b.jpg, 5,00 s"]);
     expect(store.getState().selection).toEqual({ kind: "slide", slideId: "s2" });
@@ -154,7 +155,7 @@ describe("Storyboard", () => {
     expect(store.getState().selection).toEqual({ kind: "slide", slideId: "s1" });
   });
 
-  it("entfernt über das Kontextmenü", async () => {
+  it("removes via the context menu", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b")]);
     const second = within(strip()).getByRole("button", { name: /^Bild 2:/ });
@@ -164,7 +165,7 @@ describe("Storyboard", () => {
     expect(store.getState().slides.map((s) => s.id)).toEqual(["s1"]);
   });
 
-  it("entfernt die Auswahl über Bearbeiten → Löschen", async () => {
+  it("removes the selection via Edit → Delete", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b")]);
     await user.click(within(strip()).getByRole("button", { name: /^Bild 2:/ }));
@@ -173,7 +174,7 @@ describe("Storyboard", () => {
     expect(store.getState().slides.map((s) => s.id)).toEqual(["s1"]);
   });
 
-  it("sortiert per Tastatur um: drittes Element an Position 1 (Übergang entfällt dort)", async () => {
+  it("reorders by keyboard: third item to position 1 (its transition is dropped there)", async () => {
     const user = userEvent.setup();
     const { store } = await setup([
       slide("s1", "a"),
@@ -197,17 +198,17 @@ describe("Storyboard", () => {
     expect(slides[2]?.transitionIn?.transitionId).toBe("fade");
   });
 
-  it("fügt ein Bild aus der Sammlung per Tastatur an der Einfügemarke ein", async () => {
+  it("inserts a picture from the collection by keyboard at the insertion marker", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "a")]);
     const collection = screen.getByRole("region", { name: "Sammlung: Meine Bilder" });
     within(collection).getByRole("button", { name: "b.jpg" }).focus();
     await user.keyboard("[Enter]");
     await tick();
-    await user.keyboard("[ArrowDown]"); // ans Ende des Bildstreifens
+    await user.keyboard("[ArrowDown]"); // to the end of the storyboard
     await tick();
     expect(screen.getAllByTestId("insert-marker")).toHaveLength(1);
-    await user.keyboard("[ArrowLeft]"); // zwischen Bild 1 und Bild 2
+    await user.keyboard("[ArrowLeft]"); // between picture 1 and picture 2
     await tick();
     await user.keyboard("[Space]");
     await tick();
@@ -215,7 +216,7 @@ describe("Storyboard", () => {
     expect(screen.queryByTestId("insert-marker")).toBeNull();
   });
 
-  it("fügt per Tastatur in einen leeren Bildstreifen ein", async () => {
+  it("inserts by keyboard into an empty storyboard", async () => {
     const user = userEvent.setup();
     const { store } = await setup([]);
     const collection = screen.getByRole("region", { name: "Sammlung: Meine Bilder" });
@@ -230,7 +231,7 @@ describe("Storyboard", () => {
     expect(store.getState().slides[0]?.duration).toBe(5);
   });
 
-  it("setzt einen Übergang per Tastatur auf einen Platz und ersetzt einen vorhandenen", async () => {
+  it("sets a transition on a slot by keyboard and replaces an existing one", async () => {
     const user = userEvent.setup();
     const { store } = await setup([
       slide("s1", "a"),
@@ -242,21 +243,21 @@ describe("Storyboard", () => {
     within(collection).getByRole("button", { name: "Kreis" }).focus();
     await user.keyboard("[Enter]");
     await tick();
-    await user.keyboard("[ArrowDown]"); // erster Platz: vor Bild 2
+    await user.keyboard("[ArrowDown]"); // first slot: before picture 2
     await tick();
     expect(slot(2)).toHaveAttribute("data-drop", "true");
-    await user.keyboard("[ArrowRight]"); // Platz vor Bild 3 (hat „Überblenden“)
+    await user.keyboard("[ArrowRight]"); // slot before picture 3 (has the fade transition)
     await tick();
     await user.keyboard("[Space]");
     await tick();
     const slides = store.getState().slides;
     expect(slides[1]?.transitionIn).toBeNull();
-    // Ersetzt, mit der Standarddauer aus dem Katalog.
+    // Replaced, with the default duration from the catalog.
     expect(slides[2]?.transitionIn).toEqual({ transitionId: "circle", duration: 1.5 });
     expect(slot(3)).toHaveAccessibleName("Übergang vor Bild 3: Kreis, 1,50 s");
   });
 
-  it("Übergangsdialog: ungültige Dauer wird abgelehnt, gültige übernommen", async () => {
+  it("transition dialog: invalid duration is rejected, valid one is applied", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b", 5, "circle")]);
     await user.dblClick(slot(2));
@@ -280,7 +281,7 @@ describe("Storyboard", () => {
     expect(slot(2)).toHaveTextContent("1,50 s");
   });
 
-  it("entfernt einen Übergang über den Dialog und über das Kontextmenü", async () => {
+  it("removes a transition via the dialog and via the context menu", async () => {
     const user = userEvent.setup();
     const { store } = await setup([
       slide("s1", "a"),
@@ -298,14 +299,14 @@ describe("Storyboard", () => {
     await user.click(within(menu).getByRole("menuitem", { name: "Übergang entfernen" }));
     expect(store.getState().slides[2]?.transitionIn).toBeNull();
 
-    // Leerer Platz: nichts zu bearbeiten.
+    // Empty slot: nothing to edit.
     fireEvent.contextMenu(slot(3), { clientX: 10, clientY: 10 });
     for (const item of within(screen.getByRole("menu")).getAllByRole("menuitem")) {
       expect(item).toHaveAttribute("aria-disabled", "true");
     }
   });
 
-  it("Bilddauer: Doppelklick bzw. Kontextmenü öffnet den Dialog; 0,1 s wird abgelehnt", async () => {
+  it("picture duration: double-click or context menu opens the dialog; 0,1 s is rejected", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b")]);
     await user.dblClick(within(strip()).getByRole("button", { name: /^Bild 2:/ }));
@@ -334,5 +335,54 @@ describe("Storyboard", () => {
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
     expect(store.getState().slides[1]?.duration).toBe(2.5);
     expect(tileLabels()[1]).toBe("Bild 2: b.jpg, 2,50 s");
+  });
+
+  it("Spec: duration in English – tile “2.50 s”, input “2,5” is accepted", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const user = userEvent.setup();
+    const { store } = await setup([slide("s1", "a"), slide("s2", "b", 5, "fade")]);
+    const enStrip = within(screen.getByRole("region", { name: "Storyboard" })).getByRole("list", {
+      name: "Storyboard strip",
+    });
+    const tile = within(enStrip).getByRole("button", { name: /^Picture 2:/ });
+    expect(tile).toHaveAttribute("aria-label", "Picture 2: b.jpg, 5.00 s");
+    expect(
+      within(enStrip).getByRole("button", { name: /^Transition before picture 2:/ }),
+    ).toHaveTextContent("1.25 s");
+
+    await user.dblClick(tile);
+    const dialog = screen.getByRole("dialog", { name: "Properties of Picture 2" });
+    expect(dialog).toHaveTextContent("Allowed are 0.5 to 60 seconds in steps of 0.25.");
+    const input = within(dialog).getByRole("textbox", { name: "Picture duration (seconds):" });
+    await user.clear(input);
+    await user.type(input, "2,5");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(enStrip).getByRole("button", { name: /^Picture 2:/ })).toHaveTextContent(
+      "2.50 s",
+    );
+
+    // Reopening shows the value with the English separator.
+    await user.dblClick(within(enStrip).getByRole("button", { name: /^Picture 2:/ }));
+    expect(
+      within(screen.getByRole("dialog", { name: "Properties of Picture 2" })).getByRole("textbox", {
+        name: "Picture duration (seconds):",
+      }),
+    ).toHaveValue("2.5");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+
+  it("picture duration: in German “2.5” is accepted too", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup([slide("s1", "a")]);
+    await user.dblClick(within(strip()).getByRole("button", { name: /^Bild 1:/ }));
+    const dialog = screen.getByRole("dialog", { name: "Eigenschaften von Bild 1" });
+    const input = within(dialog).getByRole("textbox", { name: "Bilddauer (Sekunden):" });
+    await user.clear(input);
+    await user.type(input, "2.5");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(store.getState().slides[0]?.duration).toBe(2.5);
+    expect(tileLabels()[0]).toBe("Bild 1: a.jpg, 2,50 s");
   });
 });

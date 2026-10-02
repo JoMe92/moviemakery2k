@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { useAppStoreApi } from "../store/useAppStore";
 
-/** Dateiformate des Dateidialogs; das Backend prüft den Inhalt ohnehin selbst. */
+/** File formats of the file dialog; the backend checks the content itself anyway. */
 export const IMPORT_ACCEPT = "image/jpeg,image/png,image/webp";
 
 /**
- * Startet einen Import: Sammlung „Meine Bilder“ zeigen, abgeschlossene
- * Einträge der letzten Runde verwerfen und die Dateien sequenziell hochladen.
+ * Starts an import: show the "My Pictures" collection, discard finished
+ * entries of the last round and upload the files sequentially.
  */
 export function useImport(): (files: readonly File[]) => void {
   const store = useAppStoreApi();

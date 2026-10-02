@@ -4,7 +4,7 @@
   "cases": [
     {
       "name": "spec-total-duration-12.50",
-      "description": "Spec preview-player 'Gesamtdauer': three 5 s slides, two 1.25 s transitions -> 15 - 2.5 = 12.5 s.",
+      "description": "Spec preview-player scenario 'Gesamtdauer' (total duration): three 5 s slides, two 1.25 s transitions -> 15 - 2.5 = 12.5 s.",
       "slides": [
         { "id": "a", "mediaId": "m-a", "duration": 5, "transitionIn": null },
         {
@@ -102,7 +102,7 @@
     },
     {
       "name": "spec-transition-longer-than-allowed",
-      "description": "Spec preview-player 'Übergang länger als erlaubt': 4 s transition between two 2 s slides is clamped to min(4, 2/2, 2/2) = 1 s.",
+      "description": "Spec preview-player scenario 'Übergang länger als erlaubt' (transition longer than allowed): 4 s transition between two 2 s slides is clamped to min(4, 2/2, 2/2) = 1 s.",
       "slides": [
         { "id": "a", "mediaId": "m-a", "duration": 2, "transitionIn": null },
         {

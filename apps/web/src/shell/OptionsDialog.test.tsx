@@ -1,0 +1,103 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { LOCALE_STORAGE_KEY } from "../i18n/locale";
+import { createAppStore } from "../store/appStore";
+import { mockApi } from "../store/testApi";
+import { renderApp } from "../test/renderApp";
+
+async function openOptionsWithMouse(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("menuitem", { name: /^(Extras|Tools)$/ }));
+  await user.click(screen.getByRole("menuitem", { name: /^(Optionen|Options)…$/ }));
+  return screen.getByRole("dialog", { name: /^(Optionen|Options)$/ });
+}
+
+describe("Options dialog", () => {
+  it("Spec: opens by mouse with the current language selected", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const dialog = await openOptionsWithMouse(user);
+    expect(within(dialog).getByRole("radio", { name: "Deutsch" })).toBeChecked();
+    expect(within(dialog).getByRole("radio", { name: "English" })).not.toBeChecked();
+  });
+
+  it("opens by keyboard", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    screen.getByRole("menuitem", { name: "Extras" }).focus();
+    await user.keyboard("{Enter}");
+    const menu = await screen.findByRole("menu", { name: "Extras" });
+    // The menu moves focus to its first entry asynchronously; press End only after that.
+    await waitFor(() => expect(within(menu).getAllByRole("menuitem")[0]).toHaveFocus());
+    await user.keyboard("{End}");
+    await waitFor(() =>
+      expect(within(menu).getByRole("menuitem", { name: "Optionen…" })).toHaveFocus(),
+    );
+    await user.keyboard("{Enter}");
+    const dialog = screen.getByRole("dialog", { name: "Optionen" });
+    // Choose English with the keyboard and confirm.
+    within(dialog).getByRole("radio", { name: "Deutsch" }).focus();
+    await user.keyboard("{ArrowDown}");
+    expect(within(dialog).getByRole("radio", { name: "English" })).toBeChecked();
+    await user.keyboard("{Tab}{Enter}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("en");
+  });
+
+  it("Spec: OK switches at once without changing the storyboard and stores the choice", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp();
+    await ready;
+    store.getState().addSlide("a");
+    const slides = store.getState().slides;
+    const dialog = await openOptionsWithMouse(user);
+    await user.click(within(dialog).getByRole("radio", { name: "English" }));
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(store.getState().locale).toBe("en");
+    expect(store.getState().slides).toBe(slides);
+    expect(document.documentElement.lang).toBe("en");
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("en");
+
+    // The dialog itself now appears in English, still naming each language in itself.
+    // The menus switch too: Tools → Options….
+    await openOptionsWithMouse(user);
+    const english = screen.getByRole("dialog", { name: "Options" });
+    expect(within(english).getByRole("radio", { name: "English" })).toBeChecked();
+    expect(within(english).getByRole("radio", { name: "Deutsch" })).toBeInTheDocument();
+    expect(within(english).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("Spec: Cancel closes without a change", async () => {
+    const user = userEvent.setup();
+    const { store } = renderApp();
+    const dialog = await openOptionsWithMouse(user);
+    await user.click(within(dialog).getByRole("radio", { name: "English" }));
+    await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(store.getState().locale).toBe("de");
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("de");
+    // Reopening starts again from the current language.
+    const again = await openOptionsWithMouse(user);
+    expect(within(again).getByRole("radio", { name: "Deutsch" })).toBeChecked();
+  });
+
+  it("Spec: the chosen language survives a reload", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const dialog = await openOptionsWithMouse(user);
+    await user.click(within(dialog).getByRole("radio", { name: "English" }));
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    // A reload creates a fresh store; it must start with the stored language,
+    // even though the browser language is German.
+    Object.defineProperty(navigator, "languages", { configurable: true, value: ["de-DE"] });
+    try {
+      expect(createAppStore(mockApi()).getState().locale).toBe("en");
+    } finally {
+      Reflect.deleteProperty(navigator, "languages");
+    }
+  });
+});

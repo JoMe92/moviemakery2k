@@ -1,4 +1,4 @@
-"""GET /api/catalog/transitions - der beim Start validierte Übergangskatalog."""
+"""GET /api/catalog/transitions - the transition catalog validated at startup."""
 
 from typing import Annotated, cast
 
