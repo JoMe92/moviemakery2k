@@ -64,7 +64,7 @@ def _prepare(client: TestClient) -> None:
     res = client.post("/api/media", files=[("files", ("a.png", buf.getvalue()))])
     media_id = res.json()["items"][0]["item"]["id"]
     slide = {"id": "s0", "mediaId": media_id, "duration": 1.0, "transitionIn": None}
-    res = client.put("/api/project", json={"schemaVersion": 1, "slides": [slide]})
+    res = client.put("/api/project", json={"schemaVersion": 2, "slides": [slide], "music": []})
     assert res.status_code == 200, res.text
 
 

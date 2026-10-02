@@ -125,6 +125,45 @@ describe("appStore", () => {
     expect(store.getState().slides).toEqual([]);
   });
 
+  it("keeps the music track: loads, saves and adopts the delete cascade (add-music-track D3)", async () => {
+    const clip = (id: string, mediaId: string) => ({
+      id,
+      mediaId,
+      trimStart: 0,
+      trimEnd: null,
+      volume: 1,
+      fadeIn: false,
+      fadeOut: false,
+    });
+    const api = mockApi({
+      getProject: vi.fn(async () => ({
+        schemaVersion: 2 as const,
+        slides: [],
+        music: [clip("m1", "x"), clip("m2", "y")],
+      })),
+      deleteMedia: vi.fn(async () => ({
+        schemaVersion: 2 as const,
+        slides: [],
+        music: [clip("m2", "y")],
+      })),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    expect(store.getState().music.map((c) => c.id)).toEqual(["m1", "m2"]);
+
+    store.getState().addSlide("a");
+    await store.getState().flushSave();
+    expect(api.saved.at(-1)?.music).toEqual([clip("m1", "x"), clip("m2", "y")]);
+
+    await store.getState().deleteMedia("x");
+    expect(store.getState().music.map((c) => c.id)).toEqual(["m2"]);
+
+    store.getState().newProject();
+    await store.getState().flushSave();
+    expect(store.getState().music).toEqual([]);
+    expect(api.saved.at(-1)).toEqual({ schemaVersion: 2, slides: [], music: [] });
+  });
+
   it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
     const error = new ApiError("Medium is used by a running export", 409, {
       code: "media.inUseByExport",
@@ -224,7 +263,8 @@ describe("appStore", () => {
       const store = createAppStore(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 1 as const,
+            schemaVersion: 2 as const,
+            music: [],
             slides: [
               { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
               {

@@ -14,7 +14,7 @@ from mmy_backend.config import Settings
 from mmy_backend.main import create_app
 from mmy_backend.project import Project, ProjectStore, on_grid
 
-EMPTY = {"schemaVersion": 1, "slides": []}
+EMPTY = {"schemaVersion": 2, "slides": [], "music": []}
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def _slide(
 
 def _valid_project(media: list[str]) -> dict[str, Any]:
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "slides": [
             _slide("a", media[0], 5.0),
             _slide("b", media[1], 2.75, ("fade", 1.25)),
@@ -62,6 +62,7 @@ def _valid_project(media: list[str]) -> dict[str, Any]:
             _slide("d", media[1], 0.5, ("fade", 0.25)),
             _slide("e", media[0], 3.0),
         ],
+        "music": [],
     }
 
 
@@ -136,7 +137,7 @@ def _mutations(media: list[str]) -> dict[str, Mutation]:
         p["slides"][1]["effect"] = None
 
     def wrong_schema(p: dict[str, Any]) -> None:
-        p["schemaVersion"] = 2
+        p["schemaVersion"] = 1
 
     def too_many(p: dict[str, Any]) -> None:
         p["slides"] = [_slide(f"s{i}", media[0]) for i in range(1001)]
@@ -312,7 +313,7 @@ def test_reference_errors_are_collected_as_project_invalid(client: TestClient) -
 def test_invalid_put_without_previous_project_writes_nothing(
     client: TestClient, settings: Settings
 ) -> None:
-    bad = {"schemaVersion": 1, "slides": [_slide("a", "missing")]}
+    bad = {"schemaVersion": 2, "slides": [_slide("a", "missing")], "music": []}
     assert client.put("/api/project", json=bad).status_code == 422
     assert client.get("/api/project").json() == EMPTY
     assert not (settings.data_dir / "project.json").exists()
@@ -346,13 +347,14 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
     with TestClient(create_app(settings)) as client:
         a, b, c = _upload(client, 3)
         project = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "slides": [
                 _slide("s1", a, 5.0),
                 _slide("s2", b, 4.0, ("fade", 1.0)),
                 _slide("s3", a, 3.0, ("dissolve", 2.0)),
                 _slide("s4", c, 2.0, ("fade", 0.5)),
             ],
+            "music": [],
         }
         assert client.put("/api/project", json=project).status_code == 200
         store: ProjectStore = client.app.state.project  # type: ignore[attr-defined]
@@ -360,11 +362,12 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
         updated = asyncio.run(store.remove_media(a))
 
         expected = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "slides": [
                 _slide("s2", b, 4.0),
                 _slide("s4", c, 2.0, ("fade", 0.5)),
             ],
+            "music": [],
         }
         assert updated.model_dump(mode="json") == expected
         assert client.get("/api/project").json() == expected
@@ -375,7 +378,7 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
 def test_remove_unused_media_does_not_write(settings: Settings) -> None:
     store = ProjectStore(settings.data_dir)
     result = asyncio.run(store.remove_media("f" * 32))
-    assert result == Project(schema_version=1, slides=[])
+    assert result == Project(schema_version=2, slides=[], music=[])
     assert not (settings.data_dir / "project.json").exists()
 
 

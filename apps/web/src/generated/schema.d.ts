@@ -153,7 +153,8 @@ export interface paths {
          * @description Deletes a medium with its files and removes it from the project (cascade).
          *
          *     All storyboard elements using this medium are dropped together with their
-         *     incoming transitions; the new first element has no transition.
+         *     incoming transitions; the new first element has no transition. All music
+         *     clips using it are dropped as well (the following clips move up).
          *
          *     The response is 200 with the updated project (instead of 204) so that the
          *     client can adopt its state without another GET /api/project.
@@ -167,6 +168,50 @@ export interface paths {
          *     unchanged (design.md D5).
          */
         delete: operations["delete_media_api_media__media_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Audio
+         * @description Audio preview version (AAC in M4A, 48 kHz, stereo) with `Cache-Control: immutable`.
+         *
+         *     404 for images as well as unknown IDs. Range requests are supported.
+         */
+        get: operations["get_audio_api_media__media_id__audio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/peaks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Peaks
+         * @description Waveform data (50 peaks per second, mono, 0..1) with `Cache-Control: immutable`.
+         *
+         *     404 for images as well as unknown IDs.
+         */
+        get: operations["get_peaks_api_media__media_id__peaks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -372,6 +417,26 @@ export interface components {
              */
             sampleRate: number;
         };
+        /**
+         * AudioPeaks
+         * @description Waveform data of an audio medium (`GET /api/media/{id}/peaks`, design.md D2).
+         *
+         *     Peak `i` is the largest absolute sample of the mono downmix in the time
+         *     window `[i / rate, (i + 1) / rate)` s, relative to full scale (0 = silence,
+         *     1 = full scale). The last window may be shorter.
+         */
+        AudioPeaks: {
+            /**
+             * Peaks
+             * @description One peak per window, relative to full scale (0..1)
+             */
+            peaks: number[];
+            /**
+             * Rate
+             * @description Peaks per second (always 50)
+             */
+            rate: number;
+        };
         /** Body_upload_media_api_media_post */
         Body_upload_media_api_media_post: {
             /**
@@ -387,7 +452,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -563,13 +628,57 @@ export interface components {
              */
             ok: true;
         };
+        /**
+         * MusicClip
+         * @description A piece of the music track (add-music-track design.md D3); no start time:
+         *     clips play one after the other from 0.
+         */
+        MusicClip: {
+            /**
+             * Fadein
+             * @description Fade in over 1 s (new clip: false)
+             */
+            fadeIn: boolean;
+            /**
+             * Fadeout
+             * @description Fade out over 1 s (new clip: false)
+             */
+            fadeOut: boolean;
+            /**
+             * Id
+             * @description Assigned by the client, unique within the music track
+             */
+            id: string;
+            /**
+             * Mediaid
+             * @description ID of an audio medium from /api/media
+             */
+            mediaId: string;
+            /**
+             * Trimend
+             * @description End within the file in seconds; null = end of the file (new clip: null)
+             */
+            trimEnd: number | null;
+            /**
+             * Trimstart
+             * @description Start within the file in seconds (new clip: 0)
+             */
+            trimStart: number;
+            /**
+             * Volume
+             * @description Volume as linear gain (1 = 100 %, new clip: 1)
+             */
+            volume: number;
+        };
         /** Project */
         Project: {
+            /** Music */
+            music: components["schemas"]["MusicClip"][];
             /**
              * Schemaversion
              * @constant
              */
-            schemaVersion: 1;
+            schemaVersion: 2;
             /** Slides */
             slides: components["schemas"]["Slide"][];
         };
@@ -1036,6 +1145,86 @@ export interface operations {
             };
             /** @description A queued or running export uses the medium (`media.inUseByExport`) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audio_api_media__media_id__audio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description AAC in M4A, 48 kHz, stereo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mp4": unknown;
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_peaks_api_media__media_id__peaks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioPeaks"];
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

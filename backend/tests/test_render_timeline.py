@@ -225,7 +225,7 @@ def test_frame_time_is_n_over_fps_and_last_frame_is_inside_movie() -> None:
 
 def test_timeline_slides_from_project() -> None:
     project = Project(
-        schema_version=1,
+        schema_version=2,
         slides=[
             Slide(id="a", media_id="m-a", duration=5, transition_in=None),
             Slide(
@@ -235,6 +235,7 @@ def test_timeline_slides_from_project() -> None:
                 transition_in=TransitionRef(transition_id="fade", duration=1.25),
             ),
         ],
+        music=[],
     )
     slides = timeline_slides_from_project(project)
     assert slides == (
@@ -251,4 +252,4 @@ def test_timeline_slides_from_project() -> None:
     assert frame_at(tl, 4.375) == TransitionFrame(
         from_index=0, to_index=1, transition_id="fade", progress=0.5
     )
-    assert timeline_slides_from_project(Project(schema_version=1, slides=[])) == ()
+    assert timeline_slides_from_project(Project(schema_version=2, slides=[], music=[])) == ()

@@ -12,6 +12,7 @@ import {
   type ExportApi,
   type Health,
   type MediaItem,
+  type MusicClip,
   type Project,
   type Slide,
   type Transition,
@@ -65,6 +66,8 @@ export interface AppState {
   media: MediaItem[];
   catalog: Transition[];
   slides: Slide[];
+  /** Music track (add-music-track D3); kept and saved with the project. */
+  music: MusicClip[];
   saveState: SaveState;
   collection: CollectionId;
   selection: Selection;
@@ -140,7 +143,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
   let dirty = false;
 
   const store = createStore<AppState>()((set, get) => {
-    const toProject = (): Project => ({ schemaVersion: 1, slides: get().slides });
+    const toProject = (): Project => ({
+      schemaVersion: 2,
+      slides: get().slides,
+      music: get().music,
+    });
 
     async function save(): Promise<void> {
       if (saving) {
@@ -205,6 +212,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       media: [],
       catalog: [],
       slides: [],
+      music: [],
       saveState: "idle",
       collection: "media",
       selection: null,
@@ -240,6 +248,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             catalog,
             media,
             slides: project.slides,
+            music: project.music,
             saveState: "saved",
             loaded: true,
           });
@@ -382,6 +391,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         set({
           media: get().media.filter((m) => m.id !== id),
           slides: project.slides,
+          music: project.music,
           selection: stillThere ? selection : null,
           playback: playbackFor(project.slides),
         });
@@ -431,6 +441,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         commit(updateSlide(get().slides, slideId, (s) => ({ ...s, transitionIn: null })));
       },
       newProject() {
+        set({ music: [] });
         commit([]);
       },
 

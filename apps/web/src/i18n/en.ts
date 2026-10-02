@@ -265,7 +265,7 @@ export const en = {
       probeUnavailable:
         "Audio files cannot be checked: ffprobe was not found or could not be started.",
       inUseByExport:
-        "The image cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
+        "The medium cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
     },
     project: {
       slideDuration: {
@@ -276,6 +276,12 @@ export const en = {
         outOfRange: "The transition duration must be between {min} and {max} s (is {value} s).",
         offGrid: "The transition duration must be a multiple of {step} s (is {value} s).",
       },
+      musicVolume: {
+        outOfRange: "The music volume must be between {min} and {max} (is {value}).",
+      },
+      musicTrim: {
+        negative: "The start and end of a music clip must be 0 s or later (is {value} s).",
+      },
       invalid: "The project is invalid: {summary}",
       slide: {
         duplicateId:
@@ -284,6 +290,19 @@ export const en = {
         firstHasTransition:
           "Picture {slide} (ID “{slideId}”): the first picture cannot have an incoming transition.",
         unknownTransition: "Picture {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
+        notImage: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
+      },
+      music: {
+        duplicateId:
+          "Music clip {clip} (ID “{clipId}”): the ID is already used by music clip {firstClip}.",
+        unknownMedia: "Music clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        notAudio: "Music clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        trimEndBeyondFile:
+          "Music clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond the end of the file ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Music clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before the end ({end} s).",
+        tooShort:
+          "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s (plays {length} s).",
       },
     },
     export: {

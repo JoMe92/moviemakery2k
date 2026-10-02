@@ -77,18 +77,29 @@ flowchart LR
 
 ### 2. Project
 
-- The project is one versioned JSON document (`schemaVersion: 1`):
+- The project is one versioned JSON document (`schemaVersion: 2`):
 
   ```json
   {
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "slides": [
       { "id": "s1", "mediaId": "…", "duration": 5, "transitionIn": null },
       { "id": "s2", "mediaId": "…", "duration": 5,
         "transitionIn": { "transitionId": "circle", "duration": 1.25 } }
+    ],
+    "music": [
+      { "id": "m1", "mediaId": "…", "trimStart": 0, "trimEnd": null,
+        "volume": 1, "fadeIn": false, "fadeOut": false }
     ]
   }
   ```
+
+- `music` (at most 100 clips) plays gapless from 0 in list order; slides refer
+  to images, music clips to audio, and each clip's range must satisfy
+  `0 ≤ trimStart < end ≤ duration` with a played length of at least 0.5 s
+  (`trimEnd: null` = end of the file). A stored version-1 project (before the
+  music track) is loaded with `music: []` and written as version 2 on the next
+  save; the API accepts version 2 only.
 
 - A transition belongs to its **target** slide (`transitionIn`) and moves with
   it when slides are reordered. The first slide never has one.

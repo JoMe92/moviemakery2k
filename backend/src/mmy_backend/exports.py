@@ -437,7 +437,10 @@ class ExportManager:
             for job in self._jobs.values():
                 if job.project is None or not job.status.active:
                     continue
-                if any(s.media_id == media_id for s in job.project.slides):
+                project = job.project
+                if any(s.media_id == media_id for s in project.slides) or any(
+                    c.media_id == media_id for c in project.music
+                ):
                     return job.id
             return None
 

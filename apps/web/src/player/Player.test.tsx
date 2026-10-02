@@ -13,7 +13,7 @@ const SLIDES: Slide[] = [
 
 async function setup(slides: Slide[] = SLIDES) {
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 1 as const, slides })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   const monitor = screen.getByRole("region", { name: "Vorschau" });
@@ -110,7 +110,9 @@ describe("Player", () => {
   it("Spec: shows the time in English as 0:00:12.50", async () => {
     localStorage.setItem("mmy.locale", "en");
     const view = renderApp(
-      mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 1 as const, slides: SLIDES })) }),
+      mockApi({
+        getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides: SLIDES, music: [] })),
+      }),
     );
     await act(() => view.ready);
     const monitor = screen.getByRole("region", { name: "Preview" });

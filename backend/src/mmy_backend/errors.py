@@ -51,11 +51,20 @@ class ErrorCode(StrEnum):
     PROJECT_SLIDE_DURATION_OFF_GRID = "project.slideDuration.offGrid"
     PROJECT_TRANSITION_DURATION_OUT_OF_RANGE = "project.transitionDuration.outOfRange"
     PROJECT_TRANSITION_DURATION_OFF_GRID = "project.transitionDuration.offGrid"
+    PROJECT_MUSIC_VOLUME_OUT_OF_RANGE = "project.musicVolume.outOfRange"
+    PROJECT_MUSIC_TRIM_NEGATIVE = "project.musicTrim.negative"
     PROJECT_INVALID = "project.invalid"
     PROJECT_SLIDE_DUPLICATE_ID = "project.slide.duplicateId"
     PROJECT_SLIDE_UNKNOWN_MEDIA = "project.slide.unknownMedia"
     PROJECT_SLIDE_FIRST_HAS_TRANSITION = "project.slide.firstHasTransition"
     PROJECT_SLIDE_UNKNOWN_TRANSITION = "project.slide.unknownTransition"
+    PROJECT_SLIDE_NOT_IMAGE = "project.slide.notImage"
+    PROJECT_MUSIC_DUPLICATE_ID = "project.music.duplicateId"
+    PROJECT_MUSIC_UNKNOWN_MEDIA = "project.music.unknownMedia"
+    PROJECT_MUSIC_NOT_AUDIO = "project.music.notAudio"
+    PROJECT_MUSIC_TRIM_END_BEYOND_FILE = "project.music.trimEndBeyondFile"
+    PROJECT_MUSIC_TRIM_START_NOT_BEFORE_END = "project.music.trimStartNotBeforeEnd"
+    PROJECT_MUSIC_TOO_SHORT = "project.music.tooShort"
     EXPORT_NOT_FOUND = "export.notFound"
     EXPORT_EMPTY_PROJECT = "export.emptyProject"
     EXPORT_MISSING_MEDIA = "export.missingMedia"
@@ -116,7 +125,7 @@ _SPECS: dict[str, ErrorSpec] = {
     ),
     # 409 on delete while a queued or running export uses the medium (design.md D5).
     "media.inUseByExport": ErrorSpec(
-        "The image cannot be deleted while it is being exported. "
+        "The medium cannot be deleted while it is being exported. "
         "Wait for the export to finish or cancel it first.",
         ("mediaId", "exportId"),
     ),
@@ -136,6 +145,13 @@ _SPECS: dict[str, ErrorSpec] = {
         "The transition duration must be a multiple of {step} s (is {value} s).",
         ("step", "value"),
     ),
+    "project.musicVolume.outOfRange": ErrorSpec(
+        "The music volume must be between {min} and {max} (is {value}).",
+        ("min", "max", "value"),
+    ),
+    "project.musicTrim.negative": ErrorSpec(
+        "The start and end of a music clip must be 0 s or later (is {value} s).", ("value",)
+    ),
     # --- Project: reference checks of PUT /api/project (422, ApiErrorWithIssues) --
     "project.invalid": ErrorSpec("The project is invalid: {summary}", ("count", "summary")),
     # Issues: `slide` is the 1-based position, `slideId` the slide's id.
@@ -154,6 +170,39 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.slide.unknownTransition": ErrorSpec(
         "Slide {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
         ("slide", "slideId", "transitionId"),
+    ),
+    "project.slide.notImage": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
+        ("slide", "slideId", "mediaId"),
+    ),
+    # Music issues: `clip` is the 1-based position, `clipId` the clip's id.
+    "project.music.duplicateId": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the ID is already used by music clip {firstClip}.",
+        ("clip", "clipId", "firstClip"),
+    ),
+    "project.music.unknownMedia": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        ("clip", "clipId", "mediaId"),
+    ),
+    "project.music.notAudio": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        ("clip", "clipId", "mediaId"),
+    ),
+    "project.music.trimEndBeyondFile": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond the end "
+        "of the file ({duration} s).",
+        ("clip", "clipId", "trimEnd", "duration"),
+    ),
+    # `end`: the effective end (trimEnd, or the file duration if trimEnd is null).
+    "project.music.trimStartNotBeforeEnd": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before "
+        "the end ({end} s).",
+        ("clip", "clipId", "trimStart", "end"),
+    ),
+    "project.music.tooShort": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s "
+        "(plays {length} s).",
+        ("clip", "clipId", "min", "length"),
     ),
     # --- Export: requests ---------------------------------------------------------
     "export.notFound": ErrorSpec("Export not found.", ("exportId",)),

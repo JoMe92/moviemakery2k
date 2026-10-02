@@ -52,7 +52,7 @@ async def put_project(
     try:
         return await store.save(
             project,
-            media_ids={m.id for m in media.list()},
+            media=media.list(),
             transition_ids={t.id for t in catalog.transitions},
         )
     except ProjectValidationError as exc:

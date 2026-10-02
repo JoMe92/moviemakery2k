@@ -154,7 +154,8 @@ async def delete_media(
     """Deletes a medium with its files and removes it from the project (cascade).
 
     All storyboard elements using this medium are dropped together with their
-    incoming transitions; the new first element has no transition.
+    incoming transitions; the new first element has no transition. All music
+    clips using it are dropped as well (the following clips move up).
 
     The response is 200 with the updated project (instead of 204) so that the
     client can adopt its state without another GET /api/project.

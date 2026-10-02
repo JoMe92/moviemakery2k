@@ -12,6 +12,7 @@ export type ImageItem = Schemas["ImageItem"];
 export type AudioItem = Schemas["AudioItem"];
 export type Project = Schemas["Project"];
 export type Slide = Schemas["Slide"];
+export type MusicClip = Schemas["MusicClip"];
 export type TransitionRef = Schemas["TransitionRef"];
 export type Transition = Schemas["Transition"];
 export type UploadResult = Schemas["MediaUploadSuccess"] | Schemas["MediaUploadFailure"];
