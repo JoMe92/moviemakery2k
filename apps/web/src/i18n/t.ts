@@ -66,3 +66,19 @@ export type Translate = <K extends MessageKey>(key: K, ...params: ParamsArg<K>) 
 export function translator(locale: Locale): Translate {
   return (key, ...params) => translate(locale, key, ...params);
 }
+
+/** True if `key` names a plain (non-plural) message, e.g. a key built at runtime. */
+export function isPlainMessageKey(key: string): key is MessageKey {
+  return typeof lookup(en, key) === "string";
+}
+
+/** Translates a key built at runtime; falls back to `fallback` when it does not exist. */
+export function translateDynamic(
+  locale: Locale,
+  key: string,
+  params: Params,
+  fallback: string,
+): string {
+  const value = lookup(CATALOGS[locale], key) ?? lookup(en, key);
+  return typeof value === "string" ? interpolate(value, params) : fallback;
+}

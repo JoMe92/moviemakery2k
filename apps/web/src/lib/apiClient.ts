@@ -45,106 +45,171 @@ export interface Api {
 /** Alle Backend-Zugriffe der Web-App. */
 export type AppApi = Api & ExportApi;
 
+/** Values an error message is built from (`params`, `ctx`, `errorParams`). */
+export type ErrorParams = Readonly<Record<string, string | number>>;
+
+/**
+ * Structured backend error (design.md D5): stable `code` (null if the backend
+ * sent none), its `params` and the English `message`. `issues` holds single
+ * rule violations (FastAPI's native 422 list or `project.invalid`).
+ */
+export interface ApiErrorInfo {
+  code: string | null;
+  params: ErrorParams;
+  message: string;
+  issues?: readonly ApiErrorInfo[];
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    /** Structured error for translation (localization design.md D5). */
+    readonly info?: ApiErrorInfo,
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
 
+function errorParams(value: unknown): ErrorParams {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, string | number> = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (typeof v === "string" || typeof v === "number") out[key] = v;
+  }
+  return out;
+}
+
+function str(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function issueOf(item: unknown): ApiErrorInfo | null {
+  if (!item || typeof item !== "object") return null;
+  const raw = item as Record<string, unknown>;
+  // Native FastAPI entry: `type` is the code, `ctx` the params, `msg` the message.
+  if ("msg" in raw || "type" in raw) {
+    return { code: str(raw.type) || null, params: errorParams(raw.ctx), message: str(raw.msg) };
+  }
+  return {
+    code: str(raw.code) || null,
+    params: errorParams(raw.params),
+    message: str(raw.message),
+  };
+}
+
 /**
- * Lesbare Meldung aus einem FastAPI-Fehlerrumpf: `detail` ist ein `ApiError`
- * (`{code, params, message}`, design.md D5; z. B. leeres Projekt, laufender
- * Export), FastAPIs Liste von Prüffehlern oder ein Text.
+ * Structured error from a FastAPI error body: `detail` is an `ApiError`
+ * (`{code, params, message}`, optionally with `issues`), FastAPI's native list
+ * of validation errors, or a plain text. Null if the body carries no error.
  */
-export function errorDetail(body: unknown): string | null {
+export function parseErrorBody(body: unknown): ApiErrorInfo | null {
   if (!body || typeof body !== "object" || !("detail" in body)) return null;
   const { detail } = body as { detail: unknown };
-  if (typeof detail === "string") return detail || null;
-  if (detail && typeof detail === "object" && "message" in detail) {
-    const { message } = detail as { message: unknown };
-    return typeof message === "string" && message ? message : null;
-  }
+  if (typeof detail === "string")
+    return detail ? { code: null, params: {}, message: detail } : null;
   if (Array.isArray(detail)) {
-    const messages = detail
-      .map((item) =>
-        item && typeof item === "object" && "msg" in item
-          ? String((item as { msg: unknown }).msg)
-          : "",
-      )
-      .filter(Boolean);
-    return messages.length > 0 ? messages.join(" ") : null;
+    const issues = detail.map(issueOf).filter((i): i is ApiErrorInfo => i !== null);
+    if (issues.length === 0) return null;
+    const message = issues
+      .map((i) => i.message)
+      .filter(Boolean)
+      .join(" ");
+    return { code: null, params: {}, message, issues };
+  }
+  if (detail && typeof detail === "object") {
+    const raw = detail as Record<string, unknown>;
+    const info: ApiErrorInfo = {
+      code: str(raw.code) || null,
+      params: errorParams(raw.params),
+      message: str(raw.message),
+    };
+    if (Array.isArray(raw.issues)) {
+      info.issues = raw.issues.map(issueOf).filter((i): i is ApiErrorInfo => i !== null);
+    }
+    return info.code || info.message ? info : null;
   }
   return null;
 }
 
+/** Readable (English) backend message of an error body, or null. */
+export function errorDetail(body: unknown): string | null {
+  return parseErrorBody(body)?.message || null;
+}
+
+/** Error for a failed request; the UI translates it via `client.requestFailed`. */
+function requestFailed(what: string, status: number, body?: unknown): ApiError {
+  const info = parseErrorBody(body);
+  if (info) return new ApiError(info.message || `${what} failed (${status})`, status, info);
+  const message = `${what} failed (${status})`;
+  return new ApiError(message, status, {
+    code: "client.requestFailed",
+    params: { status },
+    message,
+  });
+}
+
 function unwrap<T>(result: { data?: T; error?: unknown; response: Response }, what: string): T {
   if (result.data !== undefined) return result.data;
-  throw new ApiError(`${what} fehlgeschlagen (${result.response.status})`, result.response.status);
+  throw requestFailed(what, result.response.status, result.error);
 }
 
 export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetch(...a)): AppApi {
   const client = createClient<paths>({ baseUrl, fetch: fetchImpl });
   return {
     async health() {
-      return unwrap(await client.GET("/api/health"), "Health");
+      return unwrap(await client.GET("/api/health"), "Health check");
     },
     async catalog() {
-      return unwrap(await client.GET("/api/catalog/transitions"), "Katalog").transitions;
+      return unwrap(await client.GET("/api/catalog/transitions"), "Loading the catalog")
+        .transitions;
     },
     async listMedia() {
-      return unwrap(await client.GET("/api/media"), "Medienliste").items;
+      return unwrap(await client.GET("/api/media"), "Loading the media list").items;
     },
     async uploadMedia(file) {
       const body = new FormData();
       body.append("files", file, file.name);
       const res = await fetchImpl(`${baseUrl}/api/media`, { method: "POST", body });
-      if (!res.ok) throw new ApiError(`Upload fehlgeschlagen (${res.status})`, res.status);
+      if (!res.ok) {
+        const body: unknown = await res.json().catch(() => undefined);
+        throw requestFailed("Upload", res.status, body);
+      }
       const data = (await res.json()) as Schemas["MediaUploadResponse"];
       const first = data.items[0];
-      if (!first) throw new ApiError("Upload ohne Ergebnis");
+      if (!first) throw new ApiError("Upload returned no result");
       return first;
     },
     async deleteMedia(id) {
       const result = await client.DELETE("/api/media/{media_id}", {
         params: { path: { media_id: id } },
       });
-      return unwrap(result, "Löschen").project;
+      return unwrap(result, "Deleting the media item").project;
     },
     async getProject() {
-      return unwrap(await client.GET("/api/project"), "Projekt laden");
+      return unwrap(await client.GET("/api/project"), "Loading the project");
     },
     async putProject(project) {
-      return unwrap(await client.PUT("/api/project", { body: project }), "Projekt speichern");
+      return unwrap(await client.PUT("/api/project", { body: project }), "Saving the project");
     },
     async startExport(request) {
       const result = await client.POST("/api/exports", { body: request });
       if (result.data !== undefined) return result.data;
-      const status = result.response.status;
-      throw new ApiError(
-        errorDetail(result.error) ?? `Export starten fehlgeschlagen (${status})`,
-        status,
-      );
+      throw requestFailed("Starting the export", result.response.status, result.error);
     },
     async getExport(id) {
       const result = await client.GET("/api/exports/{export_id}", {
         params: { path: { export_id: id } },
       });
-      return unwrap(result, "Exportstatus");
+      return unwrap(result, "Loading the export status");
     },
     async cancelExport(id) {
       const result = await client.DELETE("/api/exports/{export_id}", {
         params: { path: { export_id: id } },
       });
       if (!result.response.ok) {
-        const status = result.response.status;
-        throw new ApiError(
-          errorDetail(result.error) ?? `Abbrechen fehlgeschlagen (${status})`,
-          status,
-        );
+        throw requestFailed("Cancelling the export", result.response.status, result.error);
       }
     },
     exportFileUrl(id) {
