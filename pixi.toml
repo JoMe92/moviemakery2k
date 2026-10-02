@@ -94,5 +94,6 @@ test-e2e = { cmd = "pytest -c e2e/pytest.ini e2e", depends-on = ["build", "e2e-b
 check-shaders = { cmd = "python scripts/check_shaders.py", description = "GLSL-ES-3.00-Shader kompilieren und mit dem Katalog abgleichen" }
 
 check-render-env = { cmd = "python scripts/check_render_env.py", description = "Export-Renderer: EGL/llvmpipe-Kontext, Testframe, FFmpeg libx264 + aac" }
+bench-export = { cmd = "python scripts/bench_export.py", description = "Export-Laufzeit: 12 Bilder à 5 s je Profil (Rendern und Kodieren)" }
 
 check = { depends-on = ["lint", "typecheck", "test", "check-shaders", "build"], description = "Quality-Gate: lint, typecheck, test, Shader, build" }
