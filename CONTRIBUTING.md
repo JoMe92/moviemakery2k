@@ -78,9 +78,10 @@ are welcome as plain pull requests.
 
 moviemakerY2K is an independent project inspired by the classic Movie Maker.
 Do **not** add any Microsoft material: no icons, bitmaps, sounds, fonts,
-help texts, screenshots of the original, `Parity.fx` or binaries. The XML
-files in `docs/research/sources/` are a development reference only; they are
-never shipped. Transitions and effects must be implemented from the documented
+help texts, screenshots of the original, `Parity.fx` or binaries. The original
+XML definitions are a development reference only: they are not in the
+repository (see `docs/research/sources/README.md` for links), local copies
+there are git-ignored, and they are never committed or shipped. Transitions and effects must be implemented from the documented
 parameters (see [the research notes](docs/research/movie-maker-reference.md)),
 and new effects go into the catalog plus a shader — never duplicated in the
 web app or the backend. Do not copy third-party shader code without checking
