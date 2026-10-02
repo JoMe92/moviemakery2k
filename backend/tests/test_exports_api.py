@@ -255,8 +255,8 @@ def test_no_gl_context_fails_with_message(
     assert final["status"] == "failed"
     assert final["errorCode"] == "export.glUnavailable"
     assert final["errorParams"] == {"reason": "Export not possible: no OpenGL 3.3 context (test)."}
-    assert final["error"] == MESSAGE_GL_UNAVAILABLE
-    assert final["error"].startswith("Export is not available on this system")
+    assert final["message"] == MESSAGE_GL_UNAVAILABLE
+    assert final["message"].startswith("Export is not available on this system")
     assert not _export_dir(settings, job["id"]).exists()
     res = client.get(f"/api/exports/{job['id']}/file")
     assert res.status_code == 409
@@ -324,7 +324,8 @@ def test_failed_job_carries_error_code(
     assert final["status"] == "failed"
     assert final["errorCode"] == code
     assert final["errorParams"] == params
-    assert final["error"] == message
+    assert final["message"] == message
+    assert "error" not in final
 
 
 # --- With rendering (GL + FFmpeg) ---------------------------------------------------
@@ -337,7 +338,8 @@ def test_export_runs_to_done_and_downloads(client: TestClient, settings: Setting
     job = _start(client, fileName="Grüße aus Köln.mp4")
     assert job["status"] == "queued" and job["progress"] == 0.0
     assert job["profile"] == "small" and job["fileName"] == "Grüße aus Köln"
-    assert job["error"] is None and job["createdAt"]
+    assert job["message"] is None and job["createdAt"]
+    assert "error" not in job
     assert job["errorCode"] is None and job["errorParams"] == {}
 
     progresses: list[float] = []

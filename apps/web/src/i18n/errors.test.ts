@@ -155,14 +155,14 @@ describe("error sources", () => {
     const upload = uploadFailureInfo({
       ok: false,
       filename: "a.gif",
-      error: "media.tooLarge",
+      errorCode: "media.tooLarge",
       errorParams: { maxMegabytes: 25 },
       message: "The file is too large (at most 25 MB).",
     });
     expect(translateError(upload, "de")).toBe("Die Datei ist zu groß (höchstens 25 MB).");
     const job = exportJob({
       status: "failed",
-      error: "FFmpeg failed with exit code 1.",
+      message: "FFmpeg failed with exit code 1.",
       errorCode: "export.ffmpegFailed",
       errorParams: { returnCode: 1 },
     });

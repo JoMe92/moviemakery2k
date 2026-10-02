@@ -264,7 +264,7 @@ describe("“Save Movie” wizard", () => {
   it("shows a failure in the error dialog and retries", async () => {
     const api = exportApi();
     api.getExport
-      .mockResolvedValueOnce(job({ status: "failed", error: GL_ERROR }))
+      .mockResolvedValueOnce(job({ status: "failed", message: GL_ERROR }))
       .mockResolvedValueOnce(job({ status: "done", progress: 1 }));
     setup(api);
     await toProgress();
@@ -439,7 +439,7 @@ describe("wizard in English and error codes", () => {
     api.getExport.mockResolvedValueOnce(
       job({
         status: "failed",
-        error: "Export is not available on this system: no OpenGL context …",
+        message: "Export is not available on this system: no OpenGL context …",
         errorCode: "export.glUnavailable",
         errorParams: { reason: "EGL: no display" },
       }),

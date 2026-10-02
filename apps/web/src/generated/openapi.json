@@ -6,9 +6,8 @@
         "description": "An error of the backend: stable code, params and English message (design.md D5).",
         "properties": {
           "code": {
-            "description": "Stable dotted error code, e.g. `export.emptyProject`",
-            "title": "Code",
-            "type": "string"
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable dotted error code, e.g. `export.emptyProject`"
           },
           "message": {
             "description": "English message; shown when the code is unknown",
@@ -47,9 +46,8 @@
         "description": "One rule violation of a request body, with the position of the offending value.",
         "properties": {
           "code": {
-            "description": "Stable dotted error code, e.g. `export.emptyProject`",
-            "title": "Code",
-            "type": "string"
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable dotted error code, e.g. `export.emptyProject`"
           },
           "loc": {
             "description": "Position in the body, e.g. [\"body\", \"slides\", 2]",
@@ -117,9 +115,8 @@
         "description": "An error that collects several rule violations (`project.invalid`).",
         "properties": {
           "code": {
-            "description": "Stable dotted error code, e.g. `export.emptyProject`",
-            "title": "Code",
-            "type": "string"
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable dotted error code, e.g. `export.emptyProject`"
           },
           "issues": {
             "items": {
@@ -203,6 +200,47 @@
         "title": "Body_upload_media_api_media_post",
         "type": "object"
       },
+      "ErrorCode": {
+        "description": "All stable error codes; part of the API contract as an OpenAPI enum (design.md D4).\n\nNever rename a code, add a new one instead.",
+        "enum": [
+          "media.notFound",
+          "media.tooManyFiles",
+          "media.unsupportedType",
+          "media.tooLarge",
+          "media.tooManyPixels",
+          "project.slideDuration.outOfRange",
+          "project.slideDuration.offGrid",
+          "project.transitionDuration.outOfRange",
+          "project.transitionDuration.offGrid",
+          "project.invalid",
+          "project.slide.duplicateId",
+          "project.slide.unknownMedia",
+          "project.slide.firstHasTransition",
+          "project.slide.unknownTransition",
+          "export.notFound",
+          "export.emptyProject",
+          "export.missingMedia",
+          "export.busy",
+          "export.notReady",
+          "export.fileName.empty",
+          "export.fileName.invalidChars",
+          "export.fileName.controlChars",
+          "export.fileName.invalid",
+          "export.fileName.tooLong",
+          "export.glUnavailable",
+          "export.noImages",
+          "export.ffmpegMissing",
+          "export.ffmpegStartFailed",
+          "export.ffmpegInputClosed",
+          "export.ffmpegInputClosedEarly",
+          "export.ffmpegFailed",
+          "export.renderFailed",
+          "export.saveFailed",
+          "export.unexpected"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
       "ExportJob": {
         "additionalProperties": false,
         "properties": {
@@ -211,29 +249,16 @@
             "title": "Createdat",
             "type": "string"
           },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "English message when `failed`, otherwise null",
-            "title": "Error"
-          },
           "errorCode": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/ErrorCode"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Stable error code when `failed` (design.md D5), otherwise null",
-            "title": "Errorcode"
+            "description": "Stable error code when `failed` (design.md D3), otherwise null"
           },
           "errorParams": {
             "additionalProperties": {
@@ -263,6 +288,18 @@
             "title": "Id",
             "type": "string"
           },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "English error message when `failed`, otherwise null",
+            "title": "Message"
+          },
           "profile": {
             "$ref": "#/components/schemas/ExportProfile"
           },
@@ -283,7 +320,9 @@
           "progress",
           "profile",
           "fileName",
-          "error",
+          "errorCode",
+          "errorParams",
+          "message",
           "createdAt"
         ],
         "title": "ExportJob",
@@ -472,10 +511,9 @@
       "MediaUploadFailure": {
         "additionalProperties": false,
         "properties": {
-          "error": {
-            "description": "Stable error code (design.md D5): media.unsupportedType, media.tooLarge, media.tooManyPixels",
-            "title": "Error",
-            "type": "string"
+          "errorCode": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels"
           },
           "errorParams": {
             "additionalProperties": {
@@ -513,7 +551,8 @@
         "required": [
           "filename",
           "ok",
-          "error",
+          "errorCode",
+          "errorParams",
           "message"
         ],
         "title": "MediaUploadFailure",

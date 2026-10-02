@@ -80,13 +80,13 @@ export function describeError(error: unknown, locale: Locale, offlineText?: stri
   return offlineText ?? translate(locale, "errors.client.offline");
 }
 
-/** Structured error of a failed upload result (`error` is the code). */
+/** Structured error of a failed upload result. */
 export function uploadFailureInfo(result: UploadFailure): ApiErrorInfo {
-  return { code: result.error, params: result.errorParams ?? {}, message: result.message };
+  return { code: result.errorCode, params: result.errorParams ?? {}, message: result.message };
 }
 
 /** Structured error of a failed export job, or null if it carries none. */
 export function jobFailureInfo(job: ExportJob): ApiErrorInfo | null {
-  if (!job.errorCode && !job.error) return null;
-  return { code: job.errorCode ?? null, params: job.errorParams ?? {}, message: job.error ?? "" };
+  if (!job.errorCode && !job.message) return null;
+  return { code: job.errorCode ?? null, params: job.errorParams ?? {}, message: job.message ?? "" };
 }

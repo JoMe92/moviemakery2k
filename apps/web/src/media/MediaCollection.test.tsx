@@ -112,7 +112,9 @@ describe("media collection", () => {
         f.name === "kaputt.jpg"
           ? {
               ok: false as const,
-              error: "unsupported" as const,
+              // A code outside the contract: the message is shown as-is.
+              errorCode: "unsupported" as never,
+              errorParams: {},
               filename: f.name,
               message: "Kein unterstütztes Bild.",
             }
@@ -286,7 +288,8 @@ describe("media collection", () => {
     const api = importApi({
       uploadMedia: vi.fn(async (f: File) => ({
         ok: false as const,
-        error: "media.unsupportedType",
+        errorCode: "media.unsupportedType" as const,
+        errorParams: {},
         filename: f.name,
         message: "Not a supported image (JPEG, PNG and WebP are allowed).",
       })),
