@@ -7,7 +7,7 @@ const slides = [s("1"), s("2"), s("3")];
 const media = { type: "media", mediaId: "x" } as const;
 
 describe("dropLogic", () => {
-  it("Spec: Bild zwischen erstes und zweites Element → Position 2", () => {
+  it("Spec: picture between first and second item → position 2", () => {
     expect(resolveDrop(media, { type: "slide", slideId: "1", after: true }, slides)).toEqual({
       kind: "insert",
       mediaId: "x",
@@ -20,7 +20,7 @@ describe("dropLogic", () => {
     });
   });
 
-  it("hängt hinter der letzten Kachel und im leeren Bildstreifen an", () => {
+  it("appends after the last tile and in the empty storyboard", () => {
     expect(insertionIndex({ type: "slide", slideId: "3", after: true }, slides)).toBe(3);
     expect(insertionIndex({ type: "strip" }, slides)).toBe(3);
     expect(insertionIndex({ type: "strip" }, [])).toBe(0);
@@ -28,7 +28,7 @@ describe("dropLogic", () => {
     expect(insertionIndex({ type: "slide", slideId: "weg", after: false }, slides)).toBeNull();
   });
 
-  it("Spec: drittes Element an die erste Position", () => {
+  it("Spec: third item to the first position", () => {
     expect(
       resolveDrop(
         { type: "slide", slideId: "3" },
@@ -38,7 +38,7 @@ describe("dropLogic", () => {
     ).toEqual({ kind: "move", from: 2, to: 0 });
   });
 
-  it("Umsortieren ins Leere hinter den Kacheln → ans Ende; ohne Ziel/auf sich selbst → nichts", () => {
+  it("reordering into the empty space after the tiles → to the end; no target/onto itself → nothing", () => {
     expect(resolveDrop({ type: "slide", slideId: "1" }, { type: "strip" }, slides)).toEqual({
       kind: "move",
       from: 0,
@@ -54,13 +54,13 @@ describe("dropLogic", () => {
     ).toEqual({ kind: "none" });
   });
 
-  it("formatiert Dauern deutsch mit zwei Nachkommastellen", () => {
+  it("formats durations in German with two decimal places", () => {
     expect(formatDuration(5, "de")).toBe("5,00 s");
     expect(formatDuration(2.25, "de")).toBe("2,25 s");
     expect(formatDuration(2.5, "en")).toBe("2.50 s");
   });
 
-  it("Übergang auf einen Platz → setzen (ersetzt); nicht am ersten Bild, nicht auf Kacheln", () => {
+  it("transition onto a slot → set (replaces); not on the first picture, not on tiles", () => {
     const t = { type: "transition", transitionId: "circle" } as const;
     expect(resolveDrop(t, { type: "transitionSlot", slideId: "2" }, slides)).toEqual({
       kind: "setTransition",

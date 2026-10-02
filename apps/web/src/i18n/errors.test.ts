@@ -44,16 +44,16 @@ function lookup(catalog: object, key: string): unknown {
   }, catalog);
 }
 
-describe("Fehlercodes des Backends", () => {
+describe("backend error codes", () => {
   const codes = backendCodes();
 
-  it("liest die Codeliste aus errors.py", () => {
+  it("reads the code list from errors.py", () => {
     expect(codes.size).toBeGreaterThanOrEqual(30);
     expect(codes.has("export.emptyProject")).toBe(true);
     expect(codes.get("export.ffmpegInputClosed")).toEqual(["frame", "total"]);
   });
 
-  it("jeder Code hat einen deutschen und englischen Text mit nur bekannten Platzhaltern", () => {
+  it("every code has a German and an English text with only known placeholders", () => {
     for (const [code, params] of codes) {
       for (const catalog of [de, en]) {
         const text = lookup(catalog, `errors.${code}`);
@@ -66,7 +66,7 @@ describe("Fehlercodes des Backends", () => {
 });
 
 describe("translateError", () => {
-  it("übersetzt bekannte Codes mit Parametern in beiden Sprachen", () => {
+  it("translates known codes with params in both languages", () => {
     const info = { code: "export.emptyProject", params: {}, message: "Cannot export …" };
     expect(translateError(info, "de")).toBe("Export nicht möglich: Der Bildstreifen ist leer.");
     expect(translateError(info, "en")).toBe("Cannot export: the storyboard is empty.");
@@ -83,7 +83,7 @@ describe("translateError", () => {
     );
   });
 
-  it("zeigt bei unbekanntem Code die englische Meldung, ohne Meldung einen allgemeinen Text", () => {
+  it("shows the English message for an unknown code, a general text without a message", () => {
     expect(translateError({ code: "x.new", params: {}, message: "Backend says no." }, "de")).toBe(
       "Backend says no.",
     );
@@ -92,7 +92,7 @@ describe("translateError", () => {
     );
   });
 
-  it("übersetzt FastAPIs Liste: eigene Codes einzeln, fremde allgemein", () => {
+  it("translates FastAPI's list: own codes individually, foreign ones generally", () => {
     const info: ApiErrorInfo = {
       code: null,
       params: {},
@@ -108,7 +108,7 @@ describe("translateError", () => {
     );
   });
 
-  it("baut die Zusammenfassung von project.invalid aus den übersetzten Einzelfehlern", () => {
+  it("builds the project.invalid summary from the translated individual errors", () => {
     const info = {
       code: "project.invalid",
       params: { count: 1, summary: "Slide 2 …" },
@@ -127,8 +127,8 @@ describe("translateError", () => {
   });
 });
 
-describe("Fehlerquellen", () => {
-  it("describeError: ApiError übersetzt, sonst Backend nicht erreichbar", () => {
+describe("error sources", () => {
+  it("describeError: ApiError translated, otherwise backend unreachable", () => {
     const known = new ApiError("Too many", 413, {
       code: "media.tooManyFiles",
       params: { max: 50, count: 51 },
@@ -151,7 +151,7 @@ describe("Fehlerquellen", () => {
     );
   });
 
-  it("vereinheitlicht `error` (Upload) und `errorCode` (Export-Job)", () => {
+  it("unifies `error` (upload) and `errorCode` (export job)", () => {
     const upload = uploadFailureInfo({
       ok: false,
       filename: "a.gif",

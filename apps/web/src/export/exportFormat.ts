@@ -1,6 +1,6 @@
 /**
- * Reine Hilfsfunktionen des Assistenten „Film speichern“ (design.md D6):
- * Dateinamenprüfung, Größenschätzung, Prozent und Restzeit. Texts come from
+ * Pure helpers of the "Save Movie" wizard (design.md D6): file name check,
+ * size estimate, percentage and remaining time. Texts come from
  * the message catalogs; file name errors use the backend's error codes.
  */
 import { formatNumber } from "../i18n/format";
@@ -9,13 +9,13 @@ import { translate } from "../i18n/t";
 import type { ApiErrorInfo, ExportProfile } from "../lib/apiClient";
 
 export const FILE_EXTENSION = ".mp4";
-/** Wie im Backend (`normalize_file_name`). */
+/** As in the backend (`normalize_file_name`). */
 export const MAX_FILE_NAME_LENGTH = 120;
 export const FORBIDDEN_CHARS = '/\\:*?"<>|';
 
 export interface ProfileOption {
   value: ExportProfile;
-  /** Gemessene mittlere Gesamtbitrate in Bit/s (Video + stumme Tonspur). */
+  /** Measured average total bit rate in bit/s (video + silent audio track). */
   bitrate: number;
 }
 
@@ -33,9 +33,9 @@ const fail = (code: string, params: Record<string, string | number> = {}): FileN
 });
 
 /**
- * Prüft den Dateinamen wie das Backend: Rand-Leerraum und eine angehängte
- * Endung `.mp4` werden entfernt; leere Namen, `/ \ : * ? " < > |`,
- * Steuerzeichen und zu lange Namen werden abgelehnt.
+ * Checks the file name like the backend: surrounding whitespace and a trailing
+ * `.mp4` extension are removed; empty names, `/ \ : * ? " < > |`,
+ * control characters and names that are too long are rejected.
  */
 export function checkFileName(raw: string): FileNameCheck {
   let name = raw.trim();
@@ -47,7 +47,7 @@ export function checkFileName(raw: string): FileNameCheck {
   if (forbidden.length > 0) {
     return fail("export.fileName.invalidChars", { chars: forbidden.join(" ") });
   }
-  // Steuer- und Formatzeichen (Unicode Cc/Cf) lehnt auch das Backend ab.
+  // The backend also rejects control and format characters (Unicode Cc/Cf).
   if (/[\p{Cc}\p{Cf}]/u.test(name)) {
     return fail("export.fileName.controlChars");
   }
@@ -58,7 +58,7 @@ export function checkFileName(raw: string): FileNameCheck {
   return { ok: true, name };
 }
 
-/** Geschätzte Dateigröße in Byte aus Dauer (Sekunden) und Profil. */
+/** Estimated file size in bytes from duration (seconds) and profile. */
 export function estimateBytes(duration: number, profile: ExportProfile): number {
   const option = PROFILES.find((p) => p.value === profile) ?? PROFILES[0];
   return (Math.max(0, duration) * (option?.bitrate ?? 0)) / 8;
@@ -75,22 +75,22 @@ export function formatSize(bytes: number, locale: Locale): string {
   });
 }
 
-/** Ganze Prozent 0…100 (abgerundet, damit 100 % erst am Ende erscheint). */
+/** Whole percent 0…100 (rounded down so 100 % only appears at the end). */
 export function percent(progress: number): number {
   return Math.min(100, Math.max(0, Math.floor(progress * 100)));
 }
 
-/** Ab diesem Fortschritt und dieser Laufzeit ist die Restzeitschätzung brauchbar. */
+/** From this progress and run time on, the remaining-time estimate is usable. */
 const MIN_PROGRESS = 0.02;
 const MIN_ELAPSED_MS = 1000;
 
-/** Geschätzte Restzeit in Sekunden oder null, solange zu wenig Daten vorliegen. */
+/** Estimated remaining time in seconds, or null while there is too little data. */
 export function estimateRemaining(elapsedMs: number, progress: number): number | null {
   if (progress < MIN_PROGRESS || elapsedMs < MIN_ELAPSED_MS || progress >= 1) return null;
   return ((elapsedMs / 1000) * (1 - progress)) / progress;
 }
 
-/** "ca. 45 Sek." / "approx. 45 sec", "ca. 2 Min. 5 Sek." or "wird berechnet…". */
+/** "ca. 45 Sek." / "approx. 45 sec", "ca. 2 Min. 5 Sek." or "calculating…". */
 export function formatRemaining(seconds: number | null, locale: Locale): string {
   if (seconds === null) return translate(locale, "export.remainingCalculating");
   const total = Math.max(1, Math.ceil(seconds));

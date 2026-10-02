@@ -29,8 +29,8 @@ async function openFileMenu(user: ReturnType<typeof userEvent.setup>) {
   return screen.getByRole("menu", { name: "Datei" });
 }
 
-describe("Einstiege „Film speichern“ (Spec app-shell)", () => {
-  it("Spec: Leerer Bildstreifen – beide Einstiege deaktiviert", async () => {
+describe("“Save Movie” entry points (spec app-shell)", () => {
+  it("Spec: empty storyboard – both entry points disabled", async () => {
     const { user, store } = await setup([]);
 
     expect(taskLink()).toHaveAttribute("aria-disabled", "true");
@@ -46,7 +46,7 @@ describe("Einstiege „Film speichern“ (Spec app-shell)", () => {
     expect(wizard()).toBeNull();
   });
 
-  it("„Im Web veröffentlichen“ bleibt auch mit Bildern deaktiviert", async () => {
+  it("“Publish to the web” stays disabled even with pictures", async () => {
     const { user } = await setup([slide("s1", "a")]);
     const publish = screen.getByRole("button", { name: "Im Web veröffentlichen" });
     expect(publish).toHaveAttribute("aria-disabled", "true");
@@ -54,7 +54,7 @@ describe("Einstiege „Film speichern“ (Spec app-shell)", () => {
     expect(wizard()).toBeNull();
   });
 
-  it("Spec: Film fertig stellen – Aufgabe öffnet den Assistenten im Schritt „Dateiname“", async () => {
+  it("Spec: finish movie – the task opens the wizard at the “File name” step", async () => {
     const { user, store } = await setup([slide("s1", "a")]);
 
     expect(taskLink()).not.toHaveAttribute("aria-disabled");
@@ -70,7 +70,7 @@ describe("Einstiege „Film speichern“ (Spec app-shell)", () => {
     expect(taskLink()).toHaveFocus();
   });
 
-  it("Spec: Film speichern über das Menü (Maus)", async () => {
+  it("Spec: save movie via the menu (mouse)", async () => {
     const { user } = await setup([slide("s1", "a")]);
     const menu = await openFileMenu(user);
     const item = within(menu).getByRole("menuitem", { name: "Film speichern…" });
@@ -80,7 +80,7 @@ describe("Einstiege „Film speichern“ (Spec app-shell)", () => {
     expect(wizard()).not.toBeNull();
   });
 
-  it("Spec: Film speichern über das Menü (Tastatur)", async () => {
+  it("Spec: save movie via the menu (keyboard)", async () => {
     const { user } = await setup([slide("s1", "a")]);
     const datei = screen.getByRole("menuitem", { name: "Datei" });
     datei.focus();
@@ -100,7 +100,7 @@ describe("Einstiege „Film speichern“ (Spec app-shell)", () => {
     expect(screen.getByRole("textbox", { name: "Dateiname:" })).toHaveFocus();
   });
 
-  it("folgt Änderungen am Bildstreifen", async () => {
+  it("follows changes to the storyboard", async () => {
     const { user, store } = await setup([slide("s1", "a")]);
     expect(taskLink()).not.toHaveAttribute("aria-disabled");
 

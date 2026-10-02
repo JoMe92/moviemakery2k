@@ -6,8 +6,8 @@ import { Button } from "../ui/Button";
 import styles from "./UploadPanel.module.css";
 
 /**
- * Fortschritt und Fehler des laufenden Imports unten in der Sammlung.
- * Fehler bleiben bis „Schließen“ stehen; ein fehlerfreier Import räumt sich selbst ab.
+ * Progress and errors of the running import at the bottom of the collection.
+ * Errors stay until "Close"; an error-free import clears itself.
  */
 export function UploadPanel() {
   const { t, locale } = useT();

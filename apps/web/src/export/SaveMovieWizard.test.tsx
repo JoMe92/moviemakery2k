@@ -28,7 +28,7 @@ function exportApi(overrides: Partial<ExportApi> = {}) {
     cancelExport: vi.fn(async () => undefined),
     exportFileUrl: vi.fn((id: string) => `/api/exports/${id}/file`),
   };
-  // Überschreibungen sind in den Tests ebenfalls vi.fn()-Mocks.
+  // Overrides in the tests are vi.fn() mocks as well.
   return { ...api, ...overrides } as typeof api;
 }
 
@@ -58,7 +58,7 @@ function setup(api = exportApi(), duration = 45) {
   return { ...view, api, onClose, download, prepare };
 }
 
-/** Uhr vorstellen und ausstehende Abfragen abschließen. */
+/** Advance the clock and settle pending requests. */
 const tick = (ms = POLL_INTERVAL_MS) => act(() => vi.advanceTimersByTimeAsync(ms));
 
 const wizard = () => screen.getByRole("dialog", { name: WIZARD_TITLE });
@@ -67,8 +67,8 @@ const nameInput = () => screen.getByRole("textbox", { name: "Dateiname:" });
 const progressbar = () => screen.getByRole("progressbar", { name: "Exportfortschritt" });
 
 /*
- * Mit Vitest-Fake-Timern hängt userEvent (RTL wartet intern auf setTimeout 0),
- * daher hier fireEvent; die Tastaturbedienung prüft ein Test mit echten Timern.
+ * With Vitest fake timers userEvent hangs (RTL waits internally on setTimeout 0),
+ * hence fireEvent here; a test with real timers covers keyboard operation.
  */
 const click = (name: string) => fireEvent.click(button(name));
 const pressEscape = () => fireEvent.keyDown(document.activeElement ?? wizard(), { key: "Escape" });
@@ -94,8 +94,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("Assistent „Film speichern“", () => {
-  it("speichert mit Standardwerten und bietet „Mein Film.mp4“ zum Herunterladen an", async () => {
+describe("“Save Movie” wizard", () => {
+  it("saves with default values and offers “Mein Film.mp4” for download", async () => {
     const api = exportApi();
     api.getExport
       .mockResolvedValueOnce(job({ progress: 0.25 }))
@@ -134,7 +134,7 @@ describe("Assistent „Film speichern“", () => {
     await tick();
     expect(progressbar()).toHaveAttribute("aria-valuenow", "25");
     expect(screen.getByText("25 % abgeschlossen")).toBeInTheDocument();
-    // 0,5 s Laufzeit: noch zu wenig Daten für eine Schätzung.
+    // 0.5 s run time: still too little data for an estimate.
     expect(screen.getByText("Verbleibende Zeit: wird berechnet…")).toBeInTheDocument();
 
     await tick();
@@ -147,7 +147,7 @@ describe("Assistent „Film speichern“", () => {
     const downloadButton = button("Film herunterladen");
     expect(downloadButton).toHaveFocus();
 
-    // Nach „done“ wird nicht weiter abgefragt.
+    // After "done", polling stops.
     await tick(POLL_INTERVAL_MS * 4);
     expect(api.getExport).toHaveBeenCalledTimes(3);
 
@@ -160,7 +160,7 @@ describe("Assistent „Film speichern“", () => {
     expect(api.cancelExport).not.toHaveBeenCalled();
   });
 
-  it("deaktiviert „Weiter“ bei unerlaubten Zeichen und nennt sie", async () => {
+  it("disables “Next” for invalid characters and names them", async () => {
     const { api } = setup();
 
     typeName("Urlaub/2003");
@@ -182,7 +182,7 @@ describe("Assistent „Film speichern“", () => {
     expect(api.startExport).not.toHaveBeenCalled();
   });
 
-  it("schließt sich beim Abbrechen vor dem Start ohne Export", async () => {
+  it("closes on cancel before the start without exporting", async () => {
     const { api, onClose } = setup();
     click("Weiter");
     click("Zurück");
@@ -196,14 +196,14 @@ describe("Assistent „Film speichern“", () => {
     expect(api.cancelExport).not.toHaveBeenCalled();
   });
 
-  it("schließt sich mit Escape vor dem Start", async () => {
+  it("closes with Escape before the start", async () => {
     const { api, onClose } = setup();
     pressEscape();
     expect(onClose).toHaveBeenCalledOnce();
     expect(api.startExport).not.toHaveBeenCalled();
   });
 
-  it("bricht einen laufenden Export nach Rückfrage ab", async () => {
+  it("cancels a running export after confirmation", async () => {
     const { api, onClose } = setup();
     await toProgress();
     await tick();
@@ -229,7 +229,7 @@ describe("Assistent „Film speichern“", () => {
     expect(api.getExport).toHaveBeenCalledTimes(2);
   });
 
-  it("fragt auch bei Escape während des Exports nach", async () => {
+  it("also asks for confirmation on Escape during the export", async () => {
     const { onClose } = setup();
     await toProgress();
     pressEscape();
@@ -237,7 +237,7 @@ describe("Assistent „Film speichern“", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("verwirft einen Export, der während des Startens abgebrochen wurde", async () => {
+  it("discards an export that was cancelled while starting", async () => {
     let resolveStart: (job: ExportJob) => void = () => undefined;
     const api = exportApi({
       startExport: vi.fn(
@@ -261,7 +261,7 @@ describe("Assistent „Film speichern“", () => {
     expect(api.getExport).not.toHaveBeenCalled();
   });
 
-  it("zeigt einen Fehlschlag im Fehlerdialog und versucht es erneut", async () => {
+  it("shows a failure in the error dialog and retries", async () => {
     const api = exportApi();
     api.getExport
       .mockResolvedValueOnce(job({ status: "failed", error: GL_ERROR }))
@@ -284,7 +284,7 @@ describe("Assistent „Film speichern“", () => {
     expect(button("Film herunterladen")).toBeInTheDocument();
   });
 
-  it("kehrt nach „Schließen“ im Fehlerdialog zur Qualität zurück", async () => {
+  it("returns to the quality step after “Close” in the error dialog", async () => {
     const api = exportApi({
       getExport: vi.fn(async () => {
         throw new TypeError("Failed to fetch");
@@ -295,7 +295,7 @@ describe("Assistent „Film speichern“", () => {
     await tick();
     expect(screen.getByRole("dialog", { name: ERROR_TITLE })).toHaveTextContent(OFFLINE_MESSAGE);
 
-    // Der Titelleisten-Knopf heißt ebenfalls „Schließen“: den Text-Knopf im Fuß wählen.
+    // The title bar button is also named "Close": pick the text button in the footer.
     const closeButton = screen.getByText("Schließen").closest("button");
     if (!closeButton) throw new Error("Schließen fehlt");
     fireEvent.click(closeButton);
@@ -306,7 +306,7 @@ describe("Assistent „Film speichern“", () => {
     expect(api.getExport).toHaveBeenCalledOnce();
   });
 
-  it("meldet einen bereits laufenden Export (409) und ein leeres Projekt (422)", async () => {
+  it("reports an export already running (409) and an empty project (422)", async () => {
     const busy = "Es läuft bereits ein Export. Bitte warten oder ihn zuerst abbrechen.";
     const empty = "Export nicht möglich: Der Bildstreifen ist leer.";
     const api = exportApi({
@@ -325,7 +325,7 @@ describe("Assistent „Film speichern“", () => {
     expect(screen.getByRole("dialog", { name: ERROR_TITLE })).toHaveTextContent(empty);
   });
 
-  it("beendet die Abfragen beim Aushängen", async () => {
+  it("stops polling on unmount", async () => {
     const { api, unmount } = setup();
     await toProgress();
     await tick();
@@ -336,11 +336,11 @@ describe("Assistent „Film speichern“", () => {
   });
 });
 
-describe("Assistent auf Englisch und Fehlercodes", () => {
+describe("wizard in English and error codes", () => {
   const apiError = (code: string, params: Record<string, string | number>, message: string) =>
     new ApiError(message, 422, { code, params, message });
 
-  it("zeigt alle Schritte auf Englisch mit englischer Größenangabe", async () => {
+  it("shows all steps in English with an English size estimate", async () => {
     localStorage.setItem("mmy.locale", "en");
     const api = exportApi();
     api.getExport.mockResolvedValueOnce(job({ status: "done", progress: 1, fileName: "My Movie" }));
@@ -373,7 +373,7 @@ describe("Assistent auf Englisch und Fehlercodes", () => {
     expect(button("Finish")).toBeEnabled();
   });
 
-  it("nennt ungültige Dateinamen auf Englisch", () => {
+  it("names invalid file names in English", () => {
     localStorage.setItem("mmy.locale", "en");
     setup();
     fireEvent.change(screen.getByRole("textbox", { name: "File name:" }), {
@@ -388,7 +388,7 @@ describe("Assistent auf Englisch und Fehlercodes", () => {
   it.each([
     ["de", "Fehler beim Speichern des Films", "Export nicht möglich: Der Bildstreifen ist leer."],
     ["en", "Error Saving the Movie", "Cannot export: the storyboard is empty."],
-  ])("übersetzt den bekannten Code export.emptyProject (%s)", async (locale, title, text) => {
+  ])("translates the known code export.emptyProject (%s)", async (locale, title, text) => {
     localStorage.setItem("mmy.locale", locale);
     const api = exportApi({
       startExport: vi
@@ -402,7 +402,7 @@ describe("Assistent auf Englisch und Fehlercodes", () => {
     expect(screen.getByRole("dialog", { name: title })).toHaveTextContent(text);
   });
 
-  it("zeigt bei unbekanntem Code die englische Meldung des Backends", async () => {
+  it("shows the backend's English message for an unknown code", async () => {
     const api = exportApi({
       startExport: vi
         .fn()
@@ -415,7 +415,7 @@ describe("Assistent auf Englisch und Fehlercodes", () => {
     );
   });
 
-  it("übersetzt FastAPIs 422-Liste mit unserem Code in `type`", async () => {
+  it("translates FastAPI's 422 list with our code in `type`", async () => {
     const message = "The file name is too long (at most 120 characters).";
     const api = exportApi({
       startExport: vi.fn().mockRejectedValue(
@@ -434,7 +434,7 @@ describe("Assistent auf Englisch und Fehlercodes", () => {
     );
   });
 
-  it("übersetzt den Jobfehler export.glUnavailable über errorCode", async () => {
+  it("translates the job error export.glUnavailable via errorCode", async () => {
     const api = exportApi();
     api.getExport.mockResolvedValueOnce(
       job({
@@ -455,12 +455,12 @@ describe("Assistent auf Englisch und Fehlercodes", () => {
   });
 });
 
-describe("Tastaturbedienung (echte Timer)", () => {
+describe("keyboard operation (real timers)", () => {
   beforeEach(() => {
     vi.useRealTimers();
   });
 
-  it("lässt sich vollständig per Tastatur bedienen", async () => {
+  it("can be operated entirely by keyboard", async () => {
     const api = exportApi();
     api.getExport.mockResolvedValue(job({ status: "done", progress: 1, profile: "small" }));
     const { download, onClose } = setup(api);
@@ -472,7 +472,7 @@ describe("Tastaturbedienung (echte Timer)", () => {
     expect(high).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("radio", { name: /Kleine Datei/ })).toBeChecked();
-    // Tab: Zurück → Weiter (Fokusfalle des Dialogs bleibt dabei im Assistenten).
+    // Tab: Back → Next (the dialog's focus trap keeps focus in the wizard).
     await user.tab();
     await user.tab();
     expect(button("Weiter")).toHaveFocus();
@@ -488,8 +488,8 @@ describe("Tastaturbedienung (echte Timer)", () => {
   });
 });
 
-describe("Assistent über den App-Store", () => {
-  it("öffnet sich nur mit Bildern und schätzt die Größe aus der Gesamtdauer", async () => {
+describe("wizard via the app store", () => {
+  it("opens only with pictures and estimates the size from the total duration", async () => {
     const store = createAppStore(
       mockApi({
         getProject: vi.fn(async () => ({

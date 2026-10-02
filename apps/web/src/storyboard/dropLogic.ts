@@ -1,23 +1,23 @@
 /**
- * Reine Drop-Logik des Storyboards (Spec slideshow-project „Bilder in den
- * Bildstreifen ziehen“, „Bildstreifen bearbeiten“). Unabhängig von dnd-kit testbar.
+ * Pure drop logic of the storyboard (spec slideshow-project "Drag pictures into
+ * the storyboard", "Edit the storyboard"). Testable independently of dnd-kit.
  */
 import { formatNumber } from "../i18n/format";
 import type { Locale } from "../i18n/locale";
 import { translate } from "../i18n/t";
 import type { Slide } from "../lib/apiClient";
 
-/** Daten der ziehbaren Elemente (dnd-kit `data`). */
+/** Data of the draggable items (dnd-kit `data`). */
 export type DragItem =
   | { type: "media"; mediaId: string }
   | { type: "slide"; slideId: string }
   | { type: "transition"; transitionId: string };
 
-/** Ziel unter dem Zeiger: eine Kachel (mit Seite) oder der leere Bildstreifen. */
+/** Target under the pointer: a tile (with side) or the empty storyboard. */
 export type DropTarget =
   | { type: "slide"; slideId: string; after: boolean }
   | { type: "strip" }
-  /** Übergangsplatz vor dem Element `slideId` (nur für Übergänge aus dem Katalog). */
+  /** Transition slot before the item `slideId` (only for transitions from the catalog). */
   | { type: "transitionSlot"; slideId: string };
 
 export type DropAction =
@@ -31,7 +31,7 @@ export const mediaDraggableId = (mediaId: string) => `media:${mediaId}`;
 export const transitionDraggableId = (transitionId: string) => `transition:${transitionId}`;
 export const transitionSlotId = (slideId: string) => `slot:${slideId}`;
 
-/** Einfügeposition (0…n) für ein Bild aus der Sammlung; null, wenn kein gültiges Ziel. */
+/** Insertion position (0…n) for a picture from the collection; null if there is no valid target. */
 export function insertionIndex(target: DropTarget | null, slides: readonly Slide[]): number | null {
   if (!target || target.type === "transitionSlot") return null;
   if (target.type === "strip") return slides.length;
@@ -41,11 +41,11 @@ export function insertionIndex(target: DropTarget | null, slides: readonly Slide
 }
 
 /**
- * Bild aus der Sammlung → Einfügen an der Einfügemarke.
- * Kachel aus dem Bildstreifen → Umsortieren (Semantik wie arrayMove: Ziel ist
- * der Index der Kachel, über der losgelassen wird; leerer Bereich → ans Ende).
- * Übergang aus dem Katalog → auf einen Übergangsplatz setzen (ersetzt einen
- * vorhandenen); das erste Element hat keinen Platz.
+ * Picture from the collection → insert at the insertion marker.
+ * Tile from the storyboard → reorder (semantics like arrayMove: the target is
+ * the index of the tile it is dropped on; empty area → to the end).
+ * Transition from the catalog → set on a transition slot (replaces an
+ * existing one); the first item has no slot.
  */
 export function resolveDrop(
   item: DragItem | null,

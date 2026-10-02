@@ -19,9 +19,9 @@ type Target = { kind: "slide" | "transition"; slideId: string };
 type MenuState = Target & { x: number; y: number };
 
 /**
- * Bildstreifen im Storyboard: sortierbare Kacheln mit Übergangsplätzen
- * dazwischen; nimmt Bilder aus der Sammlung an der Einfügemarke auf.
- * Eigenschaftendialoge für Bilddauer und Übergang.
+ * Storyboard strip: sortable tiles with transition slots in between; accepts
+ * pictures from the collection at the insertion marker.
+ * Properties dialogs for picture duration and transition.
  */
 export function StoryboardStrip() {
   const { t, locale } = useT();
@@ -35,7 +35,7 @@ export function StoryboardStrip() {
   const setTransitionDuration = useAppStore((s) => s.setTransitionDuration);
   const removeTransition = useAppStore((s) => s.removeTransition);
   const insertIndex = useInsertIndex();
-  // Während der Wiedergabe: das gerade sichtbare Bild (ändert sich nur beim Bildwechsel).
+  // During playback: the picture currently visible (changes only when the picture changes).
   const playingIndex = useAppStore((s) =>
     s.playback.playing ? slideIndexAt(timelineOf(s.slides), s.playback.time) : null,
   );

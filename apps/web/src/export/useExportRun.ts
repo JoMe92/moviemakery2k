@@ -1,7 +1,7 @@
 /**
- * Ablauf eines Exports für den Assistenten (design.md D5/D6): starten, alle
- * 500 ms den Status abfragen, abbrechen. Abfragen enden bei `done`, `failed`,
- * Abbruch, Zurücksetzen und beim Aushängen der Komponente.
+ * Flow of an export for the wizard (design.md D5/D6): start, poll the status
+ * every 500 ms, cancel. Polling ends on `done`, `failed`, cancel, reset and
+ * when the component unmounts.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeError, jobFailureInfo, translateError } from "../i18n/errors";
@@ -44,13 +44,13 @@ export function failureMessage(failure: ExportFailure, locale: Locale): string {
 }
 
 export interface UseExportRunOptions {
-  /** Vor dem Start ausführen, z. B. ausstehende Projektänderungen speichern (Schnappschuss). */
+  /** Run before starting, e.g. save pending project changes (snapshot). */
   prepare?: () => Promise<void>;
 }
 
 export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = {}) {
   const [run, setRun] = useState<ExportRun>({ phase: "idle" });
-  /** Jede Erhöhung macht laufende Anfragen und Timer ungültig. */
+  /** Every increment invalidates running requests and timers. */
   const generation = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const jobId = useRef<string | null>(null);
@@ -117,7 +117,7 @@ export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = 
         return;
       }
       if (gen !== generation.current) {
-        // Während des Startens abgebrochen: den gerade begonnenen Export verwerfen.
+        // Cancelled while starting: discard the export that just began.
         void api.cancelExport(job.id).catch(() => undefined);
         return;
       }
@@ -129,7 +129,7 @@ export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = 
     [api, poll, prepare, stop],
   );
 
-  /** Abfragen beenden und den laufenden Export im Backend abbrechen. */
+  /** Stop polling and cancel the running export in the backend. */
   const cancel = useCallback(async () => {
     stop();
     const id = jobId.current;
@@ -138,7 +138,7 @@ export function useExportRun(api: ExportApi, { prepare }: UseExportRunOptions = 
     if (id) await api.cancelExport(id).catch(() => undefined);
   }, [api, stop]);
 
-  /** Zurück in den Ruhezustand, ohne das Backend zu befragen. */
+  /** Back to the idle state without querying the backend. */
   const reset = useCallback(() => {
     stop();
     jobId.current = null;

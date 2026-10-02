@@ -20,7 +20,7 @@ interface MediaTileProps {
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
 }
 
-/** Kachel der Sammlung, per dnd-kit ins Storyboard ziehbar (Zeiger und Tastatur). */
+/** Collection tile, draggable into the storyboard via dnd-kit (pointer and keyboard). */
 function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTileProps) {
   const { t } = useT();
   const data: DragItem = { type: "media", mediaId: item.id };
@@ -29,7 +29,7 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
     data,
     attributes: { roleDescription: t("media.draggable") },
   });
-  // aria-pressed bleibt die Auswahl der Kachel (nicht der Ziehzustand von dnd-kit).
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   return (
     <Tile
@@ -62,8 +62,8 @@ interface MenuState {
 }
 
 /**
- * Sammlung „Meine Bilder“: Kacheln in Importreihenfolge. Doppelklick hängt
- * das Bild ans Storyboard an; Entf oder Kontextmenü löscht nach Rückfrage.
+ * "My Pictures" collection: tiles in import order. Double-click appends the
+ * picture to the storyboard; Delete or the context menu deletes after confirmation.
  */
 export function MediaCollection() {
   const { t } = useT();
@@ -112,7 +112,7 @@ export function MediaCollection() {
       await deleteMedia(item.id);
       setSelectedId(neighbour?.id ?? null);
       setPendingDelete(null);
-      // Nach dem Schließen des Dialogs die Nachbarkachel fokussieren.
+      // After the dialog closes, focus the neighbouring tile.
       if (neighbour) setTimeout(() => tiles.current.get(neighbour.id)?.focus(), 0);
     } catch {
       setPendingDelete(null);

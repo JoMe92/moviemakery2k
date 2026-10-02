@@ -35,7 +35,7 @@ import {
 import { StoryboardPointerSensor } from "./pointerSensor";
 import styles from "./StoryboardStrip.module.css";
 
-/** Einfügemarke für Bilder aus der Sammlung (0…n) oder null. */
+/** Insertion marker for pictures from the collection (0…n) or null. */
 const InsertIndexContext = createContext<number | null>(null);
 export const useInsertIndex = () => useContext(InsertIndexContext);
 
@@ -61,9 +61,9 @@ function pointRect(p: { x: number; y: number }): ClientRect {
 }
 
 /**
- * Ziel nur innerhalb des Bildstreifens: die Kachel, deren Mitte dem Zeiger
- * (Tastatur: der gezogenen Kachel) am nächsten ist; ohne Kacheln der Streifen selbst.
- * Übergänge zielen nur auf Übergangsplätze (der nächstgelegene Platz).
+ * Targets only inside the storyboard: the tile whose centre is closest to the
+ * pointer (keyboard: to the dragged tile); without tiles, the strip itself.
+ * Transitions only target transition slots (the nearest slot).
  */
 const collisionDetection: CollisionDetection = (args) => {
   const stripRect = args.droppableRects.get(STRIP_DROPPABLE_ID);
@@ -88,7 +88,7 @@ const ARROWS: string[] = [
   KeyboardCode.Down,
 ];
 
-/** Tastatur für Übergänge: Pfeil nach unten → erster Platz, links/rechts → Nachbarplatz. */
+/** Keyboard for transitions: arrow down → first slot, left/right → neighbouring slot. */
 const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
   if (!ARROWS.includes(event.code)) return undefined;
   event.preventDefault();
@@ -116,9 +116,9 @@ const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => 
 };
 
 /**
- * Tastatur: Kacheln im Streifen wie gewohnt sortierbar; ein Bild aus der
- * Sammlung springt mit Pfeil nach unten ans Ende des Streifens und wandert dort
- * mit Pfeil links/rechts von Einfügeposition zu Einfügeposition.
+ * Keyboard: tiles in the strip are sortable as usual; a picture from the
+ * collection jumps to the end of the strip with arrow down and moves there
+ * from insertion position to insertion position with arrow left/right.
  */
 const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   const { context } = args;
@@ -137,8 +137,8 @@ const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
     .map((c) => context.droppableRects.get(c.id))
     .filter((r): r is ClientRect => r !== undefined)
     .sort((a, b) => a.left - b.left);
-  // Position der gezogenen Kachel je Einfügestelle: knapp links der Kachelmitte
-  // (= davor), für das Ende knapp rechts der letzten Kachelmitte (= dahinter).
+  // Position of the dragged tile per insertion point: just left of the tile
+  // centre (= before it); for the end, just right of the last tile centre (= after it).
   const slots = slideRects.map((r) => ({
     x: r.left + r.width / 2 - 1 - rect.width / 2,
     y: r.top + r.height / 2 - rect.height / 2,
@@ -168,7 +168,7 @@ const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   return undefined;
 };
 
-/** Ziel aus dnd-kit-Ereignis: Kachel samt Seite (Zeiger links/rechts der Mitte) oder Streifen. */
+/** Target from a dnd-kit event: tile with side (pointer left/right of the centre) or strip. */
 function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   const over: Over | null = event.over;
   if (!over) return null;
@@ -204,7 +204,7 @@ function describe(state: AppState, item: DragItem | null): string {
   return t("storyboard.slideMenu", { number: index + 1 });
 }
 
-/** Drag & Drop für Sammlung und Storyboard (design.md D2: dnd-kit, Zeiger und Tastatur). */
+/** Drag and drop for collection and storyboard (design.md D2: dnd-kit, pointer and keyboard). */
 export function StoryboardDnd({ children }: { children: ReactNode }) {
   const store = useAppStoreApi();
   const { t } = useT();

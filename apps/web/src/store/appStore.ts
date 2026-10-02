@@ -1,6 +1,6 @@
 /**
- * Zentraler Zustand der Web-App (design.md D2): Projekt, Medien, Katalog, UI, Wiedergabe.
- * Projektänderungen werden entprellt gespeichert (Autosave, 500 ms).
+ * Central state of the web app (design.md D2): project, media, catalog, UI, playback.
+ * Project changes are saved debounced (autosave, 500 ms).
  */
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { uploadFailureInfo } from "../i18n/errors";
@@ -68,18 +68,18 @@ export interface AppState {
   saveState: SaveState;
   collection: CollectionId;
   selection: Selection;
-  /** ausgewählter Übergang in der Sammlung (Demo im Monitor) */
+  /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
-  /** Wiedergabe der Diashow im Monitor. */
+  /** Playback of the slideshow in the monitor. */
   playback: Playback;
-  /** Übergangsdemo im Monitor (nur zusammen mit previewTransitionId). */
+  /** Transition demo in the monitor (only together with previewTransitionId). */
   demo: Playback | null;
-  /** Zähler: jede Erhöhung öffnet den Dateidialog „Bilder importieren“ (Aufgabe, Datei-Menü). */
+  /** Counter: every increment opens the "Import pictures" file dialog (task, File menu). */
   importRequest: number;
-  /** Assistent „Film speichern“ geöffnet (design.md D6). */
+  /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
-  /** Export-Schnittstelle für den Assistenten (gleiche API wie der Store). */
+  /** Export interface for the wizard (same API as the store). */
   exportApi: ExportApi;
   /** UI language (localization design.md D2). */
   locale: Locale;
@@ -89,24 +89,24 @@ export interface AppState {
   setLocale(locale: Locale): void;
   setCollection(collection: CollectionId): void;
   select(selection: Selection): void;
-  /** Kachel im Katalog auswählen: startet die Übergangsdemo im Monitor (null beendet sie). */
+  /** Select a tile in the catalog: starts the transition demo in the monitor (null ends it). */
   setPreviewTransition(id: string | null): void;
 
   play(): void;
   pause(): void;
   togglePlay(): void;
-  /** Anhalten und an den Anfang springen. */
+  /** Stop and jump to the start. */
   stop(): void;
   seek(time: number): void;
   nextSlide(): void;
   prevSlide(): void;
-  /** Uhrschritt in Sekunden (rAF-Uhr). */
+  /** Clock step in seconds (rAF clock). */
   tick(dt: number): void;
 
-  /** Dateidialog „Bilder importieren“ anfordern (wird von der Sammlung geöffnet). */
+  /** Request the "Import pictures" file dialog (opened by the collection). */
   requestImport(): void;
   importFiles(files: readonly File[]): Promise<void>;
-  /** Assistent „Film speichern“ öffnen; bei leerem Bildstreifen ohne Wirkung. */
+  /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
   closeExportWizard(): void;
   clearUploads(): void;
@@ -121,7 +121,7 @@ export interface AppState {
   removeTransition(slideId: string): void;
   newProject(): void;
 
-  /** Autosave sofort ausführen (Tests, Seitenwechsel). */
+  /** Run the autosave immediately (tests, page change). */
   flushSave(): Promise<void>;
 }
 
@@ -155,7 +155,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           set({ saveState: dirty ? "saving" : "saved" });
         })
         .catch(() => {
-          // Bei der nächsten Änderung wird erneut gespeichert (Spec app-shell „Backend fällt aus“).
+          // The next change saves again (spec app-shell "Backend goes down").
           dirty = true;
           set({ saveState: "error" });
         })
@@ -171,13 +171,13 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       timer = setTimeout(() => {
         timer = null;
         void save().then(() => {
-          // Änderungen während des Speicherns: erneut entprellt speichern.
+          // Changes while saving: save again, debounced.
           if (dirty && get().saveState !== "error") scheduleSave();
         });
       }, AUTOSAVE_DELAY_MS);
     }
 
-    /** Wiedergabezeit an eine geänderte Diashow anpassen (Spec „Synchronität“). */
+    /** Adjust the playback time to a changed slideshow (spec "Sync with editing"). */
     function playbackFor(slides: readonly Slide[]): Playback {
       const { playback } = get();
       const duration = timelineOf(slides).duration;
@@ -252,7 +252,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         set(collection === "media" ? { collection, ...noDemo } : { collection });
       },
       select(selection) {
-        // Bei angehaltener Wiedergabe zeigt der Monitor das ausgewählte Bild.
+        // While playback is stopped, the monitor shows the selected picture.
         const { playback, slides } = get();
         const index = selection ? slides.findIndex((s) => s.id === selection.slideId) : -1;
         if (index >= 0 && !playback.playing) {
@@ -298,7 +298,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       nextSlide() {
         const { playback, slides } = get();
         const time = nextSlideTime(timelineOf(slides), playback.time);
-        // Am Ende hält die Wiedergabe an (wie beim normalen Ablauf).
+        // At the end, playback stops (as in normal playback).
         const playing = playback.playing && time < duration();
         set({ ...noDemo, playback: { playing, time } });
       },
@@ -333,7 +333,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         set({ uploads: [...get().uploads, ...entries] });
         const patch = (key: string, p: Partial<UploadEntry>) =>
           set({ uploads: get().uploads.map((u) => (u.key === key ? { ...u, ...p } : u)) });
-        // Sequenziell: große Fotos blockieren sonst den Upload (design.md Risiken).
+        // Sequential: large photos would otherwise block the upload (design.md risks).
         for (const [i, file] of files.entries()) {
           const entry = entries[i] as UploadEntry;
           patch(entry.key, { status: "uploading" });
@@ -371,7 +371,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       async deleteMedia(id) {
-        // Lokale Änderungen zuerst speichern, damit die Kaskade auf dem aktuellen Stand läuft.
+        // Save local changes first so the cascade runs on the current state.
         await get().flushSave();
         const project = await api.deleteMedia(id);
         const { selection } = get();

@@ -9,20 +9,20 @@ import { type DragItem, type DropTarget, formatDuration, transitionSlotId } from
 import styles from "./StoryboardStrip.module.css";
 
 export interface TransitionSlotProps {
-  /** Element, in das der Übergang überblendet (Besitzer von `transitionIn`). */
+  /** Item the transition leads into (owner of `transitionIn`). */
   slideId: string;
-  /** Laufende Nummer dieses Elements (1-basiert); das erste Element hat keinen Platz. */
+  /** Sequence number of this item (1-based); the first item has no slot. */
   number: number;
   transitionIn: TransitionRef | null;
-  /** Eigenschaften öffnen (Doppelklick, Eingabe); nur bei gesetztem Übergang. */
+  /** Open properties (double-click, Enter); only when a transition is set. */
   onProperties: () => void;
   onRemove: () => void;
   onMenu: (x: number, y: number) => void;
 }
 
 /**
- * Übergangsplatz zwischen zwei Kacheln: Ablageziel für Übergänge aus dem
- * Katalog. Leer bedeutet harter Schnitt.
+ * Transition slot between two tiles: drop target for transitions from the
+ * catalog. Empty means a hard cut.
  */
 export function TransitionSlot({
   slideId,
@@ -34,8 +34,8 @@ export function TransitionSlot({
 }: TransitionSlotProps) {
   const { t, locale } = useT();
   const data: DropTarget = { type: "transitionSlot", slideId };
-  // Nur für Übergänge ein Ziel; sonst würde die Tastatursteuerung beim
-  // Umsortieren von Kacheln auf den Plätzen stehen bleiben.
+  // A target only for transitions; otherwise keyboard control would stop on
+  // the slots while reordering tiles.
   const { active } = useDndContext();
   const accepts = (active?.data.current as DragItem | undefined)?.type === "transition";
   const { setNodeRef, isOver } = useDroppable({

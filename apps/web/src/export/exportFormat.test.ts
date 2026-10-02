@@ -10,12 +10,12 @@ import {
 } from "./exportFormat";
 
 describe("checkFileName", () => {
-  it("akzeptiert die Vorgabe und entfernt Rand-Leerraum und .mp4", () => {
+  it("accepts the default and strips surrounding whitespace and .mp4", () => {
     expect(checkFileName("Mein Film")).toEqual({ ok: true, name: "Mein Film" });
     expect(checkFileName("  Urlaub 2003.MP4 ")).toEqual({ ok: true, name: "Urlaub 2003" });
   });
 
-  it("nennt die unerlaubten Zeichen", () => {
+  it("names the invalid characters", () => {
     const result = checkFileName('Urlaub/2003:"a"');
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -30,7 +30,7 @@ describe("checkFileName", () => {
     for (const ch of '/\\:*?"<>|') expect(checkFileName(`a${ch}b`).ok).toBe(false);
   });
 
-  it("lehnt leere, Steuerzeichen-, Punkt- und zu lange Namen ab", () => {
+  it("rejects empty, control-character, dot and overlong names", () => {
     const empty = checkFileName("   ");
     expect(empty.ok).toBe(false);
     if (!empty.ok) {
@@ -45,9 +45,9 @@ describe("checkFileName", () => {
   });
 });
 
-describe("Größenschätzung", () => {
-  it("rechnet aus Dauer und Profil und formatiert deutsch", () => {
-    // 45 s · 0,6 Mbit/s = 3,375 MB; 45 s · 0,32 Mbit/s = 1,8 MB
+describe("size estimate", () => {
+  it("computes from duration and profile and formats in German", () => {
+    // 45 s · 0.6 Mbit/s = 3.375 MB; 45 s · 0.32 Mbit/s = 1.8 MB
     expect(formatSize(estimateBytes(45, "high"), "de")).toBe("ca. 3,4 MB");
     expect(formatSize(estimateBytes(45, "small"), "de")).toBe("ca. 1,8 MB");
     expect(formatSize(estimateBytes(5, "small"), "de")).toBe("ca. 200 KB");
@@ -56,15 +56,15 @@ describe("Größenschätzung", () => {
   });
 });
 
-describe("Fortschritt und Restzeit", () => {
-  it("rundet Prozent ab und begrenzt sie", () => {
+describe("progress and remaining time", () => {
+  it("rounds percent down and clamps it", () => {
     expect(percent(0)).toBe(0);
     expect(percent(0.426)).toBe(42);
     expect(percent(0.999)).toBe(99);
     expect(percent(1.2)).toBe(100);
   });
 
-  it("schätzt die Restzeit erst mit genug Daten", () => {
+  it("estimates the remaining time only with enough data", () => {
     expect(estimateRemaining(500, 0.5)).toBeNull();
     expect(estimateRemaining(5000, 0.01)).toBeNull();
     expect(estimateRemaining(10_000, 0.25)).toBeCloseTo(30);
@@ -76,8 +76,8 @@ describe("Fortschritt und Restzeit", () => {
   });
 });
 
-describe("Formate auf Englisch", () => {
-  it("formatiert Größe und Restzeit englisch", () => {
+describe("formats in English", () => {
+  it("formats size and remaining time in English", () => {
     expect(formatSize(estimateBytes(45, "high"), "en")).toBe("approx. 3.4 MB");
     expect(formatSize(estimateBytes(5, "small"), "en")).toBe("approx. 200 KB");
     expect(formatRemaining(null, "en")).toBe("calculating…");

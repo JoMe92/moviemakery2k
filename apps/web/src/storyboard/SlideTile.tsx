@@ -10,27 +10,27 @@ import { TransitionSlot } from "./TransitionSlot";
 
 export interface SlideTileProps {
   slide: Slide;
-  /** Laufende Nummer (1-basiert). */
+  /** Sequence number (1-based). */
   number: number;
   media: MediaItem | undefined;
   selected: boolean;
-  /** Gerade in der Wiedergabe sichtbar (Hervorhebung). */
+  /** Currently visible during playback (highlight). */
   playing?: boolean;
   onSelect: () => void;
   onRemove: () => void;
   onMenu: (x: number, y: number) => void;
-  /** Eigenschaftendialog (Bilddauer). */
+  /** Properties dialog (picture duration). */
   onProperties: () => void;
-  /** Aktionen am eingehenden Übergangsplatz. */
+  /** Actions on the incoming transition slot. */
   onTransitionProperties: () => void;
   onTransitionRemove: () => void;
   onTransitionMenu: (x: number, y: number) => void;
   tileRef?: (el: HTMLButtonElement | null) => void;
-  /** Einfügemarke vor bzw. hinter dieser Kachel (Ziehen aus der Sammlung). */
+  /** Insertion marker before or after this tile (dragging from the collection). */
   marker?: "before" | "after" | null;
 }
 
-/** Storyboard-Kachel: Thumbnail, Nummer, Dauer und (deaktivierter) Effekt-Platz; sortierbar. */
+/** Storyboard tile: thumbnail, number, duration and (disabled) effect slot; sortable. */
 export function SlideTile({
   slide,
   number,
@@ -54,7 +54,7 @@ export function SlideTile({
     data,
     attributes: { roleDescription: t("storyboard.sortable") },
   });
-  // aria-pressed zeigt die Auswahl; die Rolle ergibt sich aus <button>.
+  // aria-pressed shows the selection; the role comes from <button>.
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   const name = media?.filename ?? t("storyboard.missingImage");
   const duration = formatDuration(slide.duration, locale);

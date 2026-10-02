@@ -1,8 +1,8 @@
 /**
- * Assistent „Film speichern“ (design.md D6, Spec movie-export): modaler
- * Y2K-Dialog mit den Schritten Dateiname → Qualität → Film wird gespeichert →
- * Fertig, Schaltflächen „Zurück“/„Weiter“/„Abbrechen“ wie im Original und
- * einem Fehlerdialog mit „Erneut versuchen“.
+ * "Save Movie" wizard (design.md D6, spec movie-export): modal Y2K dialog
+ * with the steps file name → quality → saving movie → finished, buttons
+ * "Back"/"Next"/"Cancel" as in the original and an error dialog with
+ * "Try again".
  */
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { translateError } from "../i18n/errors";
@@ -27,7 +27,7 @@ import {
 import styles from "./SaveMovieWizard.module.css";
 import { failureMessage, useExportRun } from "./useExportRun";
 
-/** Startet den Download der fertigen Datei (in Tests ersetzbar). */
+/** Starts the download of the finished file (replaceable in tests). */
 export type DownloadFn = (url: string, fileName: string) => void;
 
 export const downloadViaAnchor: DownloadFn = (url, fileName) => {
@@ -45,19 +45,19 @@ export interface SaveMovieWizardProps {
   open: boolean;
   onClose: () => void;
   api: ExportApi;
-  /** Gesamtdauer des Films in Sekunden (für die Größenschätzung). */
+  /** Total duration of the movie in seconds (for the size estimate). */
   duration: number;
-  /** Vor dem Start ausführen (z. B. Autosave abschließen, damit der Schnappschuss stimmt). */
+  /** Run before starting (e.g. finish the autosave so the snapshot is current). */
   prepare?: () => Promise<void>;
   download?: DownloadFn;
 }
 
-/** Der Assistent; sein Zustand beginnt bei jedem Öffnen neu. */
+/** The wizard; its state starts fresh every time it opens. */
 export function SaveMovieWizard({ open, ...rest }: SaveMovieWizardProps) {
   return open ? <Wizard {...rest} /> : null;
 }
 
-/** Mit dem App-Store verbunden: öffnet sich über `openExportWizard()`. */
+/** Connected to the app store: opens via `openExportWizard()`. */
 export function SaveMovieWizardFromStore({ download }: { download?: DownloadFn }) {
   const open = useAppStore((s) => s.exportWizardOpen);
   const close = useAppStore((s) => s.closeExportWizard);
@@ -107,11 +107,11 @@ function Wizard({
   const stepRef = useRef<HTMLElement>(null);
 
   const check = checkFileName(nameText);
-  // Bei einem Fehler bleibt die Fortschrittsseite hinter dem Fehlerdialog stehen.
+  // On failure, the progress page stays behind the error dialog.
   const view: View = run.phase === "idle" ? step : run.phase === "done" ? "done" : "progress";
   const busy = run.phase === "starting" || run.phase === "running";
 
-  // Beim Schrittwechsel das erste Bedienelement fokussieren (Tastaturbedienung).
+  // On step change, focus the first control (keyboard operation).
   const lastView = useRef<View | null>(null);
   useEffect(() => {
     if (lastView.current !== null && lastView.current !== view) {
@@ -121,7 +121,7 @@ function Wizard({
   }, [view]);
 
   const begin = () => {
-    // Doppelklick auf „Weiter“ startet keinen zweiten Export.
+    // Double-clicking "Next" does not start a second export.
     if (!check.ok || run.phase !== "idle") return;
     void start({ profile, fileName: check.name });
   };
@@ -134,7 +134,7 @@ function Wizard({
     }
   };
 
-  /** „Abbrechen“, Schließen-Knopf und Escape. */
+  /** "Cancel", close button and Escape. */
   const requestClose = () => {
     if (busy) setConfirmCancel(true);
     else onClose();
