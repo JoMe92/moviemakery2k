@@ -196,8 +196,8 @@ platform (CI and the Docker image). On macOS and Windows moderngl tries the
 native standalone context without any guarantee. If no OpenGL 3.3 context can
 be created, the job ends as `failed` with a readable message (the export is
 not available on this system because no OpenGL context could be created;
-Linux with software rendering is supported — the UI text is German) instead
-of crashing the backend. FFmpeg errors are reported with their first line.
+Linux with software rendering is supported; code `export.glUnavailable`, see
+[Localisation](#localisation)) instead of crashing the backend. FFmpeg errors are reported with their first line.
 `pixi run check-render-env` checks a machine: EGL/llvmpipe context, a test
 frame and the FFmpeg encoders.
 
@@ -224,7 +224,7 @@ stateDiagram-v2
   shaders and the FFmpeg process live in that thread. The status goes
   `queued → running → done | failed | cancelled` with `progress` 0..1.
 - **Polling.** `GET /api/exports/{id}` returns status, progress and, for
-  `failed`, a readable `error`. The wizard polls every 500 ms (no SSE).
+  `failed`, `errorCode`, `errorParams` and an English `error` message. The wizard polls every 500 ms (no SSE).
 - **Download.** `GET /api/exports/{id}/file` returns the MP4 with a
   `Content-Disposition` carrying the requested name (`<fileName>.mp4`, with
   an ASCII fallback and an RFC 5987 UTF-8 name). Before `done` → `409`; a
@@ -258,7 +258,8 @@ a 640 px wide frame and scale with `resolution.x / 640.0`. Details:
 ## Catalog
 
 `packages/catalog/transitions.json` (validated by `transitions.schema.json`)
-lists every transition with `id`, display `name`, `shader`,
+lists every transition with `id`, display `names` (`{"de": …, "en": …}`, both
+required), `shader`,
 `defaultDuration`, `params` and a `source` that records where the parameters
 come from:
 
@@ -303,6 +304,12 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/exports/{id}/file` | The finished MP4 as a download; `409` until `done` |
 | `DELETE` | `/api/exports/{id}` | Cancel a running export or delete a finished one (`204`) |
 
+Errors raised by the backend itself (media, project, export) answer with
+`{"detail": {"code": "<area.error>", "params": {…}, "message": "<English>"}}`;
+FastAPI's own `422` validation errors keep their list format. The web app
+translates the code (see [Localisation](#localisation)); the backend has no
+notion of a UI language.
+
 With `pixi run demo`, the same process also serves the built web app at `/`.
 FastAPI's interactive docs are available at `/docs` while the backend runs.
 
@@ -323,6 +330,45 @@ Mesa (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
 shell hook (which contains the EGL variables) in its entrypoint, and runs the
 render environment check during the build.
 
+## Localisation
+
+The UI is available in German and English (OpenSpec change
+`add-ui-localisation`); there is no i18n runtime library and nothing is loaded
+over the network.
+
+- **Catalogs.** `apps/web/src/i18n/en.ts` is the reference catalog, a nested
+  object keyed by UI area (`menu.file.saveMovie`, `player.time`, …). Its shape
+  defines the `Messages` type; `de.ts` must `satisfy` it, so a missing or
+  extra key is a type error. Placeholders are written `{name}`; plural
+  messages are `{ one, other }` objects chosen with `Intl.PluralRules` from a
+  `count` param. A Vitest test (`i18n/t.test.ts`) additionally checks that
+  both catalogs have the same keys and no empty values. Component code holds
+  no visible text.
+- **Locale store.** `i18n/locale.ts` picks the startup language: stored
+  setting (`localStorage` key `mmy.locale`) → the first entry of
+  `navigator.languages` starting with `de` or `en` → `en`. The locale lives in
+  the Zustand store; `setLocale` (Tools → Options) persists it and updates
+  `<html lang>`. Switching takes effect at once and leaves the project
+  untouched.
+- **`useT()`.** Components read `t(key, params)`, `locale`, `formatNumber` and
+  `formatTime` from `i18n/useT.ts` and re-render when the locale changes.
+  Numbers follow `Intl.NumberFormat`; the time display is `h:mm:ss,cc` (de) or
+  `h:mm:ss.cc` (en). Duration inputs accept both `,` and `.` in either
+  language.
+- **Catalog names.** Transitions carry `names.de` / `names.en`; the
+  collection, storyboard and dialogs show `names[locale]`.
+- **Error translation.** `i18n/errors.ts` maps a backend code to the catalog
+  key `errors.<code>` and fills its params (decimals formatted per locale).
+  It reads the code from HTTP errors (`detail.code`), upload results
+  (`error`/`errorParams`), export jobs (`errorCode`/`errorParams`) and the
+  entries of FastAPI's `422` list (their `type`; anything unknown there gets a
+  general "invalid input" text). Any other unknown code falls back to the
+  backend's English `message`.
+
+Unit tests run in German (`apps/web/src/test/setup.ts` stores `de`); the E2E
+suite runs with browser locale `de-DE`, and `e2e/test_language_switch.py`
+covers the switch to English and the browser-language detection.
+
 ## Testing strategy
 
 | Layer | Tooling | What it covers |
@@ -331,7 +377,7 @@ render environment check during the build.
 | Export renderer | pytest under llvmpipe | Time model against the shared vectors, all six programs compile, golden boundary frames and letterboxing, MP4 streams and duration via ffprobe, PSNR of a mid-transition frame against the raw frame |
 | Web | Vitest + Testing Library | Timeline maths, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
-| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; export wizard incl. cancel; golden frames; preview ↔ export frame comparison |
+| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; language switch and detection; export wizard incl. cancel; golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |
 | Static | Biome, Ruff, mypy (strict), TypeScript (strict) | Lint, formatting, types |
 

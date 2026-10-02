@@ -6,9 +6,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-MP4 export of the slideshow (OpenSpec change `add-movie-export`).
+MP4 export of the slideshow (OpenSpec change `add-movie-export`) and a
+German/English user interface (OpenSpec change `add-ui-localisation`).
 
 ### Added
+
+- **Bilingual UI (German and English)**: every visible text — menus, task
+  pane, toolbar, status bar, dialogs, the save-movie wizard, hints, error
+  messages and accessible names — comes from typed message catalogs
+  (`apps/web/src/i18n/en.ts` as reference, `de.ts` with `satisfies
+  Messages`); a test checks that both catalogs have the same keys and no
+  empty values. The language follows the browser (stored choice →
+  `navigator.languages` → English).
+- **Options dialog** under *Tools → Options…* (*Extras → Optionen…*) to
+  choose the language; the switch applies at once without a reload, keeps
+  the project unchanged and is stored in `localStorage` (`mmy.locale`).
+- Localised formats: decimals, durations and file sizes follow the language;
+  the time display reads `h:mm:ss,cc` (German) or `h:mm:ss.cc` (English);
+  duration inputs accept `,` and `.` in both languages.
+- Transition names in both languages (Fade, Dissolve, Wipe right, Circle,
+  Pixelate, Checkerboard).
+- Error codes: backend errors carry a stable code, params and an English
+  message; the UI shows `errors.<code>` in the chosen language and falls
+  back to the English message for unknown codes.
+- E2E test for switching to English via *Tools → Options* (menus,
+  transition name, time display, persistence after a reload) and for the
+  language detected from the browser (`en-US`, `fr-FR`, `de-AT`).
 
 - **Save movie** wizard in the Y2K style (task pane *Auf dem Computer
   speichern* and *Datei → Film speichern…*, disabled for an empty
@@ -41,6 +64,21 @@ MP4 export of the slideshow (OpenSpec change `add-movie-export`).
   container and checks it with ffprobe.
 
 ### Changed
+
+- **BREAKING (API):** catalog entries replace `name` with `names`
+  (`{"de": …, "en": …}`, both required) in `transitions.json`, its schema and
+  `GET /api/catalog/transitions`.
+- **BREAKING (API):** the backend's own errors (media, project, export)
+  answer with `{"detail": {"code", "params", "message"}}` instead of a German
+  `detail` string; export jobs add `errorCode` and `errorParams`, and
+  `error` is now English. FastAPI's own `422` validation lists are unchanged.
+- Code comments, docstrings, script output, Pixi task descriptions and CI
+  step names are in English.
+- The fallback name of an upload without a usable file name is now `image`
+  (was `bild`).
+- The E2E suite runs with browser locale `de-DE`; unit tests run in German.
+- README and architecture overview describe the languages, the message
+  catalogs and the error translation.
 
 - Pixi dependencies `moderngl`, `glcontext` and (linux-64) `mesalib`, plus
   linux-64 activation variables that point EGL/glcontext at the

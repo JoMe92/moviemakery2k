@@ -47,10 +47,10 @@ What works today:
 - **Save movie** — a Movie Maker-style wizard exports the storyboard as an MP4
   (H.264 + AAC) in two quality profiles; transitions are rendered by the very
   same shader files as the preview. See [Exporting a movie](#exporting-a-movie).
-
-> The user interface is currently in German (e.g. *Videoübergänge* = video
-> transitions, *Storyboard*, *Vorschau* = preview). English localisation is on
-> the roadmap.
+- **German and English UI** — the language follows the browser and can be
+  switched at any time under *Tools → Options…*; numbers, durations and the
+  time display follow the chosen language, and backend errors are shown
+  translated. See [Languages](#languages).
 
 ## Roadmap
 
@@ -62,13 +62,12 @@ What works today:
 - Titles and credits with the Entrance → Main → Exit animation model
 - Video clips, music and audio levels
 - Timeline view with trimming and splitting
-- English UI
 
 ## Screenshots
 
 | | |
 |---|---|
-| ![The "Videoübergänge" collection with the six transitions; the monitor previews the selected Circle transition](docs/images/transitions-collection.png) | ![Transition properties dialog with the duration field](docs/images/transition-dialog.png) |
+| ![The "Videoübergänge" (video transitions) collection with the six transitions; the monitor previews the selected Circle transition](docs/images/transitions-collection.png) | ![Transition properties dialog with the duration field](docs/images/transition-dialog.png) |
 | **Video transitions collection.** Select a transition to preview it; drag it onto a storyboard slot to use it. | **Properties dialog.** Double-click a transition or picture in the storyboard to set its duration. |
 
 **The six transitions at roughly 45 % progress**, captured from the preview
@@ -80,7 +79,8 @@ monitor:
 
 ![Animated Circle transition from a night skyline to a desert](docs/images/circle-transition.gif)
 
-All pictures shown are procedurally generated demo images.
+All pictures shown are procedurally generated demo images; the screenshots
+show the German UI.
 
 ## Quick start
 
@@ -114,19 +114,19 @@ Safari).
 
 ## Exporting a movie
 
-Open the wizard with **Auf dem Computer speichern** (*Save to my computer*)
-under *3. Film fertig stellen* in the task pane, or with **Datei → Film
-speichern…** (*File → Save Movie*). Both are disabled while the storyboard is
-empty. The wizard has four steps with *Zurück* / *Weiter* / *Abbrechen*
-(Back / Next / Cancel), just like the original:
+Open the wizard with **Save to my computer** under *3. Finish Movie* in the
+task pane, or with **File → Save Movie…** (German UI: *Auf dem Computer
+speichern*, *Datei → Film speichern…*). Both are disabled while the
+storyboard is empty. The wizard has four steps with *Back* / *Next* /
+*Cancel*, just like the original:
 
-1. **File name** — defaults to *Mein Film*; the characters `/\:*?"<>|` are
-   rejected and `.mp4` is appended.
+1. **File name** — defaults to *My Movie* (*Mein Film* in German); the
+   characters `/\:*?"<>|` are rejected and `.mp4` is appended.
 2. **Quality** — choose a profile; the wizard estimates the file size from
    the movie length.
 3. **Saving the movie** — progress in percent and an estimate of the
-   remaining time; *Abbrechen* cancels the export after a confirmation.
-4. **Finished** — *Film herunterladen* (*Download movie*) downloads the MP4.
+   remaining time; *Cancel* cancels the export after a confirmation.
+4. **Finished** — *Download Movie* downloads the MP4.
 
 | Profile | Resolution | Video | Audio |
 |---|---|---|---|
@@ -155,6 +155,59 @@ pixi run bench-export       # export runtime: 12 pictures × 5 s per profile
 Measured with `pixi run bench-export` (12 pictures × 5 s with 1.25 s
 transitions, 46.25 s of video, 4 CPUs, software rendering): **`small` 8.5 s**
 and **`high` 17.1 s** for render + encode — both faster than real time.
+
+## Languages
+
+The user interface is available in **German** and **English**. On first
+start it follows the browser:
+
+1. a language chosen earlier under **Tools → Options…** (*Extras →
+   Optionen…*; stored in `localStorage` as `mmy.locale`),
+2. otherwise the first browser language that starts with `de` or `en`
+   (`de-AT` → German, `en-GB` → English),
+3. otherwise English (e.g. `fr-FR`).
+
+Switching in the Options dialog takes effect immediately, without a reload,
+and leaves the project untouched. Number formats follow the language: the
+time display reads `0:00:12,50` in German and `0:00:12.50` in English, and
+duration fields accept both `,` and `.` in either language. Transition names
+are localised too (*Kreis* / *Circle*).
+
+**Adding or checking translations.** All visible text lives in the message
+catalogs under [`apps/web/src/i18n/`](apps/web/src/i18n):
+
+- [`en.ts`](apps/web/src/i18n/en.ts) is the reference catalog; its shape
+  defines the `Messages` type. Add new keys here first, grouped by UI area
+  (`menu.file.saveMovie`). `{name}` is a placeholder; `{ one, other }` is a
+  plural message selected by the `count` param.
+- [`de.ts`](apps/web/src/i18n/de.ts) ends in `satisfies Messages`, so a
+  missing key is a type error (`pixi run check` fails).
+- A parity test (`apps/web/src/i18n/t.test.ts`) checks that both catalogs
+  have the same keys and no empty values.
+- Components get text from `useT()` (`t("menu.file.label")`); never put
+  visible text directly into component code.
+- Backend errors carry a stable code; the UI shows the catalog entry
+  `errors.<code>` (e.g. `errors.export.emptyProject`) and falls back to the
+  backend's English message for unknown codes. A new backend error code
+  therefore needs an entry under `errors` in both catalogs.
+- Transition names live in the catalog
+  ([`packages/catalog/transitions.json`](packages/catalog/transitions.json)),
+  not in the web app.
+
+**Breaking API changes for contributors** (from the localisation work; the
+TypeScript types are regenerated with `pixi run gen-api`):
+
+- Catalog entries replace `name` (string) with `names`
+  (`{"de": "Kreis", "en": "Circle"}`, both required).
+- The backend's own errors answer with
+  `{"detail": {"code": "export.emptyProject", "params": {…}, "message": "<English>"}}`
+  instead of a German `detail` string; export jobs report `errorCode`,
+  `errorParams` and an English `error`. FastAPI's own `422` validation lists
+  are unchanged.
+
+Code comments, docstrings, Pixi task descriptions and CI step names are in
+English; German text belongs only in `de.ts`, in tests of the German UI and
+in the OpenSpec artefacts.
 
 ## Docker
 
