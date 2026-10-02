@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from mmy_backend.api import router
 from mmy_backend.catalog import load_catalog
@@ -28,6 +29,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.media = MediaStore(settings.data_dir)
     app.state.project = ProjectStore(settings.data_dir)
     app.include_router(router)
+    # `pixi run demo`: gebaute Web-App unter / ausliefern (ein Prozess, ein Port).
+    if (settings.web_dist / "index.html").is_file():
+        app.mount("/", StaticFiles(directory=settings.web_dist, html=True), name="web")
     return app
 
 

@@ -34,3 +34,7 @@ jobs:
           echo "packageManager=$want pixi-pnpm=$have"
           test "$want" = "$have"
       - run: pixi run check
+      - name: Generierte API-Typen sind aktuell
+        run: |
+          pixi run gen-api
+          git diff --exit-code -- apps/web/src/generated

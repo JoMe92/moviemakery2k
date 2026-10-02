@@ -1,0 +1,777 @@
+{
+  "components": {
+    "schemas": {
+      "Body_upload_media_api_media_post": {
+        "properties": {
+          "files": {
+            "description": "Bilddateien (JPEG, PNG, WebP)",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_media_api_media_post",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "Health": {
+        "properties": {
+          "ffmpeg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ffmpeg"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ffmpeg"
+        ],
+        "title": "Health",
+        "type": "object"
+      },
+      "MediaDeleteResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "MediaDeleteResponse",
+        "type": "object"
+      },
+      "MediaItem": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "filename": {
+            "description": "Original-Dateiname, nur zur Anzeige",
+            "title": "Filename",
+            "type": "string"
+          },
+          "height": {
+            "description": "Höhe nach EXIF-Ausrichtung",
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "previewUrl": {
+            "title": "Previewurl",
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "title": "Thumbnailurl",
+            "type": "string"
+          },
+          "width": {
+            "description": "Breite nach EXIF-Ausrichtung",
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "width",
+          "height",
+          "createdAt",
+          "thumbnailUrl",
+          "previewUrl"
+        ],
+        "title": "MediaItem",
+        "type": "object"
+      },
+      "MediaListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "Alle Medien in Importreihenfolge",
+            "items": {
+              "$ref": "#/components/schemas/MediaItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MediaListResponse",
+        "type": "object"
+      },
+      "MediaUploadFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "enum": [
+              "unsupported",
+              "too_large",
+              "too_many_pixels"
+            ],
+            "title": "Error",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "ok": {
+            "const": false,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "filename",
+          "ok",
+          "error",
+          "message"
+        ],
+        "title": "MediaUploadFailure",
+        "type": "object"
+      },
+      "MediaUploadResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MediaUploadSuccess"
+                },
+                {
+                  "$ref": "#/components/schemas/MediaUploadFailure"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MediaUploadResponse",
+        "type": "object"
+      },
+      "MediaUploadSuccess": {
+        "additionalProperties": false,
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "item": {
+            "$ref": "#/components/schemas/MediaItem"
+          },
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "filename",
+          "ok",
+          "item"
+        ],
+        "title": "MediaUploadSuccess",
+        "type": "object"
+      },
+      "Project": {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "slides": {
+            "items": {
+              "$ref": "#/components/schemas/Slide"
+            },
+            "maxItems": 1000,
+            "title": "Slides",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "slides"
+        ],
+        "title": "Project",
+        "type": "object"
+      },
+      "Slide": {
+        "additionalProperties": false,
+        "properties": {
+          "duration": {
+            "description": "Anzeigedauer in Sekunden",
+            "maximum": 60.0,
+            "minimum": 0.5,
+            "multipleOf": 0.25,
+            "title": "Duration",
+            "type": "number"
+          },
+          "id": {
+            "description": "Vom Client vergeben, eindeutig im Projekt",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID eines Mediums aus /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "transitionIn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eingehender Übergang vom vorherigen Element; beim ersten immer null"
+          }
+        },
+        "required": [
+          "id",
+          "mediaId",
+          "duration",
+          "transitionIn"
+        ],
+        "title": "Slide",
+        "type": "object"
+      },
+      "Transition": {
+        "additionalProperties": false,
+        "properties": {
+          "defaultDuration": {
+            "description": "Sekunden",
+            "maximum": 5.0,
+            "minimum": 0.25,
+            "multipleOf": 0.25,
+            "title": "Defaultduration",
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "params": {
+            "description": "Wird 1:1 zu `uniform float <name>` im Shader",
+            "patternProperties": {
+              "^[a-z][A-Za-z0-9]*$": {
+                "type": "number"
+              }
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "shader": {
+            "description": "Dateiname in packages/shaders/transitions/",
+            "pattern": "^[a-z0-9-]+\\.glsl$",
+            "title": "Shader",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/TransitionSource"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "shader",
+          "defaultDuration",
+          "params",
+          "source"
+        ],
+        "title": "Transition",
+        "type": "object"
+      },
+      "TransitionCatalog": {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "transitions": {
+            "items": {
+              "$ref": "#/components/schemas/Transition"
+            },
+            "minItems": 1,
+            "title": "Transitions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "transitions"
+        ],
+        "title": "TransitionCatalog",
+        "type": "object"
+      },
+      "TransitionRef": {
+        "additionalProperties": false,
+        "properties": {
+          "duration": {
+            "description": "Solldauer des Übergangs in Sekunden",
+            "maximum": 5.0,
+            "minimum": 0.25,
+            "multipleOf": 0.25,
+            "title": "Duration",
+            "type": "number"
+          },
+          "transitionId": {
+            "description": "ID aus dem Übergangskatalog",
+            "title": "Transitionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transitionId",
+          "duration"
+        ],
+        "title": "TransitionRef",
+        "type": "object"
+      },
+      "TransitionSource": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Parameter, deren Wert nicht belegt, sondern geschätzt ist [E]",
+            "title": "Estimated"
+          },
+          "kind": {
+            "enum": [
+              "wmm2x-xml",
+              "smpte"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "title": "TransitionSource",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "moviemakerY2K",
+    "version": "0.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/catalog/transitions": {
+      "get": {
+        "operationId": "list_transitions_api_catalog_transitions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransitionCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Transitions",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/media": {
+      "get": {
+        "description": "Alle importierten Medien in Importreihenfolge.",
+        "operationId": "list_media_api_media_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Media",
+        "tags": [
+          "media"
+        ]
+      },
+      "post": {
+        "operationId": "upload_media_api_media_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_media_api_media_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "description": "Mehr als 50 Dateien in einer Anfrage"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}": {
+      "delete": {
+        "description": "Löscht ein Medium samt Dateien und entfernt es aus dem Projekt (Kaskade).\n\nAlle Elemente des Bildstreifens mit diesem Medium entfallen samt ihrer\neingehenden Übergänge; das neue erste Element hat keinen Übergang.\n\nAntwort ist 200 mit dem aktualisierten Projekt (statt 204), damit der\nClient seinen Stand ohne erneutes GET /api/project übernehmen kann.\n\nReihenfolge: erst aus dem Medienspeicher, dann aus dem Projekt. Ein\ngleichzeitiges PUT /api/project prüft gegen den Medienspeicher und kann\ndie ID danach nicht wieder einfügen.",
+        "operationId": "delete_media_api_media__media_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaDeleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Unbekannte oder ungültige Medien-ID"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/preview": {
+      "get": {
+        "description": "Vorschaubild (JPEG, längste Kante <= 1920) mit `Cache-Control: immutable`.",
+        "operationId": "get_preview_api_media__media_id__preview_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "JPEG-Bild"
+          },
+          "404": {
+            "description": "Unbekannte oder ungültige Medien-ID"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Preview",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/thumbnail": {
+      "get": {
+        "description": "Thumbnail (JPEG, passt in 160x120) mit `Cache-Control: immutable`.",
+        "operationId": "get_thumbnail_api_media__media_id__thumbnail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "JPEG-Bild"
+          },
+          "404": {
+            "description": "Unbekannte oder ungültige Medien-ID"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Thumbnail",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/project": {
+      "get": {
+        "description": "Das gespeicherte Projekt; ohne Datei das leere Projekt.",
+        "operationId": "get_project_api_project_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Project",
+        "tags": [
+          "project"
+        ]
+      },
+      "put": {
+        "description": "Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert.",
+        "operationId": "put_project_api_project_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Project"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Project",
+        "tags": [
+          "project"
+        ]
+      }
+    }
+  }
+}

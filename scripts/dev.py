@@ -3,6 +3,7 @@
     python scripts/dev.py            # beide, Strg+C beendet beide
     python scripts/dev.py backend    # nur FastAPI
     python scripts/dev.py web        # nur Vite
+    python scripts/dev.py demo       # gebaute Web-App + API auf einem Port
 
 Der API-Port kommt aus MMY_API_PORT (Standard 8000); Vite leitet /api dorthin weiter.
 Aufruf über die Pixi-Tasks `dev`, `dev-backend`, `dev-web`.
@@ -22,6 +23,8 @@ COMMANDS = {
     ],
     "web": ["pnpm", "--filter", "@mmy/web", "dev"],
 }
+# Nicht Teil von `dev`: gebaute Web-App + API aus einem Prozess (pixi run demo).
+DEMO = [sys.executable, "-m", "uvicorn", "mmy_backend.main:app", "--port", PORT]
 
 
 def main(targets: list[str]) -> int:
@@ -50,6 +53,9 @@ def main(targets: list[str]) -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["demo"]:
+        print(f"moviemakerY2K-Demo: http://127.0.0.1:{PORT}/", flush=True)
+        sys.exit(subprocess.call(DEMO))
     args = sys.argv[1:] or list(COMMANDS)
     unknown = [a for a in args if a not in COMMANDS]
     if unknown:
