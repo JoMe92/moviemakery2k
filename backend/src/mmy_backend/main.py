@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from mmy_backend.api import router
 from mmy_backend.catalog import load_catalog
 from mmy_backend.config import Settings
+from mmy_backend.media import MediaStore
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -23,6 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="moviemakerY2K", version="0.0.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.catalog = catalog
+    app.state.media = MediaStore(settings.data_dir)
     app.include_router(router)
     return app
 
