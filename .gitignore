@@ -4,3 +4,10 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Nogging
+.nogging/locks/
+.nogging/state/
+.nogging/reports/
+__pycache__/
+*.py[cod]

@@ -31,3 +31,7 @@ if command -v bd >/dev/null 2>&1; then
   if [ $_bd_exit -ne 0 ]; then exit $_bd_exit; fi
 fi
 # --- END BEADS INTEGRATION v1.2.2 ---
+
+# --- BEGIN NOGGING CHAIN ---
+"$(git rev-parse --show-toplevel)/scripts/hooks/pre-push" "$@" || exit $?
+# --- END NOGGING CHAIN ---

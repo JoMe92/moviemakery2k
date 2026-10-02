@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# --- BEGIN NOGGING CHAIN ---
+exec "$(git rev-parse --show-toplevel)/scripts/hooks/commit-msg" "$@"
+# --- END NOGGING CHAIN ---
