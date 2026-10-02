@@ -1,5 +1,25 @@
 schema: spec-driven
 
+context: |
+  Projekt: moviemakerY2K – Video-Editor im Stil von Movie Maker 2.x (Windows XP).
+  Fokus: originalgetreue Übergänge, Effekte und Titelanimationen; Rest modern.
+  Stack: apps/web (Vite, React 19, TypeScript strict, Biome, Vitest, WebGL2),
+  backend/ (Python 3.13, FastAPI, Pydantic v2, uv, ruff, mypy strict, pytest,
+  FFmpeg als Subprozess, headless GL für den Export), packages/shaders
+  (GLSL ES 3.00, für Vorschau und Export geteilt), packages/catalog
+  (Effekt-Katalog als Single Source of Truth).
+  Lizenz GPL-3.0-or-later. Keine Microsoft-Assets. Recherche:
+  docs/research/movie-maker-klon.md. Architektur: docs/adr/0001-architektur.md.
+  Sprache der Artefakte: Deutsch; Code-Bezeichner Englisch.
+
+rules:
+  proposal:
+    - Bei Übergängen/Effekten die Quelle der Parameter nennen (WMM-XML, SMIL-Wipe-Nr.).
+    - Abschnitt "Nicht-Ziele" ist Pflicht.
+  tasks:
+    - Effekt-/Übergangs-Tasks enthalten einen Golden-Frame-Test (Vorschau vs. Export).
+    - Tasks sind höchstens ca. einen halben Tag groß.
+
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.
