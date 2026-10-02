@@ -21,6 +21,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Exports
+         * @description Alle bekannten Exporte (seit dem Start des Backends), älteste zuerst.
+         */
+        get: operations["list_exports_api_exports_get"];
+        put?: never;
+        /**
+         * Start Export
+         * @description Startet einen Export mit dem gespeicherten Projekt zum jetzigen Zeitpunkt.
+         *
+         *     Spätere Änderungen am Projekt wirken sich nicht auf diesen Export aus.
+         *     Höchstens ein Export läuft gleichzeitig; ein zweiter Start ergibt 409.
+         */
+        post: operations["start_export_api_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Export
+         * @description Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler.
+         */
+        get: operations["get_export_api_exports__export_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Export
+         * @description Bricht einen laufenden Export ab bzw. löscht einen beendeten.
+         *
+         *     - `queued`/`running`: Der Export wird abgebrochen (FFmpeg beendet, Teildatei
+         *       gelöscht); die Antwort kommt erst danach. Der Job bleibt als `cancelled`
+         *       abfragbar, ohne Datei.
+         *     - `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.
+         */
+        delete: operations["delete_export_api_exports__export_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/{export_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Export File
+         * @description Die fertige MP4 als Download mit dem gewünschten Dateinamen (`<fileName>.mp4`).
+         *
+         *     Solange der Export nicht `done` ist, antwortet der Server mit 409 und dem
+         *     Status; eine unvollständige Datei wird nie ausgeliefert.
+         */
+        get: operations["get_export_file_api_exports__export_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -165,6 +244,66 @@ export interface components {
              */
             files: string[];
         };
+        /** ExportJob */
+        ExportJob: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Error
+             * @description Verständliche Meldung bei `failed`, sonst null
+             */
+            error: string | null;
+            /**
+             * Filename
+             * @description Dateiname ohne Endung
+             */
+            fileName: string;
+            /** Id */
+            id: string;
+            profile: components["schemas"]["ExportProfile"];
+            /**
+             * Progress
+             * @description Fortschritt 0..1
+             */
+            progress: number;
+            status: components["schemas"]["ExportStatus"];
+        };
+        /** ExportListResponse */
+        ExportListResponse: {
+            /**
+             * Items
+             * @description Alle bekannten Exporte, älteste zuerst
+             */
+            items: components["schemas"]["ExportJob"][];
+        };
+        /**
+         * ExportProfile
+         * @description Ausgabeprofil des Exports; der Wert ist der Name im API-Vertrag.
+         * @enum {string}
+         */
+        ExportProfile: "high" | "small";
+        /** ExportRequest */
+        ExportRequest: {
+            /**
+             * Filename
+             * @description Gewünschter Dateiname ohne Endung; `.mp4` wird beim Herunterladen angehängt. Nicht erlaubt: / \ : * ? " < > | und Steuerzeichen.
+             * @example Mein Film
+             */
+            fileName: string;
+            /**
+             * @description `high` = 960x720 (Standard), `small` = 640x480; beide 30 fps
+             * @default high
+             */
+            profile: components["schemas"]["ExportProfile"];
+        };
+        /**
+         * ExportStatus
+         * @enum {string}
+         */
+        ExportStatus: "queued" | "running" | "done" | "failed" | "cancelled";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -386,6 +525,183 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransitionCatalog"];
+                };
+            };
+        };
+    };
+    list_exports_api_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportListResponse"];
+                };
+            };
+        };
+    };
+    start_export_api_exports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Es läuft bereits ein Export */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Ungültige Anfrage, leeres Projekt oder fehlende Medien */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_export_api_exports__export_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Unbekannter oder gelöschter Export */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_export_api_exports__export_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unbekannter oder gelöschter Export */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_export_file_api_exports__export_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fertiger Film (MP4) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": unknown;
+                };
+            };
+            /** @description Unbekannter oder gelöschter Export */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Der Export ist (noch) nicht fertig */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

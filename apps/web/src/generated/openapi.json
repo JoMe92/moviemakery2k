@@ -19,6 +19,123 @@
         "title": "Body_upload_media_api_media_post",
         "type": "object"
       },
+      "ExportJob": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Verständliche Meldung bei `failed`, sonst null",
+            "title": "Error"
+          },
+          "fileName": {
+            "description": "Dateiname ohne Endung",
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ExportProfile"
+          },
+          "progress": {
+            "description": "Fortschritt 0..1",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExportStatus"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "progress",
+          "profile",
+          "fileName",
+          "error",
+          "createdAt"
+        ],
+        "title": "ExportJob",
+        "type": "object"
+      },
+      "ExportListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "Alle bekannten Exporte, älteste zuerst",
+            "items": {
+              "$ref": "#/components/schemas/ExportJob"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ExportListResponse",
+        "type": "object"
+      },
+      "ExportProfile": {
+        "description": "Ausgabeprofil des Exports; der Wert ist der Name im API-Vertrag.",
+        "enum": [
+          "high",
+          "small"
+        ],
+        "title": "ExportProfile",
+        "type": "string"
+      },
+      "ExportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "fileName": {
+            "description": "Gewünschter Dateiname ohne Endung; `.mp4` wird beim Herunterladen angehängt. Nicht erlaubt: / \\ : * ? \" < > | und Steuerzeichen.",
+            "examples": [
+              "Mein Film"
+            ],
+            "title": "Filename",
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ExportProfile",
+            "default": "high",
+            "description": "`high` = 960x720 (Standard), `small` = 640x480; beide 30 fps"
+          }
+        },
+        "required": [
+          "fileName"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
+      },
+      "ExportStatus": {
+        "enum": [
+          "queued",
+          "running",
+          "done",
+          "failed",
+          "cancelled"
+        ],
+        "title": "ExportStatus",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -493,6 +610,192 @@
         "summary": "List Transitions",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/exports": {
+      "get": {
+        "description": "Alle bekannten Exporte (seit dem Start des Backends), älteste zuerst.",
+        "operationId": "list_exports_api_exports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Exports",
+        "tags": [
+          "exports"
+        ]
+      },
+      "post": {
+        "description": "Startet einen Export mit dem gespeicherten Projekt zum jetzigen Zeitpunkt.\n\nSpätere Änderungen am Projekt wirken sich nicht auf diesen Export aus.\nHöchstens ein Export läuft gleichzeitig; ein zweiter Start ergibt 409.",
+        "operationId": "start_export_api_exports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "description": "Es läuft bereits ein Export"
+          },
+          "422": {
+            "description": "Ungültige Anfrage, leeres Projekt oder fehlende Medien"
+          }
+        },
+        "summary": "Start Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/exports/{export_id}": {
+      "delete": {
+        "description": "Bricht einen laufenden Export ab bzw. löscht einen beendeten.\n\n- `queued`/`running`: Der Export wird abgebrochen (FFmpeg beendet, Teildatei\n  gelöscht); die Antwort kommt erst danach. Der Job bleibt als `cancelled`\n  abfragbar, ohne Datei.\n- `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.",
+        "operationId": "delete_export_api_exports__export_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Unbekannter oder gelöschter Export"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Export",
+        "tags": [
+          "exports"
+        ]
+      },
+      "get": {
+        "description": "Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler.",
+        "operationId": "get_export_api_exports__export_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Unbekannter oder gelöschter Export"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/exports/{export_id}/file": {
+      "get": {
+        "description": "Die fertige MP4 als Download mit dem gewünschten Dateinamen (`<fileName>.mp4`).\n\nSolange der Export nicht `done` ist, antwortet der Server mit 409 und dem\nStatus; eine unvollständige Datei wird nie ausgeliefert.",
+        "operationId": "get_export_file_api_exports__export_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {}
+            },
+            "description": "Fertiger Film (MP4)"
+          },
+          "404": {
+            "description": "Unbekannter oder gelöschter Export"
+          },
+          "409": {
+            "description": "Der Export ist (noch) nicht fertig"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Export File",
+        "tags": [
+          "exports"
         ]
       }
     },
