@@ -7,16 +7,15 @@ nur auf anderen Plattformen werden sie übersprungen (Export dort ohne Gewähr).
 
 import logging
 import shutil
-import sys
 from collections.abc import Iterator
 from pathlib import Path
 
 import moderngl
 import pytest
+from conftest import requires_gl
 
 from mmy_backend.catalog import TransitionCatalog, load_catalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR, REPO_ROOT, Settings
-from mmy_backend.render.context import create_render_context
 from mmy_backend.render.shaders import (
     CORE_HEADER,
     ES_HEADER,
@@ -33,11 +32,6 @@ from mmy_backend.render.shaders import (
 CATALOG_FILE = REPO_ROOT / "packages" / "catalog" / "transitions.json"
 EXPECTED_IDS = {"fade", "dissolve", "wipe-right", "circle", "pixelate", "checkerboard"}
 
-requires_gl = pytest.mark.skipif(
-    not sys.platform.startswith("linux"),
-    reason="Headless-Export (EGL/llvmpipe) wird offiziell nur unter Linux unterstützt",
-)
-
 
 @pytest.fixture(scope="module")
 def catalog() -> TransitionCatalog:
@@ -47,15 +41,6 @@ def catalog() -> TransitionCatalog:
 @pytest.fixture
 def sources() -> ShaderSources:
     return ShaderSources(DEFAULT_SHADERS_DIR)
-
-
-@pytest.fixture(scope="module")
-def ctx() -> Iterator[moderngl.Context]:
-    context = create_render_context()
-    try:
-        yield context
-    finally:
-        context.release()
 
 
 @pytest.fixture

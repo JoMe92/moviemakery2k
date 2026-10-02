@@ -7,7 +7,6 @@ auf einfarbigen Bildern keine Mitte zeigt; dafür prüft ein Testmuster die
 Blöcke). Die GL-Tests laufen unter Linux immer (EGL/llvmpipe aus Pixi).
 """
 
-import sys
 import uuid
 from collections.abc import Iterator
 from itertools import pairwise
@@ -15,12 +14,12 @@ from pathlib import Path
 
 import moderngl
 import pytest
+from conftest import requires_gl
 from PIL import Image
 
 from mmy_backend.catalog import load_catalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR, REPO_ROOT
 from mmy_backend.media import MediaStore
-from mmy_backend.render.context import create_render_context
 from mmy_backend.render.frames import FrameRenderer, flip_rows, letterbox, preview_loader
 from mmy_backend.render.geometry import Rect, contain_rect
 from mmy_backend.render.shaders import ShaderLibrary, ShaderSources
@@ -42,11 +41,6 @@ RED = (255, 0, 0, 255)
 BLUE = (0, 0, 255, 255)
 BLACK = (0, 0, 0, 255)
 WHITE = (255, 255, 255, 255)
-
-requires_gl = pytest.mark.skipif(
-    not sys.platform.startswith("linux"),
-    reason="Headless-Export (EGL/llvmpipe) wird offiziell nur unter Linux unterstützt",
-)
 
 
 def solid(color: tuple[int, int, int], size: tuple[int, int] = (64, 48)) -> Image.Image:
@@ -101,15 +95,6 @@ class DictLoader:
     def __call__(self, media_id: str) -> Image.Image | None:
         self.loads.append(media_id)
         return self.images.get(media_id)
-
-
-@pytest.fixture(scope="module")
-def ctx() -> Iterator[moderngl.Context]:
-    context = create_render_context()
-    try:
-        yield context
-    finally:
-        context.release()
 
 
 @pytest.fixture(scope="module")
