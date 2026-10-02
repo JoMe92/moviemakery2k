@@ -14,7 +14,6 @@ import {
   type KeyboardCoordinateGetter,
   KeyboardSensor,
   type Over,
-  PointerSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -30,6 +29,7 @@ import {
   resolveDrop,
   STRIP_DROPPABLE_ID,
 } from "./dropLogic";
+import { StoryboardPointerSensor } from "./pointerSensor";
 import styles from "./StoryboardStrip.module.css";
 
 /** Einfügemarke für Bilder aus der Sammlung (0…n) oder null. */
@@ -205,8 +205,9 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<DropTarget | null>(null);
 
   const sensors = useSensors(
-    // Kleine Schwelle, damit Klick und Doppelklick weiter funktionieren.
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // Small threshold keeps click and double-click working; the own sensor lets
+    // the first click right after a drop through (mmy-fa5).
+    useSensor(StoryboardPointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter }),
   );
 
