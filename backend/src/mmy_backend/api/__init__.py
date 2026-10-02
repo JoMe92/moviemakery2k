@@ -1,4 +1,4 @@
-"""HTTP-Router des Backends; alle Endpunkte liegen unter /api."""
+"""HTTP router of the backend; all endpoints live under /api."""
 
 from fastapi import APIRouter
 

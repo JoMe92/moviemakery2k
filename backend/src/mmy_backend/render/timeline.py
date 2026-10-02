@@ -1,19 +1,19 @@
-"""Zeitmodell der Diashow als reine Funktionen (design.md D3 und D4).
+"""Time model of the slideshow as pure functions (design.md D3 and D4).
 
-Portierung von `apps/web/src/timeline/timeline.ts` (ohne `formatTime`), damit
-Vorschau und Export identisch rechnen. Beide Implementierungen werden gegen
-`packages/fixtures/timeline-vectors.json` geprüft.
+Port of `apps/web/src/timeline/timeline.ts` (without `formatTime`) so that
+preview and export compute identically. Both implementations are checked
+against `packages/fixtures/timeline-vectors.json`.
 
-Ein Übergang gehört zum Zielbild (`transition_in`) und überlappt das Ende des
-Vorgängers mit dem Anfang des Zielbilds. Wirksame Dauer:
+A transition belongs to the target slide (`transition_in`) and overlaps the end
+of the predecessor with the start of the target slide. Effective duration:
   t_i = min(T_i, d_{i-1} / 2, d_i / 2)
-Start von Bild i = Start von Bild i-1 + d_{i-1} - t_i.
+Start of slide i = start of slide i-1 + d_{i-1} - t_i.
 
-Segmente sind halboffen `[start, end)`; Zeiten werden auf `[0, Dauer]`
-begrenzt, am exakten Ende zählt das letzte Segment.
+Segments are half-open `[start, end)`; times are clamped to `[0, duration]`,
+at the exact end the last segment counts.
 
-Für den Export liegt Bild n bei `t = n / fps`; die Anzahl der Bilder ist
-`ceil(Gesamtdauer · fps)` (`frame_count`).
+For the export, frame n lies at `t = n / fps`; the number of frames is
+`ceil(total duration · fps)` (`frame_count`).
 """
 
 import math
@@ -22,14 +22,14 @@ from dataclasses import dataclass
 
 from mmy_backend.project import Project, Slide
 
-# Relative Toleranz für `frame_count`: Ein Produkt, das bis auf Rundungsfehler
-# ganzzahlig ist, zählt als ganzzahlig (sonst ergäbe ceil ein Bild zu viel).
+# Relative tolerance for `frame_count`: a product that is integral up to rounding
+# errors counts as integral (otherwise ceil would yield one frame too many).
 _FRAME_COUNT_EPSILON = 1e-9
 
 
 @dataclass(frozen=True, slots=True)
 class TransitionIn:
-    """Eingehender Übergang eines Bildes mit Solldauer in Sekunden."""
+    """Incoming transition of a slide with its target duration in seconds."""
 
     transition_id: str
     duration: float
@@ -40,7 +40,7 @@ class TimelineSlide:
     id: str
     media_id: str
     duration: float
-    """Sekunden"""
+    """Seconds"""
     transition_in: TransitionIn | None
 
 
@@ -49,10 +49,10 @@ class PlacedSlide:
     index: int
     slide: TimelineSlide
     start: float
-    """Beginn des Bildes (inkl. eingehendem Übergang)"""
+    """Start of the slide (including the incoming transition)"""
     end: float
     transition_in: float
-    """Wirksame Dauer des eingehenden Übergangs (0 = harter Schnitt / erstes Bild)"""
+    """Effective duration of the incoming transition (0 = hard cut / first slide)"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +83,7 @@ class Timeline:
 
 @dataclass(frozen=True, slots=True)
 class EmptyFrame:
-    """Das Projekt hat keine Bilder."""
+    """The project has no slides."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,12 +104,12 @@ Frame = EmptyFrame | StillFrame | TransitionFrame
 
 
 def effective_transition(requested: float, from_duration: float, to_duration: float) -> float:
-    """Wirksame Übergangsdauer zwischen zwei Bildern."""
+    """Effective transition duration between two slides."""
     return max(0.0, min(requested, from_duration / 2, to_duration / 2))
 
 
 def build_timeline(slides: Sequence[TimelineSlide]) -> Timeline:
-    """Platziert die Bilder und zerlegt die Zeitachse lückenlos in Segmente."""
+    """Places the slides and splits the timeline into contiguous segments."""
     placed: list[PlacedSlide] = []
     cursor = 0.0
     for index, slide in enumerate(slides):
@@ -130,7 +130,7 @@ def build_timeline(slides: Sequence[TimelineSlide]) -> Timeline:
         still_start = p.start + p.transition_in
         still_end = nxt.start if nxt is not None else p.end
         if p.transition_in > 0:
-            # transition_in > 0 setzt Vorgänger und eingehenden Übergang voraus.
+            # transition_in > 0 implies a predecessor and an incoming transition.
             prev = placed[i - 1]
             assert p.slide.transition_in is not None
             segments.append(
@@ -149,12 +149,12 @@ def build_timeline(slides: Sequence[TimelineSlide]) -> Timeline:
 
 
 def frame_at(timeline: Timeline, time: float) -> Frame:
-    """Was zum Zeitpunkt `time` (Sekunden) zu zeichnen ist; `time` wird auf [0, Dauer] begrenzt."""
+    """What to draw at time `time` (seconds); `time` is clamped to [0, duration]."""
     segments = timeline.segments
     if not segments:
         return EmptyFrame()
     t = min(max(time, 0.0), timeline.duration)
-    # Am exakten Ende zählt das letzte Segment (letztes Bild bleibt stehen).
+    # At the exact end the last segment counts (the last slide stays visible).
     seg = next((s for s in segments if s.start <= t < s.end), segments[-1])
     if isinstance(seg, StillSegment):
         return StillFrame(slide_index=seg.slide_index)
@@ -168,7 +168,7 @@ def frame_at(timeline: Timeline, time: float) -> Frame:
 
 
 def slide_index_at(timeline: Timeline, time: float) -> int | None:
-    """Index des Bildes, das zum Zeitpunkt `time` „aktiv“ ist (None bei leerem Projekt)."""
+    """Index of the slide that is "active" at time `time` (None for an empty project)."""
     frame = frame_at(timeline, time)
     if isinstance(frame, EmptyFrame):
         return None
@@ -176,9 +176,9 @@ def slide_index_at(timeline: Timeline, time: float) -> int | None:
 
 
 def slide_start_time(timeline: Timeline, index: int) -> float:
-    """Zeitpunkt, an dem Bild `index` voll sichtbar ist (Ende seines eingehenden Übergangs).
+    """Time at which slide `index` is fully visible (end of its incoming transition).
 
-    Unbekannte Indizes (auch negative, anders als Pythons Listenindex) ergeben 0.
+    Unknown indices (including negative ones, unlike Python list indexing) yield 0.
     """
     if not 0 <= index < len(timeline.slides):
         return 0.0
@@ -187,12 +187,12 @@ def slide_start_time(timeline: Timeline, index: int) -> float:
 
 
 def frame_count(total_duration: float, fps: float) -> int:
-    """Anzahl der Exportbilder: `ceil(Gesamtdauer · fps)`, mindestens 0.
+    """Number of export frames: `ceil(total duration · fps)`, at least 0.
 
-    Liegt das Produkt bis auf eine relative Toleranz von 1e-9 auf einer ganzen
-    Zahl, gilt diese Zahl; so ergibt etwa ein Rundungsfehler von 375.00000000001
-    nicht 376 Bilder. Gewählt statt `fractions.Fraction`, weil Fraction die
-    Rundungsfehler der Eingabe-Floats exakt übernähme (0.1 · 3 ≠ 0.3).
+    If the product lies on an integer up to a relative tolerance of 1e-9, that
+    integer applies; so a rounding error such as 375.00000000001 does not yield
+    376 frames. Chosen instead of `fractions.Fraction` because Fraction would
+    carry over the rounding errors of the input floats exactly (0.1 · 3 ≠ 0.3).
     """
     product = total_duration * fps
     if not math.isfinite(product) or product <= 0:
@@ -204,12 +204,12 @@ def frame_count(total_duration: float, fps: float) -> int:
 
 
 def frame_time(n: int, fps: float) -> float:
-    """Zeitpunkt (Sekunden) von Exportbild `n`."""
+    """Time (seconds) of export frame `n`."""
     return n / fps
 
 
 def timeline_slide_from_project(slide: Slide) -> TimelineSlide:
-    """Ein Projektelement als Eingabe des Zeitmodells."""
+    """A project element as input to the time model."""
     ref = slide.transition_in
     return TimelineSlide(
         id=slide.id,
@@ -224,5 +224,5 @@ def timeline_slide_from_project(slide: Slide) -> TimelineSlide:
 
 
 def timeline_slides_from_project(project: Project) -> tuple[TimelineSlide, ...]:
-    """Alle Elemente eines Projekts in Reihenfolge als Eingabe für `build_timeline`."""
+    """All elements of a project, in order, as input for `build_timeline`."""
     return tuple(timeline_slide_from_project(s) for s in project.slides)

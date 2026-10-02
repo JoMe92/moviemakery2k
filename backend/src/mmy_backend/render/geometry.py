@@ -1,4 +1,4 @@
-"""Geometrie des 4:3-Frame-Raums, 1:1 aus `apps/web/src/render/geometry.ts` (design.md D4)."""
+"""Geometry of the 4:3 frame space, 1:1 from `apps/web/src/render/geometry.ts` (design.md D4)."""
 
 import math
 from dataclasses import dataclass
@@ -13,12 +13,12 @@ class Rect:
 
 
 def _js_round(value: float) -> int:
-    """`Math.round`: halbe Werte runden Richtung +∞ (Python `round` rundet zur geraden Zahl)."""
+    """`Math.round`: halves round towards +∞ (Python `round` rounds to the even number)."""
     return math.floor(value + 0.5)
 
 
 def contain_rect(src_w: int, src_h: int, dst_w: int, dst_h: int) -> Rect:
-    """Größtes mittiges Rechteck mit dem Seitenverhältnis der Quelle im Ziel, ganzzahlig."""
+    """Largest centred rectangle with the source aspect ratio inside the target, integral."""
     if src_w <= 0 or src_h <= 0 or dst_w <= 0 or dst_h <= 0:
         return Rect(0, 0, 0, 0)
     scale = min(dst_w / src_w, dst_h / src_h)

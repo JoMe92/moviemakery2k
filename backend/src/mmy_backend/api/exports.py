@@ -1,10 +1,10 @@
-"""Export-Endpunkte (TASK-API-006, design.md D5).
+"""Export endpoints (TASK-API-006, design.md D5).
 
-- POST   /api/exports            Export starten (202), Schnappschuss des Projekts
-- GET    /api/exports            alle bekannten Exporte
-- GET    /api/exports/{id}       Status und Fortschritt (Frontend fragt alle 500 ms)
-- GET    /api/exports/{id}/file  fertige MP4 als Download
-- DELETE /api/exports/{id}       laufenden Export abbrechen bzw. beendeten löschen (204)
+- POST   /api/exports            start an export (202), snapshot of the project
+- GET    /api/exports            all known exports
+- GET    /api/exports/{id}       status and progress (the frontend polls every 500 ms)
+- GET    /api/exports/{id}/file  finished MP4 as a download
+- DELETE /api/exports/{id}       cancel a running export or delete a finished one (204)
 """
 
 import asyncio
@@ -77,8 +77,8 @@ _TRANSLITERATION = str.maketrans(
 
 
 def ascii_file_name(name: str) -> str:
-    """ASCII-Ersatz für `filename=`: Umlaute und ß umschreiben, Akzente weglassen,
-    übrige Nicht-ASCII-Zeichen (und `"`/`\\`) durch `_` ersetzen."""
+    """ASCII fallback for `filename=`: transliterate umlauts and sharp s, drop accents,
+    replace remaining non-ASCII characters (and `"`/`\\`) with `_`."""
     composed = unicodedata.normalize("NFC", name)
     decomposed = unicodedata.normalize("NFKD", composed.translate(_TRANSLITERATION))
     stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
@@ -86,7 +86,7 @@ def ascii_file_name(name: str) -> str:
 
 
 def content_disposition(file_name: str) -> str:
-    """`attachment` mit ASCII-Ersatzname und exaktem RFC-5987-Namen (UTF-8)."""
+    """`attachment` with an ASCII fallback name and the exact RFC 5987 name (UTF-8)."""
     full = file_name + FILE_EXTENSION
     fallback = ascii_file_name(file_name).strip() or "Film"
     return (
@@ -115,10 +115,10 @@ async def start_export(
     projects: Annotated[ProjectStore, Depends(get_project_store)],
     media: Annotated[MediaStore, Depends(get_media_store)],
 ) -> ExportJob:
-    """Startet einen Export mit dem gespeicherten Projekt zum jetzigen Zeitpunkt.
+    """Starts an export of the saved project as it is right now.
 
-    Spätere Änderungen am Projekt wirken sich nicht auf diesen Export aus.
-    Höchstens ein Export läuft gleichzeitig; ein zweiter Start ergibt 409.
+    Later changes to the project do not affect this export.
+    At most one export runs at a time; a second start returns 409.
     """
     project = projects.get()
     _check_exportable(project, media)
@@ -132,7 +132,7 @@ async def start_export(
 def list_exports(
     exports: Annotated[ExportManager, Depends(get_export_manager)],
 ) -> ExportListResponse:
-    """Alle bekannten Exporte (seit dem Start des Backends), älteste zuerst."""
+    """All known exports (since the backend started), oldest first."""
     return ExportListResponse(items=exports.list())
 
 
@@ -140,7 +140,7 @@ def list_exports(
 def get_export(
     export_id: str, exports: Annotated[ExportManager, Depends(get_export_manager)]
 ) -> ExportJob:
-    """Status (`queued`, `running`, `done`, `failed`, `cancelled`), Fortschritt und Fehler."""
+    """Status (`queued`, `running`, `done`, `failed`, `cancelled`), progress and error."""
     job = exports.get(export_id) if is_export_id(export_id) else None
     if job is None:
         raise _not_found(export_id)
@@ -151,7 +151,7 @@ def get_export(
     "/{export_id}/file",
     response_class=FileResponse,
     responses={
-        status.HTTP_200_OK: {"content": {"video/mp4": {}}, "description": "Fertiger Film (MP4)"},
+        status.HTTP_200_OK: {"content": {"video/mp4": {}}, "description": "Finished movie (MP4)"},
         status.HTTP_409_CONFLICT: error_response("The export is not done (`export.notReady`)"),
         **_NOT_FOUND,
     },
@@ -159,10 +159,10 @@ def get_export(
 def get_export_file(
     export_id: str, exports: Annotated[ExportManager, Depends(get_export_manager)]
 ) -> Any:
-    """Die fertige MP4 als Download mit dem gewünschten Dateinamen (`<fileName>.mp4`).
+    """The finished MP4 as a download with the requested file name (`<fileName>.mp4`).
 
-    Solange der Export nicht `done` ist, antwortet der Server mit 409 und dem
-    Status; eine unvollständige Datei wird nie ausgeliefert.
+    As long as the export is not `done`, the server answers 409 with the
+    status; an incomplete file is never served.
     """
     job = exports.get(export_id) if is_export_id(export_id) else None
     if job is None:
@@ -183,12 +183,12 @@ def get_export_file(
 async def delete_export(
     export_id: str, exports: Annotated[ExportManager, Depends(get_export_manager)]
 ) -> Response:
-    """Bricht einen laufenden Export ab bzw. löscht einen beendeten.
+    """Cancels a running export or deletes a finished one.
 
-    - `queued`/`running`: Der Export wird abgebrochen (FFmpeg beendet, Teildatei
-      gelöscht); die Antwort kommt erst danach. Der Job bleibt als `cancelled`
-      abfragbar, ohne Datei.
-    - `done`/`failed`/`cancelled`: Datei und Job werden gelöscht; danach 404.
+    - `queued`/`running`: the export is cancelled (FFmpeg stopped, partial file
+      deleted); the response comes only afterwards. The job stays queryable as
+      `cancelled`, without a file.
+    - `done`/`failed`/`cancelled`: file and job are deleted; 404 afterwards.
     """
     if not is_export_id(export_id):
         raise _not_found(export_id)

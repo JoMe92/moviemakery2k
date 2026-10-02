@@ -1,23 +1,24 @@
-"""Frame-Renderer des Exports (design.md D4): Zeitmodell-Frame → RGBA-Bytes.
+"""Frame renderer of the export (design.md D4): time-model frame → RGBA bytes.
 
-Spiegelt das sichtbare Ergebnis von `apps/web/src/render/Renderer.ts` und
+Mirrors the visible result of `apps/web/src/render/Renderer.ts` and
 `PreviewCanvas.tsx`:
 
-- Jedes Vorschaubild (`media/<id>/preview.jpg`) wird mit dem ganzzahligen
-  `containRect` auf eine schwarze, deckende Fläche in Ausgabegröße eingepasst
-  (wie das Canvas2D-Letterboxing im Browser) und so als Textur hochgeladen,
-  dass ihr Ursprung unten links liegt (`UNPACK_FLIP_Y_WEBGL`).
-- Standbild: Der Browser zeichnet die Textur mit dem Fade-Programm bei
-  `progress` 0, also texelgenau das eingepasste Bild. Der Export liefert genau
-  diese Pixel ohne Shader (design.md D4: „Standbilder ohne Shader“).
-- Übergang: Shader des Katalogeintrags (Rückfall `fade`) mit dessen
-  Parametern; fehlt eines der beiden Bilder, wird das andere als Standbild
-  gezeigt, fehlen beide, Schwarz - wie `PreviewCanvas`.
-- Leeres Projekt: deckendes Schwarz (`drawEmpty`).
-- Ausgabe: RGBA, `width * height * 4` Bytes, oberste Zeile zuerst (beim
-  Auslesen vertikal gespiegelt).
-- Höchstens zwei Bilder (und damit Bildtexturen) gleichzeitig: LRU nach
-  Medien-ID; die Ausgabegröße ist je Renderer fest.
+- Every preview image (`media/<id>/preview.jpg`) is fitted with the integral
+  `containRect` onto an opaque black area of the output size (like the Canvas2D
+  letterboxing in the browser) and uploaded as a texture so that its origin
+  lies bottom left (`UNPACK_FLIP_Y_WEBGL`).
+- Still frame: the browser draws the texture with the fade program at
+  `progress` 0, i.e. exactly the fitted image, texel for texel. The export
+  delivers exactly these pixels without a shader (design.md D4: "stills
+  without shaders").
+- Transition: shader of the catalog entry (fallback `fade`) with its
+  parameters; if one of the two images is missing, the other is shown as a
+  still, if both are missing, black - like `PreviewCanvas`.
+- Empty project: opaque black (`drawEmpty`).
+- Output: RGBA, `width * height * 4` bytes, top row first (flipped vertically
+  on read-back).
+- At most two images (and thus image textures) at a time: LRU by media ID;
+  the output size is fixed per renderer.
 """
 
 import logging
@@ -47,35 +48,35 @@ from mmy_backend.render.timeline import (
 logger = logging.getLogger(__name__)
 
 ImageLoader = Callable[[str], Image.Image | None]
-"""Lädt das Vorschaubild zu einer Medien-ID; None, wenn es fehlt oder unlesbar ist."""
+"""Loads the preview image for a media ID; None if it is missing or unreadable."""
 
 MAX_CACHED_IMAGES = 2
-"""Aktuelles und nächstes Bild eines Übergangs."""
+"""Current and next image of a transition."""
 
 PREVIEW_FILE = "preview.jpg"
 
 
 def preview_loader(media: MediaStore) -> ImageLoader:
-    """ImageLoader für `media/<id>/preview.jpg` (EXIF bereits beim Import normalisiert)."""
+    """ImageLoader for `media/<id>/preview.jpg` (EXIF already normalised on import)."""
 
     def load(media_id: str) -> Image.Image | None:
         try:
             path = media.item_dir(media_id) / PREVIEW_FILE
         except ValueError:
-            logger.warning("Ungültige Medien-ID %r; Bild bleibt schwarz.", media_id)
+            logger.warning("Invalid media ID %r; the image stays black.", media_id)
             return None
         try:
             with Image.open(path) as image:
                 return image.convert("RGB")
         except (OSError, Image.DecompressionBombError) as exc:
-            logger.warning("Vorschaubild %s nicht lesbar (%s); Bild bleibt schwarz.", path, exc)
+            logger.warning("Preview image %s not readable (%s); the image stays black.", path, exc)
             return None
 
     return load
 
 
 def letterbox(image: Image.Image, width: int, height: int) -> Image.Image:
-    """Bild per ganzzahligem containRect mittig auf deckendes Schwarz (RGBA, oben links)."""
+    """Centre the image on opaque black via integral containRect (RGBA, origin top left)."""
     canvas = Image.new("RGBA", (width, height), (0, 0, 0, 255))
     rect = contain_rect(image.width, image.height, width, height)
     if rect.width > 0 and rect.height > 0:
@@ -87,7 +88,7 @@ def letterbox(image: Image.Image, width: int, height: int) -> Image.Image:
 
 
 def flip_rows(data: bytes, width: int, height: int) -> bytes:
-    """Zeilenreihenfolge umkehren (GL: unterste Zeile zuerst ↔ Bild: oberste zuerst)."""
+    """Reverse the row order (GL: bottom row first ↔ image: top row first)."""
     stride = width * 4
     view = memoryview(data)
     return b"".join(view[row * stride : (row + 1) * stride] for row in range(height - 1, -1, -1))
@@ -97,7 +98,7 @@ def flip_rows(data: bytes, width: int, height: int) -> bytes:
 class _SlideImage:
     media_id: str
     canvas: Image.Image | None
-    """Eingepasstes Bild in Ausgabegröße; None, wenn das Vorschaubild fehlt."""
+    """Fitted image at output size; None if the preview image is missing."""
     pixels: bytes | None = None
     texture: moderngl.Texture | None = field(default=None)
 
@@ -108,7 +109,7 @@ class _SlideImage:
 
 
 class FrameRenderer:
-    """Zeichnet Frames des Zeitmodells in ein Offscreen-Framebuffer fester Größe."""
+    """Draws frames of the time model into an offscreen framebuffer of fixed size."""
 
     def __init__(
         self,
@@ -119,7 +120,7 @@ class FrameRenderer:
         load_image: ImageLoader,
     ) -> None:
         if width <= 0 or height <= 0:
-            raise ValueError(f"Ungültige Ausgabegröße {width}x{height}")
+            raise ValueError(f"Invalid output size {width}x{height}")
         self.ctx = ctx
         self.library = library
         self.width = width
@@ -130,9 +131,9 @@ class FrameRenderer:
         self._color = ctx.renderbuffer((width, height), components=4)
         self._fbo = ctx.framebuffer(color_attachments=[self._color])
         self.peak_textures = 0
-        """Höchstzahl gleichzeitig lebender Bildtexturen (für Tests/Diagnose)."""
+        """Maximum number of image textures alive at the same time (for tests/diagnostics)."""
 
-    # --- Bilder ---------------------------------------------------------------
+    # --- Images ---------------------------------------------------------------
 
     @property
     def cached_media_ids(self) -> tuple[str, ...]:
@@ -166,7 +167,7 @@ class FrameRenderer:
     def _texture(self, entry: _SlideImage) -> moderngl.Texture:
         if entry.texture is None:
             assert entry.canvas is not None
-            # Ursprung unten links wie UNPACK_FLIP_Y_WEBGL.
+            # Origin bottom left, like UNPACK_FLIP_Y_WEBGL.
             flipped = entry.canvas.transpose(Image.Transpose.FLIP_TOP_BOTTOM).tobytes()
             texture = self.ctx.texture((self.width, self.height), 4, flipped)
             texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
@@ -176,10 +177,10 @@ class FrameRenderer:
             self.peak_textures = max(self.peak_textures, self.live_textures)
         return entry.texture
 
-    # --- Zeichnen -------------------------------------------------------------
+    # --- Drawing --------------------------------------------------------------
 
     def render(self, frame: Frame, timeline: Timeline, catalog: TransitionCatalog) -> bytes:
-        """RGBA-Bytes (oberste Zeile zuerst) für einen Frame des Zeitmodells."""
+        """RGBA bytes (top row first) for a frame of the time model."""
         if isinstance(frame, EmptyFrame):
             return self._black
         if isinstance(frame, StillFrame):
@@ -188,7 +189,7 @@ class FrameRenderer:
         source = self._image(timeline.slides[frame.from_index].slide.media_id)
         target = self._image(timeline.slides[frame.to_index].slide.media_id)
         if source.canvas is None or target.canvas is None:
-            # Wie PreviewCanvas: nur ein Bild → Standbild, keins → Schwarz.
+            # Like PreviewCanvas: only one image → still, none → black.
             return self._pixels(source if source.canvas is not None else target)
         params = next((t.params for t in catalog.transitions if t.id == frame.transition_id), {})
         return self._render_transition(source, target, frame.transition_id, frame.progress, params)
@@ -216,14 +217,14 @@ class FrameRenderer:
     def iter_frames(
         self, timeline: Timeline, fps: float, catalog: TransitionCatalog
     ) -> Iterator[tuple[int, bytes]]:
-        """Alle Exportbilder `n` bei `t = n / fps`, `n < ceil(Dauer · fps)`."""
+        """All export frames `n` at `t = n / fps`, `n < ceil(duration · fps)`."""
         for n in range(frame_count(timeline.duration, fps)):
             yield n, self.render(frame_at(timeline, frame_time(n, fps)), timeline, catalog)
 
-    # --- Aufräumen ------------------------------------------------------------
+    # --- Cleanup --------------------------------------------------------------
 
     def release(self) -> None:
-        """Gibt Texturen und Framebuffer frei (Kontext und ShaderLibrary bleiben beim Aufrufer)."""
+        """Releases textures and framebuffer (context and ShaderLibrary stay with the caller)."""
         for entry in self._images.values():
             entry.release()
         self._images.clear()

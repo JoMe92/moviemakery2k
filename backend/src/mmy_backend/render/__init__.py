@@ -1,1 +1,1 @@
-"""Export-Rendering (design.md D3/D4): Zeitmodell und später Frame-Erzeugung."""
+"""Export rendering (design.md D3/D4): time model, frame generation and encoding."""

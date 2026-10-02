@@ -1,9 +1,9 @@
-"""Gibt das OpenAPI-Dokument des Backends als JSON aus.
+"""Writes the backend's OpenAPI document as JSON.
 
-    python -m mmy_backend.openapi [ziel.json]
+    python -m mmy_backend.openapi [target.json]
 
-Grundlage für die generierten TypeScript-Typen der Web-App (`pixi run gen-api`).
-Die Ausgabe ist stabil sortiert, damit CI Abweichungen per `git diff` erkennt.
+Basis for the web app's generated TypeScript types (`pixi run gen-api`).
+The output is sorted stably so that CI detects differences via `git diff`.
 """
 
 import json

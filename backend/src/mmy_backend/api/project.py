@@ -26,7 +26,7 @@ def get_catalog(request: Request) -> TransitionCatalog:
 
 @router.get("")
 def get_project(store: Annotated[ProjectStore, Depends(get_project_store)]) -> Project:
-    """Das gespeicherte Projekt; ohne Datei das leere Projekt."""
+    """The saved project; without a file, the empty project."""
     return store.get()
 
 
@@ -48,7 +48,7 @@ async def put_project(
     media: Annotated[MediaStore, Depends(get_media_store)],
     catalog: Annotated[TransitionCatalog, Depends(get_catalog)],
 ) -> Project:
-    """Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert."""
+    """Replaces the project. On 422 the saved state stays unchanged."""
     try:
         return await store.save(
             project,

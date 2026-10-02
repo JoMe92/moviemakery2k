@@ -1,20 +1,20 @@
-"""Kodierung des Exports (design.md D4): Frames per Pipe an FFmpeg → MP4.
+"""Encoding of the export (design.md D4): frames piped to FFmpeg → MP4.
 
-- Video: RGBA-Rohbilder (oberste Zeile zuerst, daher kein vflip) über stdin,
-  `-f rawvideo -pix_fmt rgba -s WxH -r 30 -i -`; Kodierung `libx264 -preset
+- Video: raw RGBA frames (top row first, hence no vflip) via stdin,
+  `-f rawvideo -pix_fmt rgba -s WxH -r 30 -i -`; encoding `libx264 -preset
   medium -crf 20 -pix_fmt yuv420p -profile:v high -movflags +faststart`.
-- Audio: eigener, austauschbarer Eingang (`AudioInput`); bis zur Musik-Änderung
-  stumm über `-f lavfi -i anullsrc=r=48000:cl=stereo`, Kodierung `aac -b:a 128k`.
-  Der Audioeingang wird per Eingangsoption `-t` auf die exakte Videodauer
-  (`frame_count / fps`) begrenzt; `-shortest` bleibt als Absicherung. Nur mit
-  `-shortest` endet die AAC-Spur bis zu einem AAC-Frame (≈ 21 ms) vor dem Video;
-  mit `-t` sind beide Spuren gleich lang, das Video wird nie gekürzt.
-- Geschrieben wird nach `<ziel>.part`, bei Erfolg atomar per `os.replace`
-  umbenannt. Bei Abbruch oder Fehler wird FFmpeg beendet, die Teildatei
-  gelöscht und ExportCancelled bzw. ExportFailed geworfen.
-- GL-Kontext, ShaderLibrary und FrameRenderer entstehen im aufrufenden Thread
-  (EGL-Kontexte sind threadgebunden) und werden auf jedem Weg freigegeben.
-  Danach ist in diesem Thread kein Kontext mehr aktuell.
+- Audio: a separate, replaceable input (`AudioInput`); until the music change
+  silent via `-f lavfi -i anullsrc=r=48000:cl=stereo`, encoding `aac -b:a 128k`.
+  The audio input is limited to the exact video duration (`frame_count / fps`)
+  via the input option `-t`; `-shortest` stays as a safeguard. With `-shortest`
+  alone the AAC track ends up to one AAC frame (≈ 21 ms) before the video;
+  with `-t` both tracks are equally long and the video is never shortened.
+- Output is written to `<target>.part` and, on success, renamed atomically via
+  `os.replace`. On cancellation or error FFmpeg is stopped, the partial file
+  deleted and ExportCancelled or ExportFailed raised.
+- GL context, ShaderLibrary and FrameRenderer are created in the calling thread
+  (EGL contexts are bound to a thread) and released on every path.
+  Afterwards no context is current in this thread.
 """
 
 import contextlib
@@ -42,17 +42,17 @@ logger = logging.getLogger(__name__)
 
 ProgressCallback = Callable[[float], None]
 AudioInput = Callable[[float], list[str]]
-"""Liefert die FFmpeg-Eingangsargumente der Tonspur für eine Dauer in Sekunden."""
+"""Returns the FFmpeg input arguments of the audio track for a duration in seconds."""
 
 PART_SUFFIX = ".part"
 PROGRESS_STEP = 0.01
-"""Fortschritt wird höchstens in Schritten von 1 % gemeldet."""
+"""Progress is reported in steps of at least 1 %."""
 STDERR_TAIL_LINES = 40
 _POLL_SECONDS = 0.1
 
 
 class ExportProfile(StrEnum):
-    """Ausgabeprofil des Exports; der Wert ist der Name im API-Vertrag."""
+    """Output profile of the export; the value is the name in the API contract."""
 
     HIGH = "high"
     SMALL = "small"
@@ -77,18 +77,18 @@ DEFAULT_PROFILE = ExportProfile.HIGH
 
 
 class ExportError(Exception):
-    """Basisklasse der Exportfehler."""
+    """Base class of the export errors."""
 
 
 class ExportCancelled(ExportError):
-    """Der Export wurde abgebrochen; es bleibt keine Datei zurück."""
+    """The export was cancelled; no file is left behind."""
 
     def __init__(self) -> None:
-        super().__init__("Export abgebrochen.")
+        super().__init__("Export cancelled.")
 
 
 class ExportFailed(ExportError):
-    """Der Export ist fehlgeschlagen; es bleibt keine Datei zurück.
+    """The export failed; no file is left behind.
 
     `code` and `params` identify the error (design.md D5, `mmy_backend.errors`);
     the exception text is the English message plus the FFmpeg stderr tail.
@@ -107,12 +107,12 @@ def part_path(out_path: Path) -> Path:
 
 
 def video_duration(timeline: Timeline, fps: int) -> float:
-    """Exakte Dauer des Videos: Anzahl der Bilder / fps."""
+    """Exact duration of the video: number of frames / fps."""
     return frame_count(timeline.duration, fps) / fps
 
 
 def silent_audio_input(duration: float) -> list[str]:
-    """Stumme Stereo-Spur, 48 kHz, exakt `duration` Sekunden lang."""
+    """Silent stereo track, 48 kHz, exactly `duration` seconds long."""
     return ["-f", "lavfi", "-t", _seconds(duration), "-i", "anullsrc=r=48000:cl=stereo"]
 
 
@@ -123,14 +123,14 @@ def _seconds(value: float) -> str:
 def build_ffmpeg_command(
     binary: str, spec: ProfileSpec, output: Path, audio_args: Sequence[str]
 ) -> list[str]:
-    """Vollständige FFmpeg-Kommandozeile (design.md D4); Eingang 0 = Video, 1 = Audio."""
+    """Complete FFmpeg command line (design.md D4); input 0 = video, 1 = audio."""
     return [
         binary,
         "-hide_banner",
         "-loglevel",
         "error",
         "-y",
-        # Eingang 0: Rohbilder über stdin
+        # Input 0: raw frames via stdin
         "-f",
         "rawvideo",
         "-pix_fmt",
@@ -141,7 +141,7 @@ def build_ffmpeg_command(
         str(spec.fps),
         "-i",
         "-",
-        # Eingang 1: Tonspur
+        # Input 1: audio track
         *audio_args,
         "-map",
         "0:v:0",
@@ -171,7 +171,7 @@ def build_ffmpeg_command(
 
 
 class _StderrTail(threading.Thread):
-    """Liest stderr von FFmpeg nebenher (sonst kann die Pipe volllaufen)."""
+    """Reads FFmpeg's stderr in the background (otherwise the pipe can fill up)."""
 
     def __init__(self, stream: IO[bytes]) -> None:
         super().__init__(name="ffmpeg-stderr", daemon=True)
@@ -193,7 +193,7 @@ class _Progress:
         self._last = 0.0
 
     def update(self, fraction: float) -> None:
-        # 1.0 meldet erst `done()` nach dem Umbenennen.
+        # 1.0 is reported only by `done()` after the rename.
         fraction = min(fraction, 1.0 - PROGRESS_STEP)
         if self._callback is not None and fraction - self._last >= PROGRESS_STEP:
             self._last = fraction
@@ -216,12 +216,12 @@ def export_movie(
     audio_input: AudioInput = silent_audio_input,
     shaders_dir: Path = DEFAULT_SHADERS_DIR,
 ) -> Path:
-    """Rendert und kodiert die Diashow nach `out_path` (MP4); liefert `out_path`.
+    """Renders and encodes the slideshow to `out_path` (MP4); returns `out_path`.
 
-    Blockiert; gehört in einen eigenen Worker-Thread. `progress` erhält Werte in
-    (0, 1], monoton steigend, 1.0 genau einmal nach Erfolg. Wirft ExportCancelled,
-    wenn `cancel` gesetzt wird, sonst ExportFailed; in beiden Fällen existieren
-    weder `out_path` (sofern nicht schon vorher vorhanden) noch `<out_path>.part`.
+    Blocking; belongs in a dedicated worker thread. `progress` receives values in
+    (0, 1], monotonically increasing, 1.0 exactly once after success. Raises
+    ExportCancelled when `cancel` is set, otherwise ExportFailed; in both cases
+    neither `out_path` (unless it already existed before) nor `<out_path>.part` exists.
     """
     spec = profile.spec
     total = frame_count(timeline.duration, spec.fps)
@@ -310,13 +310,13 @@ def export_movie(
     except OSError as exc:
         part.unlink(missing_ok=True)
         raise ExportFailed("export.saveFailed", reason=str(exc)) from exc
-    logger.info("Export %s fertig: %d Bilder, %s", profile.value, total, out_path)
+    logger.info("Export %s done: %d frames, %s", profile.value, total, out_path)
     reporter.done()
     return out_path
 
 
 def _stop(proc: subprocess.Popen[bytes]) -> None:
-    """FFmpeg beenden (falls es noch läuft) und einsammeln; Pipes schließen."""
+    """Stop FFmpeg (if still running) and reap it; close the pipes."""
     if proc.poll() is None:
         proc.kill()
     if proc.stdin is not None:

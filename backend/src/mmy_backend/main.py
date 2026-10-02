@@ -1,5 +1,5 @@
-"""FastAPI-App. `create_app` lädt den Übergangskatalog sofort: ist er ungültig,
-bricht schon der Import von `mmy_backend.main:app` (und damit uvicorn) ab."""
+"""FastAPI app. `create_app` loads the transition catalog immediately: if it is invalid,
+importing `mmy_backend.main:app` (and therefore uvicorn) already fails."""
 
 import asyncio
 from collections.abc import AsyncIterator
@@ -25,12 +25,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.data_dir.mkdir(parents=True, exist_ok=True)
-        # Jobs überleben keinen Neustart: Teildateien und alte Exporte entfernen.
+        # Jobs do not survive a restart: remove partial files and old exports.
         await asyncio.to_thread(exports.cleanup_on_start)
         try:
             yield
         finally:
-            # Laufende Exporte abbrechen; Worker räumen ihre Teildateien selbst auf.
+            # Cancel running exports; workers clean up their own partial files.
             await asyncio.to_thread(exports.shutdown)
 
     app = FastAPI(title="moviemakerY2K", version="0.1.0", lifespan=lifespan)
@@ -40,7 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.project = ProjectStore(settings.data_dir)
     app.state.exports = exports
     app.include_router(router)
-    # `pixi run demo`: gebaute Web-App unter / ausliefern (ein Prozess, ein Port).
+    # `pixi run demo`: serve the built web app under / (one process, one port).
     if (settings.web_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.web_dist, html=True), name="web")
     return app

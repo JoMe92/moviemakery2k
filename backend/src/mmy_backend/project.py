@@ -1,23 +1,22 @@
-"""Projektmodell und Projektspeicher (Spec "Projektmodell", design.md D3 und D7).
+"""Project model and project store (spec "Projektmodell", design.md D3 and D7).
 
-`<data_dir>/project.json` enthält ein `Project` mit `schemaVersion: 1`. Jedes
-Element (Slide) verweist auf ein Medium und trägt optional seinen eingehenden
-Übergang vom vorherigen Element; das erste Element hat keinen.
+`<data_dir>/project.json` contains a `Project` with `schemaVersion: 1`. Every
+element (slide) refers to a medium and optionally carries its incoming
+transition from the previous element; the first element has none.
 
-Die Prüfung läuft in zwei Stufen:
+Validation runs in two stages:
 
-1. Struktur (Pydantic): Felder, Typen, ID-Format, Dauerbereiche und 0,25-s-Raster.
-2. Bezüge (`ProjectStore.save`): Medien- und Übergangs-IDs existieren, Slide-IDs
-   sind eindeutig, das erste Element hat keinen Übergang.
+1. Structure (Pydantic): fields, types, ID format, duration ranges and 0.25 s grid.
+2. References (`ProjectStore.save`): media and transition IDs exist, slide IDs
+   are unique, the first element has no transition.
 
 Errors of stage 1 are FastAPI's native 422 list; rule violations there carry an
 error code as `type` (design.md D5). Errors of stage 2 are `ApiErrorIssue`s,
 reported together as `project.invalid` (see `mmy_backend.errors`).
 
-Eine beschädigte `project.json` wird beim Laden nicht überschrieben: Das Backend
-protokolliert eine Warnung und liefert das leere Projekt. Erst beim nächsten
-erfolgreichen Speichern wird die alte Datei nach `project.json.corrupt-<Zeit>`
-umbenannt, damit nichts stillschweigend verloren geht.
+A corrupt `project.json` is not overwritten on load: the backend logs a
+warning and returns the empty project. Only on the next successful save is the
+old file renamed to `project.json.corrupt-<time>`, so that nothing is silently lost.
 """
 
 import asyncio
@@ -63,7 +62,7 @@ _GRID_EPSILON = 1e-9
 
 
 def on_grid(value: float, step: float = DURATION_STEP) -> bool:
-    """Liegt `value` (bis auf Rundungsfehler) auf dem Raster `step`?"""
+    """Is `value` on the grid `step` (up to rounding errors)?"""
     steps = value / step
     return abs(steps - round(steps)) <= _GRID_EPSILON
 
@@ -85,13 +84,13 @@ def _duration_schema(low: float, high: float) -> dict[str, Any]:
     return {"minimum": low, "maximum": high, "multipleOf": DURATION_STEP}
 
 
-# Strict: JSON-Zahlen (auch Ganzzahlen) ja, Booleans und Strings nein.
+# Strict: JSON numbers (including integers) yes, booleans and strings no.
 SlideDuration = Annotated[
     float,
     Strict(),
     _duration_check("project.slideDuration", SLIDE_DURATION_MIN, SLIDE_DURATION_MAX),
     Field(
-        description="Anzeigedauer in Sekunden",
+        description="Display duration in seconds",
         json_schema_extra=_duration_schema(SLIDE_DURATION_MIN, SLIDE_DURATION_MAX),
     ),
 ]
@@ -100,7 +99,7 @@ TransitionDuration = Annotated[
     Strict(),
     _duration_check("project.transitionDuration", TRANSITION_DURATION_MIN, TRANSITION_DURATION_MAX),
     Field(
-        description="Solldauer des Übergangs in Sekunden",
+        description="Target duration of the transition in seconds",
         json_schema_extra=_duration_schema(TRANSITION_DURATION_MIN, TRANSITION_DURATION_MAX),
     ),
 ]
@@ -118,7 +117,7 @@ class _ProjectModel(BaseModel):
 
 
 class TransitionRef(_ProjectModel):
-    transition_id: str = Field(description="ID aus dem Übergangskatalog")
+    transition_id: str = Field(description="ID from the transition catalog")
     duration: TransitionDuration
 
 
@@ -127,13 +126,13 @@ class Slide(_ProjectModel):
         str,
         Field(
             pattern=SLIDE_ID_PATTERN,
-            description="Vom Client vergeben, eindeutig im Projekt",
+            description="Assigned by the client, unique within the project",
         ),
     ]
-    media_id: str = Field(description="ID eines Mediums aus /api/media")
+    media_id: str = Field(description="ID of a medium from /api/media")
     duration: SlideDuration
     transition_in: TransitionRef | None = Field(
-        description="Eingehender Übergang vom vorherigen Element; beim ersten immer null"
+        description="Incoming transition from the previous element; always null for the first"
     )
 
 
@@ -225,9 +224,9 @@ def check_references(
 
 
 def remove_media_slides(project: Project, media_id: str) -> Project:
-    """Entfernt alle Elemente mit `media_id` samt eingehender Übergänge.
+    """Removes all elements with `media_id` together with their incoming transitions.
 
-    Danach hat das (neue) erste Element keinen Übergang mehr.
+    Afterwards the (new) first element no longer has a transition.
     """
     slides = [s for s in project.slides if s.media_id != media_id]
     if slides and slides[0].transition_in is not None:
@@ -235,11 +234,11 @@ def remove_media_slides(project: Project, media_id: str) -> Project:
     return project.model_copy(update={"slides": slides})
 
 
-# --- Speicher ----------------------------------------------------------------
+# --- Store -------------------------------------------------------------------
 
 
 class ProjectStore:
-    """Das eine Projekt im Datenverzeichnis; eine Instanz pro App (app.state.project)."""
+    """The one project in the data directory; one instance per app (app.state.project)."""
 
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
@@ -257,8 +256,8 @@ class ProjectStore:
             return Project.model_validate_json(raw)
         except ValidationError as exc:
             logger.warning(
-                "Projektdatei %s ist beschädigt, starte mit leerem Projekt "
-                "(die Datei bleibt bis zum nächsten Speichern liegen): %s",
+                "Project file %s is corrupt, starting with an empty project "
+                "(the file is kept until the next save): %s",
                 self.project_file,
                 exc,
             )
@@ -273,7 +272,7 @@ class ProjectStore:
             stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
             backup = self.project_file.with_name(f"{self.project_file.name}.corrupt-{stamp}")
             self.project_file.replace(backup)
-            logger.warning("Beschädigte Projektdatei gesichert als %s", backup)
+            logger.warning("Corrupt project file backed up as %s", backup)
         write_bytes_atomic(self.project_file, project.model_dump_json(indent=2).encode())
         self._corrupt = False
 
@@ -284,7 +283,7 @@ class ProjectStore:
         media_ids: Collection[str],
         transition_ids: Collection[str],
     ) -> Project:
-        """Prüft die Bezüge und schreibt atomar; bei Fehlern bleibt alles unverändert."""
+        """Checks the references and writes atomically; on errors everything stays unchanged."""
         async with self._lock:
             issues = check_references(project, media_ids, transition_ids)
             if issues:
@@ -294,7 +293,7 @@ class ProjectStore:
             return project
 
     async def remove_media(self, media_id: str) -> Project:
-        """Kaskade beim Löschen eines Mediums (design.md D7); schreibt nur bei Änderung."""
+        """Cascade when a medium is deleted (design.md D7); writes only on change."""
         async with self._lock:
             updated = remove_media_slides(self._project, media_id)
             if updated != self._project:

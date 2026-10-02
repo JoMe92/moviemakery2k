@@ -1,33 +1,32 @@
-"""Export-Jobs (design.md D5, TASK-API-006).
+"""Export jobs (design.md D5, TASK-API-006).
 
-Ein `ExportManager` pro App (app.state.exports) verwaltet die Jobs im Speicher:
+One `ExportManager` per app (app.state.exports) keeps the jobs in memory:
 
-- `start` nimmt einen Schnappschuss (tiefe Kopie) des gespeicherten Projekts und
-  startet einen eigenen Worker-Thread. Höchstens ein Job ist `queued` oder
-  `running`; ein zweiter Start wirft `ExportBusy` (→ 409).
-- Der Worker ruft `export_movie` auf; GL-Kontext, Shader und FFmpeg entstehen
-  in diesem Thread (EGL-Kontexte sind threadgebunden). Geschrieben wird nach
-  `<data_dir>/exports/<id>/out.mp4.part`, bei Erfolg atomar nach `out.mp4`.
-- Statusfolge: `queued` → `running` → `done` | `failed` | `cancelled`.
-  Bei `failed` und `cancelled` wird das Job-Verzeichnis entfernt; es bleibt
-  keine Datei zurück.
-- `cancel` setzt das Abbruchsignal und wartet, bis der Worker aufgeräumt hat
-  (FFmpeg beendet, Teildatei gelöscht). Der Job bleibt danach als `cancelled`
-  abfragbar; `remove` löscht einen beendeten Job samt Dateien.
-- `shutdown` (App-Lifespan) bricht laufende Jobs ab und wartet auf die Worker.
+- `start` takes a snapshot (deep copy) of the saved project and starts a
+  dedicated worker thread. At most one job is `queued` or `running`; a second
+  start raises `ExportBusy` (→ 409).
+- The worker calls `export_movie`; GL context, shaders and FFmpeg are created
+  in that thread (EGL contexts are bound to a thread). Output is written to
+  `<data_dir>/exports/<id>/out.mp4.part` and, on success, atomically moved to `out.mp4`.
+- Status sequence: `queued` → `running` → `done` | `failed` | `cancelled`.
+  On `failed` and `cancelled` the job directory is removed; no file is left
+  behind.
+- `cancel` sets the cancel signal and waits until the worker has cleaned up
+  (FFmpeg stopped, partial file deleted). The job then stays queryable as
+  `cancelled`; `remove` deletes a finished job together with its files.
+- `shutdown` (app lifespan) cancels running jobs and waits for the workers.
 
-Aufbewahrung (TASK-API-007):
+Retention (TASK-API-007):
 
-- Behalten werden höchstens die letzten 5 fertigen Exporte (`done`). Wird ein
-  sechster fertig, werden der älteste fertige Export samt Dateien und sein Job
-  gelöscht. `queued`/`running` werden nie entfernt.
-- Insgesamt bleiben höchstens 20 Job-Einträge; darüber hinaus fallen zuerst die
-  ältesten `failed`/`cancelled` weg (sie haben keine Dateien).
-- Die Jobs liegen nur im Speicher; nach einem Neustart sind frühere Exporte
-  über die API nicht mehr erreichbar. `cleanup_on_start` (App-Lifespan) leert
-  daher `<data_dir>/exports/` vollständig: verwaiste Teildateien (`.part`)
-  ebenso wie alte, unerreichbare Export-Verzeichnisse. Was entfernt wird,
-  steht im Log.
+- At most the last 5 finished exports (`done`) are kept. When a sixth one
+  finishes, the oldest finished export is deleted with its files and its job.
+  `queued`/`running` are never removed.
+- At most 20 job entries remain in total; beyond that the oldest
+  `failed`/`cancelled` ones go first (they have no files).
+- Jobs live in memory only; after a restart earlier exports are no longer
+  reachable via the API. `cleanup_on_start` (app lifespan) therefore empties
+  `<data_dir>/exports/` completely: orphaned partial files (`.part`) as well as
+  old, unreachable export directories. Whatever is removed is logged.
 """
 
 import logging
@@ -71,12 +70,12 @@ EXPORT_ID_PATTERN = r"^[0-9a-f]{32}$"
 _EXPORT_ID_RE = re.compile(EXPORT_ID_PATTERN)
 
 MAX_DONE_EXPORTS = 5
-"""So viele fertige Exporte (mit Datei) werden höchstens aufbewahrt."""
+"""At most this many finished exports (with a file) are kept."""
 MAX_JOB_ENTRIES = 20
-"""So viele Job-Einträge (alle Status) werden höchstens aufbewahrt."""
+"""At most this many job entries (any status) are kept."""
 
 CANCEL_TIMEOUT_SECONDS = 30.0
-"""So lange wartet `cancel` höchstens auf das Aufräumen des Workers."""
+"""The longest `cancel` waits for the worker to clean up."""
 
 MESSAGE_GL_UNAVAILABLE = error_message("export.glUnavailable")
 MESSAGE_UNEXPECTED = error_message("export.unexpected")
@@ -95,11 +94,11 @@ class ExportStatus(StrEnum):
 
 
 def normalize_file_name(value: str) -> str:
-    """Prüft den gewünschten Dateinamen (ohne Endung) und normalisiert ihn.
+    """Validates the requested file name (without extension) and normalises it.
 
-    Leerraum am Rand und eine angehängte Endung `.mp4` werden entfernt. Abgelehnt
-    werden leere Namen, die Zeichen `/ \\ : * ? " < > |`, Steuerzeichen und Namen
-    über 120 Zeichen.
+    Surrounding whitespace and a trailing `.mp4` extension are removed. Rejected
+    are empty names, the characters `/ \\ : * ? " < > |`, control characters and
+    names longer than 120 characters.
     """
     name = value.strip()
     if name.lower().endswith(FILE_EXTENSION):
@@ -123,10 +122,10 @@ FileName = Annotated[
     AfterValidator(normalize_file_name),
     Field(
         description=(
-            "Gewünschter Dateiname ohne Endung; `.mp4` wird beim Herunterladen angehängt. "
-            'Nicht erlaubt: / \\ : * ? " < > | und Steuerzeichen.'
+            "Requested file name without extension; `.mp4` is appended on download. "
+            'Not allowed: / \\ : * ? " < > | and control characters.'
         ),
-        examples=["Mein Film"],
+        examples=["My Movie"],
     ),
 ]
 
@@ -145,7 +144,7 @@ class _ExportModel(BaseModel):
 class ExportRequest(_ExportModel):
     profile: ExportProfile = Field(
         default=DEFAULT_PROFILE,
-        description="`high` = 960x720 (Standard), `small` = 640x480; beide 30 fps",
+        description="`high` = 960x720 (default), `small` = 640x480; both 30 fps",
     )
     file_name: FileName
 
@@ -153,9 +152,9 @@ class ExportRequest(_ExportModel):
 class ExportJob(_ExportModel):
     id: Annotated[str, Field(pattern=EXPORT_ID_PATTERN)]
     status: ExportStatus
-    progress: float = Field(ge=0.0, le=1.0, description="Fortschritt 0..1")
+    progress: float = Field(ge=0.0, le=1.0, description="Progress 0..1")
     profile: ExportProfile
-    file_name: str = Field(description="Dateiname ohne Endung")
+    file_name: str = Field(description="File name without extension")
     error: str | None = Field(description="English message when `failed`, otherwise null")
     error_code: str | None = Field(
         default=None, description="Stable error code when `failed` (design.md D5), otherwise null"
@@ -167,11 +166,11 @@ class ExportJob(_ExportModel):
 
 
 class ExportListResponse(_ExportModel):
-    items: list[ExportJob] = Field(description="Alle bekannten Exporte, älteste zuerst")
+    items: list[ExportJob] = Field(description="All known exports, oldest first")
 
 
 class ExportBusy(Exception):
-    """Es läuft schon ein Export."""
+    """An export is already running."""
 
     def __init__(self, job: ExportJob) -> None:
         super().__init__(error_message("export.busy", {"exportId": job.id}))
@@ -217,7 +216,7 @@ class _Job:
 
 
 class ExportManager:
-    """Export-Jobs im Speicher; eine Instanz pro App (app.state.exports)."""
+    """Export jobs in memory; one instance per app (app.state.exports)."""
 
     def __init__(
         self,
@@ -233,13 +232,13 @@ class ExportManager:
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
 
-    # --- Aufräumen -------------------------------------------------------------
+    # --- Cleanup ---------------------------------------------------------------
 
     def cleanup_on_start(self) -> list[Path]:
-        """Leert `exports/` beim Start (Jobs überleben keinen Neustart).
+        """Empties `exports/` at startup (jobs do not survive a restart).
 
-        Entfernt verwaiste `.part`-Dateien und alte Export-Verzeichnisse;
-        liefert die entfernten Einträge. Nur vor dem ersten Job aufrufen.
+        Removes orphaned `.part` files and old export directories; returns the
+        removed entries. Call only before the first job.
         """
         removed: list[Path] = []
         if not self.exports_dir.is_dir():
@@ -252,13 +251,13 @@ class ExportManager:
                 entry.unlink(missing_ok=True)
             removed.append(entry)
             if parts or entry.name.endswith(".part"):
-                logger.warning("Verwaiste Teildatei entfernt: %s", entry)
+                logger.warning("Removed orphaned partial file: %s", entry)
             else:
-                logger.info("Alter Export aus früherem Lauf entfernt: %s", entry)
+                logger.info("Removed old export from a previous run: %s", entry)
         return removed
 
     def _prune(self) -> None:
-        """Setzt die Aufbewahrung durch: ≤ 5 fertige Exporte, ≤ 20 Job-Einträge."""
+        """Enforces retention: ≤ 5 finished exports, ≤ 20 job entries."""
         victims: list[_Job] = []
         with self._lock:
             done = [j for j in self._jobs.values() if j.status is ExportStatus.DONE]
@@ -276,9 +275,9 @@ class ExportManager:
                     victims.append(self._jobs.pop(job.id))
         for job in victims:
             self._discard(job)
-            logger.info("Export %s entfernt (Aufbewahrung)", job.id)
+            logger.info("Export %s removed (retention)", job.id)
 
-    # --- Abfragen ---------------------------------------------------------------
+    # --- Queries ----------------------------------------------------------------
 
     def list(self) -> list[ExportJob]:
         with self._lock:
@@ -290,7 +289,7 @@ class ExportManager:
             return job.model() if job is not None else None
 
     def file_path(self, export_id: str) -> Path | None:
-        """Pfad der fertigen Datei; nur bei Status `done`, sonst None."""
+        """Path of the finished file; only with status `done`, otherwise None."""
         with self._lock:
             job = self._jobs.get(export_id)
             if job is None or job.status is not ExportStatus.DONE:
@@ -300,10 +299,10 @@ class ExportManager:
     # --- Start ------------------------------------------------------------------
 
     def start(self, project: Project, profile: ExportProfile, file_name: str) -> ExportJob:
-        """Legt einen Job mit Schnappschuss von `project` an und startet den Worker.
+        """Creates a job with a snapshot of `project` and starts the worker.
 
-        Wirft ExportBusy, wenn ein Job `queued` oder `running` ist. Die Prüfung
-        des Projekts (leer, fehlende Medien) ist Sache des Aufrufers.
+        Raises ExportBusy if a job is `queued` or `running`. Validating the
+        project (empty, missing media) is the caller's job.
         """
         snapshot = project.model_copy(deep=True)
         with self._lock:
@@ -325,7 +324,7 @@ class ExportManager:
                 target=self._run, args=(job,), name=f"export-{export_id[:8]}", daemon=True
             )
             job.thread.start()
-        logger.info("Export %s gestartet (%s, %d Bilder)", export_id, profile, len(snapshot.slides))
+        logger.info("Export %s started (%s, %d images)", export_id, profile, len(snapshot.slides))
         return created
 
     # --- Worker -----------------------------------------------------------------
@@ -376,7 +375,7 @@ class ExportManager:
         except ExportCancelled:
             self._discard(job)
             self._set(job, status=ExportStatus.CANCELLED)
-            logger.info("Export %s abgebrochen", job.id)
+            logger.info("Export %s cancelled", job.id)
         except ExportFailed as exc:
             self._discard(job)
             code: str
@@ -385,32 +384,32 @@ class ExportManager:
                 code, params = "export.glUnavailable", {"reason": str(exc.__cause__)}
             else:
                 code, params = exc.code, exc.params
-            logger.error("Export %s fehlgeschlagen: %s %s", job.id, exc, params)
+            logger.error("Export %s failed: %s %s", job.id, exc, params)
             self._fail(job, code, params)
         except Exception:
             self._discard(job)
-            logger.exception("Export %s unerwartet fehlgeschlagen", job.id)
+            logger.exception("Export %s failed unexpectedly", job.id)
             self._fail(job, "export.unexpected", {})
         else:
             self._set(job, status=ExportStatus.DONE, progress=1.0)
-            logger.info("Export %s fertig: %s", job.id, job.output)
+            logger.info("Export %s done: %s", job.id, job.output)
 
     @staticmethod
     def _discard(job: _Job) -> None:
         shutil.rmtree(job.directory, ignore_errors=True)
 
-    # --- Abbrechen und Löschen ----------------------------------------------------
+    # --- Cancel and delete -------------------------------------------------------
 
     def cancel(self, export_id: str, timeout: float = CANCEL_TIMEOUT_SECONDS) -> ExportJob | None:
-        """Bricht einen Job ab bzw. löscht einen beendeten; None, wenn unbekannt.
+        """Cancels a job or deletes a finished one; None if unknown.
 
-        - `queued`/`running`: Abbruchsignal setzen und auf den Worker warten
-          (blockiert, höchstens `timeout`). Danach ist der Job `cancelled`,
-          ohne Teildatei, und bleibt abfragbar. Wurde er im selben Moment
-          fertig, wird das Ergebnis verworfen: Der Benutzer wollte abbrechen.
-        - `done`/`failed`/`cancelled`: Dateien und Job werden gelöscht.
+        - `queued`/`running`: set the cancel signal and wait for the worker
+          (blocking, at most `timeout`). Afterwards the job is `cancelled`,
+          without a partial file, and stays queryable. If it finished at the
+          same moment, the result is discarded: the user wanted to cancel.
+        - `done`/`failed`/`cancelled`: files and job are deleted.
 
-        Liefert den Stand des Jobs nach der Aktion.
+        Returns the state of the job after the action.
         """
         with self._lock:
             job = self._jobs.get(export_id)
@@ -424,7 +423,7 @@ class ExportManager:
                 removed = None
         if removed is not None:
             self._discard(job)
-            logger.info("Export %s gelöscht", export_id)
+            logger.info("Export %s deleted", export_id)
             return removed
         if job.thread is not None:
             job.thread.join(timeout)
@@ -440,7 +439,7 @@ class ExportManager:
         return result
 
     def shutdown(self, timeout: float = CANCEL_TIMEOUT_SECONDS) -> None:
-        """Bricht laufende Jobs ab und wartet auf ihre Worker (App-Lifespan)."""
+        """Cancels running jobs and waits for their workers (app lifespan)."""
         with self._lock:
             threads = []
             for job in self._jobs.values():

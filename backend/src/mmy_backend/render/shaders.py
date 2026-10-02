@@ -1,20 +1,20 @@
-"""Shader-Lader des Exports (design.md D2): dieselben GLSL-Dateien wie die Vorschau.
+"""Shader loader of the export (design.md D2): the same GLSL files as the preview.
 
-Spiegelt `apps/web/src/render/shaderSource.ts` und den Programm-Teil von
+Mirrors `apps/web/src/render/shaderSource.ts` and the program part of
 `apps/web/src/render/Renderer.ts`:
 
-- Fragmentprogramm = `prelude.glsl` + `transitions/<id>.glsl` + `epilogue.glsl`,
-  jeweils getrimmt und mit Leerzeile verbunden, abschließender Zeilenumbruch.
-- Vertex-Shader = `vertex.glsl` unverändert; gezeichnet wird ein
-  Vollbild-Dreieck ohne Vertex-Buffer (3 Vertices, leeres VAO).
-- Für den Desktop-GL-Kontext wird genau einmal die erste Zeile
-  `#version 300 es` durch `#version 330 core` ersetzt; sonst nichts.
-- Fehlt der Shader eines Übergangs oder lässt er sich nicht kompilieren/linken,
-  wird geloggt und `fade` verwendet.
-- Uniforms: `uFrom` = Textureinheit 0, `uTo` = Einheit 1, `progress` auf
-  [0, 1] begrenzt, `resolution` = Ausgabegröße in Pixeln, jeder Katalogparameter
-  als `uniform float` gleichen Namens; nicht vorhandene (oder vom Compiler
-  entfernte) Uniforms werden wie im Browser still übergangen.
+- Fragment program = `prelude.glsl` + `transitions/<id>.glsl` + `epilogue.glsl`,
+  each trimmed and joined with a blank line, with a trailing newline.
+- Vertex shader = `vertex.glsl` unchanged; a full-screen triangle is drawn
+  without a vertex buffer (3 vertices, empty VAO).
+- For the desktop GL context the first line `#version 300 es` is replaced
+  exactly once with `#version 330 core`; nothing else.
+- If a transition's shader is missing or fails to compile/link, this is logged
+  and `fade` is used.
+- Uniforms: `uFrom` = texture unit 0, `uTo` = unit 1, `progress` clamped to
+  [0, 1], `resolution` = output size in pixels, every catalog parameter as a
+  `uniform float` of the same name; missing (or compiler-removed) uniforms are
+  silently skipped, as in the browser.
 """
 
 import logging
@@ -28,22 +28,22 @@ import moderngl
 logger = logging.getLogger(__name__)
 
 FALLBACK_TRANSITION_ID = "fade"
-"""Übergang, auf den bei fehlendem oder fehlerhaftem Shader zurückgefallen wird."""
+"""Transition to fall back to when a shader is missing or broken."""
 
 ES_HEADER = "#version 300 es"
 CORE_HEADER = "#version 330 core"
 
 FROM_TEXTURE_UNIT = 0
-"""Textureinheit des Ausgangsbilds (`uFrom`)."""
+"""Texture unit of the source image (`uFrom`)."""
 TO_TEXTURE_UNIT = 1
-"""Textureinheit des Zielbilds (`uTo`)."""
+"""Texture unit of the target image (`uTo`)."""
 
 FULLSCREEN_TRIANGLE_VERTICES = 3
 
-# Wie die Katalog-IDs (catalog.TransitionId); schützt zugleich vor Pfaden wie `../x`.
+# Like the catalog IDs (catalog.TransitionId); also protects against paths like `../x`.
 _TRANSITION_ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
-# Zeichen, die JavaScripts String.prototype.trim entfernt (WhiteSpace + LineTerminator).
+# Characters removed by JavaScript's String.prototype.trim (WhiteSpace + LineTerminator).
 _JS_TRIM_CHARS = "".join(
     chr(code)
     for code in (
@@ -63,7 +63,7 @@ _JS_TRIM_CHARS = "".join(
 
 
 class ShaderError(Exception):
-    """Ein Shader-Quelltext verletzt den Vertrag oder das Fade-Programm ist unbrauchbar."""
+    """A shader source violates the contract or the fade program is unusable."""
 
 
 def _js_trim(text: str) -> str:
@@ -71,15 +71,15 @@ def _js_trim(text: str) -> str:
 
 
 def build_fragment_source(prelude: str, body: str, epilogue: str) -> str:
-    """GLSL-ES-Fragmentprogramm, Zeichen für Zeichen wie `buildFragmentSource` in TS."""
+    """GLSL ES fragment program, character for character like `buildFragmentSource` in TS."""
     return f"{_js_trim(prelude)}\n\n{_js_trim(body)}\n\n{_js_trim(epilogue)}\n"
 
 
 def to_desktop_glsl(source: str) -> str:
-    """Ersetzt genau einmal die erste Zeile `#version 300 es` durch `#version 330 core`.
+    """Replaces the first line `#version 300 es` with `#version 330 core`, exactly once.
 
-    Wirft ShaderError, wenn die Quelle nicht mit dieser Zeile beginnt oder eine
-    weitere `#version`-Direktive enthält.
+    Raises ShaderError if the source does not start with this line or contains
+    another `#version` directive.
     """
     first_line, newline, rest = source.partition("\n")
     if first_line.rstrip("\r") != ES_HEADER or not newline:
@@ -90,7 +90,7 @@ def to_desktop_glsl(source: str) -> str:
 
 
 class ShaderSources:
-    """Liest `packages/shaders` (Settings.shaders_dir); Dateien werden einmal gelesen."""
+    """Reads `packages/shaders` (Settings.shaders_dir); each file is read once."""
 
     def __init__(self, shaders_dir: Path) -> None:
         self.shaders_dir = shaders_dir
@@ -120,24 +120,24 @@ class ShaderSources:
 
     @property
     def vertex(self) -> str:
-        """`vertex.glsl` roh (GLSL ES 3.00), wie `VERTEX_SOURCE` in TS."""
+        """`vertex.glsl` raw (GLSL ES 3.00), like `VERTEX_SOURCE` in TS."""
         return self._required("vertex.glsl")
 
     def body(self, transition_id: str) -> str | None:
-        """Roher Übergangs-Shader `transitions/<id>.glsl`; None, wenn es ihn nicht gibt."""
+        """Raw transition shader `transitions/<id>.glsl`; None if it does not exist."""
         if not _TRANSITION_ID.fullmatch(transition_id):
             return None
         return self._read(self.shaders_dir / "transitions" / f"{transition_id}.glsl")
 
     def fragment_source(self, transition_id: str) -> str | None:
-        """GLSL-ES-Fragmentprogramm wie `fragmentSourceFor` in TS; None ohne Shader."""
+        """GLSL ES fragment program like `fragmentSourceFor` in TS; None without a shader."""
         body = self.body(transition_id)
         if body is None:
             return None
         return build_fragment_source(self.prelude, body, self.epilogue)
 
     def desktop_fragment_source(self, transition_id: str) -> str | None:
-        """Fragmentprogramm mit `#version 330 core`; None ohne Shader."""
+        """Fragment program with `#version 330 core`; None without a shader."""
         source = self.fragment_source(transition_id)
         return None if source is None else to_desktop_glsl(source)
 
@@ -147,10 +147,10 @@ class ShaderSources:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class TransitionProgram:
-    """Ein gelinktes Übergangsprogramm mit leerem VAO fürs Vollbild-Dreieck."""
+    """A linked transition program with an empty VAO for the full-screen triangle."""
 
     shader_id: str
-    """Tatsächlich kompilierter Shader (bei Rückfall `fade`)."""
+    """Shader actually compiled (`fade` on fallback)."""
     program: moderngl.Program
     vao: moderngl.VertexArray
 
@@ -165,9 +165,9 @@ class TransitionProgram:
         resolution: tuple[int, int],
         params: Mapping[str, float],
     ) -> None:
-        """Setzt alle Uniforms wie `Renderer.drawTransition` im Browser.
+        """Sets all uniforms like `Renderer.drawTransition` in the browser.
 
-        Die Texturen selbst bindet der Aufrufer an FROM_TEXTURE_UNIT/TO_TEXTURE_UNIT.
+        The caller binds the textures themselves to FROM_TEXTURE_UNIT/TO_TEXTURE_UNIT.
         """
         values: dict[str, int | float | tuple[float, float]] = {
             "uFrom": FROM_TEXTURE_UNIT,
@@ -175,7 +175,7 @@ class TransitionProgram:
             "progress": min(max(float(progress), 0.0), 1.0),
             "resolution": (float(resolution[0]), float(resolution[1])),
         }
-        # Wie im Browser: Katalogparameter nach den festen Uniforms.
+        # As in the browser: catalog parameters after the fixed uniforms.
         for name, param in params.items():
             values[name] = float(param)
         for name, value in values.items():
@@ -184,12 +184,12 @@ class TransitionProgram:
                 uniform.value = value
 
     def draw(self) -> None:
-        """Zeichnet das Vollbild-Dreieck in den aktuell gebundenen Framebuffer."""
+        """Draws the full-screen triangle into the currently bound framebuffer."""
         self.vao.render(moderngl.TRIANGLES, vertices=FULLSCREEN_TRIANGLE_VERTICES)
 
 
 class ShaderLibrary:
-    """Programme je Übergangs-ID, lazy kompiliert und gecacht (wie `Renderer.programFor`)."""
+    """Programs per transition ID, compiled lazily and cached (like `Renderer.programFor`)."""
 
     def __init__(self, ctx: moderngl.Context, sources: ShaderSources) -> None:
         self.ctx = ctx
@@ -201,9 +201,9 @@ class ShaderLibrary:
             self.get(transition_id)
 
     def get(self, transition_id: str) -> TransitionProgram:
-        """Programm für den Übergang; fällt bei fehlendem/fehlerhaftem Shader auf `fade` zurück.
+        """Program for the transition; falls back to `fade` if the shader is missing/broken.
 
-        Wirft ShaderError, wenn auch `fade` nicht nutzbar ist.
+        Raises ShaderError if `fade` is not usable either.
         """
         cached = self._programs.get(transition_id)
         if cached is not None:
@@ -213,7 +213,7 @@ class ShaderLibrary:
         source = self.sources.desktop_fragment_source(transition_id)
         if source is None:
             logger.warning(
-                "Kein Shader für Übergang %r; verwende %r.", transition_id, FALLBACK_TRANSITION_ID
+                "No shader for transition %r; using %r.", transition_id, FALLBACK_TRANSITION_ID
             )
         else:
             program = self._compile(transition_id, source)
@@ -235,13 +235,13 @@ class ShaderLibrary:
                 fragment_shader=fragment_source,
             )
         except moderngl.Error as exc:
-            logger.warning("Shader %r lässt sich nicht kompilieren/linken: %s", shader_id, exc)
+            logger.warning("Shader %r failed to compile/link: %s", shader_id, exc)
             return None
         vao = self.ctx.vertex_array(program, [])
         return TransitionProgram(shader_id=shader_id, program=program, vao=vao)
 
     def release(self) -> None:
-        """Gibt alle Programme und VAOs frei (der Kontext bleibt beim Aufrufer)."""
+        """Releases all programs and VAOs (the context stays with the caller)."""
         released: set[int] = set()
         for entry in self._programs.values():
             if id(entry) in released:
