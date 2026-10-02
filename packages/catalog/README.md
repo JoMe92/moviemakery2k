@@ -1,13 +1,14 @@
 # @mmy/catalog – Effekt-, Übergangs- und Titelkatalog
 
-**Single Source of Truth** für alle Übergänge, Videoeffekte und Titelanimationen.
-Frontend (Vorschau) und Backend (Export) lesen denselben Katalog.
+**Single Source of Truth** für Übergänge (später auch Effekte und Titel).
 
-- Ein Eintrag beschreibt ID, Anzeigename (eigene Benennung), Kategorie,
-  Standarddauer, Parameter samt Wertebereich und das zugehörige Shader-Programm
-  in `packages/shaders`.
-- Die Werte werden aus den dokumentierten Original-Parametern abgeleitet
-  (`docs/research/sources/`, MSDN/Vista-SDK, W3C SMIL) und **neu geschrieben**.
-  Die Referenz-XMLs selbst werden nie ausgeliefert.
-- Format (JSON + JSON Schema) und Umfang werden über einen OpenSpec-Change
-  festgelegt. Bis dahin ist dieses Paket leer.
+- `transitions.json`: Katalog, validiert durch `transitions.schema.json`
+  (JSON Schema 2020-12).
+- Jeder Eintrag nennt seinen Shader in `packages/shaders/transitions/`. Jeder
+  Wert in `params` wird zu `uniform float <name>` in diesem Shader.
+- `source` belegt die Parameter (WMM-2.x-XML bzw. SMPTE-Wipe-Nummer, siehe
+  `docs/research/sources/`). `estimated` listet Werte, die nicht am Original
+  prüfbar sind [E]. Sie lassen sich hier ohne Codeänderung nachjustieren.
+- Das Backend lädt und validiert den Katalog beim Start und liefert ihn über
+  `GET /api/catalog/transitions` aus. Die Referenz-XMLs selbst werden nie
+  ausgeliefert.

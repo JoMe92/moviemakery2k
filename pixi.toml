@@ -32,6 +32,8 @@ pytest = ">=9.1"
 httpx2 = ">=2.13"
 biome = "2.5.*"
 glslang = ">=16"
+jsonschema = ">=4.23"
+types-jsonschema = "*"
 
 [environments]
 default = { features = ["dev"], solve-group = "default" }
