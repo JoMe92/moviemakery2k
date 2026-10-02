@@ -292,7 +292,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
       <DragOverlay dropAnimation={null}>
         {active ? (
           <div className={styles.overlay} data-testid="drag-overlay">
-            {overlayMedia ? <img src={overlayMedia.thumbnailUrl} alt="" /> : null}
+            {overlayMedia?.kind === "image" ? <img src={overlayMedia.thumbnailUrl} alt="" /> : null}
             {active.type === "transition" ? (
               <TransitionIcon transitionId={active.transitionId} size={94} />
             ) : null}

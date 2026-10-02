@@ -8,6 +8,8 @@ import type { components, paths } from "../generated/schema";
 type Schemas = components["schemas"];
 export type Health = Schemas["Health"];
 export type MediaItem = Schemas["MediaItem"];
+export type ImageItem = Schemas["ImageItem"];
+export type AudioItem = Schemas["AudioItem"];
 export type Project = Schemas["Project"];
 export type Slide = Schemas["Slide"];
 export type TransitionRef = Schemas["TransitionRef"];

@@ -319,11 +319,64 @@ export interface components {
             /** Detail */
             detail: components["schemas"]["ApiError"] | components["schemas"]["RequestValidationIssue"][];
         };
+        /**
+         * AudioItem
+         * @description An imported audio file (MP3, WAV, M4A/AAC, OGG, FLAC), add-music-track D1.
+         */
+        AudioItem: {
+            /**
+             * Audiourl
+             * @description Preview version (AAC in M4A, 48 kHz, stereo)
+             */
+            audioUrl: string;
+            /**
+             * Channels
+             * @description Number of channels of the original
+             */
+            channels: number;
+            /**
+             * Codec
+             * @description FFmpeg codec name of the original, e.g. `mp3`, `pcm_s16le`
+             */
+            codec: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Duration
+             * @description Duration in seconds
+             */
+            duration: number;
+            /**
+             * Filename
+             * @description Original file name, for display only
+             */
+            filename: string;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "audio";
+            /**
+             * Peaksurl
+             * @description Waveform data (50 peaks per second)
+             */
+            peaksUrl: string;
+            /**
+             * Samplerate
+             * @description Sample rate of the original in Hz
+             */
+            sampleRate: number;
+        };
         /** Body_upload_media_api_media_post */
         Body_upload_media_api_media_post: {
             /**
              * Files
-             * @description Image files (JPEG, PNG, WebP)
+             * @description Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
              */
             files: string[];
         };
@@ -334,7 +387,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -420,12 +473,11 @@ export interface components {
              */
             status: "ok";
         };
-        /** MediaDeleteResponse */
-        MediaDeleteResponse: {
-            project: components["schemas"]["Project"];
-        };
-        /** MediaItem */
-        MediaItem: {
+        /**
+         * ImageItem
+         * @description An imported picture (JPEG, PNG, WebP).
+         */
+        ImageItem: {
             /**
              * Createdat
              * Format: date-time
@@ -443,6 +495,11 @@ export interface components {
             height: number;
             /** Id */
             id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image";
             /** Previewurl */
             previewUrl: string;
             /** Thumbnailurl */
@@ -453,6 +510,11 @@ export interface components {
              */
             width: number;
         };
+        /** MediaDeleteResponse */
+        MediaDeleteResponse: {
+            project: components["schemas"]["Project"];
+        };
+        MediaItem: components["schemas"]["ImageItem"] | components["schemas"]["AudioItem"];
         /** MediaListResponse */
         MediaListResponse: {
             /**
@@ -463,7 +525,7 @@ export interface components {
         };
         /** MediaUploadFailure */
         MediaUploadFailure: {
-            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels */
+            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable */
             errorCode: components["schemas"]["ErrorCode"];
             /**
              * Errorparams

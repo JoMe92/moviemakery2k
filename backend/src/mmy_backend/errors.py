@@ -44,6 +44,9 @@ class ErrorCode(StrEnum):
     MEDIA_TOO_LARGE = "media.tooLarge"
     MEDIA_TOO_MANY_PIXELS = "media.tooManyPixels"
     MEDIA_IN_USE_BY_EXPORT = "media.inUseByExport"
+    MEDIA_AUDIO_TOO_LONG = "media.audioTooLong"
+    MEDIA_NO_AUDIO_STREAM = "media.noAudioStream"
+    MEDIA_PROBE_UNAVAILABLE = "media.probeUnavailable"
     PROJECT_SLIDE_DURATION_OUT_OF_RANGE = "project.slideDuration.outOfRange"
     PROJECT_SLIDE_DURATION_OFF_GRID = "project.slideDuration.offGrid"
     PROJECT_TRANSITION_DURATION_OUT_OF_RANGE = "project.transitionDuration.outOfRange"
@@ -92,13 +95,24 @@ _SPECS: dict[str, ErrorSpec] = {
         "Too many files: at most {max} per import ({count} sent).", ("max", "count")
     ),
     # Per-file upload results.
-    "media.unsupportedType": ErrorSpec("Not a supported image (JPEG, PNG and WebP are allowed)."),
+    "media.unsupportedType": ErrorSpec(
+        "Not a supported image or audio file (allowed are JPEG, PNG, WebP, "
+        "MP3, WAV, M4A/AAC, OGG and FLAC)."
+    ),
+    # `maxMegabytes` depends on the kind: 25 for images, 100 for audio.
     "media.tooLarge": ErrorSpec(
         "The file is too large (at most {maxMegabytes} MB).", ("maxMegabytes",)
     ),
     "media.tooManyPixels": ErrorSpec(
         "The image has too many pixels (at most {maxMegapixels} megapixels).",
         ("maxMegapixels",),
+    ),
+    "media.audioTooLong": ErrorSpec(
+        "The audio file is too long (at most {maxMinutes} minutes).", ("maxMinutes",)
+    ),
+    "media.noAudioStream": ErrorSpec("The file contains no audio track."),
+    "media.probeUnavailable": ErrorSpec(
+        "Audio files cannot be checked: ffprobe was not found or could not be started."
     ),
     # 409 on delete while a queued or running export uses the medium (design.md D5).
     "media.inUseByExport": ErrorSpec(

@@ -22,7 +22,9 @@ function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
 
   useEffect(() => {
     let active = true;
-    const urls = new Map(media.map((m) => [m.id, m.previewUrl]));
+    const urls = new Map(
+      media.flatMap((m) => (m.kind === "image" ? [[m.id, m.previewUrl] as const] : [])),
+    );
     const wanted = [...new Set(slides.map((s) => s.mediaId))];
     for (const mediaId of wanted) {
       const url = urls.get(mediaId);

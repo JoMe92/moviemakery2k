@@ -1,6 +1,6 @@
 """Media endpoints (TASK-API-002, TASK-API-003).
 
-- POST   /api/media                 import pictures, one result per file
+- POST   /api/media                 import pictures and audio, one result per file
 - GET    /api/media                 collection in import order
 - GET    /api/media/{id}/thumbnail  thumbnail (JPEG, immutable)
 - GET    /api/media/{id}/preview    preview image (JPEG, immutable)
@@ -146,7 +146,10 @@ async def delete_media(
 )
 async def upload_media(
     store: Annotated[MediaStore, Depends(get_media_store)],
-    files: Annotated[list[UploadFile], File(description="Image files (JPEG, PNG, WebP)")],
+    files: Annotated[
+        list[UploadFile],
+        File(description="Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)"),
+    ],
 ) -> MediaUploadResponse:
     if len(files) > MAX_FILES_PER_REQUEST:
         raise api_exception(

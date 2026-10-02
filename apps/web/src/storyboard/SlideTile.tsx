@@ -135,7 +135,9 @@ export function SlideTile({
         onContextMenu={onContextMenu}
       >
         <span className={styles.thumb}>
-          {media ? <img src={media.thumbnailUrl} alt="" loading="lazy" draggable={false} /> : null}
+          {media?.kind === "image" ? (
+            <img src={media.thumbnailUrl} alt="" loading="lazy" draggable={false} />
+          ) : null}
           <span className={styles.number}>{number}</span>
         </span>
         <span className={styles.duration}>{duration}</span>

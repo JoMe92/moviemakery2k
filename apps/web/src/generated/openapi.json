@@ -182,10 +182,83 @@
         "title": "ApiValidationResponse",
         "type": "object"
       },
+      "AudioItem": {
+        "additionalProperties": false,
+        "description": "An imported audio file (MP3, WAV, M4A/AAC, OGG, FLAC), add-music-track D1.",
+        "properties": {
+          "audioUrl": {
+            "description": "Preview version (AAC in M4A, 48 kHz, stereo)",
+            "title": "Audiourl",
+            "type": "string"
+          },
+          "channels": {
+            "description": "Number of channels of the original",
+            "exclusiveMinimum": 0.0,
+            "title": "Channels",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "FFmpeg codec name of the original, e.g. `mp3`, `pcm_s16le`",
+            "title": "Codec",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Duration in seconds",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "audio",
+            "title": "Kind",
+            "type": "string"
+          },
+          "peaksUrl": {
+            "description": "Waveform data (50 peaks per second)",
+            "title": "Peaksurl",
+            "type": "string"
+          },
+          "sampleRate": {
+            "description": "Sample rate of the original in Hz",
+            "exclusiveMinimum": 0.0,
+            "title": "Samplerate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "duration",
+          "sampleRate",
+          "channels",
+          "codec",
+          "createdAt",
+          "audioUrl",
+          "peaksUrl"
+        ],
+        "title": "AudioItem",
+        "type": "object"
+      },
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
-            "description": "Image files (JPEG, PNG, WebP)",
+            "description": "Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
             "items": {
               "contentMediaType": "application/octet-stream",
               "type": "string"
@@ -209,6 +282,9 @@
           "media.tooLarge",
           "media.tooManyPixels",
           "media.inUseByExport",
+          "media.audioTooLong",
+          "media.noAudioStream",
+          "media.probeUnavailable",
           "project.slideDuration.outOfRange",
           "project.slideDuration.offGrid",
           "project.transitionDuration.outOfRange",
@@ -429,21 +505,9 @@
         "title": "Health",
         "type": "object"
       },
-      "MediaDeleteResponse": {
+      "ImageItem": {
         "additionalProperties": false,
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/Project"
-          }
-        },
-        "required": [
-          "project"
-        ],
-        "title": "MediaDeleteResponse",
-        "type": "object"
-      },
-      "MediaItem": {
-        "additionalProperties": false,
+        "description": "An imported picture (JPEG, PNG, WebP).",
         "properties": {
           "createdAt": {
             "format": "date-time",
@@ -465,6 +529,11 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "const": "image",
+            "title": "Kind",
+            "type": "string"
+          },
           "previewUrl": {
             "title": "Previewurl",
             "type": "string"
@@ -481,6 +550,7 @@
         },
         "required": [
           "id",
+          "kind",
           "filename",
           "width",
           "height",
@@ -488,8 +558,38 @@
           "thumbnailUrl",
           "previewUrl"
         ],
-        "title": "MediaItem",
+        "title": "ImageItem",
         "type": "object"
+      },
+      "MediaDeleteResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "MediaDeleteResponse",
+        "type": "object"
+      },
+      "MediaItem": {
+        "discriminator": {
+          "mapping": {
+            "audio": "#/components/schemas/AudioItem",
+            "image": "#/components/schemas/ImageItem"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ImageItem"
+          },
+          {
+            "$ref": "#/components/schemas/AudioItem"
+          }
+        ]
       },
       "MediaListResponse": {
         "additionalProperties": false,
@@ -514,7 +614,7 @@
         "properties": {
           "errorCode": {
             "$ref": "#/components/schemas/ErrorCode",
-            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels"
+            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable"
           },
           "errorParams": {
             "additionalProperties": {

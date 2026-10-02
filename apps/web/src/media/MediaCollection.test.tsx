@@ -281,8 +281,14 @@ describe("media collection", () => {
   });
 
   it.each([
-    ["de", "kaputt.gif: Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP)."],
-    ["en", "kaputt.gif: Not a supported image (JPEG, PNG and WebP are allowed)."],
+    [
+      "de",
+      "kaputt.gif: Keine unterstützte Bild- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG und FLAC).",
+    ],
+    [
+      "en",
+      "kaputt.gif: Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
+    ],
   ])("translates the code media.unsupportedType per file (%s)", async (locale, text) => {
     localStorage.setItem("mmy.locale", locale);
     const api = importApi({
@@ -291,7 +297,8 @@ describe("media collection", () => {
         errorCode: "media.unsupportedType" as const,
         errorParams: {},
         filename: f.name,
-        message: "Not a supported image (JPEG, PNG and WebP are allowed).",
+        message:
+          "Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
       })),
     });
     const user = userEvent.setup();

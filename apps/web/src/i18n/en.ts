@@ -255,9 +255,14 @@ export const en = {
     media: {
       notFound: "Media item not found.",
       tooManyFiles: "Too many files: at most {max} per import ({count} sent).",
-      unsupportedType: "Not a supported image (JPEG, PNG and WebP are allowed).",
+      unsupportedType:
+        "Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
       tooLarge: "The file is too large (at most {maxMegabytes} MB).",
       tooManyPixels: "The image has too many pixels (at most {maxMegapixels} megapixels).",
+      audioTooLong: "The audio file is too long (at most {maxMinutes} minutes).",
+      noAudioStream: "The file contains no audio track.",
+      probeUnavailable:
+        "Audio files cannot be checked: ffprobe was not found or could not be started.",
       inUseByExport:
         "The image cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
     },

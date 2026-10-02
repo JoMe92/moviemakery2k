@@ -43,7 +43,9 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
       aria-label={item.filename}
       title={item.filename}
       thumbnail={
-        <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
+        item.kind === "image" ? (
+          <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
+        ) : null
       }
       selected={selected}
       {...handlers}

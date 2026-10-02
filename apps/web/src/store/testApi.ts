@@ -1,9 +1,10 @@
 import { vi } from "vitest";
-import type { AppApi, ExportJob, MediaItem, Project, Transition } from "../lib/apiClient";
+import type { AppApi, ExportJob, ImageItem, Project, Transition } from "../lib/apiClient";
 
-export function mediaItem(id: string): MediaItem {
+export function mediaItem(id: string): ImageItem {
   return {
     id,
+    kind: "image",
     filename: `${id}.jpg`,
     width: 640,
     height: 480,
