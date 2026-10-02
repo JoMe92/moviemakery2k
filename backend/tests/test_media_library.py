@@ -108,13 +108,19 @@ def test_unknown_or_malformed_id_is_404(client: TestClient, kind: str, media_id:
     res = client.get(f"/api/media/{media_id}/{kind}")
     assert res.status_code == 404
     if media_id != "..":  # ".." normalisiert der Client weg; dann greift das 404 des Routers.
-        assert res.json() == {"detail": "Medium nicht gefunden."}
+        detail = res.json()["detail"]
+        assert detail["code"] == "media.notFound"
+        assert detail["message"] == "Media item not found."
+        assert set(detail["params"]) == {"mediaId"}
 
 
 def test_missing_derived_file_is_404(client: TestClient, settings: Settings) -> None:
     [media_id] = _upload(client, ["x.png"])
     (settings.data_dir / "media" / media_id / "thumb.jpg").unlink()
-    assert client.get(f"/api/media/{media_id}/thumbnail").status_code == 404
+    res = client.get(f"/api/media/{media_id}/thumbnail")
+    assert res.status_code == 404
+    assert res.json()["detail"]["code"] == "media.notFound"
+    assert res.json()["detail"]["params"] == {"mediaId": media_id}
     assert client.get(f"/api/media/{media_id}/preview").status_code == 200
 
 
@@ -151,7 +157,13 @@ def test_delete_unknown_or_malformed_is_404(client: TestClient, media_id: str) -
     res = client.delete(f"/api/media/{media_id}")
     assert res.status_code == 404
     if media_id != "..":  # ".." normalisiert der Client weg; dann greift das 404 des Routers.
-        assert res.json() == {"detail": "Medium nicht gefunden."}
+        assert res.json() == {
+            "detail": {
+                "code": "media.notFound",
+                "params": {"mediaId": media_id},
+                "message": "Media item not found.",
+            }
+        }
     assert [i["id"] for i in client.get("/api/media").json()["items"]] == [kept]
 
 

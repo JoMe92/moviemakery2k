@@ -34,7 +34,7 @@ class FakeExport:
     def __call__(self, *args: Any, **kwargs: Any) -> Path:
         out: Path = args[3]
         if self.fail:
-            raise ExportFailed("Export fehlgeschlagen: Attrappe.")
+            raise ExportFailed("export.renderFailed", reason="dummy")
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(b"\x00\x00\x00\x18ftypisom")
         return out

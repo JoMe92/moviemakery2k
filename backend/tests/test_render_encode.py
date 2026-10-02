@@ -176,8 +176,9 @@ def test_part_path_and_duration() -> None:
 
 def test_empty_project_fails_without_files(tmp_path: Path) -> None:
     out = tmp_path / "film.mp4"
-    with pytest.raises(ExportFailed, match="keine Bilder"):
+    with pytest.raises(ExportFailed, match="the project contains no images") as info:
         export_movie(build_timeline([]), CATALOG, ExportProfile.SMALL, out, load)
+    assert info.value.code == "export.noImages" and info.value.params == {}
     assert list(tmp_path.iterdir()) == []
 
 
@@ -285,6 +286,15 @@ def test_ffmpeg_exit_raises_with_stderr_tail(
     with pytest.raises(ExportFailed) as info:
         export_movie(small_timeline(), CATALOG, ExportProfile.SMALL, out, load)
     assert "kaputt: boom" in info.value.stderr_tail
+    # FFmpeg exits at once: depending on timing the pipe breaks first or the exit is seen.
+    assert info.value.code in {
+        "export.ffmpegFailed",
+        "export.ffmpegInputClosed",
+        "export.ffmpegInputClosedEarly",
+    }
+    if info.value.code == "export.ffmpegFailed":
+        assert info.value.params == {"returnCode": 3}
+    assert str(info.value).startswith("FFmpeg ")
     assert list(out.parent.iterdir()) == []
 
 
@@ -306,6 +316,8 @@ def test_invalid_audio_input_fails_without_part(tmp_path: Path) -> None:
 def test_missing_ffmpeg_binary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MMY_FFMPEG", str(tmp_path / "nope" / "ffmpeg"))
     out = tmp_path / "film.mp4"
-    with pytest.raises(ExportFailed, match="nicht starten"):
+    with pytest.raises(ExportFailed, match="FFmpeg could not be started") as info:
         export_movie(small_timeline(), CATALOG, ExportProfile.SMALL, out, load)
+    assert info.value.code == "export.ffmpegStartFailed"
+    assert set(info.value.params) == {"reason"}
     assert list(tmp_path.iterdir()) == []

@@ -110,8 +110,9 @@ def test_text_file_named_jpg_is_unsupported_but_others_import(settings: Settings
     assert failure == {
         "filename": "fake.jpg",
         "ok": False,
-        "error": "unsupported",
-        "message": media.ERROR_MESSAGES["unsupported"],
+        "error": "media.unsupportedType",
+        "errorParams": {},
+        "message": "Not a supported image (JPEG, PNG and WebP are allowed).",
     }
     assert len([p for p in (settings.data_dir / "media").iterdir()]) == 2
 
@@ -120,7 +121,7 @@ def test_other_image_format_is_unsupported(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         items = _upload(client, [_file("x.jpg", _image_bytes("GIF", (10, 10)))])
     assert items[0]["ok"] is False
-    assert items[0]["error"] == "unsupported"
+    assert items[0]["error"] == "media.unsupportedType"
 
 
 def test_file_over_25_mb_is_too_large_and_nothing_stored(settings: Settings) -> None:
@@ -132,8 +133,9 @@ def test_file_over_25_mb_is_too_large_and_nothing_stored(settings: Settings) -> 
         {
             "filename": "big.png",
             "ok": False,
-            "error": "too_large",
-            "message": media.ERROR_MESSAGES["too_large"],
+            "error": "media.tooLarge",
+            "errorParams": {"maxMegabytes": 25},
+            "message": "The file is too large (at most 25 MB).",
         }
     ]
     assert _files_under(settings.data_dir) == set()
@@ -150,7 +152,9 @@ def test_too_many_pixels_is_rejected(settings: Settings, monkeypatch: pytest.Mon
             ],
         )
     assert [r["ok"] for r in items] == [False, True]
-    assert items[0]["error"] == "too_many_pixels"
+    assert items[0]["error"] == "media.tooManyPixels"
+    assert items[0]["errorParams"] == {"maxMegapixels": 40}
+    assert items[0]["message"] == "The image has too many pixels (at most 40 megapixels)."
 
 
 def test_decompression_bomb_is_too_many_pixels(
@@ -159,7 +163,7 @@ def test_decompression_bomb_is_too_many_pixels(
     monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 10)
     with TestClient(create_app(settings)) as client:
         items = _upload(client, [_file("bomb.png", _image_bytes("PNG", (20, 20)), "image/png")])
-    assert items[0]["error"] == "too_many_pixels"
+    assert items[0]["error"] == "media.tooManyPixels"
 
 
 def test_path_in_filename_is_display_only(settings: Settings, tmp_path: Path) -> None:
@@ -220,7 +224,11 @@ def test_more_than_50_files_rejects_request(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         res = client.post("/api/media", files=files)
     assert res.status_code == 413
-    assert "50" in res.json()["detail"]
+    assert res.json()["detail"] == {
+        "code": "media.tooManyFiles",
+        "params": {"max": 50, "count": 51},
+        "message": "Too many files: at most 50 per import (51 sent).",
+    }
     assert not (settings.data_dir / "media").exists()
 
 
@@ -260,9 +268,8 @@ def test_openapi_describes_upload_result_union(settings: Settings) -> None:
     assert schemas["MediaUploadFailure"]["properties"]["ok"]["const"] is False
     assert "ok" in schemas["MediaUploadSuccess"]["required"]
     assert "ok" in schemas["MediaUploadFailure"]["required"]
-    assert set(schemas["MediaUploadFailure"]["properties"]["error"]["enum"]) == {
-        "unsupported",
-        "too_large",
-        "too_many_pixels",
-    }
+    failure = schemas["MediaUploadFailure"]
+    assert failure["properties"]["error"]["type"] == "string"
+    assert {"error", "message"} <= set(failure["required"])
+    assert "errorParams" in failure["properties"]
     assert "createdAt" in schemas["MediaItem"]["properties"]

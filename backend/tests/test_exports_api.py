@@ -144,7 +144,11 @@ def _duration(path: Path) -> float:
 def test_empty_project_is_rejected(client: TestClient) -> None:
     res = client.post("/api/exports", json={"fileName": "Mein Film"})
     assert res.status_code == 422
-    assert res.json()["detail"] == "Export nicht möglich: Der Bildstreifen ist leer."
+    assert res.json()["detail"] == {
+        "code": "export.emptyProject",
+        "params": {},
+        "message": "Cannot export: the storyboard is empty.",
+    }
     assert client.get("/api/exports").json() == {"items": []}
 
 
@@ -156,21 +160,56 @@ def test_missing_media_is_rejected(client: TestClient) -> None:
     store._items = [item for item in store._items if item.id != media_ids[1]]
     res = client.post("/api/exports", json={"fileName": "Mein Film"})
     assert res.status_code == 422
-    detail = res.json()["detail"]
-    assert "Fehlende Medien" in detail and "Element 2" in detail and media_ids[1] in detail
+    assert res.json()["detail"] == {
+        "code": "export.missingMedia",
+        "params": {"count": 1, "slides": "2", "mediaIds": media_ids[1]},
+        "message": "Cannot export: media missing for slide(s) 2.",
+    }
+
+
+CONTROL_CHARS = "The file name contains control characters."
+INVALID_CHARS = (
+    "The file name contains characters that are not allowed: {} "
+    '(not allowed are / \\ : * ? " < > |).'
+)
 
 
 @pytest.mark.parametrize(
-    "file_name",
-    ["", "   ", ".mp4", "Urlaub/2003", 'a"b', "a:b", "a*b", "a?b", "a<b>", "a|b", "a\\b", "a\x07b"],
+    ("file_name", "code", "params", "message"),
+    [
+        ("", "export.fileName.empty", {}, "The file name must not be empty."),
+        ("   ", "export.fileName.empty", {}, "The file name must not be empty."),
+        (".mp4", "export.fileName.empty", {}, "The file name must not be empty."),
+        ("Urlaub/2003", "export.fileName.invalidChars", {"chars": "/"}, INVALID_CHARS.format("/")),
+        ('a"b', "export.fileName.invalidChars", {"chars": '"'}, INVALID_CHARS.format('"')),
+        ("a:b", "export.fileName.invalidChars", {"chars": ":"}, INVALID_CHARS.format(":")),
+        ("a*b", "export.fileName.invalidChars", {"chars": "*"}, INVALID_CHARS.format("*")),
+        ("a?b", "export.fileName.invalidChars", {"chars": "?"}, INVALID_CHARS.format("?")),
+        ("a<b>", "export.fileName.invalidChars", {"chars": "< >"}, INVALID_CHARS.format("< >")),
+        ("a|b", "export.fileName.invalidChars", {"chars": "|"}, INVALID_CHARS.format("|")),
+        ("a\\b", "export.fileName.invalidChars", {"chars": "\\"}, INVALID_CHARS.format("\\")),
+        ("a\x07b", "export.fileName.controlChars", {}, CONTROL_CHARS),
+        ("..", "export.fileName.invalid", {}, "The file name is invalid."),
+        (
+            "x" * 121,
+            "export.fileName.tooLong",
+            {"max": 120},
+            "The file name is too long (at most 120 characters).",
+        ),
+    ],
 )
-def test_invalid_file_name_is_rejected(client: TestClient, file_name: str) -> None:
+def test_invalid_file_name_is_rejected(
+    client: TestClient, file_name: str, code: str, params: dict[str, Any], message: str
+) -> None:
     _save_project(client, _upload(client, 1))
     res = client.post("/api/exports", json={"profile": "small", "fileName": file_name})
     assert res.status_code == 422, res.text
+    # FastAPI's native list (design.md D5): `type` is the code, `ctx` the params.
     [issue] = res.json()["detail"]
     assert issue["loc"] == ["body", "fileName"]
-    assert issue["msg"].startswith("Feld fileName: Der Dateiname")
+    assert issue["type"] == code
+    assert issue["msg"] == message
+    assert issue.get("ctx", {}) == params
     assert client.get("/api/exports").json() == {"items": []}
 
 
@@ -180,9 +219,9 @@ def test_file_name_rules() -> None:
     assert normalize_file_name("Urlaub.MP4") == "Urlaub"
     assert normalize_file_name("Fest 2003 \u2013 Grüße") == "Fest 2003 \u2013 Grüße"
     assert normalize_file_name("x" * 120) == "x" * 120
-    with pytest.raises(ValueError, match="unerlaubte Zeichen: / :"):
+    with pytest.raises(ValueError, match="not allowed: / :"):
         normalize_file_name("Urlaub/2003:a")
-    with pytest.raises(ValueError, match="zu lang"):
+    with pytest.raises(ValueError, match="too long"):
         normalize_file_name("x" * 121)
 
 
@@ -190,10 +229,17 @@ def test_invalid_profile_and_unknown_ids(client: TestClient) -> None:
     _save_project(client, _upload(client, 1))
     res = client.post("/api/exports", json={"profile": "huge", "fileName": "Film"})
     assert res.status_code == 422
-    for path in ("/api/exports/unbekannt", "/api/exports/" + "0" * 32):
-        assert client.get(path).status_code == 404
-        assert client.get(path + "/file").status_code == 404
-        assert client.delete(path).status_code == 404
+    assert res.json()["detail"][0]["type"] == "enum"  # FastAPI's native list, unchanged
+    for export_id in ("unbekannt", "0" * 32):
+        path = f"/api/exports/{export_id}"
+        expected = {
+            "code": "export.notFound",
+            "params": {"exportId": export_id},
+            "message": "Export not found.",
+        }
+        for res in (client.get(path), client.get(path + "/file"), client.delete(path)):
+            assert res.status_code == 404
+            assert res.json() == {"detail": expected}
 
 
 def test_no_gl_context_fails_with_message(
@@ -207,14 +253,80 @@ def test_no_gl_context_fails_with_message(
     job = _start(client)
     final, _ = _poll(client, job["id"], {"done", "failed", "cancelled"})
     assert final["status"] == "failed"
+    assert final["errorCode"] == "export.glUnavailable"
+    assert final["errorParams"] == {
+        "reason": "Export nicht möglich: kein OpenGL-3.3-Kontext (Test)."
+    }
     assert final["error"] == MESSAGE_GL_UNAVAILABLE
-    assert "auf diesem System nicht verfügbar" in final["error"]
+    assert final["error"].startswith("Export is not available on this system")
     assert not _export_dir(settings, job["id"]).exists()
     res = client.get(f"/api/exports/{job['id']}/file")
-    assert res.status_code == 409 and "failed" in res.json()["detail"]
+    assert res.status_code == 409
+    assert res.json()["detail"] == {
+        "code": "export.notReady",
+        "params": {"status": "failed"},
+        "message": "The movie is not available: the export has the status “failed”.",
+    }
     # Die App bleibt bedienbar: ein neuer Start ist möglich, der fehlgeschlagene Job löschbar.
     assert client.delete(f"/api/exports/{job['id']}").status_code == 204
     assert client.get(f"/api/exports/{job['id']}").status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("raised", "code", "params", "message"),
+    [
+        (
+            encode.ExportFailed("export.ffmpegMissing"),
+            "export.ffmpegMissing",
+            {},
+            "Cannot export: FFmpeg was not found.",
+        ),
+        (
+            encode.ExportFailed("export.ffmpegFailed", "stderr tail", returnCode=1),
+            "export.ffmpegFailed",
+            {"returnCode": 1},
+            "FFmpeg failed with exit code 1.",
+        ),
+        (
+            encode.ExportFailed("export.ffmpegInputClosed", frame=3, total=30),
+            "export.ffmpegInputClosed",
+            {"frame": 3, "total": 30},
+            "FFmpeg closed its input at frame 3/30.",
+        ),
+        (
+            encode.ExportFailed("export.renderFailed", reason="shader broken"),
+            "export.renderFailed",
+            {"reason": "shader broken"},
+            "The export failed: shader broken",
+        ),
+        (
+            encode.ExportFailed("export.saveFailed", reason="disk full"),
+            "export.saveFailed",
+            {"reason": "disk full"},
+            "The export could not be saved: disk full",
+        ),
+        (RuntimeError("boom"), "export.unexpected", {}, "The export failed unexpectedly."),
+    ],
+)
+def test_failed_job_carries_error_code(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    raised: Exception,
+    code: str,
+    params: dict[str, Any],
+    message: str,
+) -> None:
+    def failing(*_args: Any, **_kwargs: Any) -> Path:
+        raise raised
+
+    monkeypatch.setattr("mmy_backend.exports.export_movie", failing)
+    _save_project(client, _upload(client, 1))
+    job = _start(client)
+    final, _ = _poll(client, job["id"], {"done", "failed", "cancelled"})
+    assert final["status"] == "failed"
+    assert final["errorCode"] == code
+    assert final["errorParams"] == params
+    assert final["error"] == message
 
 
 # --- Mit Rendern (GL + FFmpeg) ------------------------------------------------------
@@ -228,6 +340,7 @@ def test_export_runs_to_done_and_downloads(client: TestClient, settings: Setting
     assert job["status"] == "queued" and job["progress"] == 0.0
     assert job["profile"] == "small" and job["fileName"] == "Grüße aus Köln"
     assert job["error"] is None and job["createdAt"]
+    assert job["errorCode"] is None and job["errorParams"] == {}
 
     progresses: list[float] = []
     deadline = time.monotonic() + TIMEOUT
@@ -274,11 +387,16 @@ def test_second_export_conflicts_and_file_before_end(client: TestClient, gate: G
 
     res = client.post("/api/exports", json={"profile": "small", "fileName": "Zweiter"})
     assert res.status_code == 409
-    assert "läuft bereits ein Export" in res.json()["detail"]
+    assert res.json()["detail"] == {
+        "code": "export.busy",
+        "params": {"exportId": first["id"]},
+        "message": "An export is already running. Wait for it to finish or cancel it first.",
+    }
 
     res = client.get(f"/api/exports/{first['id']}/file")
     assert res.status_code == 409
-    assert "running" in res.json()["detail"]
+    assert res.json()["detail"]["code"] == "export.notReady"
+    assert res.json()["detail"]["params"] == {"status": "running"}
     assert res.headers["content-type"] == "application/json"
 
     gate.release()
