@@ -1,0 +1,87 @@
+"""E2E-Infrastruktur: echtes Backend + gebaute Web-App, Chromium über Playwright.
+
+Aufruf über `pixi run test-e2e` (baut die Web-App vorher). Jeder Test bekommt ein
+eigenes Datenverzeichnis und einen eigenen Port.
+"""
+
+import os
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Any
+
+import pytest
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parents[1]
+WEB_DIST = ROOT / "apps" / "web" / "dist"
+
+
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
+    # WebGL2 ohne GPU: SwiftShader (design.md Risiken).
+    return {
+        **browser_type_launch_args,
+        "args": ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
+    }
+
+
+@pytest.fixture
+def server(tmp_path: Path) -> Iterator[str]:
+    if not (WEB_DIST / "index.html").is_file():
+        pytest.fail("apps/web/dist fehlt – bitte über `pixi run test-e2e` starten (baut vorher).")
+    port = _free_port()
+    env = {
+        **os.environ,
+        "MMY_DATA_DIR": str(tmp_path / "data"),
+        "MMY_WEB_DIST": str(WEB_DIST),
+    }
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "mmy_backend.main:app", "--port", str(port)],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+    )
+    base = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(100):
+            try:
+                with urllib.request.urlopen(f"{base}/api/health", timeout=1):
+                    break
+            except OSError:
+                time.sleep(0.1)
+        else:
+            pytest.fail("Backend ist nicht gestartet")
+        yield base
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)
+
+
+@pytest.fixture
+def images(tmp_path: Path) -> dict[str, Path]:
+    """Einfarbige Testbilder (eins hochkant)."""
+    specs = {
+        "rot.png": ((640, 480), (255, 0, 0)),
+        "gruen.png": ((640, 480), (0, 255, 0)),
+        "blau.png": ((640, 480), (0, 0, 255)),
+        "hochkant.png": ((300, 600), (255, 255, 0)),
+    }
+    out: dict[str, Path] = {}
+    folder = tmp_path / "bilder"
+    folder.mkdir()
+    for name, (size, color) in specs.items():
+        path = folder / name
+        Image.new("RGB", size, color).save(path)
+        out[name] = path
+    return out

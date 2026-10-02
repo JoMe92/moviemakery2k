@@ -73,6 +73,7 @@ demo = { cmd = "python scripts/dev.py demo", depends-on = ["build"], description
 gen-api = { cmd = "python -m mmy_backend.openapi apps/web/src/generated/openapi.json && pnpm --filter @mmy/web exec openapi-typescript src/generated/openapi.json -o src/generated/schema.d.ts", depends-on = ["install-web"], description = "TS-Typen aus dem OpenAPI-Dokument des Backends erzeugen" }
 
 e2e-browsers = { cmd = "playwright install chromium", description = "Chromium für die E2E-Tests (nach .pixi/playwright-browsers)" }
+test-e2e = { cmd = "pytest -c e2e/pytest.ini e2e", depends-on = ["build", "e2e-browsers"], description = "Browser-Tests gegen Backend + gebaute Web-App" }
 
 check-shaders = { cmd = "python scripts/check_shaders.py", description = "GLSL-ES-3.00-Shader kompilieren und mit dem Katalog abgleichen" }
 
