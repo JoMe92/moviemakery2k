@@ -23,12 +23,22 @@ Retention (TASK-API-007):
   `queued`/`running` are never removed.
 - At most 20 job entries remain in total; beyond that the oldest
   `failed`/`cancelled` ones go first (they have no files).
-- Jobs live in memory only; after a restart earlier exports are no longer
-  reachable via the API. `cleanup_on_start` (app lifespan) therefore empties
-  `<data_dir>/exports/` completely: orphaned partial files (`.part`) as well as
-  old, unreachable export directories. Whatever is removed is logged.
+
+Job index (design.md D9, TASK-API-011):
+
+- Finished exports are listed in `<data_dir>/exports/index.json` (`id`,
+  `fileName`, `profile`, `createdAt`), written atomically whenever the set of
+  finished exports changes (index first, then files). Active, failed and
+  cancelled jobs live in memory only.
+- A job switches to `done` and retention is applied under the same lock in a
+  single step: the list never shows more than 5 finished exports.
+- `load_on_start` (app lifespan) loads the index entries whose `out.mp4`
+  exists as `done` jobs and removes everything else under `exports/`
+  (partial files, orphaned directories, jobs without a file, temp files). A
+  damaged index is logged and treated as empty. Whatever is removed is logged.
 """
 
+import json
 import logging
 import re
 import shutil
@@ -41,7 +51,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 from pydantic.alias_generators import to_camel
 
 from mmy_backend.catalog import TransitionCatalog
@@ -58,10 +68,12 @@ from mmy_backend.render.encode import (
 )
 from mmy_backend.render.frames import preview_loader
 from mmy_backend.render.timeline import build_timeline, timeline_slides_from_project
+from mmy_backend.storage import write_bytes_atomic
 
 logger = logging.getLogger(__name__)
 
 EXPORTS_DIRNAME = "exports"
+INDEX_FILENAME = "index.json"
 OUTPUT_FILENAME = "out.mp4"
 FILE_EXTENSION = ".mp4"
 MAX_FILE_NAME_LENGTH = 120
@@ -170,6 +182,22 @@ class ExportJob(_ExportModel):
     created_at: datetime
 
 
+def _check_stored_file_name(value: str) -> str:
+    """A name from the index must already be a valid, normalised file name."""
+    if normalize_file_name(value) != value:
+        raise ValueError("file name is not normalised")
+    return value
+
+
+class ExportIndexEntry(_ExportModel):
+    """One finished export in `exports/index.json` (design.md D9)."""
+
+    id: Annotated[str, Field(pattern=EXPORT_ID_PATTERN)]
+    file_name: Annotated[str, AfterValidator(_check_stored_file_name)]
+    profile: ExportProfile
+    created_at: datetime
+
+
 class ExportListResponse(_ExportModel):
     items: list[ExportJob] = Field(description="All known exports, oldest first")
 
@@ -193,7 +221,8 @@ class _Job:
     file_name: str
     created_at: datetime
     directory: Path
-    project: Project
+    project: Project | None
+    """Snapshot to render; None for exports loaded from the index (already done)."""
     status: ExportStatus = ExportStatus.QUEUED
     progress: float = 0.0
     error_code: ErrorCode | None = None
@@ -231,6 +260,7 @@ class ExportManager:
         shaders_dir: Path,
     ) -> None:
         self.exports_dir = data_dir / EXPORTS_DIRNAME
+        self.index_file = self.exports_dir / INDEX_FILENAME
         self._media = media
         self._catalog = catalog
         self._shaders_dir = shaders_dir
@@ -239,35 +269,140 @@ class ExportManager:
 
     # --- Cleanup ---------------------------------------------------------------
 
-    def cleanup_on_start(self) -> list[Path]:
-        """Empties `exports/` at startup (jobs do not survive a restart).
+    def load_on_start(self) -> list[Path]:
+        """Loads finished exports from the index and removes all other remains.
 
-        Removes orphaned `.part` files and old export directories; returns the
-        removed entries. Call only before the first job.
+        Index entries whose `out.mp4` exists become `done` jobs (at most the
+        newest 5). Everything else under `exports/` is removed: partial files,
+        orphaned directories, directories of jobs without a file, temp files.
+        A damaged index is logged and treated as empty. Rewrites an existing
+        index and returns the removed paths. Call only before the first job.
         """
+        had_index = self.index_file.exists()
+        loaded: dict[str, _Job] = {}
+        for entry in self._read_index():
+            directory = self.exports_dir / entry.id
+            output = directory / OUTPUT_FILENAME
+            if entry.id in loaded:
+                continue
+            if directory.is_symlink() or output.is_symlink() or not output.is_file():
+                logger.warning("Export %s from the index has no file; dropped", entry.id)
+                continue
+            loaded[entry.id] = _Job(
+                id=entry.id,
+                profile=entry.profile,
+                file_name=entry.file_name,
+                created_at=entry.created_at,
+                directory=directory,
+                project=None,
+                status=ExportStatus.DONE,
+                progress=1.0,
+            )
+        jobs = list(loaded.values())
+        for job in jobs[: max(0, len(jobs) - MAX_DONE_EXPORTS)]:
+            del loaded[job.id]
+            logger.info("Export %s removed (retention)", job.id)
+
         removed: list[Path] = []
-        if not self.exports_dir.is_dir():
-            return removed
-        for entry in sorted(self.exports_dir.iterdir()):
-            parts = [p.name for p in entry.rglob("*.part")] if entry.is_dir() else []
-            if entry.is_dir() and not entry.is_symlink():
-                shutil.rmtree(entry, ignore_errors=True)
-            else:
-                entry.unlink(missing_ok=True)
-            removed.append(entry)
-            if parts or entry.name.endswith(".part"):
-                logger.warning("Removed orphaned partial file: %s", entry)
-            else:
-                logger.info("Removed old export from a previous run: %s", entry)
+        if self.exports_dir.is_dir():
+            for path in sorted(self.exports_dir.iterdir()):
+                if path == self.index_file and path.is_file() and not path.is_symlink():
+                    continue
+                kept = loaded.get(path.name)
+                if kept is not None:
+                    # A loaded export keeps only its finished file.
+                    for inner in sorted(path.iterdir()):
+                        if inner.name != OUTPUT_FILENAME:
+                            self._remove_remain(inner)
+                            removed.append(inner)
+                    continue
+                self._remove_remain(path)
+                removed.append(path)
+        with self._lock:
+            self._jobs = loaded
+            if had_index or loaded:
+                self._write_index_locked()
+        if loaded:
+            logger.info("Loaded %d finished export(s) from the index", len(loaded))
         return removed
 
+    @staticmethod
+    def _remove_remain(path: Path) -> None:
+        partial = path.name.endswith(".part") or (
+            path.is_dir() and not path.is_symlink() and any(path.rglob("*.part"))
+        )
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            path.unlink(missing_ok=True)
+        if partial:
+            logger.warning("Removed orphaned partial file: %s", path)
+        else:
+            logger.info("Removed export remains from a previous run: %s", path)
+
+    def _read_index(self) -> list[ExportIndexEntry]:
+        """Entries of `index.json`; [] if missing or damaged, invalid entries skipped."""
+        try:
+            raw = self.index_file.read_bytes()
+        except FileNotFoundError:
+            return []
+        except OSError as exc:
+            logger.error("Export index %s unreadable (%s); treated as empty", self.index_file, exc)
+            return []
+        try:
+            data = json.loads(raw)
+        except ValueError as exc:
+            logger.error("Export index %s damaged (%s); treated as empty", self.index_file, exc)
+            return []
+        if not isinstance(data, list):
+            logger.error("Export index %s is not a list; treated as empty", self.index_file)
+            return []
+        entries: list[ExportIndexEntry] = []
+        for item in data:
+            try:
+                entries.append(ExportIndexEntry.model_validate(item))
+            except ValidationError as exc:
+                logger.warning("Skipping invalid entry in the export index: %s", exc)
+        return entries
+
+    def _write_index_locked(self) -> None:
+        """Writes the finished exports to `index.json` atomically; hold `_lock`."""
+        entries = [
+            ExportIndexEntry.model_construct(
+                id=job.id,
+                file_name=job.file_name,
+                profile=job.profile,
+                created_at=job.created_at,
+            ).model_dump(mode="json", by_alias=True)
+            for job in self._jobs.values()
+            if job.status is ExportStatus.DONE
+        ]
+        try:
+            write_bytes_atomic(self.index_file, json.dumps(entries, indent=2).encode())
+        except OSError:
+            logger.exception("Could not write the export index %s", self.index_file)
+
+    def _finish_locked(self, job: _Job) -> list[_Job]:
+        """Switches `job` to `done` and applies retention in one step; hold `_lock`.
+
+        The oldest finished exports beyond 5 are removed from the jobs, the
+        index is written, then their files are deleted. Returns the victims.
+        """
+        done = [j for j in self._jobs.values() if j.status is ExportStatus.DONE and j is not job]
+        victims = done[: max(0, len(done) + 1 - MAX_DONE_EXPORTS)]
+        for victim in victims:
+            del self._jobs[victim.id]
+        job.status = ExportStatus.DONE
+        job.progress = 1.0
+        self._write_index_locked()
+        for victim in victims:
+            self._discard(victim)
+        return victims
+
     def _prune(self) -> None:
-        """Enforces retention: ≤ 5 finished exports, ≤ 20 job entries."""
+        """Bounds the job entries to 20; the oldest `failed`/`cancelled` go first."""
         victims: list[_Job] = []
         with self._lock:
-            done = [j for j in self._jobs.values() if j.status is ExportStatus.DONE]
-            for job in done[: max(0, len(done) - MAX_DONE_EXPORTS)]:
-                victims.append(self._jobs.pop(job.id))
             excess = len(self._jobs) - MAX_JOB_ENTRIES
             if excess > 0:
                 terminal = [
@@ -278,8 +413,11 @@ class ExportManager:
                 done = [j for j in self._jobs.values() if j.status is ExportStatus.DONE]
                 for job in (terminal + done)[:excess]:
                     victims.append(self._jobs.pop(job.id))
+                if any(j.status is ExportStatus.DONE for j in victims):
+                    self._write_index_locked()
+            for job in victims:
+                self._discard(job)
         for job in victims:
-            self._discard(job)
             logger.info("Export %s removed (retention)", job.id)
 
     # --- Queries ----------------------------------------------------------------
@@ -297,7 +435,7 @@ class ExportManager:
         """ID of a `queued`/`running` job whose snapshot uses `media_id`, else None."""
         with self._lock:
             for job in self._jobs.values():
-                if not job.status.active:
+                if job.project is None or not job.status.active:
                     continue
                 if any(s.media_id == media_id for s in job.project.slides):
                     return job.id
@@ -376,6 +514,8 @@ class ExportManager:
                 return
             job.status = ExportStatus.RUNNING
         try:
+            if job.project is None:
+                raise RuntimeError("export job without a project snapshot")
             timeline = build_timeline(timeline_slides_from_project(job.project))
             export_movie(
                 timeline,
@@ -406,7 +546,20 @@ class ExportManager:
             logger.exception("Export %s failed unexpectedly", job.id)
             self._fail(job, ErrorCode.EXPORT_UNEXPECTED, {})
         else:
-            self._set(job, status=ExportStatus.DONE, progress=1.0)
+            with self._lock:
+                cancelled = job.cancel.is_set()
+                if cancelled:
+                    # Finished while being cancelled: the user wanted to cancel.
+                    job.status = ExportStatus.CANCELLED
+                    victims = []
+                else:
+                    victims = self._finish_locked(job)
+            if cancelled:
+                self._discard(job)
+                logger.info("Export %s cancelled", job.id)
+                return
+            for victim in victims:
+                logger.info("Export %s removed (retention)", victim.id)
             logger.info("Export %s done: %s", job.id, job.output)
 
     @staticmethod
@@ -432,6 +585,8 @@ class ExportManager:
                 return None
             if not job.status.active:
                 del self._jobs[export_id]
+                if job.status is ExportStatus.DONE:
+                    self._write_index_locked()
                 removed = job.model()
             else:
                 job.cancel.set()
@@ -445,6 +600,7 @@ class ExportManager:
         with self._lock:
             if job.status is ExportStatus.DONE:
                 job.status = ExportStatus.CANCELLED
+                self._write_index_locked()
                 discard = True
             else:
                 discard = False

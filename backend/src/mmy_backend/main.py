@@ -25,8 +25,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         settings.data_dir.mkdir(parents=True, exist_ok=True)
-        # Jobs do not survive a restart: remove partial files and old exports.
-        await asyncio.to_thread(exports.cleanup_on_start)
+        # Load finished exports from the index; remove partial files and other remains.
+        await asyncio.to_thread(exports.load_on_start)
         try:
             yield
         finally:
