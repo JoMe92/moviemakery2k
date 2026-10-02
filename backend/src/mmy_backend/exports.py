@@ -16,8 +16,18 @@ Ein `ExportManager` pro App (app.state.exports) verwaltet die Jobs im Speicher:
   abfragbar; `remove` löscht einen beendeten Job samt Dateien.
 - `shutdown` (App-Lifespan) bricht laufende Jobs ab und wartet auf die Worker.
 
-Aufbewahrung der letzten 5 Exporte und das Aufräumen beim Start folgen in
-TASK-API-007.
+Aufbewahrung (TASK-API-007):
+
+- Behalten werden höchstens die letzten 5 fertigen Exporte (`done`). Wird ein
+  sechster fertig, werden der älteste fertige Export samt Dateien und sein Job
+  gelöscht. `queued`/`running` werden nie entfernt.
+- Insgesamt bleiben höchstens 20 Job-Einträge; darüber hinaus fallen zuerst die
+  ältesten `failed`/`cancelled` weg (sie haben keine Dateien).
+- Die Jobs liegen nur im Speicher; nach einem Neustart sind frühere Exporte
+  über die API nicht mehr erreichbar. `cleanup_on_start` (App-Lifespan) leert
+  daher `<data_dir>/exports/` vollständig: verwaiste Teildateien (`.part`)
+  ebenso wie alte, unerreichbare Export-Verzeichnisse. Was entfernt wird,
+  steht im Log.
 """
 
 import logging
@@ -58,6 +68,11 @@ MAX_FILE_NAME_LENGTH = 120
 FORBIDDEN_FILE_NAME_CHARS = '/\\:*?"<>|'
 EXPORT_ID_PATTERN = r"^[0-9a-f]{32}$"
 _EXPORT_ID_RE = re.compile(EXPORT_ID_PATTERN)
+
+MAX_DONE_EXPORTS = 5
+"""So viele fertige Exporte (mit Datei) werden höchstens aufbewahrt."""
+MAX_JOB_ENTRIES = 20
+"""So viele Job-Einträge (alle Status) werden höchstens aufbewahrt."""
 
 CANCEL_TIMEOUT_SECONDS = 30.0
 """So lange wartet `cancel` höchstens auf das Aufräumen des Workers."""
@@ -215,6 +230,51 @@ class ExportManager:
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
 
+    # --- Aufräumen -------------------------------------------------------------
+
+    def cleanup_on_start(self) -> list[Path]:
+        """Leert `exports/` beim Start (Jobs überleben keinen Neustart).
+
+        Entfernt verwaiste `.part`-Dateien und alte Export-Verzeichnisse;
+        liefert die entfernten Einträge. Nur vor dem ersten Job aufrufen.
+        """
+        removed: list[Path] = []
+        if not self.exports_dir.is_dir():
+            return removed
+        for entry in sorted(self.exports_dir.iterdir()):
+            parts = [p.name for p in entry.rglob("*.part")] if entry.is_dir() else []
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
+                entry.unlink(missing_ok=True)
+            removed.append(entry)
+            if parts or entry.name.endswith(".part"):
+                logger.warning("Verwaiste Teildatei entfernt: %s", entry)
+            else:
+                logger.info("Alter Export aus früherem Lauf entfernt: %s", entry)
+        return removed
+
+    def _prune(self) -> None:
+        """Setzt die Aufbewahrung durch: ≤ 5 fertige Exporte, ≤ 20 Job-Einträge."""
+        victims: list[_Job] = []
+        with self._lock:
+            done = [j for j in self._jobs.values() if j.status is ExportStatus.DONE]
+            for job in done[: max(0, len(done) - MAX_DONE_EXPORTS)]:
+                victims.append(self._jobs.pop(job.id))
+            excess = len(self._jobs) - MAX_JOB_ENTRIES
+            if excess > 0:
+                terminal = [
+                    j
+                    for j in self._jobs.values()
+                    if j.status in (ExportStatus.FAILED, ExportStatus.CANCELLED)
+                ]
+                done = [j for j in self._jobs.values() if j.status is ExportStatus.DONE]
+                for job in (terminal + done)[:excess]:
+                    victims.append(self._jobs.pop(job.id))
+        for job in victims:
+            self._discard(job)
+            logger.info("Export %s entfernt (Aufbewahrung)", job.id)
+
     # --- Abfragen ---------------------------------------------------------------
 
     def list(self) -> list[ExportJob]:
@@ -278,6 +338,12 @@ class ExportManager:
                 job.progress = max(job.progress, min(fraction, 1.0))
 
     def _run(self, job: _Job) -> None:
+        try:
+            self._export(job)
+        finally:
+            self._prune()
+
+    def _export(self, job: _Job) -> None:
         with self._lock:
             if job.cancel.is_set():
                 job.status = ExportStatus.CANCELLED

@@ -73,17 +73,28 @@ def _check_exportable(project: Project, media: MediaStore) -> None:
         )
 
 
+_TRANSLITERATION = str.maketrans(
+    {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss"}
+)
+
+
+def ascii_file_name(name: str) -> str:
+    """ASCII-Ersatz für `filename=`: Umlaute und ß umschreiben, Akzente weglassen,
+    übrige Nicht-ASCII-Zeichen (und `"`/`\\`) durch `_` ersetzen."""
+    composed = unicodedata.normalize("NFC", name)
+    decomposed = unicodedata.normalize("NFKD", composed.translate(_TRANSLITERATION))
+    stripped = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return "".join(ch if ch.isascii() and ch not in '"\\' else "_" for ch in stripped)
+
+
 def content_disposition(file_name: str) -> str:
-    """`attachment` mit ASCII-Ersatzname und RFC-5987-Name (UTF-8) für Umlaute."""
+    """`attachment` mit ASCII-Ersatzname und exaktem RFC-5987-Namen (UTF-8)."""
     full = file_name + FILE_EXTENSION
-    ascii_name = (
-        (unicodedata.normalize("NFKD", full).encode("ascii", "ignore").decode("ascii"))
-        .replace('"', "_")
-        .replace("\\", "_")
+    fallback = ascii_file_name(file_name).strip() or "Film"
+    return (
+        f'attachment; filename="{fallback}{FILE_EXTENSION}"; '
+        f"filename*=UTF-8''{quote(full, safe='')}"
     )
-    if not ascii_name.removesuffix(FILE_EXTENSION).strip():
-        ascii_name = "film" + FILE_EXTENSION
-    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(full, safe='')}"
 
 
 @router.post(
