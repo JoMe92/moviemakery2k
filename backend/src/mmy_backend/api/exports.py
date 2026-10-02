@@ -120,6 +120,9 @@ async def start_export(
     Later changes to the project do not affect this export.
     At most one export runs at a time; a second start returns 409.
     """
+    # No `await` between the media check and `exports.start` (the snapshot):
+    # DELETE /api/media relies on this to never delete a medium that a starting
+    # export has just checked (MediaStore.remove, guard).
     project = projects.get()
     _check_exportable(project, media)
     try:

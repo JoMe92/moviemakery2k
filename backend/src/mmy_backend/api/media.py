@@ -125,12 +125,20 @@ async def delete_media(
     response is 409 (`media.inUseByExport`); medium, project and export stay
     unchanged (design.md D5).
     """
-    export_id = exports.export_using_media(media_id)
-    if export_id is not None:
-        raise api_exception(
-            status.HTTP_409_CONFLICT, "media.inUseByExport", mediaId=media_id, exportId=export_id
-        )
-    if not await store.remove(media_id):
+
+    def reject_if_exported() -> None:
+        # Runs inside MediaStore.remove, atomically with the in-memory removal:
+        # an export start (synchronous check + snapshot) cannot slip in between.
+        export_id = exports.export_using_media(media_id)
+        if export_id is not None:
+            raise api_exception(
+                status.HTTP_409_CONFLICT,
+                "media.inUseByExport",
+                mediaId=media_id,
+                exportId=export_id,
+            )
+
+    if not await store.remove(media_id, guard=reject_if_exported):
         raise _not_found(media_id)
     project = await projects.remove_media(media_id)
     return MediaDeleteResponse(project=project)
