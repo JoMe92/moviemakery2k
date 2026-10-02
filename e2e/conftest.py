@@ -36,6 +36,12 @@ def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[s
     }
 
 
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
+    # The UI follows the browser language; the flows assert the German UI.
+    return {**browser_context_args, "locale": "de-DE"}
+
+
 @pytest.fixture
 def server(tmp_path: Path) -> Iterator[str]:
     if not (WEB_DIST / "index.html").is_file():
