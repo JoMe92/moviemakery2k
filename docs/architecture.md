@@ -1,7 +1,7 @@
 # Architecture
 
 This document describes how moviemakerY2K is put together today (a
-slideshow editor with MP4 export) and where it is heading. The reasoning behind the big
+slideshow editor with a music track and MP4 export) and where it is heading. The reasoning behind the big
 decisions lives in the ADRs:
 [0001 – web app + FFmpeg backend with shared GLSL shaders](adr/0001-architecture.md)
 and [0002 – Pixi for the whole repository](adr/0002-pixi.md).
@@ -14,44 +14,52 @@ flowchart LR
     UI["React UI<br/>(Y2K theme, dnd-kit)"]
     Store["Zustand store<br/>project · media · catalog · playback"]
     TL["timeline.ts<br/>buildTimeline / frameAt"]
+    MS["music.ts<br/>musicSchedule"]
     GL["WebGL2 renderer"]
+    AE["AudioEngine<br/>(Web Audio, audio clock)"]
   end
   subgraph Server["Python: backend/ (FastAPI)"]
     API["/api routes"]
-    Media["MediaStore<br/>(Pillow)"]
+    Media["MediaStore<br/>(Pillow, ffprobe)"]
     Proj["ProjectStore"]
     Cat["Catalog loader"]
     Exp["ExportManager<br/>(jobs, one worker thread each)"]
     Rnd["render/<br/>timeline.py · frames.py<br/>moderngl (EGL, llvmpipe)"]
+    Mix["render/<br/>music.py · mixdown.py"]
     FF["FFmpeg (subprocess)"]
   end
   subgraph Shared["packages/"]
     Shaders["shaders/*.glsl<br/>GLSL ES 3.00"]
     Catalog["catalog/transitions.json"]
-    Vectors["fixtures/timeline-vectors.json"]
+    Vectors["fixtures/timeline-vectors.json<br/>fixtures/music-vectors.json"]
   end
   Data[("Data dir<br/>MMY_DATA_DIR")]
 
   UI <--> Store
   Store --> TL --> GL
+  Store --> MS --> AE
   Store <-- "REST /api" --> API
   API --> Media & Proj & Cat & Exp
   Media & Proj & Exp --> Data
   Cat --> Catalog
   GL -- "imported at build time (?raw)" --> Shaders
   Exp --> Rnd -- "RGBA frames (pipe)" --> FF
+  Exp --> Mix -- "music.wav" --> FF
+  Media -- "preview.m4a, peaks.json" --> FF
   Rnd -- "read at runtime, #version swapped" --> Shaders
   TL -. "tested against" .-> Vectors
   Rnd -. "tested against" .-> Vectors
+  MS -. "tested against" .-> Vectors
+  Mix -. "tested against" .-> Vectors
   API -. "health: version" .-> FF
 ```
 
 | Component | Path | Responsibility |
 |---|---|---|
-| Web app | `apps/web/` | UI shell, media collection, storyboard, transition collection, preview player, WebGL2 renderer |
-| Backend | `backend/src/mmy_backend/` | Media import and storage, catalog validation and delivery, project persistence, MP4 export (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
+| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio (`audio/AudioEngine.ts`) |
+| Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with music mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
 | Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition plus the shared prelude/epilogue/vertex shader; used by preview and export |
-| Fixtures | `packages/fixtures/` | `timeline-vectors.json`: shared test vectors for the TypeScript and Python time models |
+| Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
 | Catalog | `packages/catalog/` | Transition metadata and parameters (single source of truth), JSON Schema |
 | E2E tests | `e2e/` | Playwright tests against the real backend and the built web app |
 | Scripts | `scripts/` | Dev launcher (`dev.py`), shader check, render-environment check, export benchmark, Docker export smoke test, Git hooks, Nogging tooling |
@@ -60,20 +68,40 @@ flowchart LR
 
 ### 1. Upload
 
-1. The user picks pictures in the dialog or drops them on the collection
-   (native HTML5 drop; separate from dnd-kit).
-2. The web app uploads them **sequentially** with `POST /api/media`
+1. The user picks pictures or audio in the dialog or drops them on the
+   collection (native HTML5 drop; separate from dnd-kit). The task pane entries
+   *Import pictures* and *Import audio or music* only preset the file types of
+   the dialog; an audio-only import switches to *My Music*, anything else to
+   *My Pictures*.
+2. The web app uploads the files **sequentially** with `POST /api/media`
    (multipart field `files`) and shows progress.
-3. The backend never trusts the content type: Pillow opens the file, applies
-   `exif_transpose` and rejects anything that is not JPEG, PNG or WebP.
-   Limits: 25 MB per file, 50 files per request, 40 megapixels per image
-   (decompression bomb guard).
-4. For each picture the backend stores the original, a thumbnail (JPEG, fits
-   160×120) and a preview image (JPEG q90, longest edge ≤ 1920) under a UUID4
-   hex ID. The original file name is only used for display, never as a path.
-   The media index is `media.json` in the data directory.
-5. The response lists a success or a readable error per file; the store adds
-   the new items to the collection.
+3. The backend never trusts the content type or the file name; it detects
+   the **media kind** by content: first Pillow (JPEG, PNG, WebP), then
+   ffprobe (MP3, WAV, M4A/AAC, OGG with Vorbis or Opus, FLAC; the first audio
+   stream must use one of the checked decoders). Limits per kind: pictures
+   25 MB and 40 megapixels (decompression bomb guard, `exif_transpose`
+   applied), audio 100 MB and 15 minutes; 50 files per request. Audio errors
+   have their own codes: `media.audioTooLong`, `media.noAudioStream`, and
+   `media.probeUnavailable` when ffprobe is missing.
+4. Each medium gets a UUID4 hex ID and a directory `media/<id>/` with the
+   unchanged original (`original.<ext>`). The original file name is only used
+   for display, never as a path.
+   - **Pictures:** a thumbnail (`thumb.jpg`, fits 160×120) and a preview image
+     (`preview.jpg`, JPEG q90, longest edge ≤ 1920).
+   - **Audio:** one FFmpeg run decodes the original once and writes both
+     `preview.m4a` (AAC, 48 kHz, stereo, 128 kbit/s; a uniform format the
+     browser can always decode) and mono PCM to a pipe, from which Python
+     computes `peaks.json` (`{"rate": 50, "peaks": [...]}`, the largest
+     absolute sample per 20 ms window, 0..1) and the **decoded** duration,
+     which replaces ffprobe's container estimate and is checked against the
+     15-minute limit again.
+5. The media index is `media.json`. `MediaItem` is a discriminated union on
+   `kind`: `image` (`width`, `height`, `thumbnailUrl`, `previewUrl`) or `audio`
+   (`duration`, `sampleRate`, `channels`, `codec`, `audioUrl`, `peaksUrl`).
+   Entries written before audio existed have no `kind` and are read as
+   images.
+6. The response lists a success or a readable error per file; the store adds
+   the new items to the collection of their kind.
 
 ### 2. Project
 
@@ -112,7 +140,15 @@ flowchart LR
   unchanged. Files are written atomically (temp file + `os.replace`) under an
   `asyncio.Lock`.
 - Deleting a medium cascades: all storyboard entries using it are removed
-  together with their incoming transitions.
+  together with their incoming transitions, and all music clips using it are
+  removed from the music track. While a `queued` or `running`
+  export has the medium in its snapshot, `DELETE /api/media/{id}` answers
+  `409` with `media.inUseByExport` and nothing changes; the web app removes
+  the picture only after the backend confirmed the delete and otherwise shows
+  the translated reason (pictures and audio alike). The in-use check and the in-memory removal happen in
+  one step under the media store's lock, so an export starting at the same
+  moment either makes the delete fail or fails itself with
+  `export.missingMedia` — it never renders a missing picture as black.
 
 ### 3. Timeline
 
@@ -137,7 +173,37 @@ network:
 - The export samples frame *n* at `t = n / fps`; a movie has
   `ceil(total duration · fps)` frames.
 
-### 4. Renderer
+### 4. Music schedule
+
+`musicSchedule(clips, mediaDurations, movieDuration)` in
+`apps/web/src/timeline/music.ts` places the music on the movie time axis; the
+export uses its Python port `backend/src/mmy_backend/render/music.py`. Both
+are pure functions and are checked against the same file,
+`packages/fixtures/music-vectors.json` (clips in a row, trimming, cut at the
+movie end with the fade-out, a movie shorter than 1 s, silence after the
+music). The result is a list of segments
+`{mediaId, at, sourceIn, length, gain, fadeIn, fadeOut}`:
+
+- Clips play in list order, gapless from 0; there is no start time per clip.
+  A clip plays the source range `[trimStart, end)` (`end` = `trimEnd` or the
+  file duration).
+- `gain` is the clip volume as a linear factor (0–2, i.e. 0–200 %).
+  `fadeIn`/`fadeOut` are 1 s when switched on (clipped to the segment
+  length); fades are linear and multiply where they overlap.
+- A clip that starts at or after the end of the movie is dropped; a clip
+  running past the end is cut there. The segment that reaches the movie end
+  always gets the **end-of-movie fade-out** of `min(1 s, movie duration)`.
+  After the last segment the movie is silent.
+
+The web app uses the same schedule for the music track's hint (*Music 3:12 /
+Movie 2:40 – will be cut at the end*) and for *Fit Movie to Music*
+(`timeline/fitToMusic.ts`): it spreads the music length evenly over the
+pictures with the overlapping time model of section 3, rounds to 0.25 s,
+clamps to 0.5–60 s and gives the remainder to the last picture; if the target
+is out of reach, it reports the reachable minimum or maximum and changes
+nothing.
+
+### 5. Renderer
 
 - The monitor's output format is fixed at 4:3 (640×480 logical, scaled by CSS,
   DPR-aware). Every picture is letterboxed once onto black into a frame
@@ -151,59 +217,126 @@ network:
 - If WebGL2 is not available, the monitor shows a notice instead; import and
   storyboard keep working.
 
-### 5. Export
+### 6. Preview audio
+
+`apps/web/src/audio/AudioEngine.ts` plays the music schedule with Web Audio;
+`useMusicAudio.ts` connects it to the store.
+
+- **Decoding.** As soon as a medium is on the music track (clip added,
+  project loaded), its `preview.m4a` is fetched and decoded once in an
+  `OfflineAudioContext` (no user gesture needed) and cached per medium.
+- **Playback.** Each segment becomes an `AudioBufferSourceNode` → `GainNode`
+  started at its movie time with `start(when, sourceIn + offset, …)`; volume
+  and fades are linear gain ramps. Every change of the plan — play, pause,
+  stop, seek, a project or music edit — stops all sources and schedules again
+  from the current movie time.
+- **Audio clock.** While music is scheduled and the `AudioContext` runs,
+  `clockTime()` derives the movie time from `AudioContext.currentTime`, and
+  the player's requestAnimationFrame loop advances playback by that clock
+  instead of its own frame delta. Picture and sound therefore cannot drift
+  apart; without music (or without a running context) the rAF clock is
+  used as before.
+- **Autoplay policy.** The `AudioContext` is created or resumed only inside a
+  user gesture: the play button, the space bar, or any pointer/key event while
+  the project has music.
+- The transition sample of the collection is silent. `preview.m4a` carries
+  the usual AAC priming delay (20–45 ms), so the preview is not sample-exact;
+  the export mixes from the originals instead.
+- Web Audio is injected (`AudioEngineDeps`), so the unit tests drive the
+  engine with a fake `AudioContext`. `window.__mmyAudio()` exposes the engine
+  state (context state, clock master, active sources, decoded media) to the
+  E2E tests.
+
+### 7. Export
 
 ```mermaid
 flowchart LR
   Snap["Project snapshot"] --> TLp["timeline.py<br/>frame n at t = n / 30"]
+  Snap --> MSp["music.py<br/>music_schedule"]
+  ORIG["media/&lt;id&gt;/original.*"] --> Mixd
+  MSp --> Mixd["ffmpeg pre-mix<br/>(mixdown.py)"] --> WAV["exports/&lt;id&gt;/music.wav"]
   JPG["media/&lt;id&gt;/preview.jpg"] --> LB["Letterbox onto black<br/>(containRect)"]
   LB --> Tex["Texture<br/>(origin bottom left)"]
   TLp --> Draw
   Tex --> Draw["moderngl, OpenGL 3.3 core<br/>EGL + Mesa llvmpipe"]
   SH["packages/shaders<br/>#version 300 es → 330 core"] --> Draw
-  Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>libx264 + aac (anullsrc)"]
+  Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>BT.709 · libx264 + aac"]
+  WAV -- "audio_input<br/>(anullsrc without music)" --> FFm
   FFm --> Part["exports/&lt;id&gt;/out.mp4.part"] -- "os.replace" --> MP4["out.mp4"]
 ```
 
-1. **Input.** Each picture is the stored `preview.jpg` (EXIF-normalised,
+1. **Music pre-mix.** If the project has music, a separate FFmpeg run first
+   mixes it into `exports/<id>/music.wav` (48 kHz stereo, 32-bit float),
+   exactly as long as the video (`frames / 30` s). Input is each clip's
+   **original** file (not `preview.m4a`), placed by `music_schedule` with the
+   timeline's movie duration — the same placement as in the preview. Per
+   segment the filter chain is `aresample=48000, aformat=fltp/stereo,
+   atrim, asetpts, volume, afade (in/out), adelay`; the segments are summed
+   with `amix=normalize=0` (they never overlap, so each keeps its gain), then
+   `apad` + `atrim` pad with silence or cut to the exact sample count.
+   Cancellation is checked while FFmpeg runs; a mixing error fails the job
+   with `export.audioFailed`. `music.wav` is deleted when the job ends.
+   Without music (or if no segment falls into the movie) the silent
+   `anullsrc` input is used.
+2. **Input.** Each picture is the stored `preview.jpg` (EXIF-normalised,
    longest edge ≤ 1920). It is letterboxed onto an opaque black frame of the
    output size with the browser's integer `containRect` and uploaded as a
    texture with its origin at the bottom left (like `UNPACK_FLIP_Y`). At most
    two picture textures (current and next) are held at once.
-2. **Frames.** Frame *n* is drawn for `t = n / 30`. Still segments are copied
+3. **Frames.** Frame *n* is drawn for `t = n / 30`. Still segments are copied
    without a shader (exactly what the preview shows at progress 0);
    transitions run the catalog entry's shader with its parameters, falling
    back to `fade` if a shader is missing or does not compile — like the
    browser.
-3. **Shared shaders.** The fragment program is assembled exactly like
+4. **Shared shaders.** The fragment program is assembled exactly like
    `apps/web/src/render/shaderSource.ts` (prelude + transition + epilogue).
    The only change is the first line: `#version 300 es` becomes
    `#version 330 core`, because the export uses a desktop OpenGL 3.3 core
    context (the `precision` lines are legal there). The vertex shader and the
    full-screen triangle without a vertex buffer are mirrored.
-4. **Headless GL.** `moderngl.create_context(standalone=True,
+5. **Headless GL.** `moderngl.create_context(standalone=True,
    backend="egl")` with Mesa's llvmpipe software renderer from the Pixi
-   environment (`mesalib`, linux-64 only): no GPU, display or system
-   packages. Pixi's linux-64 activation sets `__EGL_VENDOR_LIBRARY_DIRS`,
-   `GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` so that glvnd finds
-   the Mesa ICD and glcontext loads `libEGL`/`libGL` from the environment.
+   environment (`mesalib`, for both Linux targets `linux-64` and
+   `linux-aarch64`): no GPU, display or system packages. Pixi's Linux
+   activation sets `__EGL_VENDOR_LIBRARY_DIRS`, `GLCONTEXT_LINUX_LIBEGL` and
+   `GLCONTEXT_LINUX_LIBGL` so that glvnd finds the Mesa ICD and glcontext
+   loads `libEGL`/`libGL` from the environment. `render/context.py` passes
+   these library paths to glcontext explicitly (falling back to
+   `sys.prefix/lib`), because glcontext would otherwise call
+   `ctypes.util.find_library` first and spawn `ldconfig`/`gcc` for every
+   context.
    The context is created, used and released in the export worker thread
    (EGL contexts are bound to a thread).
-5. **Encoding.** The frames are read back (flipped vertically so the top row
+6. **Encoding.** The frames are read back (flipped vertically so the top row
    comes first) and piped as raw RGBA into
-   `ffmpeg -f rawvideo -pix_fmt rgba -s WxH -r 30 -i -` together with a silent
-   `anullsrc` audio input (48 kHz stereo, cut to the exact video length),
-   encoded as `libx264 -preset medium -crf 20 -pix_fmt yuv420p -profile:v
-   high -movflags +faststart` and `aac -b:a 128k`. The audio input is a
-   replaceable slot for the coming music feature.
-6. **Output.** FFmpeg writes `out.mp4.part`; only a complete file is renamed
+   `ffmpeg -f rawvideo -pix_fmt rgba -s WxH -r 30 -i -` together with the
+   audio input — `music.wav`, or a silent `anullsrc` (48 kHz stereo) without
+   music — cut to the exact video length and encoded as `libx264 -preset
+   medium -crf 20 -pix_fmt yuv420p -profile:v high -movflags +faststart` and
+   `aac -b:a 128k` (48 kHz stereo). A gain above 100 % is only clipped here,
+   by the AAC encoder.
+   **Colour space:** the filter
+   `scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,setparams=…`
+   converts RGB → YUV with the BT.709 matrix in limited range (swscale would
+   otherwise use BT.601), and `-colorspace bt709 -color_primaries bt709
+   -color_trc bt709 -color_range tv` tags the stream. `setparams` is needed
+   because FFmpeg takes the frames' colour properties over the encoder
+   options; without it primaries and transfer would stay `unknown`. BT.709
+   is what browsers and players assume for HD material, so preview and movie
+   match in colour.
+7. **Output.** FFmpeg writes `out.mp4.part`; only a complete file is renamed
    atomically to `out.mp4`. On cancel or error FFmpeg is stopped and the
    partial file deleted.
 
 Profiles: `high` 960×720 (default) and `small` 640×480, both 30 fps.
 
-**Platform and errors.** Linux (x86-64) is the officially supported export
-platform (CI and the Docker image). On macOS and Windows moderngl tries the
+**Platform and errors.** Linux is the officially supported export platform:
+x86-64 (CI and the Docker image) and aarch64 (e.g. a Raspberry Pi;
+`linux-aarch64` is a Pixi platform with the same Mesa/EGL setup). The CI job
+`render-arm64` runs `check-render-env` and the backend render/export tests on
+`ubuntu-24.04-arm`; hosted ARM runners are free only for public
+repositories, so the job is skipped while the repository is private and
+aarch64 is verified by a manual run on a Raspberry Pi instead. On macOS and Windows moderngl tries the
 native standalone context without any guarantee. If no OpenGL 3.3 context can
 be created, the job ends as `failed` with a readable message (the export is
 not available on this system because no OpenGL context could be created;
@@ -226,8 +359,9 @@ stateDiagram-v2
 
 - **Start.** `POST /api/exports` with `{profile, fileName}` takes a
   **snapshot** of the stored project (later edits do not affect the running
-  export) and checks the media references. An empty storyboard or a missing
-  medium → `422`; while another export is `queued` or `running` → `409`
+  export) and checks the media references. An empty storyboard, a missing
+  picture (`export.missingMedia`) or missing music media
+  (`export.missingMusicMedia`) → `422`; while another export is `queued` or `running` → `409`
   (at most one export at a time). The file name is validated
   (`/\:*?"<>|`, control characters and more than 120 characters are
   rejected; a trailing `.mp4` is stripped).
@@ -235,7 +369,7 @@ stateDiagram-v2
   shaders and the FFmpeg process live in that thread. The status goes
   `queued → running → done | failed | cancelled` with `progress` 0..1.
 - **Polling.** `GET /api/exports/{id}` returns status, progress and, for
-  `failed`, `errorCode`, `errorParams` and an English `error` message. The wizard polls every 500 ms (no SSE).
+  `failed`, `errorCode`, `errorParams` and an English `message`. The wizard polls every 500 ms (no SSE).
 - **Download.** `GET /api/exports/{id}/file` returns the MP4 with a
   `Content-Disposition` carrying the requested name (`<fileName>.mp4`, with
   an ASCII fallback and an RFC 5987 UTF-8 name). Before `done` → `409`; a
@@ -245,10 +379,17 @@ stateDiagram-v2
   as `cancelled`) or deletes a finished one with its file (afterwards `404`).
 - **Storage and retention.** Files live in `MMY_DATA_DIR/exports/<id>/`. The
   last **5** finished exports are kept; older ones are deleted with their
-  files (at most 20 job entries in total). Jobs live in memory only, so on
-  startup the backend empties `exports/`, removing orphaned `.part` files and
-  exports of earlier runs (logged). On shutdown running exports are
-  cancelled.
+  files (at most 20 job entries in total). A job switches to `done` and
+  retention is applied in one step under the same lock, so the list never
+  shows more than five finished exports.
+- **Job index.** Finished exports are listed in `exports/index.json`
+  (`id`, `fileName`, `profile`, `createdAt`), written atomically (temp file +
+  `os.replace`) whenever that set changes. On startup the backend loads the
+  entries whose `out.mp4` exists as `done` jobs and removes everything else
+  under `exports/` — partial files, orphaned directories, jobs without a
+  file (logged). A damaged index is logged and treated as empty. Queued,
+  running, failed and cancelled jobs live in memory only; on shutdown running
+  exports are cancelled.
 
 ## Shader contract
 
@@ -303,21 +444,29 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/health` | Liveness check, including the FFmpeg version found |
 | `GET` | `/api/catalog/transitions` | The transition catalog validated at startup |
 | `GET` | `/api/media` | All imported media in import order |
-| `POST` | `/api/media` | Upload pictures (multipart field `files`; JPEG, PNG, WebP); per-file result |
+| `POST` | `/api/media` | Upload pictures and audio (multipart field `files`; JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG, FLAC); per-file result |
 | `GET` | `/api/media/{id}/thumbnail` | Thumbnail JPEG (`Cache-Control: immutable`) |
 | `GET` | `/api/media/{id}/preview` | Preview JPEG, longest edge ≤ 1920 (`Cache-Control: immutable`) |
-| `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project |
+| `GET` | `/api/media/{id}/audio` | Audio preview version, AAC 48 kHz stereo in M4A (`Cache-Control: immutable`) |
+| `GET` | `/api/media/{id}/peaks` | Waveform data `{rate: 50, peaks}` (`Cache-Control: immutable`) |
+| `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
-| `PUT` | `/api/project` | Replace the project; `422` leaves the stored state unchanged |
+| `PUT` | `/api/project` | Replace the project (`schemaVersion` 2 with `slides` and `music`); `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
-| `GET` | `/api/exports` | All known exports of this backend run, oldest first |
+| `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |
 | `GET` | `/api/exports/{id}/file` | The finished MP4 as a download; `409` until `done` |
 | `DELETE` | `/api/exports/{id}` | Cancel a running export or delete a finished one (`204`) |
 
-Errors raised by the backend itself (media, project, export) answer with
+**Error contract.** Errors raised by the backend itself (media, project,
+export) answer with
 `{"detail": {"code": "<area.error>", "params": {…}, "message": "<English>"}}`;
-FastAPI's own `422` validation errors keep their list format. The web app
+FastAPI's own `422` validation errors keep their list format (`type` = code,
+`ctx` = params, `msg` = English message). Failed upload results and export
+jobs carry the same information as `errorCode`, `errorParams` and `message`.
+All codes are members of the `StrEnum` `ErrorCode`
+(`backend/src/mmy_backend/errors.py`), which OpenAPI exposes as an enum on
+`ApiError.code` and `errorCode`; a code is never renamed, only added. The web app
 translates the code (see [Localisation](#localisation)); the backend has no
 notion of a UI language.
 
@@ -334,7 +483,7 @@ FastAPI's interactive docs are available at `/docs` while the backend runs.
 | `MMY_WEB_DIST` | `apps/web/dist/` | Built web app served at `/` if present |
 | `MMY_SHADERS_DIR` | `packages/shaders/` | Shader files read by the export renderer |
 
-On linux-64, Pixi's activation also sets `__EGL_VENDOR_LIBRARY_DIRS`,
+On Linux, Pixi's activation also sets `__EGL_VENDOR_LIBRARY_DIRS`,
 `GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` to the environment's
 Mesa (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
 `MMY_CATALOG_DIR`, `MMY_SHADERS_DIR` and `MMY_DATA_DIR=/data`, sources Pixi's
@@ -360,7 +509,9 @@ over the network.
   `navigator.languages` starting with `de` or `en` → `en`. The locale lives in
   the Zustand store; `setLocale` (Tools → Options) persists it and updates
   `<html lang>`. Switching takes effect at once and leaves the project
-  untouched.
+  untouched. A small dependency-free inline script in `apps/web/index.html`
+  applies the same rule before the app bundle runs, so `<html lang>` is
+  right from the first paint (a unit test keeps both rules in sync).
 - **`useT()`.** Components read `t(key, params)`, `locale`, `formatNumber` and
   `formatTime` from `i18n/useT.ts` and re-render when the locale changes.
   Numbers follow `Intl.NumberFormat`; the time display is `h:mm:ss,cc` (de) or
@@ -370,11 +521,17 @@ over the network.
   collection, storyboard and dialogs show `names[locale]`.
 - **Error translation.** `i18n/errors.ts` maps a backend code to the catalog
   key `errors.<code>` and fills its params (decimals formatted per locale).
-  It reads the code from HTTP errors (`detail.code`), upload results
-  (`error`/`errorParams`), export jobs (`errorCode`/`errorParams`) and the
-  entries of FastAPI's `422` list (their `type`; anything unknown there gets a
-  general "invalid input" text). Any other unknown code falls back to the
-  backend's English `message`.
+  The `errors` catalog is keyed by the generated `ErrorCode` union, so a code
+  without a text is a type error (`pixi run typecheck`). It reads the code
+  from HTTP errors (`detail.code`), upload results and export jobs
+  (`errorCode`/`errorParams`/`message`) and the entries of FastAPI's `422`
+  list (their `type`; anything unknown there gets a general "invalid input"
+  text). A `422` entry whose `loc` is `["body","slides",<i>,…]` is prefixed
+  with the picture number *i + 1* (`errors.atPicture`: "Picture 2: …" /
+  "Bild 2: …"). Any other unknown code falls back to the backend's English
+  `message`.
+- **Accessible names.** The dialog title-bar button is named "Close dialog"
+  ("Dialog schließen"), so no dialog has two buttons called "Close".
 
 Unit tests run in German (`apps/web/src/test/setup.ts` stores `de`); the E2E
 suite runs with browser locale `de-DE`, and `e2e/test_language_switch.py`
@@ -384,13 +541,13 @@ covers the switch to English and the browser-language detection.
 
 | Layer | Tooling | What it covers |
 |---|---|---|
-| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, media library, cascade delete, project validation, catalog loading, OpenAPI, export jobs (snapshot, cancel, retention, startup cleanup) |
-| Export renderer | pytest under llvmpipe | Time model against the shared vectors, all six programs compile, golden boundary frames and letterboxing, MP4 streams and duration via ffprobe, PSNR of a mid-transition frame against the raw frame |
-| Web | Vitest + Testing Library | Timeline maths, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
+| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
+| Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
+| Web | Vitest + Testing Library | Timeline maths, music schedule (shared vectors), *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
-| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; language switch and detection; export wizard incl. cancel; golden frames; preview ↔ export frame comparison |
+| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |
-| Static | Biome, Ruff, mypy (strict), TypeScript (strict) | Lint, formatting, types |
+| Static | Biome, Ruff (backend, `e2e/`, `scripts/`), mypy (strict), TypeScript (strict) | Lint, formatting, types |
 
 **Golden frames.** A test hook (`/?debug-progress=<id>:<p>`) renders a single
 transition frame between two solid-colour pictures onto a 640×480 canvas.
@@ -405,16 +562,22 @@ the original, for which no reference installation is available.
 suite renders one frame in the browser (SwiftShader) and one with the backend
 renderer from the same inputs. They must agree within 2 levels per channel on
 at least 99.5 % of the pixels; bit-exact equality between SwiftShader and
-llvmpipe is not realistic.
+llvmpipe is not realistic. Because solid colours say little about Pixelate
+and Dissolve, `?debug-progress=<id>:<p>:pattern` renders a built-in, exactly
+640×480 test pattern (integer ramps and checkerboards, no scaling;
+`apps/web/src/render/testPattern.ts`). `e2e/test_export_golden_pattern.py`
+builds the same pattern in Python, checks exact equality at progress 0 and 1
+and compares Pixelate and Dissolve at 0.25, 0.5 and 0.75 with the same
+tolerance.
 
 `pixi run check` is the quality gate (lint, typecheck, unit tests, shader
 check, build) and runs in CI on every push and pull request, after
-`pixi run check-render-env`. CI also runs the E2E suite and the Docker export
-smoke test.
+`pixi run check-render-env`. CI also runs the E2E suite, the Docker export
+smoke test and (for public repositories) the `render-arm64` job.
 
 ## Next
 
-The next milestone is **music**: a background audio track per project. The
-export already has a replaceable audio input (today the silent `anullsrc`
-track), so on the export side music only changes what is fed into FFmpeg's
-audio slot.
+Music is a list of pieces played one after another; a timeline view with
+freely placed audio clips, clip sound, narration and audio levels are not
+built yet (see the roadmap in the README). The music schedule and the
+pre-mix are the places where such features would plug in.

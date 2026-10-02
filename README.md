@@ -18,7 +18,8 @@ The focus is on **transitions and effects** that look and feel like the ones
 from Movie Maker 2.x on Windows XP; everything else follows modern standards.
 The first milestone was a clickable **slideshow prototype**; slideshows can
 now be **saved as an MP4 movie**, rendered with the same shaders as the
-preview.
+preview, and get a **music track** that plays in the preview and is mixed
+into the exported movie.
 
 ## Features
 
@@ -30,6 +31,11 @@ What works today:
 - **Picture import** — JPEG, PNG and WebP via dialog or drag & drop from the
   desktop. The backend validates the files and creates thumbnails and preview
   images.
+- **Music** — import MP3, WAV, M4A/AAC, OGG and FLAC into *My Music*, put
+  pieces on the *Audio/Music* track below the storyboard, trim them, set
+  their volume and fades, and fit the movie to the music. The preview plays
+  the music in sync with pictures and transitions; the exported movie
+  contains the mix. See [Music](#music).
 - **Storyboard** — drag pictures into the storyboard, reorder them, remove
   them and set a duration per picture (0.5–60 s).
 - **Six classic transitions** — Fade, Dissolve, Wipe, Circle, Pixelate and
@@ -40,8 +46,10 @@ What works today:
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
   toggles playback.
-- **Transition preview** — selecting a transition in the collection plays it
-  in the monitor with sample pictures.
+- **Transition preview** — clicking a transition in the collection plays it
+  once in the monitor with sample pictures, labelled *Sample: <name>*
+  (*Beispiel: <Name>*); opening the collection shows the project, and play,
+  seek or selecting a picture returns to it.
 - **Autosave** — the project is saved in the backend and restored after a
   reload.
 - **Save movie** — a Movie Maker-style wizard exports the storyboard as an MP4
@@ -54,13 +62,11 @@ What works today:
 
 ## Roadmap
 
-- **Next:** music — a background audio track for the slideshow (the export
-  already writes a silent AAC track that music will replace)
 - More of the original 60 transitions (SMPTE wipes, bars, iris, wheel, 3D and
   particle transitions such as Page Curl and Shatter)
 - Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
 - Titles and credits with the Entrance → Main → Exit animation model
-- Video clips, music and audio levels
+- Video clips, narration and audio levels (clip sound ↔ music)
 - Timeline view with trimming and splitting
 
 ## Screenshots
@@ -130,19 +136,27 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 
 | Profile | Resolution | Video | Audio |
 |---|---|---|---|
-| `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p, faststart) | silent AAC, 48 kHz stereo, 128 kbit/s |
+| `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p BT.709, faststart) | AAC, 48 kHz stereo, 128 kbit/s: the music track, or silence without music |
 | `small` | 640×480, 30 fps | same | same |
 
 Pictures are letterboxed onto black exactly like in the preview monitor, and
 the export uses the same timing model, so the movie matches what you saw.
-Errors (backend, rendering, FFmpeg) appear in a dialog that offers to try
-again. The same flow is available over the API (`POST /api/exports`, see
+Colours are converted to YUV with the **BT.709** matrix in limited range and
+the MP4 is tagged accordingly (matrix, primaries, transfer `bt709`, range
+`tv`) — what browsers and players assume for HD material, so the movie's
+colours match the preview. The last five finished exports are kept, also
+across a backend restart. While an export is waiting or running, its
+pictures cannot be deleted (the UI explains why). Errors (backend,
+rendering, FFmpeg) appear in a dialog that offers to try again. The same flow is available over the API (`POST /api/exports`, see
 [docs/architecture.md](docs/architecture.md#export-jobs)).
 
 **Platform support.** The export renders with headless OpenGL 3.3 through EGL
 and Mesa's **llvmpipe** software renderer, which Pixi installs on Linux — no
-GPU, display server or system packages needed. **Linux (x86-64) is the officially
-supported platform** for exporting (CI and the Docker image).
+GPU, display server or system packages needed. **Linux is the officially
+supported platform** for exporting: x86-64 (CI and the Docker image) and
+aarch64, e.g. a Raspberry Pi (`linux-aarch64` is a Pixi platform; the CI job
+`render-arm64` runs the render/export tests on a hosted ARM runner once the
+repository is public — until then aarch64 is verified by a manual run on a Raspberry Pi).
 On macOS and Windows the export tries the native OpenGL context without any
 guarantee; if no context can be created, the export fails with a readable
 message instead of crashing. Check a machine with:
@@ -155,6 +169,58 @@ pixi run bench-export       # export runtime: 12 pictures × 5 s per profile
 Measured with `pixi run bench-export` (12 pictures × 5 s with 1.25 s
 transitions, 46.25 s of video, 4 CPUs, software rendering): **`small` 8.5 s**
 and **`high` 17.1 s** for render + encode — both faster than real time.
+
+## Music
+
+**Importing.** *Import audio or music* under *1. Capture Video* in the task
+pane (*Audio oder Musik importieren*), *File → Import into Collections…* or
+dropping files on the collection all use the same import as pictures; each
+file lands in the collection of its kind, and audio appears in **My Music**
+(*Meine Musik*) with its own icon, name and duration. Supported are **MP3,
+WAV, M4A/AAC, OGG (Vorbis/Opus) and FLAC**, at most **100 MB and 15 minutes**
+per file. The backend checks the content with ffprobe (never the file name),
+keeps the original and creates a uniform preview version (AAC 48 kHz stereo)
+plus waveform data. Files without an audio track or beyond the limits are
+rejected with a readable message per file.
+
+**The music track.** The narrow **Audio/Music** track (*Audio/Musik*) below
+the storyboard holds the pieces of music. They play one after another from
+0:00, without gaps; there are no free start times or overlaps. Each block
+shows the name, the played length and a mini waveform, and its width is
+proportional to the length.
+
+- **Add** by dragging audio from *My Music* onto the track, by double-clicking
+  it, or with *Add to Music Track* in its context menu. Pictures are refused
+  on the music track and audio on the storyboard, each with a hint.
+- **Reorder** by dragging (or with the keyboard, like storyboard tiles);
+  **remove** with the *Delete* key or *Remove* in the context menu. Deleting
+  an audio file from *My Music* also removes it from the music track.
+- **Edit** via the context menu (right click, the context-menu key or
+  Shift+F10): *Volume…* (0–200 %), *Fade In* and *Fade Out* (switches, 1 s
+  each) and *Trim…* (start and end, `m:ss.cc` or seconds; a piece plays at
+  least 0.5 s).
+- **Music longer than the movie** is cut at the end of the movie and always
+  faded out over the last second; the track says so (*Music 3:12 / Movie
+  2:40 – will be cut at the end*). **Shorter music** is followed by silence.
+- **Fit Movie to Music** in the *Clip* menu (*Film an Musik anpassen*)
+  spreads the length of the music evenly over the pictures, taking the
+  transitions into account (rounded to 0.25 s, 0.5–60 s per picture; the
+  remainder goes to the last picture). If the music is too long or too short
+  for the existing pictures, a dialog names the reachable duration and
+  nothing changes. The item is disabled without music or without pictures.
+
+**Preview and export.** The preview player plays the music with Web Audio in
+sync with pictures and transitions: while music is scheduled, the audio clock
+drives playback, so picture and sound cannot drift apart. Browsers only allow
+sound after a user action, so the music starts with the first click on play
+(or the space bar). The transition sample in the collection plays without
+music. The export mixes the music from the original files (not the preview
+version) into the movie's AAC track, exactly as long as the video; a movie
+without music keeps a silent track.
+
+Not included (yet): a timeline with freely placed audio clips, sound of video
+clips, narration, adjustable fade lengths, cross-fades between pieces, audio
+effects and loudness normalisation.
 
 ## Languages
 
@@ -186,24 +252,29 @@ catalogs under [`apps/web/src/i18n/`](apps/web/src/i18n):
   have the same keys and no empty values.
 - Components get text from `useT()` (`t("menu.file.label")`); never put
   visible text directly into component code.
-- Backend errors carry a stable code; the UI shows the catalog entry
-  `errors.<code>` (e.g. `errors.export.emptyProject`) and falls back to the
-  backend's English message for unknown codes. A new backend error code
-  therefore needs an entry under `errors` in both catalogs.
+- Backend errors carry a stable code from the backend's `ErrorCode` enum;
+  the UI shows the catalog entry `errors.<code>` (e.g.
+  `errors.export.emptyProject`). The enum is part of the OpenAPI schema, so
+  the generated TypeScript type `ErrorCode` lists every code and the
+  `errors` catalog is keyed by it: after `pixi run gen-api`, a new backend
+  code without a text in both catalogs is a type error. Validation errors
+  about a storyboard picture are prefixed with its number (*Picture 2: …*).
 - Transition names live in the catalog
   ([`packages/catalog/transitions.json`](packages/catalog/transitions.json)),
   not in the web app.
 
-**Breaking API changes for contributors** (from the localisation work; the
-TypeScript types are regenerated with `pixi run gen-api`):
+**Breaking API changes for contributors** (the TypeScript types are
+regenerated with `pixi run gen-api`):
 
 - Catalog entries replace `name` (string) with `names`
   (`{"de": "Kreis", "en": "Circle"}`, both required).
 - The backend's own errors answer with
   `{"detail": {"code": "export.emptyProject", "params": {…}, "message": "<English>"}}`
-  instead of a German `detail` string; export jobs report `errorCode`,
-  `errorParams` and an English `error`. FastAPI's own `422` validation lists
+  instead of a German `detail` string. FastAPI's own `422` validation lists
   are unchanged.
+- Failed upload results and export jobs carry the same three fields:
+  `errorCode`, `errorParams` and an English `message`; the former `error`
+  field is gone (it held the code for uploads and the message for exports).
 
 Code comments, docstrings, Pixi task descriptions and CI step names are in
 English; German text belongs only in `de.ts`, in tests of the German UI and
@@ -244,7 +315,7 @@ instead.
 | Path | Contents |
 |---|---|
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
-| [`backend/`](backend) | Python 3.13 + FastAPI: media, transition catalog, project, MP4 export (moderngl + FFmpeg) |
+| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
 | [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition shaders, shared by preview and export |
 | [`packages/catalog/`](packages/catalog) | Transition catalog with the documented parameters (single source of truth) |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |
@@ -279,6 +350,9 @@ flowchart LR
   preview and movie match.
 - The **timeline** is a pure, unit-tested function in TypeScript with a Python
   port for the export; both are checked against the same test vectors.
+  The **music schedule** (which piece plays when, with trims, volume and
+  fades) works the same way, so preview and movie place the music
+  identically.
 - The **Pydantic models** are the API contract; TypeScript types are
   generated from the OpenAPI schema.
 
@@ -316,7 +390,7 @@ All commands are Pixi tasks (`pixi task list` shows them all):
 |---|---|
 | `pixi run dev` | Backend with live reload + Vite dev server |
 | `pixi run demo` | Build the web app and serve it together with the API |
-| `pixi run check` | Quality gate: lint, typecheck, unit tests, shader check, build (same as CI) |
+| `pixi run check` | Quality gate: lint (incl. Ruff on `e2e/` and `scripts/`), typecheck, unit tests, shader check, build (same as CI) |
 | `pixi run test` | Unit tests (Vitest for the web app, pytest for the backend) |
 | `pixi run test-e2e` | Browser tests with Playwright/Chromium, incl. golden frames |
 | `pixi run gen-api` | Regenerate the TypeScript API types from the backend's OpenAPI schema |
