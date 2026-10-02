@@ -3,7 +3,15 @@
  * Projektänderungen werden entprellt gespeichert (Autosave, 500 ms).
  */
 import { createStore, type StoreApi } from "zustand/vanilla";
-import type { Api, Health, MediaItem, Project, Slide, Transition } from "../lib/apiClient";
+import type {
+  AppApi,
+  ExportApi,
+  Health,
+  MediaItem,
+  Project,
+  Slide,
+  Transition,
+} from "../lib/apiClient";
 import {
   advance,
   clampTime,
@@ -62,6 +70,10 @@ export interface AppState {
   demo: Playback | null;
   /** Zähler: jede Erhöhung öffnet den Dateidialog „Bilder importieren“ (Aufgabe, Datei-Menü). */
   importRequest: number;
+  /** Assistent „Film speichern“ geöffnet (design.md D6). */
+  exportWizardOpen: boolean;
+  /** Export-Schnittstelle für den Assistenten (gleiche API wie der Store). */
+  exportApi: ExportApi;
 
   init(): Promise<void>;
   setCollection(collection: CollectionId): void;
@@ -83,6 +95,9 @@ export interface AppState {
   /** Dateidialog „Bilder importieren“ anfordern (wird von der Sammlung geöffnet). */
   requestImport(): void;
   importFiles(files: readonly File[]): Promise<void>;
+  /** Assistent „Film speichern“ öffnen; bei leerem Bildstreifen ohne Wirkung. */
+  openExportWizard(): void;
+  closeExportWizard(): void;
   clearUploads(): void;
   deleteMedia(id: string): Promise<void>;
 
@@ -101,7 +116,7 @@ export interface AppState {
 
 export type AppStore = StoreApi<AppState>;
 
-export function createAppStore(api: Api): AppStore {
+export function createAppStore(api: AppApi): AppStore {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let saving: Promise<void> | null = null;
   let dirty = false;
@@ -180,6 +195,13 @@ export function createAppStore(api: Api): AppStore {
       demo: null,
       uploads: [],
       importRequest: 0,
+      exportWizardOpen: false,
+      exportApi: {
+        startExport: (request) => api.startExport(request),
+        getExport: (id) => api.getExport(id),
+        cancelExport: (id) => api.cancelExport(id),
+        exportFileUrl: (id) => api.exportFileUrl(id),
+      },
 
       async init() {
         try {
@@ -303,6 +325,14 @@ export function createAppStore(api: Api): AppStore {
             patch(entry.key, { status: "error", message: "Backend nicht erreichbar." });
           }
         }
+      },
+
+      openExportWizard() {
+        if (get().slides.length === 0) return;
+        set({ exportWizardOpen: true });
+      },
+      closeExportWizard() {
+        set({ exportWizardOpen: false });
       },
 
       clearUploads() {

@@ -13,6 +13,20 @@ export type Slide = Schemas["Slide"];
 export type TransitionRef = Schemas["TransitionRef"];
 export type Transition = Schemas["Transition"];
 export type UploadResult = Schemas["MediaUploadSuccess"] | Schemas["MediaUploadFailure"];
+export type ExportJob = Schemas["ExportJob"];
+export type ExportProfile = Schemas["ExportProfile"];
+export type ExportStatus = Schemas["ExportStatus"];
+
+/** Export-Jobs (design.md D5); eigener Teil, damit der Assistent nur ihn braucht. */
+export interface ExportApi {
+  /** Startet einen Export (202); 409/422 werfen einen ApiError mit der Meldung des Backends. */
+  startExport(request: { profile: ExportProfile; fileName: string }): Promise<ExportJob>;
+  getExport(id: string): Promise<ExportJob>;
+  /** Bricht einen laufenden Export ab bzw. löscht ein Ergebnis (204). */
+  cancelExport(id: string): Promise<void>;
+  /** Adresse der fertigen MP4 (Content-Disposition mit „<Name>.mp4“). */
+  exportFileUrl(id: string): string;
+}
 
 /** Schmale, mockbare Schnittstelle, die der Store nutzt. */
 export interface Api {
@@ -27,6 +41,9 @@ export interface Api {
   putProject(project: Project): Promise<Project>;
 }
 
+/** Alle Backend-Zugriffe der Web-App. */
+export type AppApi = Api & ExportApi;
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -37,12 +54,33 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Lesbare Meldung aus einem FastAPI-Fehlerrumpf: `detail` ist entweder ein Text
+ * (z. B. leeres Projekt, laufender Export) oder eine Liste von Prüffehlern.
+ */
+export function errorDetail(body: unknown): string | null {
+  if (!body || typeof body !== "object" || !("detail" in body)) return null;
+  const { detail } = body as { detail: unknown };
+  if (typeof detail === "string") return detail || null;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) =>
+        item && typeof item === "object" && "msg" in item
+          ? String((item as { msg: unknown }).msg)
+          : "",
+      )
+      .filter(Boolean);
+    return messages.length > 0 ? messages.join(" ") : null;
+  }
+  return null;
+}
+
 function unwrap<T>(result: { data?: T; error?: unknown; response: Response }, what: string): T {
   if (result.data !== undefined) return result.data;
   throw new ApiError(`${what} fehlgeschlagen (${result.response.status})`, result.response.status);
 }
 
-export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetch(...a)): Api {
+export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetch(...a)): AppApi {
   const client = createClient<paths>({ baseUrl, fetch: fetchImpl });
   return {
     async health() {
@@ -75,6 +113,36 @@ export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetc
     },
     async putProject(project) {
       return unwrap(await client.PUT("/api/project", { body: project }), "Projekt speichern");
+    },
+    async startExport(request) {
+      const result = await client.POST("/api/exports", { body: request });
+      if (result.data !== undefined) return result.data;
+      const status = result.response.status;
+      throw new ApiError(
+        errorDetail(result.error) ?? `Export starten fehlgeschlagen (${status})`,
+        status,
+      );
+    },
+    async getExport(id) {
+      const result = await client.GET("/api/exports/{export_id}", {
+        params: { path: { export_id: id } },
+      });
+      return unwrap(result, "Exportstatus");
+    },
+    async cancelExport(id) {
+      const result = await client.DELETE("/api/exports/{export_id}", {
+        params: { path: { export_id: id } },
+      });
+      if (!result.response.ok) {
+        const status = result.response.status;
+        throw new ApiError(
+          errorDetail(result.error) ?? `Abbrechen fehlgeschlagen (${status})`,
+          status,
+        );
+      }
+    },
+    exportFileUrl(id) {
+      return `${baseUrl}/api/exports/${encodeURIComponent(id)}/file`;
     },
   };
 }
