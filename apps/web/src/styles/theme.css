@@ -1,6 +1,6 @@
 /*
  * Y2K-Theme: eigene Interpretation des XP/Luna-Looks. Keine Original-Assets
- * (siehe docs/research/movie-maker-klon.md, Abschnitt „Rechtliches“).
+ * (siehe docs/research/movie-maker-reference.md, section "Legal").
  * Alle Farben laufen über diese Tokens; Komponenten-CSS (CSS Modules) nutzt
  * ausschließlich var(--y2k-*). Es wird keine Schrift mitgeliefert.
  */
