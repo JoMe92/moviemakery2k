@@ -112,7 +112,9 @@ describe("media collection", () => {
         f.name === "kaputt.jpg"
           ? {
               ok: false as const,
-              error: "unsupported" as const,
+              // A code outside the contract: the message is shown as-is.
+              errorCode: "unsupported" as never,
+              errorParams: {},
               filename: f.name,
               message: "Kein unterstütztes Bild.",
             }
@@ -220,6 +222,97 @@ describe("media collection", () => {
     await waitFor(() => expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["b"]));
   });
 
+  it.each([
+    [
+      "de",
+      { collection: "Sammlung: Meine Bilder", pictures: "Bilder", strip: "Bildstreifen" },
+      { title: "Bild löschen", yes: "Ja", ok: "OK" },
+      "„a.jpg“ konnte nicht gelöscht werden.",
+      "Das Bild kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
+    ],
+    [
+      "en",
+      { collection: "Collection: My Pictures", pictures: "Pictures", strip: "Storyboard strip" },
+      { title: "Delete Picture", yes: "Yes", ok: "OK" },
+      "“a.jpg” could not be deleted.",
+      "The image cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
+    ],
+  ])(
+    "keeps the picture in collection and storyboard when a running export uses it (%s)",
+    async (locale, regions, labels, failed, reason) => {
+      localStorage.setItem("mmy.locale", locale);
+      const user = userEvent.setup();
+      const api = mockApi({
+        getProject: vi.fn(async () => ({
+          schemaVersion: 1 as const,
+          slides: [
+            { id: "s1", mediaId: "a", duration: 4, transitionIn: null },
+            { id: "s2", mediaId: "b", duration: 4, transitionIn: null },
+          ],
+        })),
+        deleteMedia: vi.fn(async () => {
+          throw new ApiError("Medium is used by a running export", 409, {
+            code: "media.inUseByExport",
+            params: { mediaId: "a", exportId: "job-1" },
+            message: "Medium is used by a running export",
+          });
+        }),
+      });
+      const { ready, store } = renderApp(api);
+      await act(() => ready);
+      const pane = screen.getByRole("region", { name: regions.collection });
+      const names = () =>
+        within(within(pane).getByRole("list", { name: regions.pictures }))
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label"));
+      const stripLabels = () =>
+        within(screen.getByRole("list", { name: regions.strip }))
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label"));
+      const slidesBefore = store.getState().slides;
+      const stripBefore = stripLabels();
+      expect(stripBefore.length).toBeGreaterThan(0);
+
+      within(pane).getByRole("button", { name: "a.jpg" }).focus();
+      await user.keyboard("{Delete}");
+      const confirm = screen.getByRole("dialog", { name: labels.title });
+      await user.click(within(confirm).getByRole("button", { name: labels.yes }));
+
+      const error = await screen.findByRole("dialog", { name: labels.title });
+      const alert = within(error).getByRole("alert");
+      expect(alert).toHaveTextContent(failed);
+      expect(alert).toHaveTextContent(reason);
+      expect(api.deleteMedia).toHaveBeenCalledWith("a");
+
+      // Nothing was removed: collection, storyboard state and strip are unchanged.
+      expect(names()).toEqual(["a.jpg", "b.jpg"]);
+      expect(store.getState().media.map((m) => m.id)).toEqual(["a", "b"]);
+      expect(store.getState().slides).toEqual(slidesBefore);
+      expect(stripLabels()).toEqual(stripBefore);
+
+      await user.click(within(error).getByRole("button", { name: labels.ok }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(names()).toEqual(["a.jpg", "b.jpg"]);
+    },
+  );
+
+  it("shows a generic message when deleting fails without a structured error", async () => {
+    const user = userEvent.setup();
+    const api = mockApi({
+      deleteMedia: vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    });
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    within(collection()).getByRole("button", { name: "b.jpg" }).focus();
+    await user.keyboard("{Delete}");
+    await user.click(screen.getByRole("button", { name: "Ja" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/^„b\.jpg“ konnte nicht gelöscht werden\.$/);
+    expect(tileNames()).toEqual(["a.jpg", "b.jpg"]);
+  });
+
   it("deletes via the context menu and adds to the storyboard through it", async () => {
     const user = userEvent.setup();
     const { ready, api, store } = renderApp();
@@ -286,7 +379,8 @@ describe("media collection", () => {
     const api = importApi({
       uploadMedia: vi.fn(async (f: File) => ({
         ok: false as const,
-        error: "media.unsupportedType",
+        errorCode: "media.unsupportedType" as const,
+        errorParams: {},
         filename: f.name,
         message: "Not a supported image (JPEG, PNG and WebP are allowed).",
       })),

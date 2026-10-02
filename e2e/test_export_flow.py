@@ -1,10 +1,11 @@
-"""Ende-zu-Ende: Import → Bildstreifen → Übergang → Assistent → Download (TASK-WEB-014).
+"""End to end: import → storyboard → transition → wizard → download (TASK-WEB-014).
 
-Spec movie-export: Der Film wird über „Auf dem Computer speichern“ im
-Aufgabenbereich gespeichert; ffprobe prüft das Profil „Kleine Datei“
-(H.264 640×480, 30 fps, AAC) und dass die Dauer der Gesamtdauer der Vorschau
-auf ein Bild (1/30 s) genau entspricht. Zweiter Ablauf: Abbrechen mit
-Rückfrage, danach keine Teildatei.
+The movie is saved via "Auf dem Computer speichern" (save to my computer) in
+the task pane; ffprobe checks the profile (spec movie-export "Kleine Datei":
+H.264 640x480, 30 fps, AAC) and that the duration matches the total preview
+duration to within one frame of 1/30 s (spec movie-export "Dauer des Films").
+Second flow (spec movie-export "Export abbrechen"): cancel with a confirmation,
+after which no partial file is left.
 """
 
 import json
@@ -25,9 +26,9 @@ _TIME_RE = re.compile(r"/\s*(\d+):(\d{2}):(\d{2}),(\d{2})\s*$")
 
 
 def total_seconds(time_display: Locator) -> float:
-    """Gesamtdauer aus der Zeitanzeige des Monitors („0:00:05,00 / 0:00:13,75“)."""
+    """Total duration from the monitor time display ("0:00:05,00 / 0:00:13,75")."""
     match = _TIME_RE.search(time_display.inner_text())
-    assert match, f"Zeitanzeige unerwartet: {time_display.inner_text()!r}"
+    assert match, f"unexpected time display: {time_display.inner_text()!r}"
     h, m, s, cs = (int(g) for g in match.groups())
     return h * 3600 + m * 60 + s + cs / 100
 
@@ -35,7 +36,7 @@ def total_seconds(time_display: Locator) -> float:
 def ffprobe(path: Path) -> dict[str, Any]:
     binary = ffprobe_binary()
     if binary is None:
-        pytest.fail("ffprobe nicht gefunden (Pixi-Umgebung oder MMY_FFPROBE)")
+        pytest.fail("ffprobe not found (Pixi environment or MMY_FFPROBE)")
     out = subprocess.run(
         [binary, "-v", "error", "-show_streams", "-show_format", "-of", "json", str(path)],
         check=True,
@@ -51,7 +52,7 @@ def api_json(base: str, path: str) -> Any:
 
 
 def build_project(page: Page, server: str, images: dict[str, Path], copies: int = 1) -> Locator:
-    """Importiert Rot/Blau/Grün, hängt sie `copies`-mal an und setzt „Schachbrett“ vor Bild 2."""
+    """Import red/blue/green, append them `copies` times, set "Schachbrett" before picture 2."""
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(server)
     expect(page.get_by_text("Backend bereit")).to_be_visible()
@@ -79,7 +80,7 @@ def build_project(page: Page, server: str, images: dict[str, Path], copies: int 
 
 
 def open_wizard(page: Page, file_name: str, profile_label: str) -> Locator:
-    """Assistent über den Aufgabenbereich öffnen, Namen eingeben, Qualität wählen, starten."""
+    """Open the wizard from the task pane, enter the name, pick the quality and start."""
     page.get_by_text("Auf dem Computer speichern").click()
     wizard = page.get_by_role("dialog", name="Film speichern")
     expect(wizard.get_by_role("heading", name="Dateiname")).to_be_visible()
@@ -95,11 +96,11 @@ def test_export_small_file_and_download(
     page: Page, server: str, images: dict[str, Path], tmp_path: Path
 ) -> None:
     build_project(page, server, images)
-    # Gesamtdauer der Vorschau: 3 × 5 s − 1,25 s
+    # Total preview duration: 3 x 5 s - 1.25 s
     expected = total_seconds(page.get_by_label("Zeit"))
     assert expected == pytest.approx(13.75)
 
-    wizard = open_wizard(page, "Mein Film", "Kleine Datei (640×480)")
+    wizard = open_wizard(page, "Mein Film", "Kleine Datei (640×480)")  # noqa: RUF001
     expect(wizard.get_by_role("heading", name="Fertig")).to_be_visible(timeout=EXPORT_TIMEOUT_MS)
     expect(wizard.get_by_text("Der Film „Mein Film.mp4“ wurde gespeichert.")).to_be_visible()
 
@@ -122,7 +123,8 @@ def test_export_small_file_and_download(
     assert v["r_frame_rate"] == "30/1"
     assert v["avg_frame_rate"] == "30/1"
     assert a["codec_name"] == "aac"
-    # Dauer = Vorschau ± 1 Bild (Spec „Dauer des Films“); Anzeige ist auf 1/100 s gerundet.
+    # Duration = preview ± 1 frame (spec movie-export "Dauer des Films"); the display is
+    # rounded to 1/100 s.
     tolerance = FRAME + 0.005
     assert float(v["duration"]) == pytest.approx(expected, abs=tolerance)
     assert float(probe["format"]["duration"]) == pytest.approx(expected, abs=tolerance)
@@ -134,18 +136,18 @@ def test_export_small_file_and_download(
 def test_cancel_export_leaves_no_file(
     page: Page, server: str, images: dict[str, Path], tmp_path: Path
 ) -> None:
-    # 18 Bilder (≈ 88 s Film) in hoher Qualität: Der Export dauert auch auf
-    # schnellen Rechnern viele Sekunden (lokal gemessen: 12 Bilder ≈ 14 s), die
-    # Rückfrage samt Bestätigung dagegen unter einer Sekunde.
+    # 18 pictures (≈ 88 s of movie) in high quality: the export takes many seconds
+    # even on fast machines (measured locally: 12 pictures ≈ 14 s), while the
+    # confirmation prompt and its answer take less than a second.
     build_project(page, server, images, copies=6)
-    wizard = open_wizard(page, "Abbruch", "Hohe Qualität (960×720)")
+    wizard = open_wizard(page, "Abbruch", "Hohe Qualität (960×720)")  # noqa: RUF001
     expect(wizard.get_by_role("heading", name="Film wird gespeichert")).to_be_visible()
     expect(wizard.get_by_role("progressbar", name="Exportfortschritt")).to_be_visible()
 
     wizard.get_by_role("button", name="Abbrechen").click()
     confirm = page.get_by_role("dialog", name="Export abbrechen")
     expect(confirm.get_by_text("Export wirklich abbrechen?")).to_be_visible()
-    # Vor der Bestätigung läuft der Export noch.
+    # Before the confirmation the export is still running.
     items = api_json(server, "/api/exports")["items"]
     assert [i["status"] for i in items] in (["queued"], ["running"]), items
     confirm.get_by_role("button", name="Ja").click()

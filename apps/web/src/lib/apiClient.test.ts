@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, createApi, errorDetail, parseErrorBody } from "./apiClient";
+import { ApiError, createApi, errorDetail, parseErrorBody, pictureOfLoc } from "./apiClient";
 
 // openapi-fetch builds Request objects; Node needs absolute URLs for them.
 const BASE = "http://backend.test";
@@ -148,6 +148,14 @@ describe("parseErrorBody", () => {
       },
       { code: "enum", params: {}, message: "Input should be 'high' or 'small'" },
     ]);
+  });
+
+  it("derives the picture number from `loc` (design.md D6)", () => {
+    expect(pictureOfLoc(["body", "slides", 1, "duration"])).toBe(2);
+    expect(pictureOfLoc(["body", "slides", 0, "transitionIn", "duration"])).toBe(1);
+    expect(pictureOfLoc(["body", "slides"])).toBeNull();
+    expect(pictureOfLoc(["body", "fileName"])).toBeNull();
+    expect(pictureOfLoc(undefined)).toBeNull();
   });
 
   it("reads the individual errors of project.invalid", () => {

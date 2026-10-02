@@ -3,6 +3,12 @@
 - Video: raw RGBA frames (top row first, hence no vflip) via stdin,
   `-f rawvideo -pix_fmt rgba -s WxH -r 30 -i -`; encoding `libx264 -preset
   medium -crf 20 -pix_fmt yuv420p -profile:v high -movflags +faststart`.
+- Colour space (harden-export-and-ui design.md D2): RGB → YUV with the BT.709
+  matrix in limited ("tv") range via `scale=out_color_matrix=bt709:out_range=tv`
+  (swscale would otherwise use BT.601), and the stream is tagged as BT.709
+  (`setparams` on the frames plus `-colorspace/-color_primaries/-color_trc
+  bt709 -color_range tv`), the
+  colour space browsers and players assume for HD material.
 - Audio: a separate, replaceable input (`AudioInput`); until the music change
   silent via `-f lavfi -i anullsrc=r=48000:cl=stereo`, encoding `aac -b:a 128k`.
   The audio input is limited to the exact video duration (`frame_count / fps`)
@@ -120,6 +126,29 @@ def _seconds(value: float) -> str:
     return f"{value:.6f}"
 
 
+COLOR_FILTER = (
+    "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,"
+    "setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv"
+)
+"""RGB → YUV 4:2:0 conversion with the BT.709 matrix, limited range (design.md D2).
+
+`setparams` marks the frames as BT.709: FFmpeg takes the colour properties of
+the frames over the encoder options, and `scale` only sets matrix and range, so
+without it primaries and transfer would end up `unknown` despite `-color_trc`.
+"""
+COLOR_TAGS: tuple[str, ...] = (
+    "-colorspace",
+    "bt709",
+    "-color_primaries",
+    "bt709",
+    "-color_trc",
+    "bt709",
+    "-color_range",
+    "tv",
+)
+"""Colour tags of the video stream (design.md D2)."""
+
+
 def build_ffmpeg_command(
     binary: str, spec: ProfileSpec, output: Path, audio_args: Sequence[str]
 ) -> list[str]:
@@ -147,6 +176,8 @@ def build_ffmpeg_command(
         "0:v:0",
         "-map",
         "1:a:0",
+        "-vf",
+        COLOR_FILTER,
         "-c:v",
         "libx264",
         "-preset",
@@ -157,6 +188,7 @@ def build_ffmpeg_command(
         "yuv420p",
         "-profile:v",
         "high",
+        *COLOR_TAGS,
         "-c:a",
         "aac",
         "-b:a",

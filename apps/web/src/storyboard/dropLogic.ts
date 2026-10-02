@@ -1,6 +1,7 @@
 /**
- * Pure drop logic of the storyboard (spec slideshow-project "Drag pictures into
- * the storyboard", "Edit the storyboard"). Testable independently of dnd-kit.
+ * Pure drop logic of the storyboard (spec slideshow-project "Bilder in den
+ * Bildstreifen ziehen", spec slideshow-project "Bildstreifen bearbeiten").
+ * Testable independently of dnd-kit.
  */
 import { formatNumber } from "../i18n/format";
 import type { Locale } from "../i18n/locale";

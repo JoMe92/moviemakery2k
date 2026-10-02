@@ -1,7 +1,8 @@
-"""Randwert-Golden-Frames der Übergänge (Spec transitions „Gemeinsames Verhalten“).
+"""Golden frames of the transitions (spec transitions "Gemeinsames Verhalten aller Übergänge").
 
-Über den Testhook `?debug-progress=<id>:<p>` rendert die Web-App einen Übergang
-von Rot nach Blau auf ein 640×480-Canvas.
+Through the test hook `?debug-progress=<id>:<p>` the web app renders a transition
+from red to blue onto a 640x480 canvas (spec transitions "Randwerte",
+spec transitions "Determinismus").
 """
 
 import json
@@ -46,7 +47,7 @@ def test_midpoint_differs_from_both_ends(page: Page, server: str, transition_id:
 
 
 def test_pixelate_builds_coarse_blocks(page: Page, server: str) -> None:
-    # Einfarbige Bilder zeigen keine Blöcke; das Hochkant-Testmuster schon.
+    # Solid images show no blocks; the portrait test pattern does.
     render(page, server, "fade:0&fromPortrait=1")
     sharp = distinct_in_row(page, CANVAS, 0.5)
     render(page, server, "pixelate:0.45&fromPortrait=1")
@@ -61,7 +62,7 @@ def test_dissolve_is_deterministic(page: Page, server: str) -> None:
     render(page, server, "dissolve:0.5")
     second = canvas_stats(page, CANVAS)
     assert first["hash"] == second["hash"]
-    # ungefähr die Hälfte der Pixel ist schon blau
+    # roughly half of the pixels are already blue
     assert 0.4 < second["pure"]["blue"] / second["n"] < 0.6
 
 

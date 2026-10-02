@@ -1,4 +1,4 @@
-"""Encoding of the export (TASK-RENDER-004, design.md D4).
+"""Encoding of the export (TASK-RENDER-004, design.md D4; BT.709: TASK-RENDER-005).
 
 Small projects so that the end-to-end tests (marked `slow`) take only a few
 seconds. The runtime for 12 images of 5 s each is measured by
@@ -99,6 +99,10 @@ def ffprobe(path: Path) -> dict[str, Any]:
     return result
 
 
+DECODE_BT709 = "scale=in_color_matrix=bt709:in_range=tv,format=rgba"
+"""YUV → RGB with BT.709, limited range — the reference decoding (design.md D2)."""
+
+
 def decode_frame(path: Path, n: int, width: int, height: int) -> bytes:
     binary = ffmpeg_binary()
     assert binary is not None
@@ -106,7 +110,8 @@ def decode_frame(path: Path, n: int, width: int, height: int) -> bytes:
         [
             binary,
             *("-v", "error", "-i", str(path)),
-            *("-vf", f"select=eq(n\\,{n})", "-fps_mode", "passthrough", "-frames:v", "1"),
+            *("-vf", f"select=eq(n\\,{n}),{DECODE_BT709}"),
+            *("-fps_mode", "passthrough", "-frames:v", "1"),
             *("-f", "rawvideo", "-pix_fmt", "rgba", "-"),
         ],
         capture_output=True,
@@ -160,7 +165,12 @@ def test_ffmpeg_command_matches_design_d4(tmp_path: Path) -> None:
     assert "-f lavfi -t 2.500000 -i anullsrc=r=48000:cl=stereo " in line
     assert "-map 0:v:0 -map 1:a:0 " in line
     assert (
+        "-vf scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,"
+        "setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv "
+    ) in line
+    assert (
         "-c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -profile:v high "
+        "-colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv "
         "-c:a aac -b:a 128k -shortest -movflags +faststart -f mp4 " in line
     )
     assert cmd[-1] == str(out)
@@ -208,6 +218,7 @@ def test_small_export_streams_progress_and_psnr(tmp_path: Path) -> None:
     assert (video["width"], video["height"]) == (640, 480)
     assert video["r_frame_rate"] == "30/1"
     assert int(video["nb_frames"]) == 60
+    assert_bt709_tags(video)
     assert (audio["codec_name"], audio["sample_rate"], audio["channels"]) == ("aac", "48000", 2)
     expected = video_duration(timeline, 30)
     for duration in (video["duration"], audio["duration"], info["format"]["duration"]):
@@ -232,6 +243,38 @@ def test_small_export_streams_progress_and_psnr(tmp_path: Path) -> None:
     assert psnr > 35
 
 
+def assert_bt709_tags(video: dict[str, Any]) -> None:
+    """The four colour tags of the video stream (design.md D2)."""
+    tags = {k: video.get(k) for k in ("color_space", "color_primaries", "color_transfer")}
+    assert tags == dict.fromkeys(tags, "bt709")
+    assert video.get("color_range") == "tv"
+
+
+@requires_gl
+@slow
+@pytest.mark.parametrize("color", [(255, 0, 0), (0, 0, 255)], ids=["red", "blue"])
+def test_solid_color_survives_bt709_roundtrip(tmp_path: Path, color: tuple[int, int, int]) -> None:
+    """A single-colour picture decodes (BT.709) to within 3 per channel of the original."""
+    out = tmp_path / "film.mp4"
+    image = Image.new("RGB", (640, 480), color)
+    timeline = build_timeline([TimelineSlide("s0", "solid", 0.5, None)])
+
+    export_movie(
+        timeline,
+        CATALOG,
+        ExportProfile.SMALL,
+        out,
+        lambda media_id: image if media_id == "solid" else None,
+    )
+
+    video = next(s for s in ffprobe(out)["streams"] if s["codec_type"] == "video")
+    assert_bt709_tags(video)
+    decoded = decode_frame(out, 7, 640, 480)
+    worst = max(abs(decoded[i + c] - color[c]) for i in range(0, len(decoded), 4) for c in range(3))
+    print(f"max channel deviation {color}: {worst}")
+    assert worst <= 3
+
+
 @requires_gl
 @slow
 def test_high_profile_resolution(tmp_path: Path) -> None:
@@ -242,6 +285,7 @@ def test_high_profile_resolution(tmp_path: Path) -> None:
     video = next(s for s in info["streams"] if s["codec_type"] == "video")
     assert (video["width"], video["height"], video["r_frame_rate"]) == (960, 720, "30/1")
     assert (video["codec_name"], video["profile"]) == ("h264", "High")
+    assert_bt709_tags(video)
     assert abs(float(info["format"]["duration"]) - 0.5) <= 1 / 30
 
 

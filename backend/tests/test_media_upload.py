@@ -110,7 +110,7 @@ def test_text_file_named_jpg_is_unsupported_but_others_import(settings: Settings
     assert failure == {
         "filename": "fake.jpg",
         "ok": False,
-        "error": "media.unsupportedType",
+        "errorCode": "media.unsupportedType",
         "errorParams": {},
         "message": "Not a supported image (JPEG, PNG and WebP are allowed).",
     }
@@ -121,7 +121,7 @@ def test_other_image_format_is_unsupported(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         items = _upload(client, [_file("x.jpg", _image_bytes("GIF", (10, 10)))])
     assert items[0]["ok"] is False
-    assert items[0]["error"] == "media.unsupportedType"
+    assert items[0]["errorCode"] == "media.unsupportedType"
 
 
 def test_file_over_25_mb_is_too_large_and_nothing_stored(settings: Settings) -> None:
@@ -133,7 +133,7 @@ def test_file_over_25_mb_is_too_large_and_nothing_stored(settings: Settings) -> 
         {
             "filename": "big.png",
             "ok": False,
-            "error": "media.tooLarge",
+            "errorCode": "media.tooLarge",
             "errorParams": {"maxMegabytes": 25},
             "message": "The file is too large (at most 25 MB).",
         }
@@ -152,7 +152,7 @@ def test_too_many_pixels_is_rejected(settings: Settings, monkeypatch: pytest.Mon
             ],
         )
     assert [r["ok"] for r in items] == [False, True]
-    assert items[0]["error"] == "media.tooManyPixels"
+    assert items[0]["errorCode"] == "media.tooManyPixels"
     assert items[0]["errorParams"] == {"maxMegapixels": 40}
     assert items[0]["message"] == "The image has too many pixels (at most 40 megapixels)."
 
@@ -163,7 +163,7 @@ def test_decompression_bomb_is_too_many_pixels(
     monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 10)
     with TestClient(create_app(settings)) as client:
         items = _upload(client, [_file("bomb.png", _image_bytes("PNG", (20, 20)), "image/png")])
-    assert items[0]["error"] == "media.tooManyPixels"
+    assert items[0]["errorCode"] == "media.tooManyPixels"
 
 
 def test_path_in_filename_is_display_only(settings: Settings, tmp_path: Path) -> None:
@@ -269,7 +269,11 @@ def test_openapi_describes_upload_result_union(settings: Settings) -> None:
     assert "ok" in schemas["MediaUploadSuccess"]["required"]
     assert "ok" in schemas["MediaUploadFailure"]["required"]
     failure = schemas["MediaUploadFailure"]
-    assert failure["properties"]["error"]["type"] == "string"
-    assert {"error", "message"} <= set(failure["required"])
+    assert "error" not in failure["properties"]
+    assert failure["properties"]["errorCode"] == {
+        "$ref": "#/components/schemas/ErrorCode",
+        "description": failure["properties"]["errorCode"]["description"],
+    }
+    assert {"errorCode", "message"} <= set(failure["required"])
     assert "errorParams" in failure["properties"]
     assert "createdAt" in schemas["MediaItem"]["properties"]

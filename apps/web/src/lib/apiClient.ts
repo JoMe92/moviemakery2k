@@ -17,6 +17,8 @@ export type ExportJob = Schemas["ExportJob"];
 export type ExportProfile = Schemas["ExportProfile"];
 export type ExportStatus = Schemas["ExportStatus"];
 export type ApiErrorBody = Schemas["ApiError"];
+/** Every code the backend can send (design.md D4); the error catalog is keyed by it. */
+export type ErrorCode = Schemas["ErrorCode"];
 
 /** Export jobs (design.md D5); a separate part so the wizard needs only this one. */
 export interface ExportApi {
@@ -58,6 +60,12 @@ export interface ApiErrorInfo {
   params: ErrorParams;
   message: string;
   issues?: readonly ApiErrorInfo[];
+  /**
+   * 1-based number of the storyboard picture a native 422 entry refers to,
+   * from its `loc` (`["body", "slides", <i>, …]` → `i + 1`; harden-export-and-ui
+   * design.md D6). Absent if the entry concerns no picture.
+   */
+  picture?: number;
 }
 
 export class ApiError extends Error {
@@ -85,12 +93,26 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+/** Picture number of a FastAPI `loc` (`["body", "slides", <i>, …]` → `i + 1`), or null. */
+export function pictureOfLoc(loc: unknown): number | null {
+  if (!Array.isArray(loc) || loc[0] !== "body" || loc[1] !== "slides") return null;
+  const index: unknown = loc[2];
+  return typeof index === "number" && Number.isInteger(index) && index >= 0 ? index + 1 : null;
+}
+
 function issueOf(item: unknown): ApiErrorInfo | null {
   if (!item || typeof item !== "object") return null;
   const raw = item as Record<string, unknown>;
   // Native FastAPI entry: `type` is the code, `ctx` the params, `msg` the message.
   if ("msg" in raw || "type" in raw) {
-    return { code: str(raw.type) || null, params: errorParams(raw.ctx), message: str(raw.msg) };
+    const info: ApiErrorInfo = {
+      code: str(raw.type) || null,
+      params: errorParams(raw.ctx),
+      message: str(raw.msg),
+    };
+    const picture = pictureOfLoc(raw.loc);
+    if (picture !== null) info.picture = picture;
+    return info;
   }
   return {
     code: str(raw.code) || null,

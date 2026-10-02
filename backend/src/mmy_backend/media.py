@@ -19,7 +19,7 @@ import shutil
 import tempfile
 import unicodedata
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,7 +29,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.alias_generators import to_camel
 
-from mmy_backend.errors import Params, error_message
+from mmy_backend.errors import ErrorCode, Params, error_message
 from mmy_backend.storage import write_bytes_atomic
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -48,12 +48,14 @@ _MEDIA_ID_RE = re.compile(MEDIA_ID_PATTERN)
 _CHUNK = 1024 * 1024
 _EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 
-UploadErrorCode = Literal["media.unsupportedType", "media.tooLarge", "media.tooManyPixels"]
+UploadErrorCode = Literal[
+    ErrorCode.MEDIA_UNSUPPORTED_TYPE, ErrorCode.MEDIA_TOO_LARGE, ErrorCode.MEDIA_TOO_MANY_PIXELS
+]
 
 UPLOAD_ERROR_PARAMS: dict[UploadErrorCode, Params] = {
-    "media.unsupportedType": {},
-    "media.tooLarge": {"maxMegabytes": MAX_FILE_BYTES // (1024 * 1024)},
-    "media.tooManyPixels": {"maxMegapixels": MAX_PIXELS // 1_000_000},
+    ErrorCode.MEDIA_UNSUPPORTED_TYPE: {},
+    ErrorCode.MEDIA_TOO_LARGE: {"maxMegabytes": MAX_FILE_BYTES // (1024 * 1024)},
+    ErrorCode.MEDIA_TOO_MANY_PIXELS: {"maxMegapixels": MAX_PIXELS // 1_000_000},
 }
 
 
@@ -85,10 +87,14 @@ class MediaUploadSuccess(_MediaModel):
 
 
 class MediaUploadFailure(_MediaModel):
+    # The error fields are always sent; mark them required in the schema (design.md D3).
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
     filename: str
     ok: Literal[False]
-    error: str = Field(
-        description="Stable error code (design.md D5): " + ", ".join(get_args(UploadErrorCode))
+    error_code: ErrorCode = Field(
+        description="Stable error code (design.md D3, D4); one of "
+        + ", ".join(code.value for code in get_args(UploadErrorCode))
     )
     error_params: Params = Field(default_factory=dict, description="Values of the message")
     message: str = Field(description="English message")
@@ -158,7 +164,7 @@ def _copy_limited(source: BinaryIO, target: BinaryIO) -> None:
     while chunk := source.read(_CHUNK):
         total += len(chunk)
         if total > MAX_FILE_BYTES:
-            raise MediaError("media.tooLarge")
+            raise MediaError(ErrorCode.MEDIA_TOO_LARGE)
         target.write(chunk)
 
 
@@ -167,10 +173,10 @@ def _check_and_load(path: Path) -> tuple[str, Image.Image]:
         with Image.open(path) as probe:
             fmt = probe.format
             if fmt not in _EXTENSIONS:
-                raise MediaError("media.unsupportedType")
+                raise MediaError(ErrorCode.MEDIA_UNSUPPORTED_TYPE)
             width, height = probe.size
             if width * height > MAX_PIXELS:
-                raise MediaError("media.tooManyPixels")
+                raise MediaError(ErrorCode.MEDIA_TOO_MANY_PIXELS)
             probe.verify()
         # verify() makes the object unusable - reopen and load it completely.
         with Image.open(path) as opened:
@@ -178,9 +184,9 @@ def _check_and_load(path: Path) -> tuple[str, Image.Image]:
             oriented = ImageOps.exif_transpose(opened)
             oriented.load()
     except Image.DecompressionBombError as exc:
-        raise MediaError("media.tooManyPixels") from exc
+        raise MediaError(ErrorCode.MEDIA_TOO_MANY_PIXELS) from exc
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError) as exc:
-        raise MediaError("media.unsupportedType") from exc
+        raise MediaError(ErrorCode.MEDIA_UNSUPPORTED_TYPE) from exc
     return _EXTENSIONS[fmt], oriented
 
 
@@ -257,7 +263,7 @@ class MediaStore:
             return MediaUploadFailure(
                 filename=display,
                 ok=False,
-                error=exc.code,
+                error_code=exc.code,
                 error_params=exc.params,
                 message=str(exc),
             )
@@ -281,20 +287,36 @@ class MediaStore:
             await asyncio.to_thread(self._write_index, updated)
             self._items = updated
 
-    async def remove(self, media_id: str) -> bool:
+    async def remove(self, media_id: str, guard: Callable[[], None] | None = None) -> bool:
         """Removes a medium from the index and deletes its directory.
 
-        The index is written atomically first, then the directory is deleted
-        (an already missing directory is not an error). Returns False if the
-        ID is unknown. The cascade into the project is the caller's job.
+        `guard` runs under the store lock right before the removal and may raise
+        to veto it (e.g. while an export uses the medium). Guard, check and the
+        in-memory removal happen without an `await` in between, so no other
+        request (such as an export start, which reads `list()`) can interleave:
+        it either ran before (and the guard sees it) or it runs after (and no
+        longer sees the medium). The index is then written atomically; if that
+        fails the medium is restored. Finally the directory is deleted (an
+        already missing directory is not an error). Returns False if the ID is
+        unknown. The cascade into the project is the caller's job.
         """
         if not is_media_id(media_id):
             return False
         async with self._lock:
-            if not any(item.id == media_id for item in self._items):
+            position = next((i for i, item in enumerate(self._items) if item.id == media_id), None)
+            if position is None:
                 return False
+            if guard is not None:
+                guard()
+            removed = self._items[position]
             updated = [item for item in self._items if item.id != media_id]
-            await asyncio.to_thread(self._write_index, updated)
             self._items = updated
+            try:
+                await asyncio.to_thread(self._write_index, updated)
+            except BaseException:
+                restored = list(self._items)
+                restored.insert(min(position, len(restored)), removed)
+                self._items = restored
+                raise
             await asyncio.to_thread(shutil.rmtree, self.item_dir(media_id), ignore_errors=True)
             return True

@@ -11,14 +11,17 @@ Where an error shows up:
 - Rule violations found while FastAPI parses a request body (durations, file
   name): FastAPI's native 422 list, where ``type`` is the code, ``ctx`` the
   params and ``msg`` the English message (see ``validation_error``).
-- Per-file upload results: ``error`` (code), ``errorParams`` and ``message``.
-- Export jobs: ``errorCode``, ``errorParams`` and ``error`` (message).
+- Per-file upload results and export jobs: ``errorCode``, ``errorParams`` and
+  ``message`` (design.md D3).
 
-``ERRORS`` below is the complete list; every code documents its params.
+``ErrorCode`` lists every code; it appears in OpenAPI as an enum (``ApiError.code``,
+``errorCode``), so the generated TS types carry the union of all codes (design.md
+D4). ``ERRORS`` holds the English template and the params of every code.
 Codes are part of the API contract: never rename one, add a new one instead.
 """
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 from fastapi import HTTPException
@@ -29,6 +32,49 @@ ParamValue = str | int | float
 Params = dict[str, ParamValue]
 
 
+class ErrorCode(StrEnum):
+    """All stable error codes; part of the API contract as an OpenAPI enum (design.md D4).
+
+    Never rename a code, add a new one instead.
+    """
+
+    MEDIA_NOT_FOUND = "media.notFound"
+    MEDIA_TOO_MANY_FILES = "media.tooManyFiles"
+    MEDIA_UNSUPPORTED_TYPE = "media.unsupportedType"
+    MEDIA_TOO_LARGE = "media.tooLarge"
+    MEDIA_TOO_MANY_PIXELS = "media.tooManyPixels"
+    MEDIA_IN_USE_BY_EXPORT = "media.inUseByExport"
+    PROJECT_SLIDE_DURATION_OUT_OF_RANGE = "project.slideDuration.outOfRange"
+    PROJECT_SLIDE_DURATION_OFF_GRID = "project.slideDuration.offGrid"
+    PROJECT_TRANSITION_DURATION_OUT_OF_RANGE = "project.transitionDuration.outOfRange"
+    PROJECT_TRANSITION_DURATION_OFF_GRID = "project.transitionDuration.offGrid"
+    PROJECT_INVALID = "project.invalid"
+    PROJECT_SLIDE_DUPLICATE_ID = "project.slide.duplicateId"
+    PROJECT_SLIDE_UNKNOWN_MEDIA = "project.slide.unknownMedia"
+    PROJECT_SLIDE_FIRST_HAS_TRANSITION = "project.slide.firstHasTransition"
+    PROJECT_SLIDE_UNKNOWN_TRANSITION = "project.slide.unknownTransition"
+    EXPORT_NOT_FOUND = "export.notFound"
+    EXPORT_EMPTY_PROJECT = "export.emptyProject"
+    EXPORT_MISSING_MEDIA = "export.missingMedia"
+    EXPORT_BUSY = "export.busy"
+    EXPORT_NOT_READY = "export.notReady"
+    EXPORT_FILE_NAME_EMPTY = "export.fileName.empty"
+    EXPORT_FILE_NAME_INVALID_CHARS = "export.fileName.invalidChars"
+    EXPORT_FILE_NAME_CONTROL_CHARS = "export.fileName.controlChars"
+    EXPORT_FILE_NAME_INVALID = "export.fileName.invalid"
+    EXPORT_FILE_NAME_TOO_LONG = "export.fileName.tooLong"
+    EXPORT_GL_UNAVAILABLE = "export.glUnavailable"
+    EXPORT_NO_IMAGES = "export.noImages"
+    EXPORT_FFMPEG_MISSING = "export.ffmpegMissing"
+    EXPORT_FFMPEG_START_FAILED = "export.ffmpegStartFailed"
+    EXPORT_FFMPEG_INPUT_CLOSED = "export.ffmpegInputClosed"
+    EXPORT_FFMPEG_INPUT_CLOSED_EARLY = "export.ffmpegInputClosedEarly"
+    EXPORT_FFMPEG_FAILED = "export.ffmpegFailed"
+    EXPORT_RENDER_FAILED = "export.renderFailed"
+    EXPORT_SAVE_FAILED = "export.saveFailed"
+    EXPORT_UNEXPECTED = "export.unexpected"
+
+
 @dataclass(frozen=True, slots=True)
 class ErrorSpec:
     template: str
@@ -37,7 +83,7 @@ class ErrorSpec:
     """Names of the params the code always carries."""
 
 
-ERRORS: dict[str, ErrorSpec] = {
+_SPECS: dict[str, ErrorSpec] = {
     # --- Media ------------------------------------------------------------------
     # 404 for an unknown or malformed media id (thumbnail, preview, delete).
     "media.notFound": ErrorSpec("Media item not found.", ("mediaId",)),
@@ -53,6 +99,12 @@ ERRORS: dict[str, ErrorSpec] = {
     "media.tooManyPixels": ErrorSpec(
         "The image has too many pixels (at most {maxMegapixels} megapixels).",
         ("maxMegapixels",),
+    ),
+    # 409 on delete while a queued or running export uses the medium (design.md D5).
+    "media.inUseByExport": ErrorSpec(
+        "The image cannot be deleted while it is being exported. "
+        "Wait for the export to finish or cancel it first.",
+        ("mediaId", "exportId"),
     ),
     # --- Project: rule violations while parsing PUT /api/project (native 422 list) --
     "project.slideDuration.outOfRange": ErrorSpec(
@@ -136,6 +188,12 @@ ERRORS: dict[str, ErrorSpec] = {
     "export.unexpected": ErrorSpec("The export failed unexpectedly."),
 }
 
+if set(_SPECS) != set(ErrorCode):  # pragma: no cover - guards against drift at import
+    raise RuntimeError(f"ErrorCode and ERRORS differ: {set(_SPECS) ^ set(ErrorCode)}")
+
+ERRORS: dict[ErrorCode, ErrorSpec] = {ErrorCode(code): spec for code, spec in _SPECS.items()}
+"""Template and params of every code, keyed by `ErrorCode`."""
+
 
 def _format_value(value: ParamValue) -> str:
     if isinstance(value, float):
@@ -143,10 +201,10 @@ def _format_value(value: ParamValue) -> str:
     return str(value)
 
 
-def error_message(code: str, params: Params | None = None) -> str:
+def error_message(code: ErrorCode | str, params: Params | None = None) -> str:
     """The English message for `code`, filled with `params`."""
     values = {name: _format_value(value) for name, value in (params or {}).items()}
-    return ERRORS[code].template.format_map(values)
+    return ERRORS[ErrorCode(code)].template.format_map(values)
 
 
 class _ErrorModel(BaseModel):
@@ -156,7 +214,7 @@ class _ErrorModel(BaseModel):
 class ApiError(_ErrorModel):
     """An error of the backend: stable code, params and English message (design.md D5)."""
 
-    code: str = Field(description="Stable dotted error code, e.g. `export.emptyProject`")
+    code: ErrorCode = Field(description="Stable dotted error code, e.g. `export.emptyProject`")
     params: Params = Field(description="Values the message is built from")
     message: str = Field(description="English message; shown when the code is unknown")
 
@@ -204,19 +262,22 @@ class ProjectValidationResponse(BaseModel):
     detail: ApiErrorWithIssues | list[RequestValidationIssue]
 
 
-def api_error(code: str, **params: ParamValue) -> ApiError:
-    return ApiError(code=code, params=params, message=error_message(code, params))
+def api_error(code: ErrorCode | str, **params: ParamValue) -> ApiError:
+    return ApiError(code=ErrorCode(code), params=params, message=error_message(code, params))
 
 
-def api_exception(status_code: int, code: str, **params: ParamValue) -> HTTPException:
+def api_exception(status_code: int, code: ErrorCode | str, **params: ParamValue) -> HTTPException:
     """`HTTPException` whose `detail` is an `ApiError`; raise it from a route."""
-    return HTTPException(status_code=status_code, detail=api_error(code, **params).model_dump())
+    return HTTPException(
+        status_code=status_code, detail=api_error(code, **params).model_dump(mode="json")
+    )
 
 
-def validation_error(code: str, **params: ParamValue) -> PydanticCustomError:
+def validation_error(code: ErrorCode | str, **params: ParamValue) -> PydanticCustomError:
     """Error for a Pydantic validator: FastAPI reports it with `type` = code,
     `msg` = English message and `ctx` = params."""
-    return PydanticCustomError(code, error_message(code, params), dict(params))
+    code = ErrorCode(code)
+    return PydanticCustomError(code.value, error_message(code, params), dict(params))
 
 
 def error_response(description: str) -> dict[str, Any]:

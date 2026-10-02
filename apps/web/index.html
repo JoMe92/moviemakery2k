@@ -1,9 +1,36 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>moviemakerY2K</title>
+    <script>
+      // Sets <html lang> before the app loads (harden-export-and-ui design.md D8),
+      // with the same rule as src/i18n/locale.ts: stored setting "mmy.locale" →
+      // first browser language starting with de/en → en. No dependencies.
+      (() => {
+        const supported = ["de", "en"];
+        let lang = null;
+        try {
+          const stored = window.localStorage.getItem("mmy.locale");
+          if (supported.includes(stored)) lang = stored;
+        } catch {
+          // Storage unavailable: fall back to the browser languages.
+        }
+        const tags =
+          navigator.languages && navigator.languages.length > 0
+            ? navigator.languages
+            : navigator.language
+              ? [navigator.language]
+              : [];
+        for (const tag of tags) {
+          if (lang) break;
+          const primary = String(tag).trim().toLowerCase().split(/[-_]/)[0];
+          if (supported.includes(primary)) lang = primary;
+        }
+        document.documentElement.lang = lang || "en";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

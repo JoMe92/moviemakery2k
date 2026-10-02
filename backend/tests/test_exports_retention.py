@@ -1,4 +1,4 @@
-"""Retention, cleanup at startup and download file name (TASK-API-007).
+"""Retention, cleanup at startup and download file name (TASK-API-007, TASK-API-011).
 
 Without GL: `export_movie` is replaced by a fast stub that writes a small
 file or fails.
@@ -92,7 +92,7 @@ def test_sixth_done_export_deletes_the_oldest(client: TestClient, settings: Sett
     assert client.get(f"/api/exports/{oldest}").status_code == 404
     assert client.get(f"/api/exports/{oldest}/file").status_code == 404
     assert not (exports_dir / oldest).exists()
-    assert sorted(p.name for p in exports_dir.iterdir()) == sorted(_ids(client))
+    assert sorted(p.name for p in exports_dir.iterdir()) == sorted([*_ids(client), "index.json"])
     assert client.get(f"/api/exports/{sixth['id']}/file").status_code == 200
 
 
@@ -130,6 +130,7 @@ def test_startup_removes_orphaned_parts_and_old_exports(settings: Settings) -> N
     keep.write_text("kept")
 
     with TestClient(create_app(settings)) as client:
+        # Without an index the old export is not known: everything is removed.
         assert exports_dir.is_dir() and list(exports_dir.iterdir()) == []
         assert client.get("/api/exports").json() == {"items": []}
     assert keep.read_text() == "kept"

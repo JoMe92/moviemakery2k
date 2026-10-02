@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -264,7 +264,7 @@ describe("“Save Movie” wizard", () => {
   it("shows a failure in the error dialog and retries", async () => {
     const api = exportApi();
     api.getExport
-      .mockResolvedValueOnce(job({ status: "failed", error: GL_ERROR }))
+      .mockResolvedValueOnce(job({ status: "failed", message: GL_ERROR }))
       .mockResolvedValueOnce(job({ status: "done", progress: 1 }));
     setup(api);
     await toProgress();
@@ -293,12 +293,20 @@ describe("“Save Movie” wizard", () => {
     setup(api);
     await toProgress();
     await tick();
-    expect(screen.getByRole("dialog", { name: ERROR_TITLE })).toHaveTextContent(OFFLINE_MESSAGE);
+    const errorDialog = screen.getByRole("dialog", { name: ERROR_TITLE });
+    expect(errorDialog).toHaveTextContent(OFFLINE_MESSAGE);
 
-    // The title bar button is also named "Close": pick the text button in the footer.
-    const closeButton = screen.getByText("Schließen").closest("button");
-    if (!closeButton) throw new Error("Schließen fehlt");
-    fireEvent.click(closeButton);
+    // Every button name in the dialog is unique (spec app-shell): the title bar
+    // button is "Dialog schließen", only the footer button is "Schließen".
+    const names = within(errorDialog)
+      .getAllByRole("button")
+      .map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim());
+    expect(names).toEqual(["Dialog schließen", "Erneut versuchen", "Schließen"]);
+    expect(new Set(names).size).toBe(names.length);
+    expect(
+      within(errorDialog).getByRole("button", { name: "Dialog schließen" }),
+    ).toBeInTheDocument();
+    fireEvent.click(within(errorDialog).getByRole("button", { name: "Schließen" }));
     expect(screen.queryByRole("dialog", { name: ERROR_TITLE })).toBeNull();
     expect(screen.getByRole("heading", { name: "Qualität" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Hohe Qualität/ })).toHaveFocus();
@@ -439,7 +447,7 @@ describe("wizard in English and error codes", () => {
     api.getExport.mockResolvedValueOnce(
       job({
         status: "failed",
-        error: "Export is not available on this system: no OpenGL context …",
+        message: "Export is not available on this system: no OpenGL context …",
         errorCode: "export.glUnavailable",
         errorParams: { reason: "EGL: no display" },
       }),

@@ -194,6 +194,7 @@ export const de = {
     next: "Nächstes Bild",
     time: "Zeit",
     canvas: "Vorschaubild",
+    sample: "Beispiel: {name}",
     webgl2Missing: "Die Vorschau benötigt WebGL2. Import und Storyboard funktionieren weiterhin.",
   },
   duration: {
@@ -244,6 +245,7 @@ export const de = {
   errors: {
     unknown: "Ein unbekannter Fehler ist aufgetreten.",
     invalidInput: "Die Eingabe ist ungültig.",
+    atPicture: "Bild {number}: {text}",
     client: {
       offline: "Das Backend ist nicht erreichbar.",
       requestFailed: "Die Anfrage an das Backend ist fehlgeschlagen (Status {status}).",
@@ -254,6 +256,8 @@ export const de = {
       unsupportedType: "Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP).",
       tooLarge: "Die Datei ist zu groß (höchstens {maxMegabytes} MB).",
       tooManyPixels: "Das Bild hat zu viele Pixel (höchstens {maxMegapixels} Megapixel).",
+      inUseByExport:
+        "Das Bild kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
     },
     project: {
       slideDuration: {
@@ -305,6 +309,7 @@ export const de = {
     ok: "OK",
     cancel: "Abbrechen",
     close: "Schließen",
+    closeDialog: "Dialog schließen",
     yes: "Ja",
     no: "Nein",
     back: "< Zurück",

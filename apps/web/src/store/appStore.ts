@@ -155,7 +155,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           set({ saveState: dirty ? "saving" : "saved" });
         })
         .catch(() => {
-          // The next change saves again (spec app-shell "Backend goes down").
+          // The next change saves again (spec app-shell "Backend fällt aus").
           dirty = true;
           set({ saveState: "error" });
         })
@@ -177,7 +177,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       }, AUTOSAVE_DELAY_MS);
     }
 
-    /** Adjust the playback time to a changed slideshow (spec "Sync with editing"). */
+    /** Adjust the playback time to a changed slideshow (spec preview-player "Synchronität mit der Bearbeitung"). */
     function playbackFor(slides: readonly Slide[]): Playback {
       const { playback } = get();
       const duration = timelineOf(slides).duration;
@@ -249,10 +249,13 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       setCollection(collection) {
-        set(collection === "media" ? { collection, ...noDemo } : { collection });
+        // Opening (or leaving) a collection never preselects a tile: the
+        // monitor keeps showing the project (spec transitions "Übergänge in der Sammlung", design.md D7).
+        set({ collection, ...noDemo });
       },
       select(selection) {
         // While playback is stopped, the monitor shows the selected picture.
+        // Selecting in the filmstrip always ends a transition demo (design.md D7).
         const { playback, slides } = get();
         const index = selection ? slides.findIndex((s) => s.id === selection.slideId) : -1;
         if (index >= 0 && !playback.playing) {
@@ -262,7 +265,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             playback: { playing: false, time: slideStartTime(timelineOf(slides), index) },
           });
         } else {
-          set({ selection });
+          set(selection ? { selection, ...noDemo } : { selection });
         }
       },
       setPreviewTransition(id) {

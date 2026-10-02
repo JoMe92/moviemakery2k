@@ -10,7 +10,7 @@ import "./styles/theme.css";
 const root = document.getElementById("root");
 if (!root) throw new Error("#root fehlt in index.html");
 
-// Test hook ?debug-progress=<id>:<p> shows only the debug canvas instead of the app.
+// Test hook ?debug-progress=<id>:<p>[:pattern] shows only the debug canvas instead of the app.
 const debug = parseDebugProgress(window.location.search);
 const DebugView = lazy(() => import("./render/DebugView"));
 

@@ -39,7 +39,9 @@ export function exportJob(overrides: Partial<ExportJob> = {}): ExportJob {
     progress: 0,
     profile: "high",
     fileName: "Mein Film",
-    error: null,
+    errorCode: null,
+    errorParams: {},
+    message: null,
     createdAt: "2026-10-02T00:00:00Z",
     ...overrides,
   };

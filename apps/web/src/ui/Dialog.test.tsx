@@ -43,7 +43,7 @@ describe("Dialog", () => {
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Info" }));
     const ok = screen.getByRole("button", { name: "OK" });
-    const close = screen.getByRole("button", { name: "Schließen" });
+    const close = screen.getByRole("button", { name: "Dialog schließen" });
 
     expect(ok).toHaveFocus();
     await user.tab();
@@ -56,7 +56,16 @@ describe("Dialog", () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Info" }));
-    await user.click(screen.getByRole("button", { name: "Schließen" }));
+    await user.click(screen.getByRole("button", { name: "Dialog schließen" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("names the title bar button “Close dialog” in English", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Info" }));
+    expect(screen.getByRole("button", { name: "Close dialog" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from starlette.concurrency import run_in_threadpool
 
 from mmy_backend.errors import api_exception, error_response
+from mmy_backend.exports import ExportManager
 from mmy_backend.media import (
     MAX_FILES_PER_REQUEST,
     MediaListResponse,
@@ -49,6 +50,10 @@ def get_media_store(request: Request) -> MediaStore:
 
 def get_project_store(request: Request) -> ProjectStore:
     return cast(ProjectStore, request.app.state.project)
+
+
+def get_export_manager(request: Request) -> ExportManager:
+    return cast(ExportManager, request.app.state.exports)
 
 
 @router.get("")
@@ -89,11 +94,20 @@ def get_preview(media_id: str, store: Annotated[MediaStore, Depends(get_media_st
     return _image_response(store, media_id, "preview")
 
 
-@router.delete("/{media_id}", responses=_NOT_FOUND)
+@router.delete(
+    "/{media_id}",
+    responses={
+        **_NOT_FOUND,
+        status.HTTP_409_CONFLICT: error_response(
+            "A queued or running export uses the medium (`media.inUseByExport`)"
+        ),
+    },
+)
 async def delete_media(
     media_id: str,
     store: Annotated[MediaStore, Depends(get_media_store)],
     projects: Annotated[ProjectStore, Depends(get_project_store)],
+    exports: Annotated[ExportManager, Depends(get_export_manager)],
 ) -> MediaDeleteResponse:
     """Deletes a medium with its files and removes it from the project (cascade).
 
@@ -106,8 +120,25 @@ async def delete_media(
     Order: first from the media store, then from the project. A concurrent
     PUT /api/project validates against the media store and therefore cannot
     re-insert the ID afterwards.
+
+    While a `queued` or `running` export has the medium in its snapshot, the
+    response is 409 (`media.inUseByExport`); medium, project and export stay
+    unchanged (design.md D5).
     """
-    if not await store.remove(media_id):
+
+    def reject_if_exported() -> None:
+        # Runs inside MediaStore.remove, atomically with the in-memory removal:
+        # an export start (synchronous check + snapshot) cannot slip in between.
+        export_id = exports.export_using_media(media_id)
+        if export_id is not None:
+            raise api_exception(
+                status.HTTP_409_CONFLICT,
+                "media.inUseByExport",
+                mediaId=media_id,
+                exportId=export_id,
+            )
+
+    if not await store.remove(media_id, guard=reject_if_exported):
         raise _not_found(media_id)
     project = await projects.remove_media(media_id)
     return MediaDeleteResponse(project=project)
