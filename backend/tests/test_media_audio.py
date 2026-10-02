@@ -1,11 +1,15 @@
-"""Audio import: detection, limits, metadata and legacy index (TASK-API-012, D1).
+"""Audio import: detection, limits, metadata, legacy index and derivatives.
+
+TASK-API-012 (design.md D1) and TASK-API-013 (design.md D2).
 
 The audio fixtures are generated with the FFmpeg of the pixi environment at
 test time (short sine tones), so no binary test data is committed.
 """
 
+import dataclasses
 import io
 import json
+import math
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -16,7 +20,7 @@ from PIL import Image
 
 from mmy_backend import media
 from mmy_backend.config import Settings
-from mmy_backend.ffmpeg import ffmpeg_binary
+from mmy_backend.ffmpeg import ffmpeg_binary, ffprobe_binary
 from mmy_backend.main import create_app
 from mmy_backend.media import AudioItem, ImageItem, MediaStore
 
@@ -142,7 +146,9 @@ def test_audio_is_imported_with_metadata_and_original(
 
     # The original is stored unchanged under a name derived from its content.
     item_dir = settings.data_dir / "media" / media_id
-    assert [p.name for p in item_dir.iterdir()] == [f"original.{ext}"]
+    assert sorted(p.name for p in item_dir.iterdir()) == sorted(
+        [f"original.{ext}", "peaks.json", "preview.m4a"]
+    )
     assert (item_dir / f"original.{ext}").read_bytes() == data
 
     index = json.loads((settings.data_dir / "media.json").read_text(encoding="utf-8"))
@@ -335,3 +341,187 @@ def test_openapi_media_item_is_a_union_by_kind(client: TestClient) -> None:
     codes = schemas["MediaUploadFailure"]["properties"]["errorCode"]["description"]
     for code in ("media.audioTooLong", "media.noAudioStream", "media.probeUnavailable"):
         assert code in codes
+
+
+# --- Derivatives: preview version and peaks (TASK-API-013, D2) ---------------------------
+
+
+def _ffprobe_stream(path: Path) -> dict[str, Any]:
+    binary = ffprobe_binary()
+    assert binary is not None
+    out = subprocess.run(
+        [
+            binary,
+            "-v",
+            "error",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+    report = json.loads(out)
+    [stream] = report["streams"]
+    return {**stream, "format_name": report["format"]["format_name"]}
+
+
+@pytest.mark.parametrize(
+    ("fmt", "seconds", "rate", "channels"),
+    [
+        ("wav", 1.0, 44100, 1),
+        ("mp3", 2.0, 44100, 2),
+        ("m4a", 1.5, 48000, 2),
+        ("ogg-vorbis", 1.0, 22050, 1),
+        ("ogg-opus", 1.0, 48000, 2),
+        ("flac", 3.0, 96000, 2),
+    ],
+)
+def test_preview_version_and_peaks_are_derived(
+    fmt: str,
+    seconds: float,
+    rate: int,
+    channels: int,
+    client: TestClient,
+    settings: Settings,
+    tmp_path: Path,
+) -> None:
+    ext = FORMATS[fmt][0]
+    data = _sine(tmp_path, fmt, seconds=seconds, rate=rate, channels=channels)
+    [result] = _upload(client, [(f"tone.{ext}", data)])
+    assert result["ok"] is True, result
+    item = result["item"]
+    item_dir = settings.data_dir / "media" / item["id"]
+
+    # Preview version: AAC in M4A, 48 kHz, stereo - independent of the original.
+    stream = _ffprobe_stream(item_dir / "preview.m4a")
+    assert stream["codec_type"] == "audio"
+    assert stream["codec_name"] == "aac"
+    assert "mp4" in stream["format_name"].split(",")
+    assert int(stream["sample_rate"]) == 48000
+    assert stream["channels"] == 2
+    assert float(stream["duration"]) == pytest.approx(seconds, abs=0.1)
+
+    # The medium keeps the metadata of the original, the duration is the decoded one.
+    assert (item["sampleRate"], item["channels"]) == (
+        48000 if fmt == "ogg-opus" else rate,
+        channels,
+    )
+    assert item["duration"] == pytest.approx(seconds, abs=0.03)
+
+    # Peaks: 50 per second over the decoded duration, 0..1.
+    peaks = json.loads((item_dir / "peaks.json").read_text(encoding="utf-8"))
+    assert set(peaks) == {"rate", "peaks"}
+    assert peaks["rate"] == 50
+    assert len(peaks["peaks"]) == math.ceil(item["duration"] * 50 - 1e-9)
+    assert abs(len(peaks["peaks"]) - seconds * 50) <= 2
+    assert all(0 <= p <= 1 for p in peaks["peaks"])
+    # FFmpeg's sine source has amplitude 1/8; lossy codecs vary slightly.
+    middle = peaks["peaks"][5:-5]
+    assert middle and all(0.08 < p < 0.2 for p in middle)
+
+
+def test_decoded_duration_replaces_the_estimate(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real_probe = media.probe_audio
+
+    def lying_probe(path: Path) -> media.AudioProbe:
+        return dataclasses.replace(real_probe(path), duration=42.0)
+
+    monkeypatch.setattr(media, "probe_audio", lying_probe)
+    [result] = _upload(client, [("tone.wav", _sine(tmp_path, "wav", seconds=2.0))])
+    assert result["item"]["duration"] == pytest.approx(2.0, abs=0.001)
+
+
+def test_decoded_length_over_the_limit_is_too_long(
+    client: TestClient,
+    settings: Settings,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The container claims 30 s, but 61 s decode; the limit is one minute.
+    monkeypatch.setattr(media, "MAX_AUDIO_SECONDS", 60)
+    real_probe = media.probe_audio
+
+    def lying_probe(path: Path) -> media.AudioProbe:
+        return dataclasses.replace(real_probe(path), duration=30.0)
+
+    monkeypatch.setattr(media, "probe_audio", lying_probe)
+    [result] = _upload(client, [("long.wav", _sine(tmp_path, "wav", seconds=61.0, rate=8000))])
+    assert result["errorCode"] == "media.audioTooLong"
+    assert result["errorParams"] == {"maxMinutes": 1}
+    assert _files_under(settings.data_dir) == set()
+
+
+def test_missing_ffmpeg_rejects_audio_without_leftovers(
+    client: TestClient, settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(media, "ffmpeg_binary", lambda: None)
+    [result] = _upload(client, [("a.wav", _sine(tmp_path, "wav"))])
+    assert result["errorCode"] == "media.probeUnavailable"
+    assert _files_under(settings.data_dir) == set()
+
+
+def test_undecodable_audio_is_unsupported(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    # A valid FLAC header followed by garbage: ffprobe accepts it, decoding yields nothing.
+    flac = _sine(tmp_path, "flac", seconds=1.0)
+    broken = flac[:8192] + bytes(range(256)) * 64
+    [result] = _upload(client, [("broken.flac", broken)])
+    if result["ok"]:
+        pytest.skip("this FFmpeg build decodes the truncated stream")
+    assert result["errorCode"] == "media.unsupportedType"
+    assert _files_under(settings.data_dir) == set()
+
+
+def test_audio_and_peaks_endpoints_serve_immutable_files(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    [result] = _upload(client, [("tone.mp3", _sine(tmp_path, "mp3"))])
+    item = result["item"]
+    item_dir = settings.data_dir / "media" / item["id"]
+
+    audio = client.get(item["audioUrl"])
+    assert audio.status_code == 200
+    assert audio.headers["content-type"] == "audio/mp4"
+    assert audio.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert audio.content == (item_dir / "preview.m4a").read_bytes()
+
+    ranged = client.get(item["audioUrl"], headers={"Range": "bytes=0-99"})
+    assert ranged.status_code == 206
+    assert len(ranged.content) == 100
+
+    peaks = client.get(item["peaksUrl"])
+    assert peaks.status_code == 200
+    assert peaks.headers["content-type"] == "application/json"
+    assert peaks.headers["cache-control"] == "public, max-age=31536000, immutable"
+    body = media.AudioPeaks.model_validate(peaks.json())
+    assert body.rate == 50
+    assert len(body.peaks) == 50
+
+
+def test_audio_endpoints_are_404_for_images_and_unknown_ids(client: TestClient) -> None:
+    [image] = _upload(client, [("a.jpg", _jpeg())])
+    image_id = image["item"]["id"]
+    for path in ("audio", "peaks"):
+        for media_id in (image_id, "f" * 32, "not-an-id"):
+            res = client.get(f"/api/media/{media_id}/{path}")
+            assert res.status_code == 404, (path, media_id)
+            assert res.json()["detail"]["code"] == "media.notFound"
+
+
+def test_openapi_documents_audio_and_peaks(client: TestClient) -> None:
+    doc = client.get("/openapi.json").json()
+    audio = doc["paths"]["/api/media/{media_id}/audio"]["get"]["responses"]
+    assert "audio/mp4" in audio["200"]["content"]
+    assert "404" in audio
+    peaks = doc["paths"]["/api/media/{media_id}/peaks"]["get"]["responses"]
+    assert peaks["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/AudioPeaks"
+    }
+    schema = doc["components"]["schemas"]["AudioPeaks"]
+    assert set(schema["required"]) == {"rate", "peaks"}

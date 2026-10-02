@@ -4,6 +4,8 @@
 - GET    /api/media                 collection in import order
 - GET    /api/media/{id}/thumbnail  thumbnail (JPEG, immutable)
 - GET    /api/media/{id}/preview    preview image (JPEG, immutable)
+- GET    /api/media/{id}/audio      audio preview version (AAC in M4A, immutable)
+- GET    /api/media/{id}/peaks      waveform data (JSON, immutable)
 - DELETE /api/media/{id}            delete a medium, cascading into the project
 """
 
@@ -18,6 +20,8 @@ from mmy_backend.errors import api_exception, error_response
 from mmy_backend.exports import ExportManager
 from mmy_backend.media import (
     MAX_FILES_PER_REQUEST,
+    AudioItem,
+    AudioPeaks,
     MediaListResponse,
     MediaStore,
     MediaUploadResponse,
@@ -26,7 +30,7 @@ from mmy_backend.media import (
 )
 from mmy_backend.project import Project, ProjectStore
 
-# Derived images never change (new file = new ID), design.md D7.
+# Derived files never change (new file = new ID), design.md D7 / add-music-track D2.
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 
 _IMAGE_FILES: dict[str, str] = {"thumbnail": "thumb.jpg", "preview": "preview.jpg"}
@@ -92,6 +96,44 @@ def get_thumbnail(media_id: str, store: Annotated[MediaStore, Depends(get_media_
 def get_preview(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
     """Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`."""
     return _image_response(store, media_id, "preview")
+
+
+def _audio_file_response(store: MediaStore, media_id: str, filename: str, media_type: str) -> Any:
+    # Images and unknown or malformed IDs are 404; get() checks the ID format first.
+    if not isinstance(store.get(media_id), AudioItem):
+        raise _not_found(media_id)
+    path = store.item_dir(media_id) / filename
+    if not path.is_file():
+        raise _not_found(media_id)
+    return FileResponse(path, media_type=media_type, headers={"Cache-Control": IMMUTABLE_CACHE})
+
+
+@router.get(
+    "/{media_id}/audio",
+    response_class=FileResponse,
+    responses={
+        status.HTTP_200_OK: {
+            "content": {"audio/mp4": {}},
+            "description": "AAC in M4A, 48 kHz, stereo",
+        },
+        **_NOT_FOUND,
+    },
+)
+def get_audio(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
+    """Audio preview version (AAC in M4A, 48 kHz, stereo) with `Cache-Control: immutable`.
+
+    404 for images as well as unknown IDs. Range requests are supported.
+    """
+    return _audio_file_response(store, media_id, "preview.m4a", "audio/mp4")
+
+
+@router.get("/{media_id}/peaks", response_model=AudioPeaks, responses=_NOT_FOUND)
+def get_peaks(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
+    """Waveform data (50 peaks per second, mono, 0..1) with `Cache-Control: immutable`.
+
+    404 for images as well as unknown IDs.
+    """
+    return _audio_file_response(store, media_id, "peaks.json", "application/json")
 
 
 @router.delete(

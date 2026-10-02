@@ -7,6 +7,8 @@ Layout in the data directory:
     media/<id>/original.<ext>   unchanged original (jpg, png, webp; mp3, wav, m4a, ogg, flac)
     media/<id>/thumb.jpg        image: thumbnail, fits into 160x120
     media/<id>/preview.jpg      image: preview image, longest edge <= 1920, JPEG q90
+    media/<id>/preview.m4a      audio: preview version, AAC 48 kHz stereo 128 kbit/s
+    media/<id>/peaks.json       audio: waveform, 50 peaks per second (AudioPeaks)
 
 Entries in media.json without `kind` (written before audio existed) are images.
 
@@ -14,20 +16,29 @@ Detection goes by content, never by name or content type: first Pillow (JPEG,
 PNG, WebP only), then ffprobe for audio. Limits depend on the kind: images 25 MB
 and 40 megapixels, audio 100 MB and 15 minutes.
 
+Audio derivatives come from one FFmpeg run (add-music-track D2): it decodes the
+original once and writes the AAC preview plus mono PCM to a pipe, from which
+Python computes the peaks and the decoded duration. The decoded duration
+replaces ffprobe's estimate and is checked against the 15-minute limit again.
+
 The ID is uuid4().hex; the uploaded file name is only a display name and is
 never used for a path. Transparency is flattened onto black in the JPEG
 derivatives - matching the black monitor of the playback.
 """
 
 import asyncio
+import dataclasses
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
+import threading
 import unicodedata
 import uuid
+from array import array
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -39,7 +50,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from pydantic.alias_generators import to_camel
 
 from mmy_backend.errors import ErrorCode, Params, error_message
-from mmy_backend.ffmpeg import ffprobe_binary
+from mmy_backend.ffmpeg import ffmpeg_binary, ffprobe_binary
 from mmy_backend.storage import write_bytes_atomic
 
 MAX_IMAGE_BYTES = 25 * 1024 * 1024
@@ -54,6 +65,16 @@ THUMB_QUALITY = 85
 MAX_FILENAME_LENGTH = 255
 FALLBACK_FILENAME = "image"
 PROBE_TIMEOUT_SECONDS = 30
+
+PEAKS_PER_SECOND = 50
+AUDIO_PREVIEW_SAMPLE_RATE = 48000
+AUDIO_PREVIEW_CHANNELS = 2
+AUDIO_PREVIEW_BITRATE = "128k"
+DERIVE_TIMEOUT_SECONDS = 600
+# Decoded PCM for peaks and duration: mono s16le at the preview rate.
+_PCM_RATE = AUDIO_PREVIEW_SAMPLE_RATE
+_SAMPLES_PER_PEAK = _PCM_RATE // PEAKS_PER_SECOND
+_PEAK_DIGITS = 4
 
 MEDIA_ID_PATTERN = r"^[0-9a-f]{32}$"
 _MEDIA_ID_RE = re.compile(MEDIA_ID_PATTERN)
@@ -120,6 +141,20 @@ class AudioItem(_MediaModel):
     created_at: datetime
     audio_url: str = Field(description="Preview version (AAC in M4A, 48 kHz, stereo)")
     peaks_url: str = Field(description="Waveform data (50 peaks per second)")
+
+
+class AudioPeaks(_MediaModel):
+    """Waveform data of an audio medium (`GET /api/media/{id}/peaks`, design.md D2).
+
+    Peak `i` is the largest absolute sample of the mono downmix in the time
+    window `[i / rate, (i + 1) / rate)` s, relative to full scale (0 = silence,
+    1 = full scale). The last window may be shorter.
+    """
+
+    rate: int = Field(gt=0, description="Peaks per second (always 50)")
+    peaks: list[Annotated[float, Field(ge=0, le=1)]] = Field(
+        description="One peak per window, relative to full scale (0..1)"
+    )
 
 
 type MediaItem = Annotated[ImageItem | AudioItem, Field(discriminator="kind")]
@@ -215,6 +250,8 @@ class AudioProbe:
     sample_rate: int
     channels: int
     codec: str
+    stream_index: int = 0
+    """Index of the described stream in the file; derivatives decode this stream."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -328,14 +365,145 @@ def probe_audio(path: Path) -> AudioProbe:
     if duration is None or sample_rate is None or channels is None:
         raise _unsupported()
     if duration > MAX_AUDIO_SECONDS:
-        raise MediaError(ErrorCode.MEDIA_AUDIO_TOO_LONG, maxMinutes=MAX_AUDIO_SECONDS // 60)
+        raise _too_long()
     return AudioProbe(
         extension=extension,
         duration=duration,
         sample_rate=int(sample_rate),
         channels=int(channels),
         codec=str(stream["codec_name"]),
+        stream_index=int(stream.get("index", 0)),
     )
+
+
+def _too_long() -> MediaError:
+    return MediaError(ErrorCode.MEDIA_AUDIO_TOO_LONG, maxMinutes=MAX_AUDIO_SECONDS // 60)
+
+
+class _PeakAccumulator:
+    """Peaks and sample count of streamed mono s16le PCM."""
+
+    def __init__(self) -> None:
+        self.samples = 0
+        self.peaks: list[float] = []
+        self._pending = bytearray()
+
+    def feed(self, chunk: bytes) -> None:
+        self._pending += chunk
+        window = _SAMPLES_PER_PEAK * 2
+        usable = len(self._pending) - len(self._pending) % window
+        if usable:
+            self._windows(bytes(self._pending[:usable]))
+            del self._pending[:usable]
+
+    def finish(self) -> None:
+        usable = len(self._pending) - len(self._pending) % 2
+        if usable:
+            self._windows(bytes(self._pending[:usable]))
+        self._pending.clear()
+
+    def _windows(self, data: bytes) -> None:
+        pcm = array("h")
+        pcm.frombytes(data)
+        if sys.byteorder != "little":
+            pcm.byteswap()
+        self.samples += len(pcm)
+        for start in range(0, len(pcm), _SAMPLES_PER_PEAK):
+            window = pcm[start : start + _SAMPLES_PER_PEAK]
+            peak = max(max(window), -min(window)) / 32768
+            self.peaks.append(round(min(peak, 1.0), _PEAK_DIGITS))
+
+
+def derive_audio(original: Path, target_dir: Path, stream_index: int = 0) -> float:
+    """Writes preview.m4a and peaks.json into `target_dir`; returns the decoded duration.
+
+    One FFmpeg run decodes the stream once: output 1 is the preview (AAC in M4A,
+    48 kHz, stereo, 128 kbit/s), output 2 is mono s16le PCM on stdout, from
+    which the peaks (50 per second) and the decoded duration are computed. The
+    run is aborted as soon as the decoded audio exceeds MAX_AUDIO_SECONDS.
+    Raises MediaError: `probeUnavailable` without FFmpeg, `audioTooLong`, and
+    `unsupportedType` if decoding fails or yields no samples.
+    """
+    binary = ffmpeg_binary()
+    if binary is None:
+        raise MediaError(ErrorCode.MEDIA_PROBE_UNAVAILABLE)
+    stream = f"0:{stream_index}"
+    command = [
+        binary,
+        "-nostdin",
+        "-hide_banner",
+        "-v",
+        "error",
+        "-i",
+        str(original),
+        # Output 1: preview version.
+        "-map",
+        stream,
+        "-map_metadata",
+        "-1",
+        "-c:a",
+        "aac",
+        "-b:a",
+        AUDIO_PREVIEW_BITRATE,
+        "-ar",
+        str(AUDIO_PREVIEW_SAMPLE_RATE),
+        "-ac",
+        str(AUDIO_PREVIEW_CHANNELS),
+        "-movflags",
+        "+faststart",
+        "-f",
+        "mp4",
+        str(target_dir / "preview.m4a"),
+        # Output 2: mono PCM for peaks and duration.
+        "-map",
+        stream,
+        "-c:a",
+        "pcm_s16le",
+        "-ar",
+        str(_PCM_RATE),
+        "-ac",
+        "1",
+        "-f",
+        "s16le",
+        "pipe:1",
+    ]
+    limit = MAX_AUDIO_SECONDS * _PCM_RATE
+    accumulator = _PeakAccumulator()
+    too_long = False
+    with tempfile.TemporaryFile() as stderr:
+        try:
+            process = subprocess.Popen(
+                command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=stderr
+            )
+        except OSError as exc:
+            raise MediaError(ErrorCode.MEDIA_PROBE_UNAVAILABLE) from exc
+        timer = threading.Timer(DERIVE_TIMEOUT_SECONDS, process.kill)
+        timer.start()
+        try:
+            assert process.stdout is not None
+            while chunk := process.stdout.read(_CHUNK):
+                accumulator.feed(chunk)
+                if accumulator.samples > limit:
+                    too_long = True
+                    process.kill()
+                    break
+            accumulator.finish()
+            returncode = process.wait()
+        except BaseException:
+            process.kill()
+            process.wait()
+            raise
+        finally:
+            timer.cancel()
+            if process.stdout is not None:
+                process.stdout.close()
+    if too_long or accumulator.samples > limit:
+        raise _too_long()
+    if returncode != 0 or accumulator.samples == 0:
+        raise _unsupported()
+    peaks = AudioPeaks(rate=PEAKS_PER_SECOND, peaks=accumulator.peaks)
+    write_bytes_atomic(target_dir / "peaks.json", peaks.model_dump_json(by_alias=True).encode())
+    return accumulator.samples / _PCM_RATE
 
 
 def _supported_codec(name: str) -> bool:
@@ -432,7 +600,11 @@ class MediaStore:
                 if size > MAX_AUDIO_BYTES:
                     raise _too_large(MAX_AUDIO_BYTES)
                 probe = probe_audio(upload)
-                upload.rename(staging / f"original.{probe.extension}")
+                original = staging / f"original.{probe.extension}"
+                upload.rename(original)
+                duration = derive_audio(original, staging, probe.stream_index)
+                # The decoded length replaces ffprobe's estimate (design.md D2).
+                probe = dataclasses.replace(probe, duration=duration)
                 prepared = _PreparedAudio(id=media_id, probe=probe)
             os.replace(staging, self.item_dir(media_id))
         except BaseException:
