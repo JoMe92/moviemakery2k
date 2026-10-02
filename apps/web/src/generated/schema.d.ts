@@ -236,6 +236,94 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApiError
+         * @description An error of the backend: stable code, params and English message (design.md D5).
+         */
+        ApiError: {
+            /**
+             * Code
+             * @description Stable dotted error code, e.g. `export.emptyProject`
+             */
+            code: string;
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /**
+         * ApiErrorIssue
+         * @description One rule violation of a request body, with the position of the offending value.
+         */
+        ApiErrorIssue: {
+            /**
+             * Code
+             * @description Stable dotted error code, e.g. `export.emptyProject`
+             */
+            code: string;
+            /**
+             * Loc
+             * @description Position in the body, e.g. ["body", "slides", 2]
+             */
+            loc: (string | number)[];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /** ApiErrorResponse */
+        ApiErrorResponse: {
+            detail: components["schemas"]["ApiError"];
+        };
+        /**
+         * ApiErrorWithIssues
+         * @description An error that collects several rule violations (`project.invalid`).
+         */
+        ApiErrorWithIssues: {
+            /**
+             * Code
+             * @description Stable dotted error code, e.g. `export.emptyProject`
+             */
+            code: string;
+            /** Issues */
+            issues: components["schemas"]["ApiErrorIssue"][];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /**
+         * ApiValidationResponse
+         * @description 422 body: an `ApiError` or FastAPI's native list.
+         */
+        ApiValidationResponse: {
+            /** Detail */
+            detail: components["schemas"]["ApiError"] | components["schemas"]["RequestValidationIssue"][];
+        };
         /** Body_upload_media_api_media_post */
         Body_upload_media_api_media_post: {
             /**
@@ -253,9 +341,21 @@ export interface components {
             createdAt: string;
             /**
              * Error
-             * @description Verständliche Meldung bei `failed`, sonst null
+             * @description English message when `failed`, otherwise null
              */
             error: string | null;
+            /**
+             * Errorcode
+             * @description Stable error code when `failed` (design.md D5), otherwise null
+             */
+            errorCode?: string | null;
+            /**
+             * Errorparams
+             * @description Values of the error message; empty without error
+             */
+            errorParams?: {
+                [key: string]: string | number;
+            };
             /**
              * Filename
              * @description Dateiname ohne Endung
@@ -365,12 +465,22 @@ export interface components {
         MediaUploadFailure: {
             /**
              * Error
-             * @enum {string}
+             * @description Stable error code (design.md D5): media.unsupportedType, media.tooLarge, media.tooManyPixels
              */
-            error: "unsupported" | "too_large" | "too_many_pixels";
+            error: string;
+            /**
+             * Errorparams
+             * @description Values of the message
+             */
+            errorParams?: {
+                [key: string]: string | number;
+            };
             /** Filename */
             filename: string;
-            /** Message */
+            /**
+             * Message
+             * @description English message
+             */
             message: string;
             /**
              * Ok
@@ -403,6 +513,33 @@ export interface components {
             schemaVersion: 1;
             /** Slides */
             slides: components["schemas"]["Slide"][];
+        };
+        /**
+         * ProjectValidationResponse
+         * @description 422 body of PUT /api/project: reference errors or FastAPI's native list.
+         */
+        ProjectValidationResponse: {
+            /** Detail */
+            detail: components["schemas"]["ApiErrorWithIssues"] | components["schemas"]["RequestValidationIssue"][];
+        };
+        /**
+         * RequestValidationIssue
+         * @description One entry of FastAPI's native 422 list. For rule violations of this API,
+         *     `type` is an error code from `ERRORS`, `ctx` its params and `msg` the message.
+         */
+        RequestValidationIssue: {
+            /** Ctx */
+            ctx?: {
+                [key: string]: unknown;
+            } | null;
+            /** Input */
+            input?: unknown;
+            /** Loc */
+            loc: (string | number)[];
+            /** Msg */
+            msg: string;
+            /** Type */
+            type: string;
         };
         /** Slide */
         Slide: {
@@ -571,19 +708,23 @@ export interface operations {
                     "application/json": components["schemas"]["ExportJob"];
                 };
             };
-            /** @description Es läuft bereits ein Export */
+            /** @description An export is already running (`export.busy`) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
-            /** @description Ungültige Anfrage, leeres Projekt oder fehlende Medien */
+            /** @description Empty project (`export.emptyProject`), missing media (`export.missingMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiValidationResponse"];
+                };
             };
         };
     };
@@ -607,12 +748,14 @@ export interface operations {
                     "application/json": components["schemas"]["ExportJob"];
                 };
             };
-            /** @description Unbekannter oder gelöschter Export */
+            /** @description Unknown or deleted export (`export.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -643,12 +786,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Unbekannter oder gelöschter Export */
+            /** @description Unknown or deleted export (`export.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -681,19 +826,23 @@ export interface operations {
                     "video/mp4": unknown;
                 };
             };
-            /** @description Unbekannter oder gelöschter Export */
+            /** @description Unknown or deleted export (`export.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
-            /** @description Der Export ist (noch) nicht fertig */
+            /** @description The export is not done (`export.notReady`) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -768,12 +917,14 @@ export interface operations {
                     "application/json": components["schemas"]["MediaUploadResponse"];
                 };
             };
-            /** @description Mehr als 50 Dateien in einer Anfrage */
+            /** @description More than 50 files in one request (`media.tooManyFiles`) */
             413: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -806,12 +957,14 @@ export interface operations {
                     "application/json": components["schemas"]["MediaDeleteResponse"];
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -844,12 +997,14 @@ export interface operations {
                     "image/jpeg": unknown;
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -882,12 +1037,14 @@ export interface operations {
                     "image/jpeg": unknown;
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -942,13 +1099,13 @@ export interface operations {
                     "application/json": components["schemas"]["Project"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid project: `project.invalid` with one issue per broken reference, or FastAPI's native list (rule violations carry an error code as `type`) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ProjectValidationResponse"];
                 };
             };
         };

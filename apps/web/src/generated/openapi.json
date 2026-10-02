@@ -1,6 +1,190 @@
 {
   "components": {
     "schemas": {
+      "ApiError": {
+        "additionalProperties": false,
+        "description": "An error of the backend: stable code, params and English message (design.md D5).",
+        "properties": {
+          "code": {
+            "description": "Stable dotted error code, e.g. `export.emptyProject`",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "ApiErrorIssue": {
+        "additionalProperties": false,
+        "description": "One rule violation of a request body, with the position of the offending value.",
+        "properties": {
+          "code": {
+            "description": "Stable dotted error code, e.g. `export.emptyProject`",
+            "title": "Code",
+            "type": "string"
+          },
+          "loc": {
+            "description": "Position in the body, e.g. [\"body\", \"slides\", 2]",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message",
+          "loc"
+        ],
+        "title": "ApiErrorIssue",
+        "type": "object"
+      },
+      "ApiErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "ApiErrorWithIssues": {
+        "additionalProperties": false,
+        "description": "An error that collects several rule violations (`project.invalid`).",
+        "properties": {
+          "code": {
+            "description": "Stable dotted error code, e.g. `export.emptyProject`",
+            "title": "Code",
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ApiErrorIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message",
+          "issues"
+        ],
+        "title": "ApiErrorWithIssues",
+        "type": "object"
+      },
+      "ApiValidationResponse": {
+        "description": "422 body: an `ApiError` or FastAPI's native list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RequestValidationIssue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiValidationResponse",
+        "type": "object"
+      },
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
@@ -36,8 +220,38 @@
                 "type": "null"
               }
             ],
-            "description": "Verständliche Meldung bei `failed`, sonst null",
+            "description": "English message when `failed`, otherwise null",
             "title": "Error"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable error code when `failed` (design.md D5), otherwise null",
+            "title": "Errorcode"
+          },
+          "errorParams": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values of the error message; empty without error",
+            "title": "Errorparams",
+            "type": "object"
           },
           "fileName": {
             "description": "Dateiname ohne Endung",
@@ -259,19 +473,34 @@
         "additionalProperties": false,
         "properties": {
           "error": {
-            "enum": [
-              "unsupported",
-              "too_large",
-              "too_many_pixels"
-            ],
+            "description": "Stable error code (design.md D5): media.unsupportedType, media.tooLarge, media.tooManyPixels",
             "title": "Error",
             "type": "string"
+          },
+          "errorParams": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values of the message",
+            "title": "Errorparams",
+            "type": "object"
           },
           "filename": {
             "title": "Filename",
             "type": "string"
           },
           "message": {
+            "description": "English message",
             "title": "Message",
             "type": "string"
           },
@@ -360,6 +589,79 @@
           "slides"
         ],
         "title": "Project",
+        "type": "object"
+      },
+      "ProjectValidationResponse": {
+        "description": "422 body of PUT /api/project: reference errors or FastAPI's native list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiErrorWithIssues"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RequestValidationIssue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ProjectValidationResponse",
+        "type": "object"
+      },
+      "RequestValidationIssue": {
+        "description": "One entry of FastAPI's native 422 list. For rule violations of this API,\n`type` is an error code from `ERRORS`, `ctx` its params and `msg` the message.",
+        "properties": {
+          "ctx": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctx"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "RequestValidationIssue",
         "type": "object"
       },
       "Slide": {
@@ -659,10 +961,24 @@
             "description": "Successful Response"
           },
           "409": {
-            "description": "Es läuft bereits ein Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "An export is already running (`export.busy`)"
           },
           "422": {
-            "description": "Ungültige Anfrage, leeres Projekt oder fehlende Medien"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationResponse"
+                }
+              }
+            },
+            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
           }
         },
         "summary": "Start Export",
@@ -691,7 +1007,14 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannter oder gelöschter Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
           },
           "422": {
             "content": {
@@ -735,7 +1058,14 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannter oder gelöschter Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
           },
           "422": {
             "content": {
@@ -777,10 +1107,24 @@
             "description": "Fertiger Film (MP4)"
           },
           "404": {
-            "description": "Unbekannter oder gelöschter Export"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
           },
           "409": {
-            "description": "Der Export ist (noch) nicht fertig"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The export is not done (`export.notReady`)"
           },
           "422": {
             "content": {
@@ -865,7 +1209,14 @@
             "description": "Successful Response"
           },
           "413": {
-            "description": "Mehr als 50 Dateien in einer Anfrage"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "More than 50 files in one request (`media.tooManyFiles`)"
           },
           "422": {
             "content": {
@@ -911,7 +1262,14 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -953,7 +1311,14 @@
             "description": "JPEG-Bild"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -995,7 +1360,14 @@
             "description": "JPEG-Bild"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -1063,11 +1435,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ProjectValidationResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid project: `project.invalid` with one issue per broken reference, or FastAPI's native list (rule violations carry an error code as `type`)"
           }
         },
         "summary": "Put Project",
