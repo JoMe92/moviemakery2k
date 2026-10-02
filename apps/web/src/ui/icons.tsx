@@ -187,3 +187,23 @@ export function TimelineIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** Audio file: a beamed pair of eighth notes on a sheet (own drawing). */
+export function AudioIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect
+        x="1.5"
+        y="1.5"
+        width="13"
+        height="13"
+        rx="1"
+        style={{ ...tok("pane"), stroke: "currentColor" }}
+      />
+      <path d="M6 11V4.5l6-1.5V9.5" style={{ ...strokeTok("icon-ink"), strokeWidth: 1.2 }} />
+      <path d="M6 5.6l6-1.5" style={{ ...strokeTok("icon-ink"), strokeWidth: 1.6 }} />
+      <ellipse cx="4.6" cy="11.2" rx="1.6" ry="1.2" style={tok("icon-blue")} />
+      <ellipse cx="10.6" cy="9.7" rx="1.6" ry="1.2" style={tok("icon-blue")} />
+    </Svg>
+  );
+}

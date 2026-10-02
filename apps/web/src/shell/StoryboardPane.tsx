@@ -8,10 +8,12 @@ import styles from "./StoryboardPane.module.css";
 export interface StoryboardPaneProps {
   /** Storyboard items; empty → hint text. */
   children?: ReactNode;
+  /** Music track below the storyboard strip (add-music-track D7). */
+  musicTrack?: ReactNode;
 }
 
-/** Full-width storyboard. The timeline is disabled in the MVP. */
-export function StoryboardPane({ children }: StoryboardPaneProps) {
+/** Full-width storyboard with the music track below it. The timeline is disabled in the MVP. */
+export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
   const { t } = useT();
   const headingId = useId();
   const isEmpty = children === undefined || children === null || children === false;
@@ -34,6 +36,7 @@ export function StoryboardPane({ children }: StoryboardPaneProps) {
       <div className={`${pane.body} ${styles.body}`}>
         {isEmpty ? <p className={styles.hint}>{t("shell.storyboardHint")}</p> : children}
       </div>
+      {musicTrack}
     </section>
   );
 }

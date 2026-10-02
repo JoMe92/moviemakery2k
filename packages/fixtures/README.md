@@ -76,3 +76,49 @@ order. All values are chosen to be exact in binary floating point.
 
 Consumers: `apps/web/src/timeline/timelineVectors.test.ts` (Vitest); the
 Python port is checked by pytest against the same file.
+
+## `music-vectors.json` – music schedule
+
+The music schedule (spec `music-track`, requirements "Musikspur" and "Musik am
+Filmende"; design rationale in `openspec/changes/add-music-track/design.md` D4)
+exists twice: `apps/web/src/timeline/music.ts` (`musicSchedule`, preview) and
+`backend/src/mmy_backend/render/music.py` (`music_schedule`, export). The full
+semantics are documented in both modules; in short: clips play gapless in
+order from 0, each for `min(trimEnd ?? duration, duration) - trimStart`
+seconds; a clip starting at or after the movie end is dropped, one extending
+past it is cut, and the segment reaching the movie end fades out over
+`min(1, movieDuration)` seconds (clipped to its length). Fades are 1 s,
+clipped to the segment length.
+
+### Format
+
+```jsonc
+{
+  "version": 1,
+  "tolerance": 1e-9,
+  "cases": [
+    {
+      "name": "unique-kebab-name",
+      "description": "free text, ignored by the tests",
+      // input, same shape as the API/TS MusicClip
+      "clips": [
+        { "id": "a", "mediaId": "m-30", "trimStart": 0, "trimEnd": null,
+          "volume": 1, "fadeIn": false, "fadeOut": false }
+      ],
+      "mediaDurations": { "m-30": 30 },   // seconds per medium
+      "movieDuration": 45,
+      "expected": {
+        "musicDuration": 30,              // total music length, ignoring the movie
+        "segments": [                     // in time order; seconds
+          { "mediaId": "m-30", "at": 0, "sourceIn": 0, "length": 30,
+            "gain": 1, "fadeIn": 0, "fadeOut": 0 }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Comparison as for `timeline-vectors.json`. Consumers:
+`apps/web/src/timeline/musicVectors.test.ts` (Vitest) and
+`backend/tests/test_render_music.py` (pytest).

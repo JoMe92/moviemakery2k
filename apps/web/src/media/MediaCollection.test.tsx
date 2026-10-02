@@ -205,7 +205,8 @@ describe("media collection", () => {
     const user = userEvent.setup();
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 1 as const,
+        schemaVersion: 2 as const,
+        music: [],
         slides: [{ id: "s3", mediaId: "b", duration: 4, transitionIn: null }],
       })),
     });
@@ -228,14 +229,14 @@ describe("media collection", () => {
       { collection: "Sammlung: Meine Bilder", pictures: "Bilder", strip: "Bildstreifen" },
       { title: "Bild löschen", yes: "Ja", ok: "OK" },
       "„a.jpg“ konnte nicht gelöscht werden.",
-      "Das Bild kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
+      "Das Medium kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
     ],
     [
       "en",
       { collection: "Collection: My Pictures", pictures: "Pictures", strip: "Storyboard strip" },
       { title: "Delete Picture", yes: "Yes", ok: "OK" },
       "“a.jpg” could not be deleted.",
-      "The image cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
+      "The medium cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
     ],
   ])(
     "keeps the picture in collection and storyboard when a running export uses it (%s)",
@@ -244,7 +245,8 @@ describe("media collection", () => {
       const user = userEvent.setup();
       const api = mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 1 as const,
+          schemaVersion: 2 as const,
+          music: [],
           slides: [
             { id: "s1", mediaId: "a", duration: 4, transitionIn: null },
             { id: "s2", mediaId: "b", duration: 4, transitionIn: null },
@@ -372,8 +374,14 @@ describe("media collection", () => {
   });
 
   it.each([
-    ["de", "kaputt.gif: Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP)."],
-    ["en", "kaputt.gif: Not a supported image (JPEG, PNG and WebP are allowed)."],
+    [
+      "de",
+      "kaputt.gif: Keine unterstützte Bild- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG und FLAC).",
+    ],
+    [
+      "en",
+      "kaputt.gif: Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
+    ],
   ])("translates the code media.unsupportedType per file (%s)", async (locale, text) => {
     localStorage.setItem("mmy.locale", locale);
     const api = importApi({
@@ -382,7 +390,8 @@ describe("media collection", () => {
         errorCode: "media.unsupportedType" as const,
         errorParams: {},
         filename: f.name,
-        message: "Not a supported image (JPEG, PNG and WebP are allowed).",
+        message:
+          "Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
       })),
     });
     const user = userEvent.setup();

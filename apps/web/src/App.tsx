@@ -3,6 +3,7 @@ import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { useT } from "./i18n/useT";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
+import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
@@ -17,6 +18,7 @@ import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
 import { TransitionCollection } from "./transitions/TransitionCollection";
 import {
+  AudioIcon,
   EffectsIcon,
   FilmIcon,
   FolderIcon,
@@ -27,7 +29,7 @@ import {
 import { TaskGroup } from "./ui/TaskGroup";
 import { TaskLink } from "./ui/TaskLink";
 
-const COLLECTION_IDS: readonly CollectionId[] = ["media", "transitions"];
+const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "transitions"];
 
 /*
  * Composes the main window. State lives in the app store (store/appStore.ts),
@@ -71,15 +73,18 @@ export function App() {
               <TaskLink icon={<FilmIcon />} disabled>
                 {t("tasks.capture.importVideo")}
               </TaskLink>
-              <TaskLink icon={<ImportImageIcon />} onClick={requestImport}>
+              <TaskLink icon={<ImportImageIcon />} onClick={() => requestImport("pictures")}>
                 {t("tasks.capture.importPictures")}
               </TaskLink>
-              <TaskLink icon={<FolderIcon />} disabled>
+              <TaskLink icon={<AudioIcon />} onClick={() => requestImport("audio")}>
                 {t("tasks.capture.importAudio")}
               </TaskLink>
             </TaskGroup>
             <TaskGroup title={t("tasks.edit.title")}>
-              <TaskLink icon={<FolderIcon />} onClick={() => setCollection("media")}>
+              <TaskLink
+                icon={<FolderIcon />}
+                onClick={() => setCollection(collection === "music" ? "music" : "media")}
+              >
                 {t("tasks.edit.showCollections")}
               </TaskLink>
               <TaskLink icon={<EffectsIcon />} disabled>
@@ -104,12 +109,16 @@ export function App() {
         }
         collection={
           <LibraryPane name={collectionName}>
-            {collection === "media" ? <MediaCollection /> : <TransitionCollection />}
+            {collection === "transitions" ? (
+              <TransitionCollection />
+            ) : (
+              <MediaCollection key={collection} kind={collection === "music" ? "audio" : "image"} />
+            )}
           </LibraryPane>
         }
         monitor={<Player />}
         storyboard={
-          <StoryboardPane>
+          <StoryboardPane musicTrack={<MusicTrack />}>
             <StoryboardStrip />
           </StoryboardPane>
         }

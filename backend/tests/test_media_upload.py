@@ -58,6 +58,7 @@ def test_jpeg_png_webp_are_imported_with_dims_and_files(settings: Settings) -> N
         item = result["item"]
         assert set(item) == {
             "id",
+            "kind",
             "filename",
             "width",
             "height",
@@ -65,6 +66,7 @@ def test_jpeg_png_webp_are_imported_with_dims_and_files(settings: Settings) -> N
             "thumbnailUrl",
             "previewUrl",
         }
+        assert item["kind"] == "image"
         assert item["thumbnailUrl"] == f"/api/media/{item['id']}/thumbnail"
         assert item["previewUrl"] == f"/api/media/{item['id']}/preview"
         item_dir = settings.data_dir / "media" / item["id"]
@@ -112,7 +114,8 @@ def test_text_file_named_jpg_is_unsupported_but_others_import(settings: Settings
         "ok": False,
         "errorCode": "media.unsupportedType",
         "errorParams": {},
-        "message": "Not a supported image (JPEG, PNG and WebP are allowed).",
+        "message": "Not a supported image or audio file "
+        "(allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
     }
     assert len([p for p in (settings.data_dir / "media").iterdir()]) == 2
 
@@ -125,7 +128,7 @@ def test_other_image_format_is_unsupported(settings: Settings) -> None:
 
 
 def test_file_over_25_mb_is_too_large_and_nothing_stored(settings: Settings) -> None:
-    big = _image_bytes("PNG", (10, 10)) + b"\0" * (media.MAX_FILE_BYTES + 1)
+    big = _image_bytes("PNG", (10, 10)) + b"\0" * (media.MAX_IMAGE_BYTES + 1)
     with TestClient(create_app(settings)) as client:
         items = _upload(client, [_file("big.png", big, "image/png")])
 
@@ -276,4 +279,4 @@ def test_openapi_describes_upload_result_union(settings: Settings) -> None:
     }
     assert {"errorCode", "message"} <= set(failure["required"])
     assert "errorParams" in failure["properties"]
-    assert "createdAt" in schemas["MediaItem"]["properties"]
+    assert "createdAt" in schemas["ImageItem"]["properties"]

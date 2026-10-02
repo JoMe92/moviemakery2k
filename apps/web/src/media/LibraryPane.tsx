@@ -17,10 +17,12 @@ function isFileDrag(event: DragEvent): boolean {
 
 /**
  * Collection area with import: hidden file dialog (opened via
- * `requestImport()` in the store), dropping files and progress/errors below.
+ * `requestImport()` in the store, file types per `importKind`), dropping
+ * files (pictures and audio) and progress/errors below.
  */
 export function LibraryPane({ name, children }: LibraryPaneProps) {
   const importRequest = useAppStore((s) => s.importRequest);
+  const importKind = useAppStore((s) => s.importKind);
   const startImport = useImport();
   const inputRef = useRef<HTMLInputElement>(null);
   const seenRequest = useRef(importRequest);
@@ -72,7 +74,7 @@ export function LibraryPane({ name, children }: LibraryPaneProps) {
         ref={inputRef}
         type="file"
         multiple
-        accept={IMPORT_ACCEPT}
+        accept={IMPORT_ACCEPT[importKind]}
         className={styles.input}
         tabIndex={-1}
         aria-hidden="true"
@@ -81,7 +83,7 @@ export function LibraryPane({ name, children }: LibraryPaneProps) {
           const files = Array.from(event.currentTarget.files ?? []);
           // Reset so the same files can be chosen again.
           event.currentTarget.value = "";
-          startImport(files);
+          startImport(files, importKind);
         }}
       />
     </CollectionPane>

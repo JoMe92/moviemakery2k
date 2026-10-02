@@ -1,15 +1,38 @@
 import { vi } from "vitest";
-import type { AppApi, ExportJob, MediaItem, Project, Transition } from "../lib/apiClient";
+import type {
+  AppApi,
+  AudioItem,
+  ExportJob,
+  ImageItem,
+  Project,
+  Transition,
+} from "../lib/apiClient";
 
-export function mediaItem(id: string): MediaItem {
+export function mediaItem(id: string): ImageItem {
   return {
     id,
+    kind: "image",
     filename: `${id}.jpg`,
     width: 640,
     height: 480,
     createdAt: "2026-10-02T00:00:00Z",
     thumbnailUrl: `/api/media/${id}/thumbnail`,
     previewUrl: `/api/media/${id}/preview`,
+  };
+}
+
+export function audioItem(id: string, duration = 192.4, filename = `${id}.mp3`): AudioItem {
+  return {
+    id,
+    kind: "audio",
+    filename,
+    duration,
+    sampleRate: 44100,
+    channels: 2,
+    codec: "mp3",
+    createdAt: "2026-10-02T00:00:00Z",
+    audioUrl: `/api/media/${id}/audio`,
+    peaksUrl: `/api/media/${id}/peaks`,
   };
 }
 
@@ -59,8 +82,8 @@ export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Proj
       filename: file.name,
       item: mediaItem(file.name),
     })),
-    deleteMedia: vi.fn(async () => ({ schemaVersion: 1 as const, slides: [] })),
-    getProject: vi.fn(async () => ({ schemaVersion: 1 as const, slides: [] })),
+    deleteMedia: vi.fn(async () => ({ schemaVersion: 2 as const, slides: [], music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides: [], music: [] })),
     putProject: vi.fn(async (p: Project) => {
       saved.push(structuredClone(p));
       return p;

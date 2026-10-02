@@ -18,7 +18,8 @@ The focus is on **transitions and effects** that look and feel like the ones
 from Movie Maker 2.x on Windows XP; everything else follows modern standards.
 The first milestone was a clickable **slideshow prototype**; slideshows can
 now be **saved as an MP4 movie**, rendered with the same shaders as the
-preview.
+preview, and get a **music track** that plays in the preview and is mixed
+into the exported movie.
 
 ## Features
 
@@ -30,6 +31,11 @@ What works today:
 - **Picture import** — JPEG, PNG and WebP via dialog or drag & drop from the
   desktop. The backend validates the files and creates thumbnails and preview
   images.
+- **Music** — import MP3, WAV, M4A/AAC, OGG and FLAC into *My Music*, put
+  pieces on the *Audio/Music* track below the storyboard, trim them, set
+  their volume and fades, and fit the movie to the music. The preview plays
+  the music in sync with pictures and transitions; the exported movie
+  contains the mix. See [Music](#music).
 - **Storyboard** — drag pictures into the storyboard, reorder them, remove
   them and set a duration per picture (0.5–60 s).
 - **Six classic transitions** — Fade, Dissolve, Wipe, Circle, Pixelate and
@@ -56,13 +62,11 @@ What works today:
 
 ## Roadmap
 
-- **Next:** music — a background audio track for the slideshow (the export
-  already writes a silent AAC track that music will replace)
 - More of the original 60 transitions (SMPTE wipes, bars, iris, wheel, 3D and
   particle transitions such as Page Curl and Shatter)
 - Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
 - Titles and credits with the Entrance → Main → Exit animation model
-- Video clips, music and audio levels
+- Video clips, narration and audio levels (clip sound ↔ music)
 - Timeline view with trimming and splitting
 
 ## Screenshots
@@ -132,7 +136,7 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 
 | Profile | Resolution | Video | Audio |
 |---|---|---|---|
-| `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p BT.709, faststart) | silent AAC, 48 kHz stereo, 128 kbit/s |
+| `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p BT.709, faststart) | AAC, 48 kHz stereo, 128 kbit/s: the music track, or silence without music |
 | `small` | 640×480, 30 fps | same | same |
 
 Pictures are letterboxed onto black exactly like in the preview monitor, and
@@ -165,6 +169,58 @@ pixi run bench-export       # export runtime: 12 pictures × 5 s per profile
 Measured with `pixi run bench-export` (12 pictures × 5 s with 1.25 s
 transitions, 46.25 s of video, 4 CPUs, software rendering): **`small` 8.5 s**
 and **`high` 17.1 s** for render + encode — both faster than real time.
+
+## Music
+
+**Importing.** *Import audio or music* under *1. Capture Video* in the task
+pane (*Audio oder Musik importieren*), *File → Import into Collections…* or
+dropping files on the collection all use the same import as pictures; each
+file lands in the collection of its kind, and audio appears in **My Music**
+(*Meine Musik*) with its own icon, name and duration. Supported are **MP3,
+WAV, M4A/AAC, OGG (Vorbis/Opus) and FLAC**, at most **100 MB and 15 minutes**
+per file. The backend checks the content with ffprobe (never the file name),
+keeps the original and creates a uniform preview version (AAC 48 kHz stereo)
+plus waveform data. Files without an audio track or beyond the limits are
+rejected with a readable message per file.
+
+**The music track.** The narrow **Audio/Music** track (*Audio/Musik*) below
+the storyboard holds the pieces of music. They play one after another from
+0:00, without gaps; there are no free start times or overlaps. Each block
+shows the name, the played length and a mini waveform, and its width is
+proportional to the length.
+
+- **Add** by dragging audio from *My Music* onto the track, by double-clicking
+  it, or with *Add to Music Track* in its context menu. Pictures are refused
+  on the music track and audio on the storyboard, each with a hint.
+- **Reorder** by dragging (or with the keyboard, like storyboard tiles);
+  **remove** with the *Delete* key or *Remove* in the context menu. Deleting
+  an audio file from *My Music* also removes it from the music track.
+- **Edit** via the context menu (right click, the context-menu key or
+  Shift+F10): *Volume…* (0–200 %), *Fade In* and *Fade Out* (switches, 1 s
+  each) and *Trim…* (start and end, `m:ss.cc` or seconds; a piece plays at
+  least 0.5 s).
+- **Music longer than the movie** is cut at the end of the movie and always
+  faded out over the last second; the track says so (*Music 3:12 / Movie
+  2:40 – will be cut at the end*). **Shorter music** is followed by silence.
+- **Fit Movie to Music** in the *Clip* menu (*Film an Musik anpassen*)
+  spreads the length of the music evenly over the pictures, taking the
+  transitions into account (rounded to 0.25 s, 0.5–60 s per picture; the
+  remainder goes to the last picture). If the music is too long or too short
+  for the existing pictures, a dialog names the reachable duration and
+  nothing changes. The item is disabled without music or without pictures.
+
+**Preview and export.** The preview player plays the music with Web Audio in
+sync with pictures and transitions: while music is scheduled, the audio clock
+drives playback, so picture and sound cannot drift apart. Browsers only allow
+sound after a user action, so the music starts with the first click on play
+(or the space bar). The transition sample in the collection plays without
+music. The export mixes the music from the original files (not the preview
+version) into the movie's AAC track, exactly as long as the video; a movie
+without music keeps a silent track.
+
+Not included (yet): a timeline with freely placed audio clips, sound of video
+clips, narration, adjustable fade lengths, cross-fades between pieces, audio
+effects and loudness normalisation.
 
 ## Languages
 
@@ -259,7 +315,7 @@ instead.
 | Path | Contents |
 |---|---|
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
-| [`backend/`](backend) | Python 3.13 + FastAPI: media, transition catalog, project, MP4 export (moderngl + FFmpeg) |
+| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
 | [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition shaders, shared by preview and export |
 | [`packages/catalog/`](packages/catalog) | Transition catalog with the documented parameters (single source of truth) |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |
@@ -294,6 +350,9 @@ flowchart LR
   preview and movie match.
 - The **timeline** is a pure, unit-tested function in TypeScript with a Python
   port for the export; both are checked against the same test vectors.
+  The **music schedule** (which piece plays when, with trims, volume and
+  fades) works the same way, so preview and movie place the music
+  identically.
 - The **Pydantic models** are the API contract; TypeScript types are
   generated from the OpenAPI schema.
 

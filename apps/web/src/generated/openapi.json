@@ -182,10 +182,111 @@
         "title": "ApiValidationResponse",
         "type": "object"
       },
+      "AudioItem": {
+        "additionalProperties": false,
+        "description": "An imported audio file (MP3, WAV, M4A/AAC, OGG, FLAC), add-music-track D1.",
+        "properties": {
+          "audioUrl": {
+            "description": "Preview version (AAC in M4A, 48 kHz, stereo)",
+            "title": "Audiourl",
+            "type": "string"
+          },
+          "channels": {
+            "description": "Number of channels of the original",
+            "exclusiveMinimum": 0.0,
+            "title": "Channels",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "FFmpeg codec name of the original, e.g. `mp3`, `pcm_s16le`",
+            "title": "Codec",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Duration in seconds",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "audio",
+            "title": "Kind",
+            "type": "string"
+          },
+          "peaksUrl": {
+            "description": "Waveform data (50 peaks per second)",
+            "title": "Peaksurl",
+            "type": "string"
+          },
+          "sampleRate": {
+            "description": "Sample rate of the original in Hz",
+            "exclusiveMinimum": 0.0,
+            "title": "Samplerate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "duration",
+          "sampleRate",
+          "channels",
+          "codec",
+          "createdAt",
+          "audioUrl",
+          "peaksUrl"
+        ],
+        "title": "AudioItem",
+        "type": "object"
+      },
+      "AudioPeaks": {
+        "additionalProperties": false,
+        "description": "Waveform data of an audio medium (`GET /api/media/{id}/peaks`, design.md D2).\n\nPeak `i` is the largest absolute sample of the mono downmix in the time\nwindow `[i / rate, (i + 1) / rate)` s, relative to full scale (0 = silence,\n1 = full scale). The last window may be shorter.",
+        "properties": {
+          "peaks": {
+            "description": "One peak per window, relative to full scale (0..1)",
+            "items": {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            "title": "Peaks",
+            "type": "array"
+          },
+          "rate": {
+            "description": "Peaks per second (always 50)",
+            "exclusiveMinimum": 0.0,
+            "title": "Rate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rate",
+          "peaks"
+        ],
+        "title": "AudioPeaks",
+        "type": "object"
+      },
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
-            "description": "Image files (JPEG, PNG, WebP)",
+            "description": "Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
             "items": {
               "contentMediaType": "application/octet-stream",
               "type": "string"
@@ -209,18 +310,31 @@
           "media.tooLarge",
           "media.tooManyPixels",
           "media.inUseByExport",
+          "media.audioTooLong",
+          "media.noAudioStream",
+          "media.probeUnavailable",
           "project.slideDuration.outOfRange",
           "project.slideDuration.offGrid",
           "project.transitionDuration.outOfRange",
           "project.transitionDuration.offGrid",
+          "project.musicVolume.outOfRange",
+          "project.musicTrim.negative",
           "project.invalid",
           "project.slide.duplicateId",
           "project.slide.unknownMedia",
           "project.slide.firstHasTransition",
           "project.slide.unknownTransition",
+          "project.slide.notImage",
+          "project.music.duplicateId",
+          "project.music.unknownMedia",
+          "project.music.notAudio",
+          "project.music.trimEndBeyondFile",
+          "project.music.trimStartNotBeforeEnd",
+          "project.music.tooShort",
           "export.notFound",
           "export.emptyProject",
           "export.missingMedia",
+          "export.missingMusicMedia",
           "export.busy",
           "export.notReady",
           "export.fileName.empty",
@@ -236,6 +350,7 @@
           "export.ffmpegInputClosedEarly",
           "export.ffmpegFailed",
           "export.renderFailed",
+          "export.audioFailed",
           "export.saveFailed",
           "export.unexpected"
         ],
@@ -429,21 +544,9 @@
         "title": "Health",
         "type": "object"
       },
-      "MediaDeleteResponse": {
+      "ImageItem": {
         "additionalProperties": false,
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/Project"
-          }
-        },
-        "required": [
-          "project"
-        ],
-        "title": "MediaDeleteResponse",
-        "type": "object"
-      },
-      "MediaItem": {
-        "additionalProperties": false,
+        "description": "An imported picture (JPEG, PNG, WebP).",
         "properties": {
           "createdAt": {
             "format": "date-time",
@@ -465,6 +568,11 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "const": "image",
+            "title": "Kind",
+            "type": "string"
+          },
           "previewUrl": {
             "title": "Previewurl",
             "type": "string"
@@ -481,6 +589,7 @@
         },
         "required": [
           "id",
+          "kind",
           "filename",
           "width",
           "height",
@@ -488,8 +597,38 @@
           "thumbnailUrl",
           "previewUrl"
         ],
-        "title": "MediaItem",
+        "title": "ImageItem",
         "type": "object"
+      },
+      "MediaDeleteResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "MediaDeleteResponse",
+        "type": "object"
+      },
+      "MediaItem": {
+        "discriminator": {
+          "mapping": {
+            "audio": "#/components/schemas/AudioItem",
+            "image": "#/components/schemas/ImageItem"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ImageItem"
+          },
+          {
+            "$ref": "#/components/schemas/AudioItem"
+          }
+        ]
       },
       "MediaListResponse": {
         "additionalProperties": false,
@@ -514,7 +653,7 @@
         "properties": {
           "errorCode": {
             "$ref": "#/components/schemas/ErrorCode",
-            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels"
+            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable"
           },
           "errorParams": {
             "additionalProperties": {
@@ -607,11 +746,83 @@
         "title": "MediaUploadSuccess",
         "type": "object"
       },
+      "MusicClip": {
+        "additionalProperties": false,
+        "description": "A piece of the music track (add-music-track design.md D3); no start time:\nclips play one after the other from 0.",
+        "properties": {
+          "fadeIn": {
+            "description": "Fade in over 1 s (new clip: false)",
+            "title": "Fadein",
+            "type": "boolean"
+          },
+          "fadeOut": {
+            "description": "Fade out over 1 s (new clip: false)",
+            "title": "Fadeout",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Assigned by the client, unique within the music track",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of an audio medium from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "trimEnd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "End within the file in seconds; null = end of the file (new clip: null)",
+            "title": "Trimend"
+          },
+          "trimStart": {
+            "description": "Start within the file in seconds (new clip: 0)",
+            "minimum": 0.0,
+            "title": "Trimstart",
+            "type": "number"
+          },
+          "volume": {
+            "description": "Volume as linear gain (1 = 100 %, new clip: 1)",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Volume",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "mediaId",
+          "trimStart",
+          "trimEnd",
+          "volume",
+          "fadeIn",
+          "fadeOut"
+        ],
+        "title": "MusicClip",
+        "type": "object"
+      },
       "Project": {
         "additionalProperties": false,
         "properties": {
+          "music": {
+            "items": {
+              "$ref": "#/components/schemas/MusicClip"
+            },
+            "maxItems": 100,
+            "title": "Music",
+            "type": "array"
+          },
           "schemaVersion": {
-            "const": 1,
+            "const": 2,
             "title": "Schemaversion",
             "type": "integer"
           },
@@ -626,7 +837,8 @@
         },
         "required": [
           "schemaVersion",
-          "slides"
+          "slides",
+          "music"
         ],
         "title": "Project",
         "type": "object"
@@ -1038,7 +1250,7 @@
                 }
               }
             },
-            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
+            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
           }
         },
         "summary": "Start Export",
@@ -1297,7 +1509,7 @@
     },
     "/api/media/{media_id}": {
       "delete": {
-        "description": "Deletes a medium with its files and removes it from the project (cascade).\n\nAll storyboard elements using this medium are dropped together with their\nincoming transitions; the new first element has no transition.\n\nThe response is 200 with the updated project (instead of 204) so that the\nclient can adopt its state without another GET /api/project.\n\nOrder: first from the media store, then from the project. A concurrent\nPUT /api/project validates against the media store and therefore cannot\nre-insert the ID afterwards.\n\nWhile a `queued` or `running` export has the medium in its snapshot, the\nresponse is 409 (`media.inUseByExport`); medium, project and export stay\nunchanged (design.md D5).",
+        "description": "Deletes a medium with its files and removes it from the project (cascade).\n\nAll storyboard elements using this medium are dropped together with their\nincoming transitions; the new first element has no transition. All music\nclips using it are dropped as well (the following clips move up).\n\nThe response is 200 with the updated project (instead of 204) so that the\nclient can adopt its state without another GET /api/project.\n\nOrder: first from the media store, then from the project. A concurrent\nPUT /api/project validates against the media store and therefore cannot\nre-insert the ID afterwards.\n\nWhile a `queued` or `running` export has the medium in its snapshot, the\nresponse is 409 (`media.inUseByExport`); medium, project and export stay\nunchanged (design.md D5).",
         "operationId": "delete_media_api_media__media_id__delete",
         "parameters": [
           {
@@ -1353,6 +1565,108 @@
           }
         },
         "summary": "Delete Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/audio": {
+      "get": {
+        "description": "Audio preview version (AAC in M4A, 48 kHz, stereo) with `Cache-Control: immutable`.\n\n404 for images as well as unknown IDs. Range requests are supported.",
+        "operationId": "get_audio_api_media__media_id__audio_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "audio/mp4": {}
+            },
+            "description": "AAC in M4A, 48 kHz, stereo"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audio",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/peaks": {
+      "get": {
+        "description": "Waveform data (50 peaks per second, mono, 0..1) with `Cache-Control: immutable`.\n\n404 for images as well as unknown IDs.",
+        "operationId": "get_peaks_api_media__media_id__peaks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioPeaks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Peaks",
         "tags": [
           "media"
         ]

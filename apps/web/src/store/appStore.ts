@@ -12,6 +12,7 @@ import {
   type ExportApi,
   type Health,
   type MediaItem,
+  type MusicClip,
   type Project,
   type Slide,
   type Transition,
@@ -27,7 +28,20 @@ import {
   startPlayback,
   timelineOf,
 } from "../player/controls";
+import { type FitToMusicResult, fitToMusic } from "../timeline/fitToMusic";
+import { musicDuration } from "../timeline/music";
 import { slideStartTime } from "../timeline/timeline";
+import {
+  insertMusicClip,
+  isValidMusicTrim,
+  isValidMusicVolume,
+  MUSIC_TRACK_MAX,
+  type MusicClipPatch,
+  moveMusicClip as moveMusicClipOp,
+  newMusicClip,
+  removeMusicClip as removeMusicClipOp,
+  updateMusicClip as updateMusicClipOp,
+} from "./musicOps";
 import {
   insertSlide,
   isValidSlideDuration,
@@ -46,7 +60,13 @@ export type BackendState =
   | { kind: "ok"; health: Health }
   | { kind: "offline" };
 export type SaveState = "idle" | "saving" | "saved" | "error";
-export type CollectionId = "media" | "transitions";
+/** `media` is "My Pictures" (images only), `music` is "My Music" (audio only). */
+export type CollectionId = "media" | "music" | "transitions";
+/**
+ * File dialog requested: `any` (File menu: pictures and audio), `pictures`
+ * ("Import pictures") or `audio` ("Import audio or music").
+ */
+export type ImportKind = "any" | "pictures" | "audio";
 export type Selection = { kind: "slide"; slideId: string } | null;
 
 export interface UploadEntry {
@@ -65,9 +85,13 @@ export interface AppState {
   media: MediaItem[];
   catalog: Transition[];
   slides: Slide[];
+  /** Music track (add-music-track D3); kept and saved with the project. */
+  music: MusicClip[];
   saveState: SaveState;
   collection: CollectionId;
   selection: Selection;
+  /** Selected clip on the music track (exclusive with `selection`). */
+  musicSelection: string | null;
   /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
@@ -75,8 +99,10 @@ export interface AppState {
   playback: Playback;
   /** Transition demo in the monitor (only together with previewTransitionId). */
   demo: Playback | null;
-  /** Counter: every increment opens the "Import pictures" file dialog (task, File menu). */
+  /** Counter: every increment opens the import file dialog (tasks, File menu). */
   importRequest: number;
+  /** Kind of the last requested file dialog (file types it offers). */
+  importKind: ImportKind;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -103,8 +129,8 @@ export interface AppState {
   /** Clock step in seconds (rAF clock). */
   tick(dt: number): void;
 
-  /** Request the "Import pictures" file dialog (opened by the collection). */
-  requestImport(): void;
+  /** Request the import file dialog (opened by the collection); default `any`. */
+  requestImport(kind?: ImportKind): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -119,6 +145,29 @@ export interface AppState {
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
   removeTransition(slideId: string): void;
+
+  /** Select a clip on the music track (null clears); ends a picture selection. */
+  selectMusicClip(clipId: string | null): void;
+  /**
+   * Add an audio medium to the music track at `index` (default: end).
+   * Pictures and a full track (100 clips) are refused; returns whether it was added.
+   */
+  addMusicClip(mediaId: string, index?: number): boolean;
+  moveMusicClip(from: number, to: number): void;
+  removeMusicClip(clipId: string): void;
+  /**
+   * Change volume, trim or fades of a music clip (spec music-track
+   * "Musikstücke bearbeiten"; autosaved). An invalid volume or trim range
+   * (`0 ≤ start < end ≤ file duration`, length ≥ 0.5 s) changes nothing;
+   * returns whether the change was applied.
+   */
+  updateMusicClip(clipId: string, patch: MusicClipPatch): boolean;
+  /**
+   * Clip → "Fit movie to music" (add-music-track D8): sets all picture
+   * durations at once (one change, autosaved). Changes nothing if the music
+   * length is unreachable or there are no pictures/music; the result says why.
+   */
+  fitToMusic(): FitToMusicResult;
   newProject(): void;
 
   /** Run the autosave immediately (tests, page change). */
@@ -132,6 +181,16 @@ export interface AppStoreOptions {
   locale?: Locale;
 }
 
+/** Total length of the music track (s) from the clips and the audio durations. */
+export function projectMusicDuration(
+  music: readonly MusicClip[],
+  media: readonly MediaItem[],
+): number {
+  const durations: Record<string, number> = {};
+  for (const m of media) if (m.kind === "audio") durations[m.id] = m.duration;
+  return musicDuration(music, durations);
+}
+
 export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppStore {
   const locale = options.locale ?? initialLocale();
   applyDocumentLocale(locale);
@@ -140,7 +199,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
   let dirty = false;
 
   const store = createStore<AppState>()((set, get) => {
-    const toProject = (): Project => ({ schemaVersion: 1, slides: get().slides });
+    const toProject = (): Project => ({
+      schemaVersion: 2,
+      slides: get().slides,
+      music: get().music,
+    });
 
     async function save(): Promise<void> {
       if (saving) {
@@ -192,6 +255,14 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       scheduleSave();
     }
 
+    /** Store a changed music track; keeps the music selection if the clip is still there. */
+    function commitMusic(music: MusicClip[]): void {
+      const { musicSelection } = get();
+      const stillThere = musicSelection !== null && music.some((c) => c.id === musicSelection);
+      set({ music, musicSelection: stillThere ? musicSelection : null });
+      scheduleSave();
+    }
+
     const duration = () => timelineOf(get().slides).duration;
     const noDemo = { previewTransitionId: null, demo: null } as const;
 
@@ -205,14 +276,17 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       media: [],
       catalog: [],
       slides: [],
+      music: [],
       saveState: "idle",
       collection: "media",
       selection: null,
+      musicSelection: null,
       previewTransitionId: null,
       playback: STOPPED,
       demo: null,
       uploads: [],
       importRequest: 0,
+      importKind: "any",
       exportWizardOpen: false,
       locale,
       setLocale(next) {
@@ -240,6 +314,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             catalog,
             media,
             slides: project.slides,
+            music: project.music,
             saveState: "saved",
             loaded: true,
           });
@@ -258,6 +333,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         // Selecting in the filmstrip always ends a transition demo (design.md D7).
         const { playback, slides } = get();
         const index = selection ? slides.findIndex((s) => s.id === selection.slideId) : -1;
+        // One selection at a time: a picture ends the music selection.
+        if (selection) set({ musicSelection: null });
         if (index >= 0 && !playback.playing) {
           set({
             selection,
@@ -323,8 +400,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         if (playback.playing) set({ playback: advance(playback, dt, duration()) });
       },
 
-      requestImport() {
-        set({ importRequest: get().importRequest + 1 });
+      requestImport(kind = "any") {
+        set({ importRequest: get().importRequest + 1, importKind: kind });
       },
 
       async importFiles(files) {
@@ -379,15 +456,21 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         const project = await api.deleteMedia(id);
         const { selection } = get();
         const stillThere = selection && project.slides.some((s) => s.id === selection.slideId);
+        const { musicSelection } = get();
+        const musicStillThere = project.music.some((c) => c.id === musicSelection);
         set({
           media: get().media.filter((m) => m.id !== id),
           slides: project.slides,
+          music: project.music,
           selection: stillThere ? selection : null,
+          musicSelection: musicStillThere ? musicSelection : null,
           playback: playbackFor(project.slides),
         });
       },
 
       addSlide(mediaId, index) {
+        // Only pictures belong in the filmstrip; audio goes to the music track.
+        if (get().media.find((m) => m.id === mediaId)?.kind === "audio") return;
         const slide: Slide = {
           id: newSlideId(),
           mediaId,
@@ -430,7 +513,51 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       removeTransition(slideId) {
         commit(updateSlide(get().slides, slideId, (s) => ({ ...s, transitionIn: null })));
       },
+
+      selectMusicClip(clipId) {
+        set(
+          clipId === null ? { musicSelection: null } : { musicSelection: clipId, selection: null },
+        );
+      },
+      addMusicClip(mediaId, index) {
+        // Only audio belongs on the music track (spec music-track "Musikleiste").
+        const { media, music } = get();
+        if (media.find((m) => m.id === mediaId)?.kind !== "audio") return false;
+        if (music.length >= MUSIC_TRACK_MAX) return false;
+        commitMusic(insertMusicClip(music, newMusicClip(mediaId), index ?? music.length));
+        return true;
+      },
+      moveMusicClip(from, to) {
+        commitMusic(moveMusicClipOp(get().music, from, to));
+      },
+      removeMusicClip(clipId) {
+        commitMusic(removeMusicClipOp(get().music, clipId));
+      },
+      updateMusicClip(clipId, patch) {
+        const { music, media } = get();
+        const clip = music.find((c) => c.id === clipId);
+        if (!clip) return false;
+        const next = { ...clip, ...patch };
+        if (!isValidMusicVolume(next.volume)) return false;
+        if (patch.trimStart !== undefined || patch.trimEnd !== undefined) {
+          const item = media.find((m) => m.id === clip.mediaId);
+          if (item?.kind !== "audio") return false;
+          if (!isValidMusicTrim(next.trimStart, next.trimEnd, item.duration)) return false;
+        }
+        commitMusic(updateMusicClipOp(music, clipId, patch));
+        return true;
+      },
+
+      fitToMusic() {
+        const { slides, music, media } = get();
+        const result = fitToMusic(slides, projectMusicDuration(music, media));
+        if (result.kind === "ok") {
+          commit(slides.map((s, i) => ({ ...s, duration: result.durations[i] ?? s.duration })));
+        }
+        return result;
+      },
       newProject() {
+        set({ music: [], musicSelection: null });
         commit([]);
       },
 

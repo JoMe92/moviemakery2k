@@ -1,0 +1,477 @@
+{
+  "version": 1,
+  "tolerance": 1e-9,
+  "cases": [
+    {
+      "name": "spec-two-clips-sequential",
+      "description": "Spec music-track scenario 'Zwei Stücke nacheinander': 30 s then 20 s; the second starts at 30 s, the music lasts 50 s. Movie 60 s, so no cut and no end fade.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-30",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "b",
+          "mediaId": "m-20",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-30": 30,
+        "m-20": 20
+      },
+      "movieDuration": 60,
+      "expected": {
+        "musicDuration": 50,
+        "segments": [
+          {
+            "mediaId": "m-30",
+            "at": 0,
+            "sourceIn": 0,
+            "length": 30,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          },
+          {
+            "mediaId": "m-20",
+            "at": 30,
+            "sourceIn": 0,
+            "length": 20,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "spec-trimmed-clip",
+      "description": "Spec scenario 'Gekürztes Stück': 3-minute file trimmed to 0:10-1:10 plays source 10-70 s; the next clip starts at 60 s.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-180",
+          "trimStart": 10,
+          "trimEnd": 70,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "b",
+          "mediaId": "m-20",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-180": 180,
+        "m-20": 20
+      },
+      "movieDuration": 100,
+      "expected": {
+        "musicDuration": 80,
+        "segments": [
+          {
+            "mediaId": "m-180",
+            "at": 0,
+            "sourceIn": 10,
+            "length": 60,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          },
+          {
+            "mediaId": "m-20",
+            "at": 60,
+            "sourceIn": 0,
+            "length": 20,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "spec-cut-at-movie-end-with-fade",
+      "description": "Spec scenario 'Musik länger als der Film': music 3:12 (120 s + 72 s), movie 2:40. The second clip is cut at 160 s (length 40) and faded out 159-160 s; its own fade-out is dropped because it lies behind the movie end. A third clip starting after the end is dropped.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-120",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "b",
+          "mediaId": "m-72",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 0.5,
+          "fadeIn": true,
+          "fadeOut": true
+        },
+        {
+          "id": "c",
+          "mediaId": "m-20",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-120": 120,
+        "m-72": 72,
+        "m-20": 20
+      },
+      "movieDuration": 160,
+      "expected": {
+        "musicDuration": 212,
+        "segments": [
+          {
+            "mediaId": "m-120",
+            "at": 0,
+            "sourceIn": 0,
+            "length": 120,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          },
+          {
+            "mediaId": "m-72",
+            "at": 120,
+            "sourceIn": 0,
+            "length": 40,
+            "gain": 0.5,
+            "fadeIn": 1,
+            "fadeOut": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "spec-silence-after-music",
+      "description": "Spec scenario 'Musik kürzer als der Film': music 30 s, movie 45 s; silence from 30 s, no end fade.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-30",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": true
+        }
+      ],
+      "mediaDurations": {
+        "m-30": 30
+      },
+      "movieDuration": 45,
+      "expected": {
+        "musicDuration": 30,
+        "segments": [
+          {
+            "mediaId": "m-30",
+            "at": 0,
+            "sourceIn": 0,
+            "length": 30,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "movie-shorter-than-1s",
+      "description": "Movie 0.5 s: the end fade covers the whole movie; the fade-in is clipped to the segment length too.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-10",
+          "trimStart": 2,
+          "trimEnd": null,
+          "volume": 1.5,
+          "fadeIn": true,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-10": 10
+      },
+      "movieDuration": 0.5,
+      "expected": {
+        "musicDuration": 8,
+        "segments": [
+          {
+            "mediaId": "m-10",
+            "at": 0,
+            "sourceIn": 2,
+            "length": 0.5,
+            "gain": 1.5,
+            "fadeIn": 0.5,
+            "fadeOut": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "clip-ends-exactly-at-movie-end",
+      "description": "Music ends exactly at the movie end: the end fade (1 s) still applies; the following clip starts at the end and is dropped.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-5",
+          "trimStart": 0,
+          "trimEnd": 4,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "b",
+          "mediaId": "m-5",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-5": 5
+      },
+      "movieDuration": 4,
+      "expected": {
+        "musicDuration": 9,
+        "segments": [
+          {
+            "mediaId": "m-5",
+            "at": 0,
+            "sourceIn": 0,
+            "length": 4,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "last-segment-shorter-than-end-fade",
+      "description": "The segment reaching the movie end is only 0.5 s long: the end fade covers only that segment (0.5 s); the previous segment is not faded.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-4.5",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "b",
+          "mediaId": "m-2",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-4.5": 4.5,
+        "m-2": 2
+      },
+      "movieDuration": 5,
+      "expected": {
+        "musicDuration": 6.5,
+        "segments": [
+          {
+            "mediaId": "m-4.5",
+            "at": 0,
+            "sourceIn": 0,
+            "length": 4.5,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          },
+          {
+            "mediaId": "m-2",
+            "at": 4.5,
+            "sourceIn": 0,
+            "length": 0.5,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "name": "short-clip-fades-clipped",
+      "description": "A 0.75 s clip with both fades: each fade is clipped to 0.75 s (they overlap and multiply). Same medium used twice.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-3",
+          "trimStart": 1,
+          "trimEnd": 1.75,
+          "volume": 1,
+          "fadeIn": true,
+          "fadeOut": true
+        },
+        {
+          "id": "b",
+          "mediaId": "m-3",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 0.25,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-3": 3
+      },
+      "movieDuration": 10,
+      "expected": {
+        "musicDuration": 3.75,
+        "segments": [
+          {
+            "mediaId": "m-3",
+            "at": 0,
+            "sourceIn": 1,
+            "length": 0.75,
+            "gain": 1,
+            "fadeIn": 0.75,
+            "fadeOut": 0.75
+          },
+          {
+            "mediaId": "m-3",
+            "at": 0.75,
+            "sourceIn": 0,
+            "length": 3,
+            "gain": 0.25,
+            "fadeIn": 0,
+            "fadeOut": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "trim-end-clamped-and-missing-media",
+      "description": "trimEnd beyond the file is clamped to the file duration; a clip whose medium is unknown counts as 0 s and is skipped without taking time.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-6",
+          "trimStart": 1.5,
+          "trimEnd": 99,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "x",
+          "mediaId": "m-missing",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        },
+        {
+          "id": "b",
+          "mediaId": "m-6",
+          "trimStart": 0,
+          "trimEnd": 2,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-6": 6
+      },
+      "movieDuration": 20,
+      "expected": {
+        "musicDuration": 6.5,
+        "segments": [
+          {
+            "mediaId": "m-6",
+            "at": 0,
+            "sourceIn": 1.5,
+            "length": 4.5,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          },
+          {
+            "mediaId": "m-6",
+            "at": 4.5,
+            "sourceIn": 0,
+            "length": 2,
+            "gain": 1,
+            "fadeIn": 0,
+            "fadeOut": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "no-clips",
+      "description": "Empty music track: no segments, the movie is silent.",
+      "clips": [],
+      "mediaDurations": {},
+      "movieDuration": 12.5,
+      "expected": {
+        "musicDuration": 0,
+        "segments": []
+      }
+    },
+    {
+      "name": "empty-movie",
+      "description": "Movie duration 0 (no slides): no segments even with music.",
+      "clips": [
+        {
+          "id": "a",
+          "mediaId": "m-30",
+          "trimStart": 0,
+          "trimEnd": null,
+          "volume": 1,
+          "fadeIn": false,
+          "fadeOut": false
+        }
+      ],
+      "mediaDurations": {
+        "m-30": 30
+      },
+      "movieDuration": 0,
+      "expected": {
+        "musicDuration": 30,
+        "segments": []
+      }
+    }
+  ]
+}

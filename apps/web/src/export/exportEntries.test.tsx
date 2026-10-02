@@ -15,7 +15,9 @@ const slide = (id: string, mediaId: string): Slide => ({
 });
 
 async function setup(slides: Slide[]) {
-  const api = mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 1 as const, slides })) });
+  const api = mockApi({
+    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+  });
   const view = renderApp(api);
   await act(() => view.ready);
   return { ...view, user: userEvent.setup() };

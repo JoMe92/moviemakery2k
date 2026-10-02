@@ -7,7 +7,8 @@ import { renderApp } from "../test/renderApp";
 async function setup() {
   const api = mockApi({
     getProject: vi.fn(async () => ({
-      schemaVersion: 1 as const,
+      schemaVersion: 2 as const,
+      music: [],
       slides: [
         { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
         { id: "s2", mediaId: "b", duration: 5, transitionIn: null },
@@ -49,7 +50,8 @@ describe("'Video Transitions' collection", () => {
       const view = renderApp(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 1 as const,
+            schemaVersion: 2 as const,
+            music: [],
             slides: [
               { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
               { id: "s2", mediaId: "b", duration: 5, transitionIn: null },

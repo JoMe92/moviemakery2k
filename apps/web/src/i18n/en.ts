@@ -35,6 +35,7 @@ export const en = {
   },
   collections: {
     media: "My Pictures",
+    music: "My Music",
     transitions: "Video Transitions",
   },
   menu: {
@@ -74,6 +75,7 @@ export const en = {
       label: "Clip",
       addToStoryboard: "Add to Storyboard",
       split: "Split",
+      fitToMusic: "Fit Movie to Music",
     },
     play: {
       label: "Play",
@@ -124,6 +126,13 @@ export const en = {
     text: "{app} is inspired by the classic Movie Maker. It is not a Microsoft product and is not affiliated with Microsoft.",
     license: "License: {license}",
   },
+  fitToMusic: {
+    title: "Fit Movie to Music",
+    tooLong:
+      "The music lasts {music}. With the current pictures the movie can last at most {reachable}. The picture durations were not changed.",
+    tooShort:
+      "The music lasts {music}. With the current pictures the movie must last at least {reachable}. The picture durations were not changed.",
+  },
   newProject: {
     title: "New Project",
     message:
@@ -140,6 +149,16 @@ export const en = {
     deleteQuestion:
       "Are you sure you want to delete “{name}”? It will also be removed from the storyboard.",
     deleteFailed: "“{name}” could not be deleted.",
+    musicEmptyHint:
+      "This collection is empty. Choose “Import audio or music” or drag audio files here.",
+    musicList: "Music",
+    audioTile: "{name}, {duration}",
+    audioMenu: "Audio clip “{name}”",
+    deleteAudioTitle: "Delete Audio Clip",
+    deleteAudioQuestion:
+      "Are you sure you want to delete “{name}”? It will also be removed from the music track.",
+    audioDraggable: "draggable audio",
+    addToMusicTrack: "Add to Music Track",
   },
   upload: {
     progress: "Importing {current} of {total} …",
@@ -170,6 +189,9 @@ export const en = {
     transition: "Transition:",
   },
   dnd: {
+    audio: "Audio “{name}”",
+    musicClip: "Music clip {number}",
+    overMusic: "Over the music track.",
     element: "Element",
     transition: "Transition “{name}”",
     picture: "Picture “{name}”",
@@ -182,6 +204,34 @@ export const en = {
     cancelled: "Dragging cancelled.",
     instructions:
       "Enter picks up the element. Move it with the arrow keys (from the collection: arrow down into the storyboard), Enter or Space drops, Escape cancels.",
+  },
+  musicTrack: {
+    label: "Audio/Music",
+    list: "Music track",
+    emptyHint: "Drag music from “My Music” here.",
+    sortable: "sortable music clip",
+    clip: "Music clip {number}: {name}, {duration}",
+    clipMenu: "Music clip {number} of the music track",
+    missingAudio: "missing audio file",
+    remove: "Remove",
+    rejectAudio: "Audio cannot be placed in the storyboard. Drag it onto the music track.",
+    rejectPicture: "Only audio can be placed on the music track.",
+    cutHint: "Music {music} / Movie {movie} – will be cut at the end",
+    volume: "Volume…",
+    fadeIn: "Fade In",
+    fadeOut: "Fade Out",
+    trim: "Trim…",
+    volumeTitle: "Volume of music clip {number}",
+    volumeSlider: "Volume",
+    volumeField: "Volume (%)",
+    volumeRange: "Allowed are {min} to {max} %.",
+    trimTitle: "Trim music clip {number}",
+    trimStart: "Start",
+    trimEnd: "End",
+    trimFile: "File duration: {duration}",
+    trimFormat: "Times as m:ss.cc or in seconds.",
+    trimRange:
+      "Allowed are start and end from {min} to {max}; the start must lie before the end and the length must be at least {length} s.",
   },
   transitions: {
     unavailable: "The transition catalog is not available.",
@@ -256,11 +306,16 @@ export const en = {
     media: {
       notFound: "Media item not found.",
       tooManyFiles: "Too many files: at most {max} per import ({count} sent).",
-      unsupportedType: "Not a supported image (JPEG, PNG and WebP are allowed).",
+      unsupportedType:
+        "Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
       tooLarge: "The file is too large (at most {maxMegabytes} MB).",
       tooManyPixels: "The image has too many pixels (at most {maxMegapixels} megapixels).",
+      audioTooLong: "The audio file is too long (at most {maxMinutes} minutes).",
+      noAudioStream: "The file contains no audio track.",
+      probeUnavailable:
+        "Audio files cannot be checked: ffprobe was not found or could not be started.",
       inUseByExport:
-        "The image cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
+        "The medium cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
     },
     project: {
       slideDuration: {
@@ -271,6 +326,12 @@ export const en = {
         outOfRange: "The transition duration must be between {min} and {max} s (is {value} s).",
         offGrid: "The transition duration must be a multiple of {step} s (is {value} s).",
       },
+      musicVolume: {
+        outOfRange: "The music volume must be between {min} and {max} (is {value}).",
+      },
+      musicTrim: {
+        negative: "The start and end of a music clip must be 0 s or later (is {value} s).",
+      },
       invalid: "The project is invalid: {summary}",
       slide: {
         duplicateId:
@@ -279,12 +340,26 @@ export const en = {
         firstHasTransition:
           "Picture {slide} (ID “{slideId}”): the first picture cannot have an incoming transition.",
         unknownTransition: "Picture {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
+        notImage: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
+      },
+      music: {
+        duplicateId:
+          "Music clip {clip} (ID “{clipId}”): the ID is already used by music clip {firstClip}.",
+        unknownMedia: "Music clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        notAudio: "Music clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        trimEndBeyondFile:
+          "Music clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond the end of the file ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Music clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before the end ({end} s).",
+        tooShort:
+          "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s (plays {length} s).",
       },
     },
     export: {
       notFound: "Export not found.",
       emptyProject: "Cannot export: the storyboard is empty.",
       missingMedia: "Cannot export: media missing for picture(s) {slides}.",
+      missingMusicMedia: "Cannot export: media missing for music clip(s) {clips}.",
       busy: "An export is already running. Wait for it to finish or cancel it first.",
       notReady: "The movie is not available: the export has the status “{status}”.",
       fileName: {
@@ -304,6 +379,7 @@ export const en = {
       ffmpegInputClosedEarly: "FFmpeg closed its input prematurely.",
       ffmpegFailed: "FFmpeg failed with exit code {returnCode}.",
       renderFailed: "The export failed: {reason}",
+      audioFailed: "The music could not be mixed: {reason}",
       saveFailed: "The export could not be saved: {reason}",
       unexpected: "The export failed unexpectedly.",
     },

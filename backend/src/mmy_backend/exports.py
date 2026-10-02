@@ -5,6 +5,11 @@ One `ExportManager` per app (app.state.exports) keeps the jobs in memory:
 - `start` takes a snapshot (deep copy) of the saved project and starts a
   dedicated worker thread. At most one job is `queued` or `running`; a second
   start raises `ExportBusy` (→ 409).
+- With music, the worker first mixes it from the originals into
+  `<data_dir>/exports/<id>/music.wav` (add-music-track D6, `render.mixdown`),
+  checking for cancellation while mixing; a mixing error fails the job with
+  `export.audioFailed`. Without music the export keeps its silent track.
+  `music.wav` is removed once the export has finished.
 - The worker calls `export_movie`; GL context, shaders and FFmpeg are created
   in that thread (EGL contexts are bound to a thread). Output is written to
   `<data_dir>/exports/<id>/out.mp4.part` and, on success, atomically moved to `out.mp4`.
@@ -56,18 +61,23 @@ from pydantic.alias_generators import to_camel
 
 from mmy_backend.catalog import TransitionCatalog
 from mmy_backend.errors import ErrorCode, Params, error_message, validation_error
-from mmy_backend.media import MediaStore
+from mmy_backend.media import AudioItem, MediaStore
 from mmy_backend.project import Project
 from mmy_backend.render.context import RenderContextError
 from mmy_backend.render.encode import (
     DEFAULT_PROFILE,
+    AudioInput,
     ExportCancelled,
     ExportFailed,
     ExportProfile,
     export_movie,
+    silent_audio_input,
+    video_duration,
 )
 from mmy_backend.render.frames import preview_loader
-from mmy_backend.render.timeline import build_timeline, timeline_slides_from_project
+from mmy_backend.render.mixdown import MIX_FILENAME, file_audio_input, mix_music
+from mmy_backend.render.music import MusicClipInput, music_schedule
+from mmy_backend.render.timeline import Timeline, build_timeline, timeline_slides_from_project
 from mmy_backend.storage import write_bytes_atomic
 
 logger = logging.getLogger(__name__)
@@ -437,7 +447,10 @@ class ExportManager:
             for job in self._jobs.values():
                 if job.project is None or not job.status.active:
                     continue
-                if any(s.media_id == media_id for s in job.project.slides):
+                project = job.project
+                if any(s.media_id == media_id for s in project.slides) or any(
+                    c.media_id == media_id for c in project.music
+                ):
                     return job.id
             return None
 
@@ -517,16 +530,21 @@ class ExportManager:
             if job.project is None:
                 raise RuntimeError("export job without a project snapshot")
             timeline = build_timeline(timeline_slides_from_project(job.project))
-            export_movie(
-                timeline,
-                self._catalog,
-                job.profile,
-                job.output,
-                preview_loader(self._media),
-                progress=lambda fraction: self._on_progress(job, fraction),
-                cancel=job.cancel,
-                shaders_dir=self._shaders_dir,
-            )
+            audio_input = self._mix_music(job, job.project, timeline)
+            try:
+                export_movie(
+                    timeline,
+                    self._catalog,
+                    job.profile,
+                    job.output,
+                    preview_loader(self._media),
+                    progress=lambda fraction: self._on_progress(job, fraction),
+                    cancel=job.cancel,
+                    audio_input=audio_input,
+                    shaders_dir=self._shaders_dir,
+                )
+            finally:
+                (job.directory / MIX_FILENAME).unlink(missing_ok=True)
         except ExportCancelled:
             self._discard(job)
             self._set(job, status=ExportStatus.CANCELLED)
@@ -561,6 +579,47 @@ class ExportManager:
             for victim in victims:
                 logger.info("Export %s removed (retention)", victim.id)
             logger.info("Export %s done: %s", job.id, job.output)
+
+    def _mix_music(self, job: _Job, project: Project, timeline: Timeline) -> AudioInput:
+        """Mixes the music of `project` into the job directory (design.md D6).
+
+        Returns the `audio_input` for `export_movie`: the mixed `music.wav`, or
+        the silent track if nothing of the music falls into the movie. The
+        schedule uses the movie duration (as the preview does); the mix is
+        padded or cut to the exact video duration (frames / fps).
+        """
+        if not project.music or job.cancel.is_set():
+            return silent_audio_input
+        durations: dict[str, float] = {}
+        sources: dict[str, Path] = {}
+        for clip in project.music:
+            item = self._media.get(clip.media_id)
+            if not isinstance(item, AudioItem):
+                continue
+            durations[item.id] = item.duration
+            original = next(iter(sorted(self._media.item_dir(item.id).glob("original.*"))), None)
+            if original is not None:
+                sources[item.id] = original
+        clips = [
+            MusicClipInput(
+                id=clip.id,
+                media_id=clip.media_id,
+                trim_start=clip.trim_start,
+                trim_end=clip.trim_end,
+                volume=clip.volume,
+                fade_in=clip.fade_in,
+                fade_out=clip.fade_out,
+            )
+            for clip in project.music
+        ]
+        segments = music_schedule(clips, durations, timeline.duration)
+        if not segments:
+            return silent_audio_input
+        duration = video_duration(timeline, job.profile.spec.fps)
+        mixed = mix_music(
+            segments, sources, duration, job.directory / MIX_FILENAME, cancel=job.cancel
+        )
+        return file_audio_input(mixed)
 
     @staticmethod
     def _discard(job: _Job) -> None:

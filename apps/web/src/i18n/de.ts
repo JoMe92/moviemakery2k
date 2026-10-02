@@ -30,6 +30,7 @@ export const de = {
   },
   collections: {
     media: "Meine Bilder",
+    music: "Meine Musik",
     transitions: "Videoübergänge",
   },
   menu: {
@@ -69,6 +70,7 @@ export const de = {
       label: "Clip",
       addToStoryboard: "Zum Storyboard hinzufügen",
       split: "Teilen",
+      fitToMusic: "Film an Musik anpassen",
     },
     play: {
       label: "Wiedergabe",
@@ -119,6 +121,13 @@ export const de = {
     text: "{app} ist vom klassischen Movie Maker inspiriert. Es ist kein Microsoft-Produkt und steht in keiner Verbindung zu Microsoft.",
     license: "Lizenz: {license}",
   },
+  fitToMusic: {
+    title: "Film an Musik anpassen",
+    tooLong:
+      "Die Musik dauert {music}. Mit den vorhandenen Bildern ist höchstens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
+    tooShort:
+      "Die Musik dauert {music}. Mit den vorhandenen Bildern ist mindestens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
+  },
   newProject: {
     title: "Neues Projekt",
     message:
@@ -136,6 +145,16 @@ export const de = {
     deleteQuestion:
       "Möchten Sie „{name}“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.",
     deleteFailed: "„{name}“ konnte nicht gelöscht werden.",
+    musicEmptyHint:
+      "Diese Sammlung ist leer. Wählen Sie „Audio oder Musik importieren“ oder ziehen Sie Audiodateien hierher.",
+    musicList: "Musik",
+    audioTile: "{name}, {duration}",
+    audioMenu: "Audioclip „{name}“",
+    deleteAudioTitle: "Audioclip löschen",
+    deleteAudioQuestion:
+      "Möchten Sie „{name}“ wirklich löschen? Es wird auch aus der Musikleiste entfernt.",
+    audioDraggable: "ziehbares Audio",
+    addToMusicTrack: "Zur Musikleiste hinzufügen",
   },
   upload: {
     progress: "Importiere {current} von {total} …",
@@ -166,6 +185,9 @@ export const de = {
     transition: "Übergang:",
   },
   dnd: {
+    audio: "Audio „{name}“",
+    musicClip: "Musikstück {number}",
+    overMusic: "Über der Musikleiste.",
     element: "Element",
     transition: "Übergang „{name}“",
     picture: "Bild „{name}“",
@@ -179,6 +201,35 @@ export const de = {
     cancelled: "Ziehen abgebrochen.",
     instructions:
       "Eingabetaste nimmt das Element auf. Mit den Pfeiltasten verschieben (aus der Sammlung: Pfeil nach unten ins Storyboard), Eingabe- oder Leertaste legt ab, Escape bricht ab.",
+  },
+  musicTrack: {
+    label: "Audio/Musik",
+    list: "Musikleiste",
+    emptyHint: "Ziehen Sie Musik aus „Meine Musik“ hierher.",
+    sortable: "verschiebbares Musikstück",
+    clip: "Musikstück {number}: {name}, {duration}",
+    clipMenu: "Musikstück {number} der Musikleiste",
+    missingAudio: "fehlende Audiodatei",
+    remove: "Entfernen",
+    rejectAudio:
+      "Audio kann nicht in den Bildstreifen gelegt werden. Ziehen Sie es auf die Musikleiste.",
+    rejectPicture: "Auf der Musikleiste kann nur Audio abgelegt werden.",
+    cutHint: "Musik {music} / Film {movie} – wird am Ende gekürzt",
+    volume: "Lautstärke…",
+    fadeIn: "Einblenden",
+    fadeOut: "Ausblenden",
+    trim: "Kürzen…",
+    volumeTitle: "Lautstärke von Musikstück {number}",
+    volumeSlider: "Lautstärke",
+    volumeField: "Lautstärke (%)",
+    volumeRange: "Erlaubt sind {min} bis {max} %.",
+    trimTitle: "Musikstück {number} kürzen",
+    trimStart: "Anfang",
+    trimEnd: "Ende",
+    trimFile: "Dateidauer: {duration}",
+    trimFormat: "Zeiten als m:ss,cc oder in Sekunden.",
+    trimRange:
+      "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen, die Länge mindestens {length} s betragen.",
   },
   transitions: {
     unavailable: "Der Übergangskatalog ist nicht verfügbar.",
@@ -253,11 +304,16 @@ export const de = {
     media: {
       notFound: "Das Medium wurde nicht gefunden.",
       tooManyFiles: "Zu viele Dateien: höchstens {max} je Import ({count} gesendet).",
-      unsupportedType: "Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP).",
+      unsupportedType:
+        "Keine unterstützte Bild- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG und FLAC).",
       tooLarge: "Die Datei ist zu groß (höchstens {maxMegabytes} MB).",
       tooManyPixels: "Das Bild hat zu viele Pixel (höchstens {maxMegapixels} Megapixel).",
+      audioTooLong: "Die Audiodatei ist zu lang (höchstens {maxMinutes} Minuten).",
+      noAudioStream: "Die Datei enthält keine Tonspur.",
+      probeUnavailable:
+        "Audiodateien können nicht geprüft werden: ffprobe wurde nicht gefunden oder ließ sich nicht starten.",
       inUseByExport:
-        "Das Bild kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
+        "Das Medium kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
     },
     project: {
       slideDuration: {
@@ -268,6 +324,12 @@ export const de = {
         outOfRange: "Die Übergangsdauer muss zwischen {min} und {max} s liegen (ist {value} s).",
         offGrid: "Die Übergangsdauer muss ein Vielfaches von {step} s sein (ist {value} s).",
       },
+      musicVolume: {
+        outOfRange: "Die Lautstärke muss zwischen {min} und {max} liegen (ist {value}).",
+      },
+      musicTrim: {
+        negative: "Anfang und Ende eines Musikstücks dürfen nicht vor 0 s liegen (ist {value} s).",
+      },
       invalid: "Das Projekt ist ungültig: {summary}",
       slide: {
         duplicateId:
@@ -276,12 +338,26 @@ export const de = {
         firstHasTransition:
           "Bild {slide} (ID „{slideId}“): Das erste Bild kann keinen eingehenden Übergang haben.",
         unknownTransition: "Bild {slide} (ID „{slideId}“): unbekannter Übergang „{transitionId}“.",
+        notImage: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Bild.",
+      },
+      music: {
+        duplicateId:
+          "Musikstück {clip} (ID „{clipId}“): Die ID wird bereits von Musikstück {firstClip} verwendet.",
+        unknownMedia: "Musikstück {clip} (ID „{clipId}“): unbekanntes Medium „{mediaId}“.",
+        notAudio: "Musikstück {clip} (ID „{clipId}“): Das Medium „{mediaId}“ ist keine Audiodatei.",
+        trimEndBeyondFile:
+          "Musikstück {clip} (ID „{clipId}“): Das Ende ({trimEnd} s) liegt hinter dem Ende der Datei ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Musikstück {clip} (ID „{clipId}“): Der Anfang ({trimStart} s) muss vor dem Ende ({end} s) liegen.",
+        tooShort:
+          "Musikstück {clip} (ID „{clipId}“): Das Stück muss mindestens {min} s lang sein (ist {length} s).",
       },
     },
     export: {
       notFound: "Der Export wurde nicht gefunden.",
       emptyProject: "Export nicht möglich: Der Bildstreifen ist leer.",
       missingMedia: "Export nicht möglich: Für Bild(er) {slides} fehlen die Medien.",
+      missingMusicMedia: "Export nicht möglich: Für Musikstück(e) {clips} fehlen die Medien.",
       busy: "Es läuft bereits ein Export. Bitte warten oder ihn zuerst abbrechen.",
       notReady: "Der Film ist nicht verfügbar: Der Export hat den Status „{status}“.",
       fileName: {
@@ -301,6 +377,7 @@ export const de = {
       ffmpegInputClosedEarly: "FFmpeg hat seine Eingabe vorzeitig geschlossen.",
       ffmpegFailed: "FFmpeg ist mit dem Exit-Code {returnCode} fehlgeschlagen.",
       renderFailed: "Der Export ist fehlgeschlagen: {reason}",
+      audioFailed: "Die Musik konnte nicht gemischt werden: {reason}",
       saveFailed: "Der Export konnte nicht gespeichert werden: {reason}",
       unexpected: "Der Export ist unerwartet fehlgeschlagen.",
     },

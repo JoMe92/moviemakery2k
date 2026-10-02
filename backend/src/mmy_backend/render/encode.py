@@ -9,8 +9,9 @@
   (`setparams` on the frames plus `-colorspace/-color_primaries/-color_trc
   bt709 -color_range tv`), the
   colour space browsers and players assume for HD material.
-- Audio: a separate, replaceable input (`AudioInput`); until the music change
-  silent via `-f lavfi -i anullsrc=r=48000:cl=stereo`, encoding `aac -b:a 128k`.
+- Audio: a separate, replaceable input (`AudioInput`): the music mixed
+  beforehand (`render.mixdown`, add-music-track D6) or, without music, silent
+  via `-f lavfi -i anullsrc=r=48000:cl=stereo`; encoding `aac -b:a 128k`.
   The audio input is limited to the exact video duration (`frame_count / fps`)
   via the input option `-t`; `-shortest` stays as a safeguard. With `-shortest`
   alone the AAC track ends up to one AAC frame (≈ 21 ms) before the video;
@@ -119,10 +120,10 @@ def video_duration(timeline: Timeline, fps: int) -> float:
 
 def silent_audio_input(duration: float) -> list[str]:
     """Silent stereo track, 48 kHz, exactly `duration` seconds long."""
-    return ["-f", "lavfi", "-t", _seconds(duration), "-i", "anullsrc=r=48000:cl=stereo"]
+    return ["-f", "lavfi", "-t", seconds_arg(duration), "-i", "anullsrc=r=48000:cl=stereo"]
 
 
-def _seconds(value: float) -> str:
+def seconds_arg(value: float) -> str:
     return f"{value:.6f}"
 
 
@@ -202,7 +203,7 @@ def build_ffmpeg_command(
     ]
 
 
-class _StderrTail(threading.Thread):
+class StderrTail(threading.Thread):
     """Reads FFmpeg's stderr in the background (otherwise the pipe can fill up)."""
 
     def __init__(self, stream: IO[bytes]) -> None:
@@ -271,7 +272,7 @@ def export_movie(
         raise ExportFailed("export.glUnavailable", reason=str(exc)) from exc
 
     proc: subprocess.Popen[bytes] | None = None
-    tail: _StderrTail | None = None
+    tail: StderrTail | None = None
     reporter = _Progress(progress)
 
     def failed(code: str, **params: ParamValue) -> ExportFailed:
@@ -297,7 +298,7 @@ def export_movie(
                     except OSError as exc:
                         raise ExportFailed("export.ffmpegStartFailed", reason=str(exc)) from exc
                     assert proc.stdin is not None and proc.stderr is not None
-                    tail = _StderrTail(proc.stderr)
+                    tail = StderrTail(proc.stderr)
                     tail.start()
 
                     for n, frame in renderer.iter_frames(timeline, spec.fps, catalog):

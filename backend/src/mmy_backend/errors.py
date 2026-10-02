@@ -44,18 +44,31 @@ class ErrorCode(StrEnum):
     MEDIA_TOO_LARGE = "media.tooLarge"
     MEDIA_TOO_MANY_PIXELS = "media.tooManyPixels"
     MEDIA_IN_USE_BY_EXPORT = "media.inUseByExport"
+    MEDIA_AUDIO_TOO_LONG = "media.audioTooLong"
+    MEDIA_NO_AUDIO_STREAM = "media.noAudioStream"
+    MEDIA_PROBE_UNAVAILABLE = "media.probeUnavailable"
     PROJECT_SLIDE_DURATION_OUT_OF_RANGE = "project.slideDuration.outOfRange"
     PROJECT_SLIDE_DURATION_OFF_GRID = "project.slideDuration.offGrid"
     PROJECT_TRANSITION_DURATION_OUT_OF_RANGE = "project.transitionDuration.outOfRange"
     PROJECT_TRANSITION_DURATION_OFF_GRID = "project.transitionDuration.offGrid"
+    PROJECT_MUSIC_VOLUME_OUT_OF_RANGE = "project.musicVolume.outOfRange"
+    PROJECT_MUSIC_TRIM_NEGATIVE = "project.musicTrim.negative"
     PROJECT_INVALID = "project.invalid"
     PROJECT_SLIDE_DUPLICATE_ID = "project.slide.duplicateId"
     PROJECT_SLIDE_UNKNOWN_MEDIA = "project.slide.unknownMedia"
     PROJECT_SLIDE_FIRST_HAS_TRANSITION = "project.slide.firstHasTransition"
     PROJECT_SLIDE_UNKNOWN_TRANSITION = "project.slide.unknownTransition"
+    PROJECT_SLIDE_NOT_IMAGE = "project.slide.notImage"
+    PROJECT_MUSIC_DUPLICATE_ID = "project.music.duplicateId"
+    PROJECT_MUSIC_UNKNOWN_MEDIA = "project.music.unknownMedia"
+    PROJECT_MUSIC_NOT_AUDIO = "project.music.notAudio"
+    PROJECT_MUSIC_TRIM_END_BEYOND_FILE = "project.music.trimEndBeyondFile"
+    PROJECT_MUSIC_TRIM_START_NOT_BEFORE_END = "project.music.trimStartNotBeforeEnd"
+    PROJECT_MUSIC_TOO_SHORT = "project.music.tooShort"
     EXPORT_NOT_FOUND = "export.notFound"
     EXPORT_EMPTY_PROJECT = "export.emptyProject"
     EXPORT_MISSING_MEDIA = "export.missingMedia"
+    EXPORT_MISSING_MUSIC_MEDIA = "export.missingMusicMedia"
     EXPORT_BUSY = "export.busy"
     EXPORT_NOT_READY = "export.notReady"
     EXPORT_FILE_NAME_EMPTY = "export.fileName.empty"
@@ -71,6 +84,7 @@ class ErrorCode(StrEnum):
     EXPORT_FFMPEG_INPUT_CLOSED_EARLY = "export.ffmpegInputClosedEarly"
     EXPORT_FFMPEG_FAILED = "export.ffmpegFailed"
     EXPORT_RENDER_FAILED = "export.renderFailed"
+    EXPORT_AUDIO_FAILED = "export.audioFailed"
     EXPORT_SAVE_FAILED = "export.saveFailed"
     EXPORT_UNEXPECTED = "export.unexpected"
 
@@ -92,7 +106,11 @@ _SPECS: dict[str, ErrorSpec] = {
         "Too many files: at most {max} per import ({count} sent).", ("max", "count")
     ),
     # Per-file upload results.
-    "media.unsupportedType": ErrorSpec("Not a supported image (JPEG, PNG and WebP are allowed)."),
+    "media.unsupportedType": ErrorSpec(
+        "Not a supported image or audio file (allowed are JPEG, PNG, WebP, "
+        "MP3, WAV, M4A/AAC, OGG and FLAC)."
+    ),
+    # `maxMegabytes` depends on the kind: 25 for images, 100 for audio.
     "media.tooLarge": ErrorSpec(
         "The file is too large (at most {maxMegabytes} MB).", ("maxMegabytes",)
     ),
@@ -100,9 +118,16 @@ _SPECS: dict[str, ErrorSpec] = {
         "The image has too many pixels (at most {maxMegapixels} megapixels).",
         ("maxMegapixels",),
     ),
+    "media.audioTooLong": ErrorSpec(
+        "The audio file is too long (at most {maxMinutes} minutes).", ("maxMinutes",)
+    ),
+    "media.noAudioStream": ErrorSpec("The file contains no audio track."),
+    "media.probeUnavailable": ErrorSpec(
+        "Audio files cannot be checked: ffprobe was not found or could not be started."
+    ),
     # 409 on delete while a queued or running export uses the medium (design.md D5).
     "media.inUseByExport": ErrorSpec(
-        "The image cannot be deleted while it is being exported. "
+        "The medium cannot be deleted while it is being exported. "
         "Wait for the export to finish or cancel it first.",
         ("mediaId", "exportId"),
     ),
@@ -121,6 +146,13 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.transitionDuration.offGrid": ErrorSpec(
         "The transition duration must be a multiple of {step} s (is {value} s).",
         ("step", "value"),
+    ),
+    "project.musicVolume.outOfRange": ErrorSpec(
+        "The music volume must be between {min} and {max} (is {value}).",
+        ("min", "max", "value"),
+    ),
+    "project.musicTrim.negative": ErrorSpec(
+        "The start and end of a music clip must be 0 s or later (is {value} s).", ("value",)
     ),
     # --- Project: reference checks of PUT /api/project (422, ApiErrorWithIssues) --
     "project.invalid": ErrorSpec("The project is invalid: {summary}", ("count", "summary")),
@@ -141,12 +173,49 @@ _SPECS: dict[str, ErrorSpec] = {
         "Slide {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
         ("slide", "slideId", "transitionId"),
     ),
+    "project.slide.notImage": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
+        ("slide", "slideId", "mediaId"),
+    ),
+    # Music issues: `clip` is the 1-based position, `clipId` the clip's id.
+    "project.music.duplicateId": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the ID is already used by music clip {firstClip}.",
+        ("clip", "clipId", "firstClip"),
+    ),
+    "project.music.unknownMedia": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        ("clip", "clipId", "mediaId"),
+    ),
+    "project.music.notAudio": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        ("clip", "clipId", "mediaId"),
+    ),
+    "project.music.trimEndBeyondFile": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond the end "
+        "of the file ({duration} s).",
+        ("clip", "clipId", "trimEnd", "duration"),
+    ),
+    # `end`: the effective end (trimEnd, or the file duration if trimEnd is null).
+    "project.music.trimStartNotBeforeEnd": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before "
+        "the end ({end} s).",
+        ("clip", "clipId", "trimStart", "end"),
+    ),
+    "project.music.tooShort": ErrorSpec(
+        "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s "
+        "(plays {length} s).",
+        ("clip", "clipId", "min", "length"),
+    ),
     # --- Export: requests ---------------------------------------------------------
     "export.notFound": ErrorSpec("Export not found.", ("exportId",)),
     "export.emptyProject": ErrorSpec("Cannot export: the storyboard is empty."),
     # `slides`: comma-separated 1-based positions; `mediaIds`: comma-separated ids.
     "export.missingMedia": ErrorSpec(
         "Cannot export: media missing for slide(s) {slides}.", ("count", "slides", "mediaIds")
+    ),
+    # `clips`: comma-separated 1-based positions in the music track; `mediaIds`: ids.
+    "export.missingMusicMedia": ErrorSpec(
+        "Cannot export: media missing for music clip(s) {clips}.", ("count", "clips", "mediaIds")
     ),
     "export.busy": ErrorSpec(
         "An export is already running. Wait for it to finish or cancel it first.",
@@ -184,6 +253,7 @@ _SPECS: dict[str, ErrorSpec] = {
     "export.ffmpegFailed": ErrorSpec("FFmpeg failed with exit code {returnCode}.", ("returnCode",)),
     # `reason`: technical detail (English), e.g. a shader error.
     "export.renderFailed": ErrorSpec("The export failed: {reason}", ("reason",)),
+    "export.audioFailed": ErrorSpec("The music could not be mixed: {reason}", ("reason",)),
     "export.saveFailed": ErrorSpec("The export could not be saved: {reason}", ("reason",)),
     "export.unexpected": ErrorSpec("The export failed unexpectedly."),
 }

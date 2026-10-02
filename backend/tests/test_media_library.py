@@ -137,7 +137,7 @@ def test_delete_removes_files_and_index_entry_persistently(settings: Settings) -
         keep, gone = _upload(client, ["keep.png", "gone.png"])
         res = client.delete(f"/api/media/{gone}")
         assert res.status_code == 200, res.text
-        assert res.json() == {"project": {"schemaVersion": 1, "slides": []}}
+        assert res.json() == {"project": {"schemaVersion": 2, "slides": [], "music": []}}
 
         assert not (settings.data_dir / "media" / gone).exists()
         assert (settings.data_dir / "media" / keep).is_dir()
@@ -176,28 +176,30 @@ def test_delete_cascades_into_project(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         a, b, c = _upload(client, ["a.png", "b.png", "c.png"])
         project = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "slides": [
                 _slide("s1", a),
                 _slide("s2", b, ("fade", 1.0)),
                 _slide("s3", a, ("dissolve", 0.5)),
                 _slide("s4", c, ("fade", 0.25)),
             ],
+            "music": [],
         }
         assert client.put("/api/project", json=project).status_code == 200
 
         res = client.delete(f"/api/media/{a}")
         assert res.status_code == 200, res.text
         expected = {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "slides": [_slide("s2", b), _slide("s4", c, ("fade", 0.25))],
+            "music": [],
         }
         assert res.json() == {"project": expected}
         assert client.get("/api/project").json() == expected
         assert [i["id"] for i in client.get("/api/media").json()["items"]] == [b, c]
 
         # Re-inserting the deleted ID is rejected.
-        stale = {"schemaVersion": 1, "slides": [_slide("s1", a)]}
+        stale = {"schemaVersion": 2, "slides": [_slide("s1", a)], "music": []}
         assert client.put("/api/project", json=stale).status_code == 422
 
     with TestClient(create_app(settings)) as client:
@@ -258,7 +260,7 @@ def test_delete_is_rejected_while_an_export_uses_the_medium(
     client: TestClient, settings: Settings, fake_export: FakeExport
 ) -> None:
     used, unused = _upload(client, ["used.png", "unused.png"])
-    project = {"schemaVersion": 1, "slides": [_slide("s1", used), _slide("s2", used)]}
+    project = {"schemaVersion": 2, "slides": [_slide("s1", used), _slide("s2", used)], "music": []}
     assert client.put("/api/project", json=project).status_code == 200
     res = client.post("/api/exports", json={"profile": "small", "fileName": "Movie"})
     assert res.status_code == 202, res.text
@@ -273,7 +275,7 @@ def test_delete_is_rejected_while_an_export_uses_the_medium(
             "code": "media.inUseByExport",
             "params": {"mediaId": used, "exportId": export_id},
             "message": (
-                "The image cannot be deleted while it is being exported. "
+                "The medium cannot be deleted while it is being exported. "
                 "Wait for the export to finish or cancel it first."
             ),
         }
@@ -287,7 +289,10 @@ def test_delete_is_rejected_while_an_export_uses_the_medium(
 
     # The snapshot counts, not the current project: still rejected after the
     # medium left the storyboard.
-    assert client.put("/api/project", json={"schemaVersion": 1, "slides": []}).status_code == 200
+    assert (
+        client.put("/api/project", json={"schemaVersion": 2, "slides": [], "music": []}).status_code
+        == 200
+    )
     assert client.delete(f"/api/media/{used}").status_code == 409
 
     # A medium the export does not use can be deleted.
@@ -307,7 +312,7 @@ def test_delete_is_allowed_after_the_export_was_cancelled(
     client: TestClient, fake_export: FakeExport
 ) -> None:
     [media_id] = _upload(client, ["x.png"])
-    project = {"schemaVersion": 1, "slides": [_slide("s1", media_id)]}
+    project = {"schemaVersion": 2, "slides": [_slide("s1", media_id)], "music": []}
     assert client.put("/api/project", json=project).status_code == 200
     res = client.post("/api/exports", json={"profile": "small", "fileName": "Movie"})
     assert res.status_code == 202, res.text
@@ -358,7 +363,7 @@ def test_export_started_while_the_delete_writes_the_index_does_not_see_the_mediu
     """Race (mmy-z9f): DELETE passed the in-use check and awaits the index write;
     a POST /api/exports in that window must not snapshot the medium."""
     [media_id] = _upload(client, ["x.png"])
-    project = {"schemaVersion": 1, "slides": [_slide("s1", media_id)]}
+    project = {"schemaVersion": 2, "slides": [_slide("s1", media_id)], "music": []}
     assert client.put("/api/project", json=project).status_code == 200
     store: MediaStore = cast(Any, client.app).state.media
     blocked = _BlockedIndexWrite(store, monkeypatch)
@@ -389,7 +394,7 @@ def test_delete_waiting_for_the_store_lock_rechecks_a_newly_started_export(
     (held by an upload) while an export starts with the medium; the delete must
     then be rejected instead of removing a medium in the running snapshot."""
     [media_id] = _upload(client, ["x.png"])
-    project = {"schemaVersion": 1, "slides": [_slide("s1", media_id)]}
+    project = {"schemaVersion": 2, "slides": [_slide("s1", media_id)], "music": []}
     assert client.put("/api/project", json=project).status_code == 200
     store: MediaStore = cast(Any, client.app).state.media
     blocked = _BlockedIndexWrite(store, monkeypatch)
