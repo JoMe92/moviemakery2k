@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
 import styles from "./App.module.css";
-import { describeHealth, fetchHealth, type Health } from "./api";
 import { PreviewCanvas } from "./render/PreviewCanvas";
 import { AppWindow } from "./shell/AppWindow";
 import { CollectionPane } from "./shell/CollectionPane";
@@ -10,6 +8,9 @@ import { StatusBar } from "./shell/StatusBar";
 import { StoryboardPane } from "./shell/StoryboardPane";
 import { TaskPane } from "./shell/TaskPane";
 import { type CollectionOption, Toolbar } from "./shell/Toolbar";
+import type { CollectionId } from "./store/appStore";
+import { describeBackend, describeSave } from "./store/status";
+import { useAppStore } from "./store/useAppStore";
 import type { Frame } from "./timeline/timeline";
 import { Button } from "./ui/Button";
 import {
@@ -34,27 +35,20 @@ const EMPTY_FRAME: Frame = { kind: "empty" };
 const noImage = () => undefined;
 const noParams = () => ({});
 
-const COLLECTIONS: readonly CollectionOption[] = [
+const COLLECTIONS: readonly (CollectionOption & { id: CollectionId })[] = [
   { id: "media", label: "Meine Bilder" },
   { id: "transitions", label: "Videoübergänge" },
 ];
 
 /*
- * Komponiert das Hauptfenster mit Platzhalterinhalten. Verhalten (Import,
- * Menüs, Wiedergabe, Storyboard) folgt in späteren Tasks; bis dahin hält App
- * nur lokalen Zustand für die Sammlungsauswahl und den Backend-Status.
+ * Komponiert das Hauptfenster. Der Zustand liegt im App-Store (store/appStore.ts),
+ * der in main.tsx erzeugt und geladen wird.
  */
 export function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [collection, setCollection] = useState("media");
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    fetchHealth(ctrl.signal)
-      .then(setHealth)
-      .catch(() => setHealth(null));
-    return () => ctrl.abort();
-  }, []);
+  const collection = useAppStore((s) => s.collection);
+  const setCollection = useAppStore((s) => s.setCollection);
+  const backend = useAppStore((s) => s.backend);
+  const saveState = useAppStore((s) => s.saveState);
 
   const collectionName = COLLECTIONS.find((c) => c.id === collection)?.label ?? "";
 
@@ -66,7 +60,7 @@ export function App() {
         <Toolbar
           collections={COLLECTIONS}
           collection={collection}
-          onCollectionChange={setCollection}
+          onCollectionChange={(id) => setCollection(id as CollectionId)}
         />
       }
       taskPane={
@@ -129,7 +123,13 @@ export function App() {
         </MonitorPane>
       }
       storyboard={<StoryboardPane />}
-      statusBar={<StatusBar items={[describeHealth(health)]} />}
+      statusBar={
+        <StatusBar
+          items={[describeBackend(backend), describeSave(saveState)].filter(
+            (x): x is string => x !== null,
+          )}
+        />
+      }
     />
   );
 }

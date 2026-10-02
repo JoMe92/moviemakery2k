@@ -1,0 +1,134 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AUTOSAVE_DELAY_MS, createAppStore } from "./appStore";
+import { mediaItem, mockApi } from "./testApi";
+
+describe("appStore", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("lädt Health, Katalog, Medien und Projekt beim Start", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = store.getState();
+    expect(st.backend.kind).toBe("ok");
+    expect(st.media.map((m) => m.id)).toEqual(["a", "b"]);
+    expect(st.catalog).toHaveLength(2);
+    expect(st.saveState).toBe("saved");
+  });
+
+  it("meldet ein nicht erreichbares Backend", async () => {
+    const store = createAppStore(
+      mockApi({
+        health: vi.fn(async () => {
+          throw new TypeError("offline");
+        }),
+      }),
+    );
+    await store.getState().init();
+    expect(store.getState().backend.kind).toBe("offline");
+  });
+
+  it("speichert entprellt: mehrere Änderungen → ein PUT nach 500 ms", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    store.getState().addSlide("a");
+    store.getState().addSlide("b");
+    store.getState().setTransition(store.getState().slides[1]?.id ?? "", "circle");
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS - 1);
+    expect(api.putProject).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(api.putProject).toHaveBeenCalledTimes(1);
+    const saved = api.saved[0];
+    expect(saved?.slides.map((s) => s.mediaId)).toEqual(["a", "b"]);
+    expect(saved?.slides[1]?.transitionIn).toEqual({ transitionId: "circle", duration: 1.5 });
+    expect(store.getState().saveState).toBe("saved");
+  });
+
+  it("zeigt „Speichern fehlgeschlagen“ und versucht es bei der nächsten Änderung erneut", async () => {
+    let fail = true;
+    const api = mockApi();
+    const put = vi.fn(async (p: Parameters<typeof api.putProject>[0]) => {
+      if (fail) throw new TypeError("offline");
+      return p;
+    });
+    api.putProject = put;
+    const store = createAppStore(api);
+    await store.getState().init();
+    store.getState().addSlide("a");
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    expect(store.getState().saveState).toBe("error");
+    fail = false;
+    store.getState().addSlide("b");
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    expect(put).toHaveBeenCalledTimes(2);
+    expect(put.mock.calls[1]?.[0].slides).toHaveLength(2);
+    expect(store.getState().saveState).toBe("saved");
+  });
+
+  it("kein Übergang am ersten Bild; ungültige Dauern werden abgelehnt", async () => {
+    const store = createAppStore(mockApi());
+    await store.getState().init();
+    store.getState().addSlide("a");
+    const first = store.getState().slides[0]?.id ?? "";
+    store.getState().setTransition(first, "fade");
+    expect(store.getState().slides[0]?.transitionIn).toBeNull();
+    expect(store.getState().setSlideDuration(first, 0.1)).toBe(false);
+    expect(store.getState().setSlideDuration(first, 2.5)).toBe(true);
+    expect(store.getState().slides[0]?.duration).toBe(2.5);
+  });
+
+  it("Import: Teilerfolg wird je Datei gemeldet", async () => {
+    const api = mockApi({
+      uploadMedia: vi.fn(async (file: File) =>
+        file.name === "bad.jpg"
+          ? {
+              ok: false as const,
+              filename: file.name,
+              error: "unsupported" as const,
+              message: "Kein unterstütztes Bild.",
+            }
+          : {
+              ok: true as const,
+              filename: file.name,
+              item: mediaItem(file.name),
+            },
+      ),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    await store.getState().importFiles([new File(["x"], "ok.jpg"), new File(["x"], "bad.jpg")]);
+    const st = store.getState();
+    expect(st.media.map((m) => m.id)).toContain("ok.jpg");
+    expect(st.uploads.map((u) => [u.filename, u.status])).toEqual([
+      ["ok.jpg", "done"],
+      ["bad.jpg", "error"],
+    ]);
+  });
+
+  it("Löschen übernimmt das kaskadierte Projekt vom Backend", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    store.getState().addSlide("a");
+    await store.getState().deleteMedia("a");
+    expect(api.putProject).toHaveBeenCalledTimes(1);
+    expect(api.deleteMedia).toHaveBeenCalledWith("a");
+    expect(store.getState().media.map((m) => m.id)).toEqual(["b"]);
+    expect(store.getState().slides).toEqual([]);
+  });
+
+  it("Neues Projekt leert nur den Bildstreifen", async () => {
+    const store = createAppStore(mockApi());
+    await store.getState().init();
+    store.getState().addSlide("a");
+    store.getState().newProject();
+    expect(store.getState().slides).toEqual([]);
+    expect(store.getState().media).toHaveLength(2);
+  });
+});
