@@ -1,6 +1,6 @@
-// Schachbrett, quer (DXT CheckerBoard „Across“, Richtung rechts): Felder eines
-// squaresX × squaresY-Rasters füllen sich von links nach rechts, jede zweite
-// Reihe um ein halbes Feld versetzt.
+// Checkerboard, across (DXT CheckerBoard "Across", direction right): the cells of a
+// squaresX × squaresY grid fill from left to right, every second row offset by
+// half a cell.
 uniform float squaresX;
 uniform float squaresY;
 

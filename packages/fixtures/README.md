@@ -5,7 +5,7 @@ Language-neutral fixtures that more than one implementation is tested against.
 ## `timeline-vectors.json` – slideshow time model
 
 The overlapping time model of the slideshow (spec `preview-player`,
-requirement "Zeitmodell der Diashow"; design rationale in
+requirement "Zeitmodell der Diashow" (slideshow time model); design rationale in
 `openspec/changes/add-movie-export/design.md` D3) exists twice: in TypeScript
 for the preview (`apps/web/src/timeline/timeline.ts`) and in Python for the
 export. Both are checked against this file, so they cannot drift apart.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/JoMe92/moviemakery2k/packages/catalog/transitions.schema.json",
-  "title": "moviemakerY2K – Übergangskatalog",
+  "title": "moviemakerY2K – transition catalog",
   "type": "object",
   "required": ["schemaVersion", "transitions"],
   "additionalProperties": false,
@@ -32,19 +32,19 @@
           }
         },
         "shader": {
-          "description": "Dateiname in packages/shaders/transitions/",
+          "description": "File name in packages/shaders/transitions/",
           "type": "string",
           "pattern": "^[a-z0-9-]+\\.glsl$"
         },
         "defaultDuration": {
-          "description": "Sekunden; Bereich und Raster wie im Projektmodell",
+          "description": "Seconds; range and step as in the project model",
           "type": "number",
           "minimum": 0.25,
           "maximum": 5,
           "multipleOf": 0.25
         },
         "params": {
-          "description": "Wird 1:1 zu `uniform float <name>` im Shader",
+          "description": "Becomes `uniform float <name>` in the shader, 1:1",
           "type": "object",
           "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]*$" },
           "additionalProperties": { "type": "number" }
@@ -57,7 +57,7 @@
             "kind": { "enum": ["wmm2x-xml", "smpte"] },
             "ref": { "type": "string", "minLength": 1 },
             "estimated": {
-              "description": "Parameter, deren Wert nicht belegt, sondern geschätzt ist [E]",
+              "description": "Parameters whose value is estimated rather than documented [E]",
               "type": "array",
               "items": { "type": "string" }
             }

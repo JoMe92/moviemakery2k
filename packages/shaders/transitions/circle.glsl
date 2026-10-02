@@ -1,5 +1,5 @@
-// Kreis (SMPTE 119 „Circle, Out, Soft“): ein Kreis wächst aus der Mitte und zeigt das Zielbild.
-// borderSoftness = Breite des weichen Rands in Pixeln bei 640 px Bildbreite.
+// Circle (SMPTE 119 "Circle, Out, Soft"): a circle grows from the centre and reveals the target picture.
+// borderSoftness = width of the soft edge in pixels at a picture width of 640 px.
 uniform float borderSoftness;
 
 vec4 transition(vec2 uv) {
