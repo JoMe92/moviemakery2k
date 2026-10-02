@@ -1,0 +1,1 @@
+{"id":"int-84d9f77bfc53882b2e655349fc52b039","kind":"field_change","created_at":"2026-10-02T08:45:47.705136593Z","actor":"Jonas Meier","issue_id":"mmy-6kz","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Repo initialisiert, Struktur, Recherche, ADR und OpenSpec-Kontext stehen"}}
