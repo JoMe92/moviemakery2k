@@ -26,6 +26,8 @@ export interface MenuHandlers {
   about?: () => void;
   /** Tools → Options (language setting). */
   options?: () => void;
+  /** Clip → "Fit movie to music"; absent without pictures or music (item disabled). */
+  fitToMusic?: () => void;
 }
 
 const item = (id: string, label: string, onSelect?: () => void, shortcut?: string): MenuEntry => ({
@@ -94,6 +96,8 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
       entries: [
         item("add-to-storyboard", t("menu.clip.addToStoryboard")),
         item("split", t("menu.clip.split")),
+        separator,
+        item("fit-to-music", t("menu.clip.fitToMusic"), h.fitToMusic),
       ],
     },
     {

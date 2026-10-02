@@ -70,6 +70,7 @@ export const de = {
       label: "Clip",
       addToStoryboard: "Zum Storyboard hinzufügen",
       split: "Teilen",
+      fitToMusic: "Film an Musik anpassen",
     },
     play: {
       label: "Wiedergabe",
@@ -119,6 +120,13 @@ export const de = {
     version: "Version {version}",
     text: "{app} ist vom klassischen Movie Maker inspiriert. Es ist kein Microsoft-Produkt und steht in keiner Verbindung zu Microsoft.",
     license: "Lizenz: {license}",
+  },
+  fitToMusic: {
+    title: "Film an Musik anpassen",
+    tooLong:
+      "Die Musik dauert {music}. Mit den vorhandenen Bildern ist höchstens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
+    tooShort:
+      "Die Musik dauert {music}. Mit den vorhandenen Bildern ist mindestens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
   },
   newProject: {
     title: "Neues Projekt",

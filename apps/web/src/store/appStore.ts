@@ -28,6 +28,8 @@ import {
   startPlayback,
   timelineOf,
 } from "../player/controls";
+import { type FitToMusicResult, fitToMusic } from "../timeline/fitToMusic";
+import { musicDuration } from "../timeline/music";
 import { slideStartTime } from "../timeline/timeline";
 import {
   insertMusicClip,
@@ -149,6 +151,12 @@ export interface AppState {
   addMusicClip(mediaId: string, index?: number): boolean;
   moveMusicClip(from: number, to: number): void;
   removeMusicClip(clipId: string): void;
+  /**
+   * Clip → "Fit movie to music" (add-music-track D8): sets all picture
+   * durations at once (one change, autosaved). Changes nothing if the music
+   * length is unreachable or there are no pictures/music; the result says why.
+   */
+  fitToMusic(): FitToMusicResult;
   newProject(): void;
 
   /** Run the autosave immediately (tests, page change). */
@@ -160,6 +168,16 @@ export type AppStore = StoreApi<AppState>;
 export interface AppStoreOptions {
   /** Initial UI language; defaults to stored setting → browser → `en`. */
   locale?: Locale;
+}
+
+/** Total length of the music track (s) from the clips and the audio durations. */
+export function projectMusicDuration(
+  music: readonly MusicClip[],
+  media: readonly MediaItem[],
+): number {
+  const durations: Record<string, number> = {};
+  for (const m of media) if (m.kind === "audio") durations[m.id] = m.duration;
+  return musicDuration(music, durations);
 }
 
 export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppStore {
@@ -505,6 +523,14 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         commitMusic(removeMusicClipOp(get().music, clipId));
       },
 
+      fitToMusic() {
+        const { slides, music, media } = get();
+        const result = fitToMusic(slides, projectMusicDuration(music, media));
+        if (result.kind === "ok") {
+          commit(slides.map((s, i) => ({ ...s, duration: result.durations[i] ?? s.duration })));
+        }
+        return result;
+      },
       newProject() {
         set({ music: [], musicSelection: null });
         commit([]);

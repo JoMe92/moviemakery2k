@@ -75,6 +75,7 @@ export const en = {
       label: "Clip",
       addToStoryboard: "Add to Storyboard",
       split: "Split",
+      fitToMusic: "Fit Movie to Music",
     },
     play: {
       label: "Play",
@@ -124,6 +125,13 @@ export const en = {
     version: "Version {version}",
     text: "{app} is inspired by the classic Movie Maker. It is not a Microsoft product and is not affiliated with Microsoft.",
     license: "License: {license}",
+  },
+  fitToMusic: {
+    title: "Fit Movie to Music",
+    tooLong:
+      "The music lasts {music}. With the current pictures the movie can last at most {reachable}. The picture durations were not changed.",
+    tooShort:
+      "The music lasts {music}. With the current pictures the movie must last at least {reachable}. The picture durations were not changed.",
   },
   newProject: {
     title: "New Project",
