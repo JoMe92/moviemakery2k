@@ -16,6 +16,7 @@ export type UploadResult = Schemas["MediaUploadSuccess"] | Schemas["MediaUploadF
 export type ExportJob = Schemas["ExportJob"];
 export type ExportProfile = Schemas["ExportProfile"];
 export type ExportStatus = Schemas["ExportStatus"];
+export type ApiErrorBody = Schemas["ApiError"];
 
 /** Export-Jobs (design.md D5); eigener Teil, damit der Assistent nur ihn braucht. */
 export interface ExportApi {
@@ -55,13 +56,18 @@ export class ApiError extends Error {
 }
 
 /**
- * Lesbare Meldung aus einem FastAPI-Fehlerrumpf: `detail` ist entweder ein Text
- * (z. B. leeres Projekt, laufender Export) oder eine Liste von Prüffehlern.
+ * Lesbare Meldung aus einem FastAPI-Fehlerrumpf: `detail` ist ein `ApiError`
+ * (`{code, params, message}`, design.md D5; z. B. leeres Projekt, laufender
+ * Export), FastAPIs Liste von Prüffehlern oder ein Text.
  */
 export function errorDetail(body: unknown): string | null {
   if (!body || typeof body !== "object" || !("detail" in body)) return null;
   const { detail } = body as { detail: unknown };
   if (typeof detail === "string") return detail || null;
+  if (detail && typeof detail === "object" && "message" in detail) {
+    const { message } = detail as { message: unknown };
+    return typeof message === "string" && message ? message : null;
+  }
   if (Array.isArray(detail)) {
     const messages = detail
       .map((item) =>
