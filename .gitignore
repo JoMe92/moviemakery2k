@@ -36,3 +36,12 @@ dist/
 # Editor / OS
 .DS_Store
 .idea/
+
+# Pixi
+.pixi/
+
+# Laufzeitdaten des Backends (Uploads, Projekt)
+backend/.data/
+
+# Playwright
+test-results/

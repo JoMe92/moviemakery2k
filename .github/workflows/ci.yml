@@ -18,32 +18,43 @@ jobs:
         if: github.event_name == 'pull_request'
         run: scripts/check-branch-name "${{ github.head_ref }}"
 
-  web:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: prefix-dev/setup-pixi@v0.10.2
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
+          pixi-version: v0.81.0
+          locked: true
+          cache: true
+      - name: pnpm-Version passt zu packageManager
+        run: |
+          want=$(node -p "require('./package.json').packageManager.split('@')[1]" 2>/dev/null || pixi run node -p "require('./package.json').packageManager.split('@')[1]")
+          have=$(pixi run pnpm --version)
+          echo "packageManager=$want pixi-pnpm=$have"
+          test "$want" = "$have"
+      - run: pixi run check
+      - name: Generierte API-Typen sind aktuell
+        run: |
+          pixi run gen-api
+          git diff --exit-code -- apps/web/src/generated
 
-  backend:
+  e2e:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-      - run: uv sync --locked
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run mypy src tests
-      - run: uv run pytest
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: v0.81.0
+          locked: true
+          cache: true
+      - name: Browser-Abhängigkeiten des Systems
+        run: sudo env "PATH=$PATH" pixi run playwright install-deps chromium
+      - run: pixi run test-e2e
+      - name: Screenshots bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          if-no-files-found: ignore

@@ -1,13 +1,18 @@
-# @mmy/catalog – Effekt-, Übergangs- und Titelkatalog
+# @mmy/catalog – transition, effect and title catalog
 
-**Single Source of Truth** für alle Übergänge, Videoeffekte und Titelanimationen.
-Frontend (Vorschau) und Backend (Export) lesen denselben Katalog.
+The **single source of truth** for transitions (later also effects and titles).
 
-- Ein Eintrag beschreibt ID, Anzeigename (eigene Benennung), Kategorie,
-  Standarddauer, Parameter samt Wertebereich und das zugehörige Shader-Programm
-  in `packages/shaders`.
-- Die Werte werden aus den dokumentierten Original-Parametern abgeleitet
-  (`docs/research/sources/`, MSDN/Vista-SDK, W3C SMIL) und **neu geschrieben**.
-  Die Referenz-XMLs selbst werden nie ausgeliefert.
-- Format (JSON + JSON Schema) und Umfang werden über einen OpenSpec-Change
-  festgelegt. Bis dahin ist dieses Paket leer.
+- `transitions.json` is the catalog, validated by `transitions.schema.json`
+  (JSON Schema 2020-12).
+- Every entry names its shader in `packages/shaders/transitions/`. Every key
+  in `params` becomes a `uniform float <name>` in that shader.
+- `source` documents where the parameters come from (the Movie Maker 2.x
+  effect XML or the SMPTE wipe number; see `docs/research/sources/` and
+  [the research notes](../../docs/research/movie-maker-reference.md)).
+  `estimated` lists values that cannot be verified against the original
+  (**[E]**, estimated). They can be re-tuned here without any code change.
+- The backend loads and validates the catalog at startup and serves it at
+  `GET /api/catalog/transitions`. The reference XML files themselves are never
+  served or shipped.
+- The `name` field is the display name in the UI (currently German, e.g.
+  `Überblenden` for Fade).

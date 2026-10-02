@@ -1,0 +1,80 @@
+# Pixi verwaltet das gesamte Repository: Toolchain (Python, Node, pnpm, FFmpeg),
+# Werkzeuge (Biome, Ruff, Mypy, glslang) und alle Python-Abhängigkeiten.
+# npm-Pakete, die es nicht auf conda-forge gibt, verwaltet pnpm (über Pixi bereitgestellt).
+[workspace]
+name = "moviemakery2k"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "win-64"]
+requires-pixi = ">=0.81"
+
+[dependencies]
+python = "3.13.*"
+nodejs = "24.*"
+pnpm = "10.*"
+ffmpeg = ">=7"
+fastapi = ">=0.142"
+uvicorn-standard = ">=0.54"
+pydantic = ">=2.13"
+python-multipart = ">=0.0.32"
+pillow = ">=12"
+
+[activation.env]
+# Keine Pakete aus ~/.local einmischen: die Umgebung kommt ausschließlich aus pixi.lock.
+PYTHONNOUSERSITE = "1"
+# Playwright-Browser im Projekt statt in ~/.cache (siehe README: Cache-Probleme).
+PLAYWRIGHT_BROWSERS_PATH = "$PIXI_PROJECT_ROOT/.pixi/playwright-browsers"
+
+[pypi-dependencies]
+mmy-backend = { path = "backend", editable = true }
+
+[feature.dev.dependencies]
+ruff = ">=0.16"
+mypy = ">=2.3"
+pytest = ">=9.1"
+httpx2 = ">=2.13"
+biome = "2.5.*"
+glslang = ">=16"
+jsonschema = ">=4.23"
+types-jsonschema = "*"
+playwright = ">=1.55"
+pytest-playwright = ">=0.7"
+
+[environments]
+default = { features = ["dev"], solve-group = "default" }
+prod = { features = [], solve-group = "default" }
+
+# ---------------------------------------------------------------------------
+# Tasks: die einzige Befehlsschnittstelle (pixi run <task>)
+# ---------------------------------------------------------------------------
+[tasks]
+install-web = { cmd = "pnpm install --frozen-lockfile", inputs = ["package.json", "pnpm-lock.yaml", "apps/*/package.json", "packages/*/package.json"], outputs = ["node_modules/.modules.yaml"] }
+
+dev-backend = { cmd = "python scripts/dev.py backend", description = "FastAPI mit Live-Reload (Port: MMY_API_PORT, Standard 8000)" }
+dev-web = { cmd = "python scripts/dev.py web", depends-on = ["install-web"], description = "Vite-Dev-Server mit Proxy /api → Backend" }
+dev = { cmd = "python scripts/dev.py", depends-on = ["install-web"], description = "Backend und Web-App gemeinsam starten" }
+
+lint-web = "biome check ."
+lint-backend = { cmd = "ruff check . && ruff format --check .", cwd = "backend" }
+lint = { depends-on = ["lint-web", "lint-backend"] }
+
+format = { cmd = "biome check --write . && ruff format backend && ruff check --fix backend" }
+
+typecheck-web = { cmd = "pnpm -r typecheck", depends-on = ["install-web"] }
+typecheck-backend = { cmd = "mypy src tests", cwd = "backend" }
+typecheck = { depends-on = ["typecheck-web", "typecheck-backend"] }
+
+test-web = { cmd = "pnpm -r test", depends-on = ["install-web"] }
+test-backend = { cmd = "pytest", cwd = "backend" }
+test = { depends-on = ["test-web", "test-backend"] }
+
+build = { cmd = "pnpm -r build", depends-on = ["install-web"] }
+demo = { cmd = "python scripts/dev.py demo", depends-on = ["build"], description = "Gebaute Web-App + API aus einem Prozess (MMY_API_PORT, Standard 8000)" }
+
+gen-api = { cmd = "python -m mmy_backend.openapi apps/web/src/generated/openapi.json && pnpm --filter @mmy/web exec openapi-typescript src/generated/openapi.json -o src/generated/schema.d.ts", depends-on = ["install-web"], description = "TS-Typen aus dem OpenAPI-Dokument des Backends erzeugen" }
+
+e2e-browsers = { cmd = "playwright install chromium", description = "Chromium für die E2E-Tests (nach .pixi/playwright-browsers)" }
+test-e2e = { cmd = "pytest -c e2e/pytest.ini e2e", depends-on = ["build", "e2e-browsers"], description = "Browser-Tests gegen Backend + gebaute Web-App" }
+
+check-shaders = { cmd = "python scripts/check_shaders.py", description = "GLSL-ES-3.00-Shader kompilieren und mit dem Katalog abgleichen" }
+
+check = { depends-on = ["lint", "typecheck", "test", "check-shaders", "build"], description = "Quality-Gate: lint, typecheck, test, Shader, build" }

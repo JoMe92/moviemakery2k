@@ -1,0 +1,23 @@
+.storyboard {
+  margin: 4px 4px 0;
+}
+
+.toggle {
+  flex: none;
+}
+
+.body {
+  display: flex;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--y2k-storyboard-bg);
+}
+
+.hint {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  color: var(--y2k-text-muted);
+  text-align: center;
+}

@@ -1,0 +1,27 @@
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hint {
+  margin: 0;
+  padding: 6px;
+  color: var(--y2k-text-muted);
+}
+
+.error {
+  margin: 0 0 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--y2k-icon-red);
+  background: var(--y2k-face-light);
+  color: var(--y2k-icon-red);
+}
+
+.question {
+  margin: 0;
+}

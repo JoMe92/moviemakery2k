@@ -1,0 +1,36 @@
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input {
+  width: 80px;
+  padding: 2px 4px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+  text-align: right;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--y2k-icon-red);
+}
+
+.hint,
+.error {
+  margin: 8px 0 0;
+}
+
+.hint {
+  color: var(--y2k-text-muted);
+}
+
+.error {
+  color: var(--y2k-icon-red);
+  font-weight: bold;
+}
+
+/* Zusatzaktion links, OK/Abbrechen rechts. */
+.extra {
+  margin-right: auto;
+}
