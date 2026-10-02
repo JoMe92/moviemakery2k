@@ -4,7 +4,7 @@
   "transitions": [
     {
       "id": "fade",
-      "name": "Überblenden",
+      "names": { "de": "Überblenden", "en": "Fade" },
       "shader": "fade.glsl",
       "defaultDuration": 1.25,
       "params": {},
@@ -16,7 +16,7 @@
     },
     {
       "id": "dissolve",
-      "name": "Auflösen",
+      "names": { "de": "Auflösen", "en": "Dissolve" },
       "shader": "dissolve.glsl",
       "defaultDuration": 1.25,
       "params": { "blockSize": 1, "seed": 7 },
@@ -28,7 +28,7 @@
     },
     {
       "id": "wipe-right",
-      "name": "Wischen, rechts",
+      "names": { "de": "Wischen, rechts", "en": "Wipe right" },
       "shader": "wipe-right.glsl",
       "defaultDuration": 1.25,
       "params": { "gradientSize": 0.5 },
@@ -40,7 +40,7 @@
     },
     {
       "id": "circle",
-      "name": "Kreis",
+      "names": { "de": "Kreis", "en": "Circle" },
       "shader": "circle.glsl",
       "defaultDuration": 1.25,
       "params": { "borderSoftness": 20 },
@@ -52,7 +52,7 @@
     },
     {
       "id": "pixelate",
-      "name": "Verpixeln",
+      "names": { "de": "Verpixeln", "en": "Pixelate" },
       "shader": "pixelate.glsl",
       "defaultDuration": 1.25,
       "params": { "maxSquare": 50 },
@@ -64,7 +64,7 @@
     },
     {
       "id": "checkerboard",
-      "name": "Schachbrett",
+      "names": { "de": "Schachbrett", "en": "Checkerboard" },
       "shader": "checkerboard.glsl",
       "defaultDuration": 1.25,
       "params": { "squaresX": 12, "squaresY": 10 },

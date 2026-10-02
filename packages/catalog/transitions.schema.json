@@ -17,11 +17,20 @@
   "$defs": {
     "transition": {
       "type": "object",
-      "required": ["id", "name", "shader", "defaultDuration", "params", "source"],
+      "required": ["id", "names", "shader", "defaultDuration", "params", "source"],
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-        "name": { "type": "string", "minLength": 1 },
+        "names": {
+          "description": "Display name per UI language; both are required",
+          "type": "object",
+          "required": ["de", "en"],
+          "additionalProperties": false,
+          "properties": {
+            "de": { "type": "string", "minLength": 1 },
+            "en": { "type": "string", "minLength": 1 }
+          }
+        },
         "shader": {
           "description": "Dateiname in packages/shaders/transitions/",
           "type": "string",

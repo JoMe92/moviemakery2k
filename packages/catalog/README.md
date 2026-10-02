@@ -14,5 +14,6 @@ The **single source of truth** for transitions (later also effects and titles).
 - The backend loads and validates the catalog at startup and serves it at
   `GET /api/catalog/transitions`. The reference XML files themselves are never
   served or shipped.
-- The `name` field is the display name in the UI (currently German, e.g.
-  `Überblenden` for Fade).
+- `names` holds the display name per UI language; both `de` and `en` are
+  required (e.g. `{ "de": "Überblenden", "en": "Fade" }`). A missing name stops
+  the backend at startup.

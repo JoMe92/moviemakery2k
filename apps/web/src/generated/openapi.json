@@ -723,10 +723,8 @@
             "title": "Id",
             "type": "string"
           },
-          "name": {
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
+          "names": {
+            "$ref": "#/components/schemas/TransitionNames"
           },
           "params": {
             "description": "Becomes `uniform float <name>` in the shader, 1:1",
@@ -750,7 +748,7 @@
         },
         "required": [
           "id",
-          "name",
+          "names",
           "shader",
           "defaultDuration",
           "params",
@@ -781,6 +779,28 @@
           "transitions"
         ],
         "title": "TransitionCatalog",
+        "type": "object"
+      },
+      "TransitionNames": {
+        "additionalProperties": false,
+        "description": "Display name per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "TransitionNames",
         "type": "object"
       },
       "TransitionRef": {

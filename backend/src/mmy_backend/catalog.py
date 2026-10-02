@@ -37,9 +37,16 @@ class TransitionSource(_CatalogModel):
     )
 
 
+class TransitionNames(_CatalogModel):
+    """Display name per UI language; both languages are required."""
+
+    de: Annotated[str, Field(min_length=1)]
+    en: Annotated[str, Field(min_length=1)]
+
+
 class Transition(_CatalogModel):
     id: TransitionId
-    name: Annotated[str, Field(min_length=1)]
+    names: TransitionNames
     shader: Annotated[
         str,
         Field(

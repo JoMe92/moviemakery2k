@@ -570,8 +570,7 @@ export interface components {
             defaultDuration: number;
             /** Id */
             id: string;
-            /** Name */
-            name: string;
+            names: components["schemas"]["TransitionNames"];
             /**
              * Params
              * @description Becomes `uniform float <name>` in the shader, 1:1
@@ -595,6 +594,16 @@ export interface components {
             schemaVersion: 1;
             /** Transitions */
             transitions: components["schemas"]["Transition"][];
+        };
+        /**
+         * TransitionNames
+         * @description Display name per UI language; both languages are required.
+         */
+        TransitionNames: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
         };
         /** TransitionRef */
         TransitionRef: {
