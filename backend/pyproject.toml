@@ -33,3 +33,6 @@ python_version = "3.13"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: kodiert mit FFmpeg (Export-Ende-zu-Ende, einige Sekunden)",
+]
