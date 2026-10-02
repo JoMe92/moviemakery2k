@@ -23,11 +23,12 @@ Sammlungsbereich in der Mitte, Vorschaumonitor rechts, darunter das Storyboard
 ### Requirement: Aufgabenbereich mit drei Schritten
 Der Aufgabenbereich MUST die Gruppen „1. Aufnehmen“, „2. Film bearbeiten“ und
 „3. Film fertig stellen“ zeigen, jeweils ein- und ausklappbar. Funktional MUST
-sein: „Bilder importieren“, „Sammlungen anzeigen“, „Videoübergänge anzeigen“
-und „Auf dem Computer speichern“ (öffnet den Assistenten „Film speichern“,
-Spec movie-export). „Auf dem Computer speichern“ MUST deaktiviert sein,
-solange der Bildstreifen leer ist. Alle anderen Einträge (u. a. Video
-importieren, Audio oder Musik importieren, Videoeffekte anzeigen, Titel oder
+sein: „Bilder importieren“, „Audio oder Musik importieren“ (Dateiauswahl für
+die Audioformate der Spec media-library), „Sammlungen anzeigen“,
+„Videoübergänge anzeigen“ und „Auf dem Computer speichern“ (öffnet den
+Assistenten „Film speichern“, Spec movie-export). „Auf dem Computer
+speichern“ MUST deaktiviert sein, solange der Bildstreifen leer ist. Alle
+anderen Einträge (u. a. Video importieren, Videoeffekte anzeigen, Titel oder
 Nachspann erstellen, Im Web veröffentlichen) MUST sichtbar, aber deaktiviert
 sein.
 
@@ -40,6 +41,11 @@ sein.
 - **WHEN** ein Benutzer auf „Videoübergänge anzeigen“ klickt
 - **THEN** zeigt der Sammlungsbereich den Übergangskatalog, und die
   Sammlungsauswahl in der Symbolleiste steht auf „Videoübergänge“
+
+#### Scenario: Audio importieren
+- **WHEN** ein Benutzer auf „Audio oder Musik importieren“ klickt
+- **THEN** öffnet sich eine Dateiauswahl für MP3, WAV, M4A, OGG und FLAC, und
+  nach dem Import zeigt der Sammlungsbereich „Meine Musik“
 
 #### Scenario: Film fertig stellen
 - **WHEN** der Bildstreifen mindestens ein Bild enthält und ein Benutzer auf
@@ -114,9 +120,15 @@ abzustürzen.
 ### Requirement: Grundlegende Barrierefreiheit
 Alle interaktiven Elemente MUST echte Schaltflächen bzw. Menüelemente mit
 zugänglichem Namen sein, einen sichtbaren Fokus haben und per Tastatur
-erreichbar sein.
+erreichbar sein. Innerhalb eines Dialogs MUST jeder zugängliche Name einer
+Schaltfläche eindeutig sein.
 
 #### Scenario: Bedienung per Tastatur
 - **WHEN** ein Benutzer nur mit der Tab-Taste durch die Oberfläche navigiert
 - **THEN** erreicht er Menüleiste, Aufgabenbereich, Sammlung, Player-Steuerung
   und Storyboard, und der Fokus ist jederzeit sichtbar
+
+#### Scenario: Eindeutige Namen im Fehlerdialog
+- **WHEN** ein Fehlerdialog mit der Schaltfläche „Schließen“ geöffnet ist
+- **THEN** heißt die Schaltfläche in der Titelleiste „Dialog schließen“, und
+  kein zweites Element im Dialog trägt den Namen „Schließen“
