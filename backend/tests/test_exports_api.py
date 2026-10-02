@@ -253,7 +253,7 @@ def test_export_runs_to_done_and_downloads(client: TestClient, settings: Setting
     assert res.content == out.read_bytes()
     disposition = res.headers["content-disposition"]
     assert disposition.startswith("attachment;")
-    assert 'filename="Grue aus Koln.mp4"' in disposition
+    assert 'filename="Gruesse aus Koeln.mp4"' in disposition
     assert f"filename*=UTF-8''{quote('Grüße aus Köln.mp4', safe='')}" in disposition
     # 2 x 1 s mit 0,5-s-Übergang = 1,5 s
     assert abs(_duration(out) - 1.5) <= 1 / 30
