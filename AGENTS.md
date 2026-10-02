@@ -18,7 +18,7 @@ This project uses **bd** (beads) for issue tracking. Run `bd prime` for full wor
 Video-Editor im Movie-Maker-2.x-Stil; Fokus Übergänge/Effekte. `apps/web`
 (Vite/React/TS, WebGL2), `backend/` (Python 3.13, FastAPI, FFmpeg-Subprozess),
 `packages/shaders` (geteilte GLSL), `packages/catalog` (Effekt-Katalog).
-Quality-Gate: `make check`. Architektur: `docs/adr/0001-architektur.md`;
+Toolchain und Befehle nur über Pixi (`pixi run check`, `pixi task list`). Architektur: `docs/adr/0001-architektur.md`;
 Recherche: `docs/research/movie-maker-klon.md`. Keine Microsoft-Assets.
 Bead-Token in Commits großgeschrieben (`[MMY-6kz]` für `mmy-6kz`).
 

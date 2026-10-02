@@ -61,9 +61,9 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 ## Build & Test
 
 ```bash
-make install    # pnpm install + (cd backend && uv sync)
-make dev        # Backend :8000 + Vite-Dev-Server (Proxy /api)
-make check      # Quality-Gate: lint, typecheck, test, build (Web + Backend)
+pixi run dev     # Backend (MMY_API_PORT, Standard 8000) + Vite-Dev-Server (Proxy /api)
+pixi run check   # Quality-Gate: lint, typecheck, test, check-shaders, build
+pixi task list   # alle Befehle; Abhängigkeiten nur über pixi.toml (+ pnpm für npm-Pakete)
 ```
 
 ## Architecture Overview
@@ -72,7 +72,7 @@ moviemakerY2K: ein Video-Editor im Movie-Maker-2.x-Stil. Im Fokus stehen Überg�
 und Effekte. Monorepo: `apps/web` (Vite/React/TS, WebGL2-Vorschau),
 `backend/` (Python 3.13, FastAPI, FFmpeg als Subprozess), `packages/shaders`
 (GLSL ES 3.00, für Vorschau und Export geteilt), `packages/catalog`
-(Effekt-Katalog, Single Source of Truth). Begründung: `docs/adr/0001-architektur.md`.
+(Effekt-Katalog, Single Source of Truth). Begründung: `docs/adr/0001-architektur.md`, Toolchain: `docs/adr/0002-pixi.md`.
 Recherche zum Original: `docs/research/movie-maker-klon.md`.
 
 ## Conventions & Patterns
