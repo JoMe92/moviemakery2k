@@ -22,6 +22,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { createContext, type ReactNode, useContext, useState } from "react";
 import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
+import { TransitionIcon } from "../transitions/TransitionIcon";
 import {
   type DragItem,
   type DropTarget,
@@ -41,6 +42,9 @@ const dragItem = (active: Active | null): DragItem | null =>
 const isSlideContainer = (c: DroppableContainer) =>
   (c.data.current as DragItem | undefined)?.type === "slide";
 
+const isSlotContainer = (c: DroppableContainer) =>
+  (c.data.current as DropTarget | undefined)?.type === "transitionSlot";
+
 function center(rect: ClientRect) {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 }
@@ -56,6 +60,7 @@ function pointRect(p: { x: number; y: number }): ClientRect {
 /**
  * Ziel nur innerhalb des Bildstreifens: die Kachel, deren Mitte dem Zeiger
  * (Tastatur: der gezogenen Kachel) am nächsten ist; ohne Kacheln der Streifen selbst.
+ * Übergänge zielen nur auf Übergangsplätze (der nächstgelegene Platz).
  */
 const collisionDetection: CollisionDetection = (args) => {
   const stripRect = args.droppableRects.get(STRIP_DROPPABLE_ID);
@@ -63,6 +68,11 @@ const collisionDetection: CollisionDetection = (args) => {
   if (!stripRect || !strip) return [];
   const point = args.pointerCoordinates ?? center(args.collisionRect);
   if (!contains(stripRect, point)) return [];
+  if (dragItem(args.active)?.type === "transition") {
+    const slots = args.droppableContainers.filter(isSlotContainer);
+    if (slots.length === 0) return [];
+    return closestCenter({ ...args, collisionRect: pointRect(point), droppableContainers: slots });
+  }
   const slides = args.droppableContainers.filter(isSlideContainer);
   if (slides.length === 0) return [{ id: strip.id, data: { droppableContainer: strip, value: 0 } }];
   return closestCenter({ ...args, collisionRect: pointRect(point), droppableContainers: slides });
@@ -75,6 +85,33 @@ const ARROWS: string[] = [
   KeyboardCode.Down,
 ];
 
+/** Tastatur für Übergänge: Pfeil nach unten → erster Platz, links/rechts → Nachbarplatz. */
+const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
+  if (!ARROWS.includes(event.code)) return undefined;
+  event.preventDefault();
+  const rect = context.collisionRect;
+  const stripRect = context.droppableRects.get(STRIP_DROPPABLE_ID);
+  if (!rect || !stripRect) return undefined;
+  const slots = context.droppableContainers
+    .getEnabled()
+    .filter(isSlotContainer)
+    .map((c) => context.droppableRects.get(c.id))
+    .filter((r): r is ClientRect => r !== undefined)
+    .sort((a, b) => a.left - b.left)
+    .map((r) => ({ x: center(r).x - rect.width / 2, y: center(r).y - rect.height / 2 }));
+  if (slots.length === 0) return undefined;
+  if (!contains(stripRect, center(rect))) {
+    return event.code === KeyboardCode.Down ? slots[0] : undefined;
+  }
+  let current = 0;
+  slots.forEach((slot, i) => {
+    if (Math.abs(slot.x - rect.left) < Math.abs((slots[current]?.x ?? 0) - rect.left)) current = i;
+  });
+  if (event.code === KeyboardCode.Right) return slots[Math.min(current + 1, slots.length - 1)];
+  if (event.code === KeyboardCode.Left) return slots[Math.max(current - 1, 0)];
+  return undefined;
+};
+
 /**
  * Tastatur: Kacheln im Streifen wie gewohnt sortierbar; ein Bild aus der
  * Sammlung springt mit Pfeil nach unten ans Ende des Streifens und wandert dort
@@ -82,7 +119,9 @@ const ARROWS: string[] = [
  */
 const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   const { context } = args;
-  if (dragItem(context.active)?.type !== "media") return sortableKeyboardCoordinates(event, args);
+  const type = dragItem(context.active)?.type;
+  if (type === "transition") return transitionCoordinates(event, args);
+  if (type !== "media") return sortableKeyboardCoordinates(event, args);
   if (!ARROWS.includes(event.code)) return undefined;
   event.preventDefault();
   const rect = context.collisionRect;
@@ -130,6 +169,8 @@ const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
 function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   const over: Over | null = event.over;
   if (!over) return null;
+  const slot = over.data.current as DropTarget | undefined;
+  if (slot?.type === "transitionSlot") return { type: "transitionSlot", slideId: slot.slideId };
   const data = over.data.current as DragItem | undefined;
   if (data?.type !== "slide") return over.id === STRIP_DROPPABLE_ID ? { type: "strip" } : null;
   const activator = event.activatorEvent;
@@ -145,6 +186,9 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
 
 function describe(state: AppState, item: DragItem | null): string {
   if (!item) return "Element";
+  if (item.type === "transition") {
+    return `Übergang „${state.catalog.find((t) => t.id === item.transitionId)?.name ?? ""}“`;
+  }
   if (item.type === "media") {
     return `Bild „${state.media.find((m) => m.id === item.mediaId)?.filename ?? ""}“`;
   }
@@ -171,7 +215,14 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   const announcements: Announcements = {
     onDragStart: ({ active: a }) =>
       `${describe(store.getState(), dragItem(a))} aufgenommen. Pfeiltasten bewegen, Leertaste legt ab, Escape bricht ab.`,
-    onDragOver: ({ over }) => (over ? "Über dem Storyboard." : "Außerhalb des Storyboards."),
+    onDragOver: ({ over }) => {
+      const slot = over?.data.current as DropTarget | undefined;
+      if (slot?.type === "transitionSlot") {
+        const n = store.getState().slides.findIndex((s) => s.id === slot.slideId);
+        return `Über dem Übergangsplatz vor Bild ${n + 1}.`;
+      }
+      return over ? "Über dem Storyboard." : "Außerhalb des Storyboards.";
+    },
     onDragEnd: ({ active: a, over }) =>
       over
         ? `${describe(store.getState(), dragItem(a))} abgelegt.`
@@ -194,6 +245,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     setTarget(null);
     if (action.kind === "insert") state.addSlide(action.mediaId, action.index);
     else if (action.kind === "move") state.moveSlide(action.from, action.to);
+    else if (action.kind === "setTransition")
+      state.setTransition(action.slideId, action.transitionId);
   };
   const onDragCancel = () => {
     setActive(null);
@@ -229,6 +282,9 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
         {active ? (
           <div className={styles.overlay} data-testid="drag-overlay">
             {overlayMedia ? <img src={overlayMedia.thumbnailUrl} alt="" /> : null}
+            {active.type === "transition" ? (
+              <TransitionIcon transitionId={active.transitionId} size={94} />
+            ) : null}
           </div>
         ) : null}
       </DragOverlay>

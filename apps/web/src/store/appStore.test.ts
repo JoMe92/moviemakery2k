@@ -166,4 +166,33 @@ describe("appStore", () => {
     expect(api.putProject).toHaveBeenCalledTimes(1);
     expect(api.saved.at(-1)?.slides.map((x) => x.id)).toEqual([s3, s2]);
   });
+
+  it("Übergänge: setzen, ersetzen, Dauer ändern, ungültige Dauern ablehnen, entfernen", async () => {
+    const store = createAppStore(mockApi());
+    await store.getState().init();
+    const st = () => store.getState();
+    st().addSlide("a");
+    st().addSlide("b");
+    const second = st().slides[1]?.id ?? "";
+    const tIn = () => st().slides[1]?.transitionIn;
+
+    st().setTransition(second, "fade");
+    expect(tIn()).toEqual({ transitionId: "fade", duration: 1.25 });
+    // Ersetzen übernimmt die Standarddauer des neuen Übergangs.
+    st().setTransition(second, "circle");
+    expect(tIn()).toEqual({ transitionId: "circle", duration: 1.5 });
+
+    expect(st().setTransitionDuration(second, 9)).toBe(false);
+    expect(st().setTransitionDuration(second, 0.1)).toBe(false);
+    expect(tIn()?.duration).toBe(1.5);
+    expect(st().setTransitionDuration(second, 2.25)).toBe(true);
+    expect(tIn()?.duration).toBe(2.25);
+
+    expect(st().setSlideDuration(second, 0.1)).toBe(false);
+    expect(st().setSlideDuration(second, 61)).toBe(false);
+    expect(st().slides[1]?.duration).toBe(5);
+
+    st().removeTransition(second);
+    expect(tIn()).toBeNull();
+  });
 });

@@ -16,6 +16,12 @@ export interface SlideTileProps {
   onSelect: () => void;
   onRemove: () => void;
   onMenu: (x: number, y: number) => void;
+  /** Eigenschaftendialog (Bilddauer). */
+  onProperties: () => void;
+  /** Aktionen am eingehenden Übergangsplatz. */
+  onTransitionProperties: () => void;
+  onTransitionRemove: () => void;
+  onTransitionMenu: (x: number, y: number) => void;
   tileRef?: (el: HTMLButtonElement | null) => void;
   /** Einfügemarke vor bzw. hinter dieser Kachel (Ziehen aus der Sammlung). */
   marker?: "before" | "after" | null;
@@ -30,6 +36,10 @@ export function SlideTile({
   onSelect,
   onRemove,
   onMenu,
+  onProperties,
+  onTransitionProperties,
+  onTransitionRemove,
+  onTransitionMenu,
   tileRef,
   marker = null,
 }: SlideTileProps) {
@@ -75,7 +85,14 @@ export function SlideTile({
       data-dragging={isDragging || undefined}
     >
       {number > 1 ? (
-        <TransitionSlot slideId={slide.id} number={number} transitionIn={slide.transitionIn} />
+        <TransitionSlot
+          slideId={slide.id}
+          number={number}
+          transitionIn={slide.transitionIn}
+          onProperties={onTransitionProperties}
+          onRemove={onTransitionRemove}
+          onMenu={onTransitionMenu}
+        />
       ) : null}
       {marker ? (
         <span
@@ -104,6 +121,10 @@ export function SlideTile({
         title={name}
         onKeyDown={onKeyDown}
         onClick={onSelect}
+        onDoubleClick={() => {
+          onSelect();
+          onProperties();
+        }}
         onContextMenu={onContextMenu}
       >
         <span className={styles.thumb}>

@@ -58,4 +58,24 @@ describe("dropLogic", () => {
     expect(formatDuration(5)).toBe("5,00 s");
     expect(formatDuration(2.25)).toBe("2,25 s");
   });
+
+  it("Übergang auf einen Platz → setzen (ersetzt); nicht am ersten Bild, nicht auf Kacheln", () => {
+    const t = { type: "transition", transitionId: "circle" } as const;
+    expect(resolveDrop(t, { type: "transitionSlot", slideId: "2" }, slides)).toEqual({
+      kind: "setTransition",
+      slideId: "2",
+      transitionId: "circle",
+    });
+    expect(resolveDrop(t, { type: "transitionSlot", slideId: "1" }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(resolveDrop(t, { type: "slide", slideId: "2", after: false }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(resolveDrop(t, { type: "strip" }, slides)).toEqual({ kind: "none" });
+    expect(resolveDrop(media, { type: "transitionSlot", slideId: "2" }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(insertionIndex({ type: "transitionSlot", slideId: "2" }, slides)).toBeNull();
+  });
 });

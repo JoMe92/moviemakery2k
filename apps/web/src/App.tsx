@@ -15,6 +15,7 @@ import { useAppStore } from "./store/useAppStore";
 import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
 import type { Frame } from "./timeline/timeline";
+import { TransitionCollection } from "./transitions/TransitionCollection";
 import { Button } from "./ui/Button";
 import {
   EffectsIcon,
@@ -107,11 +108,7 @@ export function App() {
         }
         collection={
           <LibraryPane name={collectionName}>
-            {collection === "media" ? (
-              <MediaCollection />
-            ) : (
-              <p className={styles.hint}>Der Übergangskatalog wird hier angezeigt.</p>
-            )}
+            {collection === "media" ? <MediaCollection /> : <TransitionCollection />}
           </LibraryPane>
         }
         monitor={

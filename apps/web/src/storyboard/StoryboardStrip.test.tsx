@@ -22,6 +22,8 @@ async function setup(slides: Slide[]) {
 
 const storyboard = () => screen.getByRole("region", { name: "Storyboard" });
 const strip = () => within(storyboard()).getByRole("list", { name: "Bildstreifen" });
+const slot = (n: number) =>
+  within(strip()).getByRole("button", { name: new RegExp(`^Übergang vor Bild ${n}:`) });
 const tileLabels = () =>
   within(strip())
     .getAllByRole("button", { name: /^Bild \d+:/ })
@@ -52,6 +54,8 @@ beforeEach(() => {
     const label = this.getAttribute("aria-label") ?? "";
     const slideMatch = /^Bild (\d+):/.exec(label);
     if (slideMatch) return rect(20 + (Number(slideMatch[1]) - 1) * 160, 520, 104, 100);
+    const slotMatch = /^Übergang vor Bild (\d+):/.exec(label);
+    if (slotMatch) return rect(20 + (Number(slotMatch[1]) - 1) * 160 - 54, 540, 52, 60);
     if (this.getAttribute("data-testid") === "storyboard-strip") return rect(0, 500, 1200, 150);
     // DragOverlay: liegt anfangs über der gezogenen (fokussierten) Kachel.
     const isOverlay =
@@ -61,7 +65,7 @@ beforeEach(() => {
     if (isOverlay && focused && focused !== this && focused !== document.body) {
       return focused.getBoundingClientRect();
     }
-    const li = this.closest("ul[aria-label='Bilder'] > li");
+    const li = this.closest("ul[aria-label='Bilder'] > li, ul[aria-label='Übergänge'] > li");
     if (li && this.tagName === "BUTTON") {
       const index = Array.from(li.parentElement?.children ?? []).indexOf(li);
       return rect(20 + index * 100, 100, 96, 90);
@@ -100,13 +104,11 @@ describe("Storyboard", () => {
     expect(effect).toHaveAttribute("title", "Videoeffekte folgen später");
 
     // Übergangsplätze nur zwischen Kacheln; der Übergang gehört zum Zielbild.
-    expect(within(strip()).queryByRole("group", { name: "Übergang vor Bild 1" })).toBeNull();
-    expect(within(strip()).getByRole("group", { name: "Übergang vor Bild 2" })).toHaveTextContent(
-      "Kreis",
-    );
-    expect(within(strip()).getByRole("group", { name: "Übergang vor Bild 3" })).toHaveTextContent(
-      "–",
-    );
+    expect(within(strip()).queryByRole("button", { name: /^Übergang vor Bild 1/ })).toBeNull();
+    expect(slot(2)).toHaveAccessibleName("Übergang vor Bild 2: Kreis, 1,25 s");
+    expect(slot(2)).toHaveTextContent("Kreis1,25 s");
+    expect(slot(3)).toHaveAccessibleName("Übergang vor Bild 3: keiner (harter Schnitt)");
+    expect(slot(3)).toHaveTextContent("–");
     expect(screen.getByTestId("transition-slot-s3")).toBeInTheDocument();
   });
 
@@ -126,16 +128,12 @@ describe("Storyboard", () => {
     expect(store.getState().selection).toEqual({ kind: "slide", slideId: "s2" });
   });
 
-  it("entfernt über das Kontextmenü; „Eigenschaften…“ ist noch deaktiviert", async () => {
+  it("entfernt über das Kontextmenü", async () => {
     const user = userEvent.setup();
     const { store } = await setup([slide("s1", "a"), slide("s2", "b")]);
     const second = within(strip()).getByRole("button", { name: /^Bild 2:/ });
     fireEvent.contextMenu(second, { clientX: 50, clientY: 50 });
     const menu = screen.getByRole("menu", { name: "Bild 2 des Storyboards" });
-    expect(within(menu).getByRole("menuitem", { name: "Eigenschaften…" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
     await user.click(within(menu).getByRole("menuitem", { name: "Entfernen" }));
     expect(store.getState().slides.map((s) => s.id)).toEqual(["s1"]);
   });
@@ -204,5 +202,111 @@ describe("Storyboard", () => {
     await tick();
     expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
     expect(store.getState().slides[0]?.duration).toBe(5);
+  });
+
+  it("setzt einen Übergang per Tastatur auf einen Platz und ersetzt einen vorhandenen", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup([
+      slide("s1", "a"),
+      slide("s2", "b"),
+      slide("s3", "a", 5, "fade"),
+    ]);
+    act(() => store.getState().setCollection("transitions"));
+    const collection = screen.getByRole("region", { name: "Sammlung: Videoübergänge" });
+    within(collection).getByRole("button", { name: "Kreis" }).focus();
+    await user.keyboard("[Space]");
+    await tick();
+    await user.keyboard("[ArrowDown]"); // erster Platz: vor Bild 2
+    await tick();
+    expect(slot(2)).toHaveAttribute("data-drop", "true");
+    await user.keyboard("[ArrowRight]"); // Platz vor Bild 3 (hat „Überblenden“)
+    await tick();
+    await user.keyboard("[Space]");
+    await tick();
+    const slides = store.getState().slides;
+    expect(slides[1]?.transitionIn).toBeNull();
+    // Ersetzt, mit der Standarddauer aus dem Katalog.
+    expect(slides[2]?.transitionIn).toEqual({ transitionId: "circle", duration: 1.5 });
+    expect(slot(3)).toHaveAccessibleName("Übergang vor Bild 3: Kreis, 1,50 s");
+  });
+
+  it("Übergangsdialog: ungültige Dauer wird abgelehnt, gültige übernommen", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup([slide("s1", "a"), slide("s2", "b", 5, "circle")]);
+    await user.dblClick(slot(2));
+    const dialog = screen.getByRole("dialog", { name: "Übergang vor Bild 2" });
+    expect(dialog).toHaveTextContent("Übergang: Kreis");
+    const input = within(dialog).getByRole("textbox", { name: "Übergangsdauer (Sekunden):" });
+    expect(input).toHaveValue("1,25");
+
+    await user.clear(input);
+    await user.type(input, "9");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Erlaubt sind 0,25 bis 5 Sekunden in Schritten von 0,25.",
+    );
+    expect(store.getState().slides[1]?.transitionIn?.duration).toBe(1.25);
+
+    await user.clear(input);
+    await user.type(input, "1,5{Enter}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(store.getState().slides[1]?.transitionIn?.duration).toBe(1.5);
+    expect(slot(2)).toHaveTextContent("1,50 s");
+  });
+
+  it("entfernt einen Übergang über den Dialog und über das Kontextmenü", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup([
+      slide("s1", "a"),
+      slide("s2", "b", 5, "fade"),
+      slide("s3", "a", 5, "circle"),
+    ]);
+    slot(2).focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Übergang entfernen" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(store.getState().slides[1]?.transitionIn).toBeNull();
+
+    fireEvent.contextMenu(slot(3), { clientX: 10, clientY: 10 });
+    const menu = screen.getByRole("menu", { name: "Übergang vor Bild 3" });
+    await user.click(within(menu).getByRole("menuitem", { name: "Übergang entfernen" }));
+    expect(store.getState().slides[2]?.transitionIn).toBeNull();
+
+    // Leerer Platz: nichts zu bearbeiten.
+    fireEvent.contextMenu(slot(3), { clientX: 10, clientY: 10 });
+    for (const item of within(screen.getByRole("menu")).getAllByRole("menuitem")) {
+      expect(item).toHaveAttribute("aria-disabled", "true");
+    }
+  });
+
+  it("Bilddauer: Doppelklick bzw. Kontextmenü öffnet den Dialog; 0,1 s wird abgelehnt", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup([slide("s1", "a"), slide("s2", "b")]);
+    await user.dblClick(within(strip()).getByRole("button", { name: /^Bild 2:/ }));
+    let dialog = screen.getByRole("dialog", { name: "Eigenschaften von Bild 2" });
+    const input = within(dialog).getByRole("textbox", { name: "Bilddauer (Sekunden):" });
+    expect(input).toHaveValue("5");
+    await user.clear(input);
+    await user.type(input, "0,1");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Erlaubt sind 0,5 bis 60 Sekunden in Schritten von 0,25.",
+    );
+    expect(store.getState().slides[1]?.duration).toBe(5);
+    await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+    expect(store.getState().slides[1]?.duration).toBe(5);
+
+    fireEvent.contextMenu(within(strip()).getByRole("button", { name: /^Bild 2:/ }), {
+      clientX: 10,
+      clientY: 10,
+    });
+    await user.click(screen.getByRole("menuitem", { name: "Eigenschaften…" }));
+    dialog = screen.getByRole("dialog", { name: "Eigenschaften von Bild 2" });
+    const again = within(dialog).getByRole("textbox", { name: "Bilddauer (Sekunden):" });
+    await user.clear(again);
+    await user.type(again, "2,5");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(tileLabels()[1]).toBe("Bild 2: b.jpg, 2,50 s");
   });
 });
