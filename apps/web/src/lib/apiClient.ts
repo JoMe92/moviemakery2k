@@ -17,6 +17,8 @@ export type ExportJob = Schemas["ExportJob"];
 export type ExportProfile = Schemas["ExportProfile"];
 export type ExportStatus = Schemas["ExportStatus"];
 export type ApiErrorBody = Schemas["ApiError"];
+/** Every code the backend can send (design.md D4); the error catalog is keyed by it. */
+export type ErrorCode = Schemas["ErrorCode"];
 
 /** Export jobs (design.md D5); a separate part so the wizard needs only this one. */
 export interface ExportApi {

@@ -258,6 +258,8 @@ export const en = {
       unsupportedType: "Not a supported image (JPEG, PNG and WebP are allowed).",
       tooLarge: "The file is too large (at most {maxMegabytes} MB).",
       tooManyPixels: "The image has too many pixels (at most {maxMegapixels} megapixels).",
+      inUseByExport:
+        "The image cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
     },
     project: {
       slideDuration: {

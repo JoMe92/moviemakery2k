@@ -90,8 +90,7 @@ describe("appStore", () => {
           ? {
               ok: false as const,
               filename: file.name,
-              // A code outside the contract: the message is shown as-is.
-              errorCode: "unsupported" as never,
+              errorCode: "media.unsupportedType" as const,
               errorParams: {},
               message: "Kein unterstütztes Bild.",
             }
