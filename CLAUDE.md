@@ -61,26 +61,29 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 ## Build & Test
 
 ```bash
-pixi run dev     # Backend (MMY_API_PORT, Standard 8000) + Vite-Dev-Server (Proxy /api)
-pixi run check   # Quality-Gate: lint, typecheck, test, check-shaders, build
-pixi task list   # alle Befehle; Abhängigkeiten nur über pixi.toml (+ pnpm für npm-Pakete)
+pixi run dev       # backend (MMY_API_PORT, default 8000) + Vite dev server (proxies /api)
+pixi run check     # quality gate: lint, typecheck, test, check-shaders, build
+pixi run test-e2e  # Playwright browser tests incl. golden frames
+pixi task list     # all commands; dependencies only via pixi.toml (+ pnpm for npm packages)
 ```
 
 ## Architecture Overview
 
-moviemakerY2K: ein Video-Editor im Movie-Maker-2.x-Stil. Im Fokus stehen Übergänge
-und Effekte. Monorepo: `apps/web` (Vite/React/TS, WebGL2-Vorschau),
-`backend/` (Python 3.13, FastAPI, FFmpeg als Subprozess), `packages/shaders`
-(GLSL ES 3.00, für Vorschau und Export geteilt), `packages/catalog`
-(Effekt-Katalog, Single Source of Truth). Begründung: `docs/adr/0001-architektur.md`, Toolchain: `docs/adr/0002-pixi.md`.
-Recherche zum Original: `docs/research/movie-maker-klon.md`.
+moviemakerY2K: a video editor in the style of Movie Maker 2.x, focused on
+transitions and effects. Monorepo: `apps/web` (Vite/React/TS, WebGL2 preview),
+`backend/` (Python 3.13, FastAPI, FFmpeg as a subprocess), `packages/shaders`
+(GLSL ES 3.00, shared by preview and export), `packages/catalog` (effect
+catalog, single source of truth). Overview: `docs/architecture.md`; rationale:
+`docs/adr/0001-architecture.md`; toolchain: `docs/adr/0002-pixi.md`.
+Research on the original: `docs/research/movie-maker-reference.md`.
 
 ## Conventions & Patterns
 
-- Effekte und Übergänge werden nur im Katalog plus Shader definiert, nie doppelt in Web oder Backend.
-- Keine Microsoft-Assets (Icons, Sounds, Texte, `Parity.fx`). Die XMLs in `docs/research/sources/` sind nur Referenz.
-- Pydantic-Modelle sind der API-Vertrag; TS-Typen werden daraus generiert.
-- Bead-Token in Commits großgeschrieben, z. B. `[MMY-6kz]` für `mmy-6kz` (der Hook verlangt `[A-Z]…`).
+- Effects and transitions are defined only in the catalog plus a shader, never duplicated in the web app or backend.
+- No Microsoft assets (icons, sounds, texts, `Parity.fx`). The XML files in `docs/research/sources/` are reference only.
+- Pydantic models are the API contract; TS types are generated from them (`pixi run gen-api`).
+- Bead token in commits upper-cased, e.g. `[MMY-6kz]` for `mmy-6kz` (the hook requires `[A-Z]…`).
+- Public documentation (README, docs/, package READMEs, CONTRIBUTING.md) is written in English.
 
 ## Nogging
 

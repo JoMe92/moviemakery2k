@@ -15,12 +15,14 @@ This project uses **bd** (beads) for issue tracking. Run `bd prime` for full wor
 
 ## Project: moviemakerY2K
 
-Video-Editor im Movie-Maker-2.x-Stil; Fokus Übergänge/Effekte. `apps/web`
-(Vite/React/TS, WebGL2), `backend/` (Python 3.13, FastAPI, FFmpeg-Subprozess),
-`packages/shaders` (geteilte GLSL), `packages/catalog` (Effekt-Katalog).
-Toolchain und Befehle nur über Pixi (`pixi run check`, `pixi task list`). Architektur: `docs/adr/0001-architektur.md`;
-Recherche: `docs/research/movie-maker-klon.md`. Keine Microsoft-Assets.
-Bead-Token in Commits großgeschrieben (`[MMY-6kz]` für `mmy-6kz`).
+Video editor in the style of Movie Maker 2.x; focus on transitions and effects.
+`apps/web` (Vite/React/TS, WebGL2), `backend/` (Python 3.13, FastAPI, FFmpeg as
+a subprocess), `packages/shaders` (shared GLSL), `packages/catalog` (effect
+catalog). Toolchain and commands only through Pixi (`pixi run check`,
+`pixi task list`). Architecture: `docs/adr/0001-architecture.md` and
+`docs/architecture.md`; research: `docs/research/movie-maker-reference.md`.
+No Microsoft assets. Bead token in commits upper-cased (`[MMY-6kz]` for
+`mmy-6kz`). Public docs are in English; contributor guide: `CONTRIBUTING.md`.
 
 ## Quick Reference
 
