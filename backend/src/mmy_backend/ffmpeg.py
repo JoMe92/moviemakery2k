@@ -14,6 +14,11 @@ def ffmpeg_binary() -> str | None:
     return os.environ.get("MMY_FFMPEG") or shutil.which("ffmpeg")
 
 
+def ffprobe_binary() -> str | None:
+    """Pfad zu ffprobe; über MMY_FFPROBE überschreibbar."""
+    return os.environ.get("MMY_FFPROBE") or shutil.which("ffprobe")
+
+
 def parse_version(banner: str) -> str | None:
     match = _VERSION_RE.search(banner)
     return match.group(1) if match else None

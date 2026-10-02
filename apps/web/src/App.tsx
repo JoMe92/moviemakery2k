@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
 import { Player } from "./player/Player";
@@ -42,6 +43,8 @@ export function App() {
   const requestImport = useAppStore((s) => s.requestImport);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
+  const hasSlides = useAppStore((s) => s.slides.length > 0);
+  const openExportWizard = useAppStore((s) => s.openExportWizard);
 
   const togglePlay = useAppStore((s) => s.togglePlay);
   const stop = useAppStore((s) => s.stop);
@@ -89,7 +92,7 @@ export function App() {
               </TaskLink>
             </TaskGroup>
             <TaskGroup title="3. Film fertig stellen">
-              <TaskLink icon={<FilmIcon />} disabled>
+              <TaskLink icon={<FilmIcon />} disabled={!hasSlides} onClick={openExportWizard}>
                 Auf dem Computer speichern
               </TaskLink>
               <TaskLink icon={<FilmIcon />} disabled>
@@ -117,6 +120,7 @@ export function App() {
           />
         }
       />
+      <SaveMovieWizardFromStore />
     </StoryboardDnd>
   );
 }

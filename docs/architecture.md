@@ -1,7 +1,7 @@
 # Architecture
 
-This document describes how moviemakerY2K is put together today (the
-slideshow prototype) and where it is heading. The reasoning behind the big
+This document describes how moviemakerY2K is put together today (a
+slideshow editor with MP4 export) and where it is heading. The reasoning behind the big
 decisions lives in the ADRs:
 [0001 – web app + FFmpeg backend with shared GLSL shaders](adr/0001-architecture.md)
 and [0002 – Pixi for the whole repository](adr/0002-pixi.md).
@@ -21,33 +21,40 @@ flowchart LR
     Media["MediaStore<br/>(Pillow)"]
     Proj["ProjectStore"]
     Cat["Catalog loader"]
+    Exp["ExportManager<br/>(jobs, one worker thread each)"]
+    Rnd["render/<br/>timeline.py · frames.py<br/>moderngl (EGL, llvmpipe)"]
     FF["FFmpeg (subprocess)"]
   end
   subgraph Shared["packages/"]
     Shaders["shaders/*.glsl<br/>GLSL ES 3.00"]
     Catalog["catalog/transitions.json"]
+    Vectors["fixtures/timeline-vectors.json"]
   end
   Data[("Data dir<br/>MMY_DATA_DIR")]
 
   UI <--> Store
   Store --> TL --> GL
   Store <-- "REST /api" --> API
-  API --> Media & Proj & Cat
-  Media & Proj --> Data
+  API --> Media & Proj & Cat & Exp
+  Media & Proj & Exp --> Data
   Cat --> Catalog
   GL -- "imported at build time (?raw)" --> Shaders
+  Exp --> Rnd -- "RGBA frames (pipe)" --> FF
+  Rnd -- "read at runtime, #version swapped" --> Shaders
+  TL -. "tested against" .-> Vectors
+  Rnd -. "tested against" .-> Vectors
   API -. "health: version" .-> FF
-  FF -. "planned: export" .-> Shaders
 ```
 
 | Component | Path | Responsibility |
 |---|---|---|
 | Web app | `apps/web/` | UI shell, media collection, storyboard, transition collection, preview player, WebGL2 renderer |
-| Backend | `backend/src/mmy_backend/` | Media import and storage, catalog validation and delivery, project persistence, serving the built web app (`pixi run demo`) |
-| Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition plus the shared prelude/epilogue/vertex shader |
+| Backend | `backend/src/mmy_backend/` | Media import and storage, catalog validation and delivery, project persistence, MP4 export (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
+| Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition plus the shared prelude/epilogue/vertex shader; used by preview and export |
+| Fixtures | `packages/fixtures/` | `timeline-vectors.json`: shared test vectors for the TypeScript and Python time models |
 | Catalog | `packages/catalog/` | Transition metadata and parameters (single source of truth), JSON Schema |
 | E2E tests | `e2e/` | Playwright tests against the real backend and the built web app |
-| Scripts | `scripts/` | Dev launcher (`dev.py`), shader check, Git hooks, Nogging tooling |
+| Scripts | `scripts/` | Dev launcher (`dev.py`), shader check, render-environment check, export benchmark, Docker export smoke test, Git hooks, Nogging tooling |
 
 ## Data flow
 
@@ -99,8 +106,14 @@ flowchart LR
 ### 3. Timeline
 
 `apps/web/src/timeline/timeline.ts` is a pure, fully unit-tested module
-without DOM or GL, so that the later export can compute exactly the same
-timing:
+without DOM or GL. The export uses a Python port of it
+(`backend/src/mmy_backend/render/timeline.py`); Vitest and pytest check both
+implementations against the same file,
+`packages/fixtures/timeline-vectors.json` (input projects, expected segments
+and time → picture/transition/progress samples, including edge cases such as
+a transition longer than allowed, a single picture and hard cuts). The
+playback clock stays in the browser, so the preview never depends on the
+network:
 
 - The effective transition length is
   `t_i = min(T_i, d_{i-1} / 2, d_i / 2)` (no transition → hard cut, `t = 0`).
@@ -110,13 +123,15 @@ timing:
 - `buildTimeline(project)` returns segments of kind `still` or `transition`;
   `frameAt(timeline, t)` says what to draw at time *t* (one picture, or two
   pictures + transition ID + progress).
+- The export samples frame *n* at `t = n / fps`; a movie has
+  `ceil(total duration · fps)` frames.
 
 ### 4. Renderer
 
 - The monitor's output format is fixed at 4:3 (640×480 logical, scaled by CSS,
   DPR-aware). Every picture is letterboxed once onto black into a frame
-  texture, so shaders only ever work in frame space — just like the planned
-  export after FFmpeg scale + pad.
+  texture, so shaders only ever work in frame space. The export letterboxes
+  with the same integer `containRect` arithmetic.
 - A requestAnimationFrame clock advances playback; the renderer draws
   `frameAt(...)` each frame. A transition is drawn by the program assembled
   from the shared shader files, with the catalog parameters as uniforms.
@@ -124,6 +139,105 @@ timing:
   cached. A shader that fails to compile falls back to Fade and is logged.
 - If WebGL2 is not available, the monitor shows a notice instead; import and
   storyboard keep working.
+
+### 5. Export
+
+```mermaid
+flowchart LR
+  Snap["Project snapshot"] --> TLp["timeline.py<br/>frame n at t = n / 30"]
+  JPG["media/&lt;id&gt;/preview.jpg"] --> LB["Letterbox onto black<br/>(containRect)"]
+  LB --> Tex["Texture<br/>(origin bottom left)"]
+  TLp --> Draw
+  Tex --> Draw["moderngl, OpenGL 3.3 core<br/>EGL + Mesa llvmpipe"]
+  SH["packages/shaders<br/>#version 300 es → 330 core"] --> Draw
+  Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>libx264 + aac (anullsrc)"]
+  FFm --> Part["exports/&lt;id&gt;/out.mp4.part"] -- "os.replace" --> MP4["out.mp4"]
+```
+
+1. **Input.** Each picture is the stored `preview.jpg` (EXIF-normalised,
+   longest edge ≤ 1920). It is letterboxed onto an opaque black frame of the
+   output size with the browser's integer `containRect` and uploaded as a
+   texture with its origin at the bottom left (like `UNPACK_FLIP_Y`). At most
+   two picture textures (current and next) are held at once.
+2. **Frames.** Frame *n* is drawn for `t = n / 30`. Still segments are copied
+   without a shader (exactly what the preview shows at progress 0);
+   transitions run the catalog entry's shader with its parameters, falling
+   back to `fade` if a shader is missing or does not compile — like the
+   browser.
+3. **Shared shaders.** The fragment program is assembled exactly like
+   `apps/web/src/render/shaderSource.ts` (prelude + transition + epilogue).
+   The only change is the first line: `#version 300 es` becomes
+   `#version 330 core`, because the export uses a desktop OpenGL 3.3 core
+   context (the `precision` lines are legal there). The vertex shader and the
+   full-screen triangle without a vertex buffer are mirrored.
+4. **Headless GL.** `moderngl.create_context(standalone=True,
+   backend="egl")` with Mesa's llvmpipe software renderer from the Pixi
+   environment (`mesalib`, linux-64 only): no GPU, display or system
+   packages. Pixi's linux-64 activation sets `__EGL_VENDOR_LIBRARY_DIRS`,
+   `GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` so that glvnd finds
+   the Mesa ICD and glcontext loads `libEGL`/`libGL` from the environment.
+   The context is created, used and released in the export worker thread
+   (EGL contexts are bound to a thread).
+5. **Encoding.** The frames are read back (flipped vertically so the top row
+   comes first) and piped as raw RGBA into
+   `ffmpeg -f rawvideo -pix_fmt rgba -s WxH -r 30 -i -` together with a silent
+   `anullsrc` audio input (48 kHz stereo, cut to the exact video length),
+   encoded as `libx264 -preset medium -crf 20 -pix_fmt yuv420p -profile:v
+   high -movflags +faststart` and `aac -b:a 128k`. The audio input is a
+   replaceable slot for the coming music feature.
+6. **Output.** FFmpeg writes `out.mp4.part`; only a complete file is renamed
+   atomically to `out.mp4`. On cancel or error FFmpeg is stopped and the
+   partial file deleted.
+
+Profiles: `high` 960×720 (default) and `small` 640×480, both 30 fps.
+
+**Platform and errors.** Linux (x86-64) is the officially supported export
+platform (CI and the Docker image). On macOS and Windows moderngl tries the
+native standalone context without any guarantee. If no OpenGL 3.3 context can
+be created, the job ends as `failed` with a readable message (the export is
+not available on this system because no OpenGL context could be created;
+Linux with software rendering is supported — the UI text is German) instead
+of crashing the backend. FFmpeg errors are reported with their first line.
+`pixi run check-render-env` checks a machine: EGL/llvmpipe context, a test
+frame and the FFmpeg encoders.
+
+#### Export jobs
+
+```mermaid
+stateDiagram-v2
+  [*] --> queued: POST /api/exports (202)
+  queued --> running
+  running --> done: out.mp4
+  running --> failed: readable error
+  queued --> cancelled: DELETE
+  running --> cancelled: DELETE (ffmpeg stopped, .part deleted)
+```
+
+- **Start.** `POST /api/exports` with `{profile, fileName}` takes a
+  **snapshot** of the stored project (later edits do not affect the running
+  export) and checks the media references. An empty storyboard or a missing
+  medium → `422`; while another export is `queued` or `running` → `409`
+  (at most one export at a time). The file name is validated
+  (`/\:*?"<>|`, control characters and more than 120 characters are
+  rejected; a trailing `.mp4` is stripped).
+- **Worker.** Each job renders in its own background thread; GL context,
+  shaders and the FFmpeg process live in that thread. The status goes
+  `queued → running → done | failed | cancelled` with `progress` 0..1.
+- **Polling.** `GET /api/exports/{id}` returns status, progress and, for
+  `failed`, a readable `error`. The wizard polls every 500 ms (no SSE).
+- **Download.** `GET /api/exports/{id}/file` returns the MP4 with a
+  `Content-Disposition` carrying the requested name (`<fileName>.mp4`, with
+  an ASCII fallback and an RFC 5987 UTF-8 name). Before `done` → `409`; a
+  partial file is never served.
+- **Cancel / delete.** `DELETE /api/exports/{id}` cancels a queued or running
+  export (FFmpeg is stopped, the partial file removed, the job stays visible
+  as `cancelled`) or deletes a finished one with its file (afterwards `404`).
+- **Storage and retention.** Files live in `MMY_DATA_DIR/exports/<id>/`. The
+  last **5** finished exports are kept; older ones are deleted with their
+  files (at most 20 job entries in total). Jobs live in memory only, so on
+  startup the backend empties `exports/`, removing orphaned `.part` files and
+  exports of earlier runs (logged). On shutdown running exports are
+  cancelled.
 
 ## Shader contract
 
@@ -183,6 +297,11 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
 | `PUT` | `/api/project` | Replace the project; `422` leaves the stored state unchanged |
+| `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
+| `GET` | `/api/exports` | All known exports of this backend run, oldest first |
+| `GET` | `/api/exports/{id}` | Status, progress and error of one export |
+| `GET` | `/api/exports/{id}/file` | The finished MP4 as a download; `409` until `done` |
+| `DELETE` | `/api/exports/{id}` | Cancel a running export or delete a finished one (`204`) |
 
 With `pixi run demo`, the same process also serves the built web app at `/`.
 FastAPI's interactive docs are available at `/docs` while the backend runs.
@@ -192,18 +311,28 @@ FastAPI's interactive docs are available at `/docs` while the backend runs.
 | Variable | Default | Meaning |
 |---|---|---|
 | `MMY_API_PORT` | `8000` | Port of the backend (and the Vite `/api` proxy target) |
-| `MMY_DATA_DIR` | `backend/.data/` | Uploaded media, `media.json`, `project.json` |
+| `MMY_DATA_DIR` | `backend/.data/` | Uploaded media, `media.json`, `project.json`, `exports/` |
 | `MMY_CATALOG_DIR` | `packages/catalog/` | Where `transitions.json` is loaded from |
 | `MMY_WEB_DIST` | `apps/web/dist/` | Built web app served at `/` if present |
+| `MMY_SHADERS_DIR` | `packages/shaders/` | Shader files read by the export renderer |
+
+On linux-64, Pixi's activation also sets `__EGL_VENDOR_LIBRARY_DIRS`,
+`GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` to the environment's
+Mesa (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
+`MMY_CATALOG_DIR`, `MMY_SHADERS_DIR` and `MMY_DATA_DIR=/data`, sources Pixi's
+shell hook (which contains the EGL variables) in its entrypoint, and runs the
+render environment check during the build.
 
 ## Testing strategy
 
 | Layer | Tooling | What it covers |
 |---|---|---|
-| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, media library, cascade delete, project validation, catalog loading, OpenAPI |
+| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, media library, cascade delete, project validation, catalog loading, OpenAPI, export jobs (snapshot, cancel, retention, startup cleanup) |
+| Export renderer | pytest under llvmpipe | Time model against the shared vectors, all six programs compile, golden boundary frames and letterboxing, MP4 streams and duration via ffprobe, PSNR of a mid-transition frame against the raw frame |
 | Web | Vitest + Testing Library | Timeline maths, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
-| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; golden frames |
+| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; export wizard incl. cancel; golden frames; preview ↔ export frame comparison |
+| Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |
 | Static | Biome, Ruff, mypy (strict), TypeScript (strict) | Lint, formatting, types |
 
 **Golden frames.** A test hook (`/?debug-progress=<id>:<p>`) renders a single
@@ -213,15 +342,22 @@ the source frame and progress 1 exactly the target frame, that the midpoint
 differs from both, and transition-specific geometry (wipe direction, circle
 growing from the centre, pixelate block size, dissolve determinism). These
 tests check the consistency of our own engine; they cannot prove fidelity to
-the original, for which no reference installation is available. Once the
-export exists, the same frames will be compared between browser and backend.
+the original, for which no reference installation is available.
+
+**Preview ↔ export.** For each of the six transitions at progress 0.5, the E2E
+suite renders one frame in the browser (SwiftShader) and one with the backend
+renderer from the same inputs. They must agree within 2 levels per channel on
+at least 99.5 % of the pixels; bit-exact equality between SwiftShader and
+llvmpipe is not realistic.
 
 `pixi run check` is the quality gate (lint, typecheck, unit tests, shader
-check, build) and runs in CI on every push and pull request.
+check, build) and runs in CI on every push and pull request, after
+`pixi run check-render-env`. CI also runs the E2E suite and the Docker export
+smoke test.
 
-## Planned: export
+## Next
 
-The target render pipeline (ADR 0001): FFmpeg decodes the sources to raw
-frames, headless OpenGL (EGL, Mesa llvmpipe without a GPU) runs **the same
-shader files** with a desktop GL header, and FFmpeg encodes H.264/AAC. The
-timeline logic will be ported unchanged so that preview and export agree.
+The next milestone is **music**: a background audio track per project. The
+export already has a replaceable audio input (today the silent `anullsrc`
+track), so on the export side music only changes what is fed into FFmpeg's
+audio slot.
