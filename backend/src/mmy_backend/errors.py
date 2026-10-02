@@ -68,6 +68,7 @@ class ErrorCode(StrEnum):
     EXPORT_NOT_FOUND = "export.notFound"
     EXPORT_EMPTY_PROJECT = "export.emptyProject"
     EXPORT_MISSING_MEDIA = "export.missingMedia"
+    EXPORT_MISSING_MUSIC_MEDIA = "export.missingMusicMedia"
     EXPORT_BUSY = "export.busy"
     EXPORT_NOT_READY = "export.notReady"
     EXPORT_FILE_NAME_EMPTY = "export.fileName.empty"
@@ -83,6 +84,7 @@ class ErrorCode(StrEnum):
     EXPORT_FFMPEG_INPUT_CLOSED_EARLY = "export.ffmpegInputClosedEarly"
     EXPORT_FFMPEG_FAILED = "export.ffmpegFailed"
     EXPORT_RENDER_FAILED = "export.renderFailed"
+    EXPORT_AUDIO_FAILED = "export.audioFailed"
     EXPORT_SAVE_FAILED = "export.saveFailed"
     EXPORT_UNEXPECTED = "export.unexpected"
 
@@ -211,6 +213,10 @@ _SPECS: dict[str, ErrorSpec] = {
     "export.missingMedia": ErrorSpec(
         "Cannot export: media missing for slide(s) {slides}.", ("count", "slides", "mediaIds")
     ),
+    # `clips`: comma-separated 1-based positions in the music track; `mediaIds`: ids.
+    "export.missingMusicMedia": ErrorSpec(
+        "Cannot export: media missing for music clip(s) {clips}.", ("count", "clips", "mediaIds")
+    ),
     "export.busy": ErrorSpec(
         "An export is already running. Wait for it to finish or cancel it first.",
         ("exportId",),
@@ -247,6 +253,7 @@ _SPECS: dict[str, ErrorSpec] = {
     "export.ffmpegFailed": ErrorSpec("FFmpeg failed with exit code {returnCode}.", ("returnCode",)),
     # `reason`: technical detail (English), e.g. a shader error.
     "export.renderFailed": ErrorSpec("The export failed: {reason}", ("reason",)),
+    "export.audioFailed": ErrorSpec("The music could not be mixed: {reason}", ("reason",)),
     "export.saveFailed": ErrorSpec("The export could not be saved: {reason}", ("reason",)),
     "export.unexpected": ErrorSpec("The export failed unexpectedly."),
 }

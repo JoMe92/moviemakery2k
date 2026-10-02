@@ -52,7 +52,7 @@ def _not_found(export_id: str) -> HTTPException:
 
 
 def _check_exportable(project: Project, media: MediaStore) -> None:
-    """422 if the project is empty or refers to missing media."""
+    """422 if the project is empty or its slides or music refer to missing media."""
     if not project.slides:
         raise api_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, "export.emptyProject")
     known = {item.id for item in media.list()}
@@ -68,6 +68,20 @@ def _check_exportable(project: Project, media: MediaStore) -> None:
             count=len(missing),
             slides=", ".join(str(position) for position, _ in missing),
             mediaIds=", ".join(dict.fromkeys(media_id for _, media_id in missing)),
+        )
+    audio = {item.id for item in media.list() if item.kind == "audio"}
+    missing_music = [
+        (index + 1, clip.media_id)
+        for index, clip in enumerate(project.music)
+        if clip.media_id not in audio
+    ]
+    if missing_music:
+        raise api_exception(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "export.missingMusicMedia",
+            count=len(missing_music),
+            clips=", ".join(str(position) for position, _ in missing_music),
+            mediaIds=", ".join(dict.fromkeys(media_id for _, media_id in missing_music)),
         )
 
 
@@ -103,7 +117,8 @@ def content_disposition(file_name: str) -> str:
         status.HTTP_422_UNPROCESSABLE_CONTENT: {
             "model": ApiValidationResponse,
             "description": (
-                "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) "
+                "Empty project (`export.emptyProject`), missing media (`export.missingMedia`, "
+                "`export.missingMusicMedia`) "
                 "or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
             ),
         },

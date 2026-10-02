@@ -334,6 +334,7 @@
           "export.notFound",
           "export.emptyProject",
           "export.missingMedia",
+          "export.missingMusicMedia",
           "export.busy",
           "export.notReady",
           "export.fileName.empty",
@@ -349,6 +350,7 @@
           "export.ffmpegInputClosedEarly",
           "export.ffmpegFailed",
           "export.renderFailed",
+          "export.audioFailed",
           "export.saveFailed",
           "export.unexpected"
         ],
@@ -1248,7 +1250,7 @@
                 }
               }
             },
-            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
+            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
           }
         },
         "summary": "Start Export",

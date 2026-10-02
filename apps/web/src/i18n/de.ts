@@ -315,6 +315,7 @@ export const de = {
       notFound: "Der Export wurde nicht gefunden.",
       emptyProject: "Export nicht möglich: Der Bildstreifen ist leer.",
       missingMedia: "Export nicht möglich: Für Bild(er) {slides} fehlen die Medien.",
+      missingMusicMedia: "Export nicht möglich: Für Musikstück(e) {clips} fehlen die Medien.",
       busy: "Es läuft bereits ein Export. Bitte warten oder ihn zuerst abbrechen.",
       notReady: "Der Film ist nicht verfügbar: Der Export hat den Status „{status}“.",
       fileName: {
@@ -334,6 +335,7 @@ export const de = {
       ffmpegInputClosedEarly: "FFmpeg hat seine Eingabe vorzeitig geschlossen.",
       ffmpegFailed: "FFmpeg ist mit dem Exit-Code {returnCode} fehlgeschlagen.",
       renderFailed: "Der Export ist fehlgeschlagen: {reason}",
+      audioFailed: "Die Musik konnte nicht gemischt werden: {reason}",
       saveFailed: "Der Export konnte nicht gespeichert werden: {reason}",
       unexpected: "Der Export ist unerwartet fehlgeschlagen.",
     },

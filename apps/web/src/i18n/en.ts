@@ -318,6 +318,7 @@ export const en = {
       notFound: "Export not found.",
       emptyProject: "Cannot export: the storyboard is empty.",
       missingMedia: "Cannot export: media missing for picture(s) {slides}.",
+      missingMusicMedia: "Cannot export: media missing for music clip(s) {clips}.",
       busy: "An export is already running. Wait for it to finish or cancel it first.",
       notReady: "The movie is not available: the export has the status “{status}”.",
       fileName: {
@@ -337,6 +338,7 @@ export const en = {
       ffmpegInputClosedEarly: "FFmpeg closed its input prematurely.",
       ffmpegFailed: "FFmpeg failed with exit code {returnCode}.",
       renderFailed: "The export failed: {reason}",
+      audioFailed: "The music could not be mixed: {reason}",
       saveFailed: "The export could not be saved: {reason}",
       unexpected: "The export failed unexpectedly.",
     },
