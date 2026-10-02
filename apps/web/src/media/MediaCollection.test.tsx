@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../lib/apiClient";
 import { mediaItem, mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
@@ -275,5 +276,45 @@ describe("Mediensammlung", () => {
       "a.jpg: Backend not reachable.",
     );
     expect(within(alert).getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["de", "kaputt.gif: Kein unterstütztes Bild (erlaubt sind JPEG, PNG und WebP)."],
+    ["en", "kaputt.gif: Not a supported image (JPEG, PNG and WebP are allowed)."],
+  ])("übersetzt den Code media.unsupportedType je Datei (%s)", async (locale, text) => {
+    localStorage.setItem("mmy.locale", locale);
+    const api = importApi({
+      uploadMedia: vi.fn(async (f: File) => ({
+        ok: false as const,
+        error: "media.unsupportedType",
+        filename: f.name,
+        message: "Not a supported image (JPEG, PNG and WebP are allowed).",
+      })),
+    });
+    const user = userEvent.setup();
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    await user.upload(screen.getByTestId("media-import-input"), [file("kaputt.gif")]);
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByRole("listitem")).toHaveTextContent(text);
+  });
+
+  it("zeigt bei 413 (zu viele Dateien) den übersetzten Code", async () => {
+    const api = importApi({
+      uploadMedia: vi.fn(async () => {
+        throw new ApiError("Too many files", 413, {
+          code: "media.tooManyFiles",
+          params: { max: 50, count: 51 },
+          message: "Too many files: at most 50 per import (51 sent).",
+        });
+      }),
+    });
+    const user = userEvent.setup();
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    await user.upload(screen.getByTestId("media-import-input"), [file("a.jpg")]);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "a.jpg: Zu viele Dateien: höchstens 50 je Import (51 gesendet).",
+    );
   });
 });

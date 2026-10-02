@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
 import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
-import { WIZARD_TITLE } from "./SaveMovieWizard";
+
+const WIZARD_TITLE = "Film speichern";
 
 const slide = (id: string, mediaId: string): Slide => ({
   id,

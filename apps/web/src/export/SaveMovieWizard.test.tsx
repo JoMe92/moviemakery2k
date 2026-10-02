@@ -6,15 +6,14 @@ import { ApiError, type ExportApi, type ExportJob } from "../lib/apiClient";
 import { createAppStore } from "../store/appStore";
 import { exportJob, mockApi } from "../store/testApi";
 import { AppStoreContext } from "../store/useAppStore";
-import {
-  CANCEL_QUESTION,
-  CANCEL_TITLE,
-  ERROR_TITLE,
-  SaveMovieWizard,
-  SaveMovieWizardFromStore,
-  WIZARD_TITLE,
-} from "./SaveMovieWizard";
-import { OFFLINE_MESSAGE, POLL_INTERVAL_MS } from "./useExportRun";
+import { SaveMovieWizard, SaveMovieWizardFromStore } from "./SaveMovieWizard";
+import { POLL_INTERVAL_MS } from "./useExportRun";
+
+const WIZARD_TITLE = "Film speichern";
+const CANCEL_TITLE = "Export abbrechen";
+const CANCEL_QUESTION = "Export wirklich abbrechen?";
+const ERROR_TITLE = "Fehler beim Speichern des Films";
+const OFFLINE_MESSAGE = "Das Backend ist nicht erreichbar. Bitte versuchen Sie es erneut.";
 
 const GL_ERROR =
   "Der Export ist auf diesem System nicht verfügbar: Es konnte kein OpenGL-Kontext erzeugt werden.";
@@ -78,6 +77,13 @@ const typeName = (value: string) => fireEvent.change(nameInput(), { target: { va
 async function toProgress() {
   click("Weiter");
   click("Weiter");
+  await tick(0);
+}
+
+async function toProgressIn(locale: string) {
+  const next = locale === "en" ? "Next" : "Weiter";
+  click(next);
+  click(next);
   await tick(0);
 }
 
@@ -327,6 +333,125 @@ describe("Assistent „Film speichern“", () => {
     unmount();
     await tick(POLL_INTERVAL_MS * 4);
     expect(api.getExport).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Assistent auf Englisch und Fehlercodes", () => {
+  const apiError = (code: string, params: Record<string, string | number>, message: string) =>
+    new ApiError(message, 422, { code, params, message });
+
+  it("zeigt alle Schritte auf Englisch mit englischer Größenangabe", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const api = exportApi();
+    api.getExport.mockResolvedValueOnce(job({ status: "done", progress: 1, fileName: "My Movie" }));
+    setup(api);
+
+    expect(screen.getByRole("dialog", { name: "Save Movie" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "File Name" })).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "File name:" })).toHaveValue("My Movie");
+    expect(screen.getByText("Will be saved as “My Movie.mp4”.")).toBeInTheDocument();
+    expect(button("Back")).toBeDisabled();
+
+    click("Next");
+    expect(screen.getByRole("heading", { name: "Quality" })).toBeInTheDocument();
+    const high = screen.getByRole("radio", { name: /High quality \(960×720\)/ });
+    expect(high.closest("label")).toHaveTextContent("Estimated size: approx. 3.4 MB");
+    expect(
+      screen.getByRole("radio", { name: /Small file \(640×480\)/ }).closest("label"),
+    ).toHaveTextContent("Estimated size: approx. 1.8 MB");
+
+    click("Next");
+    await tick(0);
+    expect(screen.getByRole("heading", { name: "Saving Movie" })).toBeInTheDocument();
+    expect(screen.getByText("Time remaining: calculating…")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Export progress" })).toBeInTheDocument();
+    await tick();
+    expect(screen.getByRole("heading", { name: "Finished" })).toBeInTheDocument();
+    expect(screen.getByText("The movie “My Movie.mp4” has been saved.")).toBeInTheDocument();
+    expect(button("Download Movie")).toBeInTheDocument();
+    expect(button("Finish")).toBeEnabled();
+  });
+
+  it("nennt ungültige Dateinamen auf Englisch", () => {
+    localStorage.setItem("mmy.locale", "en");
+    setup();
+    fireEvent.change(screen.getByRole("textbox", { name: "File name:" }), {
+      target: { value: "a:b" },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The file name contains characters that are not allowed: :",
+    );
+    expect(button("Next")).toBeDisabled();
+  });
+
+  it.each([
+    ["de", "Fehler beim Speichern des Films", "Export nicht möglich: Der Bildstreifen ist leer."],
+    ["en", "Error Saving the Movie", "Cannot export: the storyboard is empty."],
+  ])("übersetzt den bekannten Code export.emptyProject (%s)", async (locale, title, text) => {
+    localStorage.setItem("mmy.locale", locale);
+    const api = exportApi({
+      startExport: vi
+        .fn()
+        .mockRejectedValue(
+          apiError("export.emptyProject", {}, "Cannot export: the storyboard is empty."),
+        ),
+    });
+    setup(api);
+    await toProgressIn(locale);
+    expect(screen.getByRole("dialog", { name: title })).toHaveTextContent(text);
+  });
+
+  it("zeigt bei unbekanntem Code die englische Meldung des Backends", async () => {
+    const api = exportApi({
+      startExport: vi
+        .fn()
+        .mockRejectedValue(apiError("export.somethingNew", { x: 1 }, "Something new went wrong.")),
+    });
+    setup(api);
+    await toProgress();
+    expect(screen.getByRole("dialog", { name: ERROR_TITLE })).toHaveTextContent(
+      "Something new went wrong.",
+    );
+  });
+
+  it("übersetzt FastAPIs 422-Liste mit unserem Code in `type`", async () => {
+    const message = "The file name is too long (at most 120 characters).";
+    const api = exportApi({
+      startExport: vi.fn().mockRejectedValue(
+        new ApiError(message, 422, {
+          code: null,
+          params: {},
+          message,
+          issues: [{ code: "export.fileName.tooLong", params: { max: 120 }, message }],
+        }),
+      ),
+    });
+    setup(api);
+    await toProgress();
+    expect(screen.getByRole("dialog", { name: ERROR_TITLE })).toHaveTextContent(
+      "Der Dateiname ist zu lang (höchstens 120 Zeichen).",
+    );
+  });
+
+  it("übersetzt den Jobfehler export.glUnavailable über errorCode", async () => {
+    const api = exportApi();
+    api.getExport.mockResolvedValueOnce(
+      job({
+        status: "failed",
+        error: "Export is not available on this system: no OpenGL context …",
+        errorCode: "export.glUnavailable",
+        errorParams: { reason: "EGL: no display" },
+      }),
+    );
+    setup(api);
+    await toProgress();
+    await tick();
+    const dialog = screen.getByRole("dialog", { name: ERROR_TITLE });
+    expect(dialog).toHaveTextContent(
+      "Der Export ist auf diesem System nicht verfügbar: Es konnte kein OpenGL-Kontext zum Rendern erzeugt werden.",
+    );
+    expect(dialog).not.toHaveTextContent("EGL");
   });
 });
 

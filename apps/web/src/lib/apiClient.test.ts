@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, createApi, errorDetail } from "./apiClient";
+import { ApiError, createApi, errorDetail, parseErrorBody } from "./apiClient";
 
 // openapi-fetch baut Request-Objekte; Node braucht dafür absolute URLs.
 const BASE = "http://backend.test";
@@ -93,14 +93,97 @@ describe("Export-Schnittstelle", () => {
     const api = createApi(BASE, fetchImpl as unknown as typeof fetch);
     const request = { profile: "small" as const, fileName: "x" };
 
-    await expect(api.startExport(request)).rejects.toEqual(new ApiError(busy, 409));
+    await expect(api.startExport(request)).rejects.toMatchObject({
+      message: busy,
+      status: 409,
+      info: { code: "export.busy" },
+    });
     await expect(api.startExport(request)).rejects.toMatchObject({
       message: "The file name is invalid.",
       status: 422,
     });
     await expect(api.startExport(request)).rejects.toMatchObject({
-      message: "Export starten fehlgeschlagen (500)",
+      message: "Starting the export failed (500)",
       status: 500,
+      info: { code: "client.requestFailed", params: { status: 500 } },
     });
+  });
+});
+
+describe("parseErrorBody", () => {
+  it("liefert Code, Parameter und Meldung strukturiert", () => {
+    expect(
+      parseErrorBody({
+        detail: {
+          code: "media.tooManyFiles",
+          params: { max: 50, count: 51, junk: { x: 1 } },
+          message: "Too many files: at most 50 per import (51 sent).",
+        },
+      }),
+    ).toEqual({
+      code: "media.tooManyFiles",
+      params: { max: 50, count: 51 },
+      message: "Too many files: at most 50 per import (51 sent).",
+    });
+  });
+
+  it("liest FastAPIs Liste mit `type` als Code und `ctx` als Parameter", () => {
+    const info = parseErrorBody({
+      detail: [
+        {
+          loc: ["body", "fileName"],
+          msg: "The file name is too long (at most 120 characters).",
+          type: "export.fileName.tooLong",
+          ctx: { max: 120 },
+        },
+        { loc: ["body", "profile"], msg: "Input should be 'high' or 'small'", type: "enum" },
+      ],
+    });
+    expect(info?.code).toBeNull();
+    expect(info?.issues).toEqual([
+      {
+        code: "export.fileName.tooLong",
+        params: { max: 120 },
+        message: "The file name is too long (at most 120 characters).",
+      },
+      { code: "enum", params: {}, message: "Input should be 'high' or 'small'" },
+    ]);
+  });
+
+  it("liest die Einzelfehler von project.invalid", () => {
+    const info = parseErrorBody({
+      detail: {
+        code: "project.invalid",
+        params: { count: 1, summary: "x" },
+        message: "The project is invalid: x",
+        issues: [
+          {
+            code: "project.slide.unknownMedia",
+            params: { slide: 2, slideId: "s2", mediaId: "m9" },
+            message: "Slide 2 …",
+            loc: ["body", "slides", 1],
+          },
+        ],
+      },
+    });
+    expect(info?.issues?.[0]).toEqual({
+      code: "project.slide.unknownMedia",
+      params: { slide: 2, slideId: "s2", mediaId: "m9" },
+      message: "Slide 2 …",
+    });
+  });
+});
+
+describe("Upload-Fehler", () => {
+  it("wirft bei 413 einen ApiError mit Code", async () => {
+    const fetchImpl = vi.fn(async () =>
+      json(413, {
+        detail: { code: "media.tooManyFiles", params: { max: 50, count: 51 }, message: "Too many" },
+      }),
+    );
+    const api = createApi(BASE, fetchImpl as unknown as typeof fetch);
+    const error = await api.uploadMedia(new File(["x"], "a.jpg")).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 413, info: { code: "media.tooManyFiles" } });
   });
 });
