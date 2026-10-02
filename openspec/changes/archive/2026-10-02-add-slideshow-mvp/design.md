@@ -4,7 +4,7 @@ Ausgangspunkt ist das Gerüst aus dem Bootstrap: `apps/web` (Vite, React 19,
 TS), `backend/` (FastAPI, bisher mit uv), `packages/{catalog,shaders}` (nur
 READMEs) und ADR 0001 (Web-App + FFmpeg-Backend + geteilte GLSL-Shader). Die
 Motivation steht in proposal.md. Die Recherche zum Original steht in
-`docs/research/movie-maker-klon.md`.
+`docs/research/movie-maker-reference.md`.
 
 Rahmen vom Product Owner (2026-10-02): nur Vorschau, kein Export. Sechs
 klassische Übergänge. Bilder werden ins Backend hochgeladen. Die volle Shell
@@ -164,8 +164,9 @@ es aber über die API. So ist das Backend die Autorität darüber, welche
   Shader-Wrapper (Stringaufbau).
 - Shader: `pixi run check-shaders` setzt Header + Datei + `main` zusammen und
   prüft mit `glslangValidator` (ES 3.00, Fragment) — auch in CI.
-- E2E: ein Playwright-Smoke-Test (`@playwright/test`, Chromium, nicht in der
-  Standard-CI-Matrix, sondern als eigener Job). Er importiert Testbilder,
+- E2E: ein Playwright-Smoke-Test (Python-Playwright + pytest-playwright aus
+  conda-forge über Pixi, Chromium, als eigener CI-Job; Entscheidung bei der
+  Umsetzung, Discovery mmy-9ri). Er importiert Testbilder,
   zieht sie in den Bildstreifen, setzt einen Übergang, drückt Play und prüft
   Canvas-Pixel. Zusätzlich prüft er an den Rändern jedes Übergangs: Bei
   `progress` 0 und 1 entspricht der Frame exakt dem Von- bzw. Nach-Bild
