@@ -10,7 +10,8 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "pwa.config.ts", "pwa.config.test.ts"]
 }

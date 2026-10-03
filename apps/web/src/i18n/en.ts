@@ -295,6 +295,10 @@ export const en = {
     failed: "The movie could not be saved.",
     cancelled: "The export was cancelled.",
   },
+  pwa: {
+    updateAvailable: "New version available.",
+    reload: "Reload",
+  },
   errors: {
     unknown: "An unknown error occurred.",
     invalidInput: "The input is invalid.",

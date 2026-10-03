@@ -293,6 +293,10 @@ export const de = {
     failed: "Der Film konnte nicht gespeichert werden.",
     cancelled: "Der Export wurde abgebrochen.",
   },
+  pwa: {
+    updateAvailable: "Neue Version verfügbar.",
+    reload: "Neu laden",
+  },
   errors: {
     unknown: "Ein unbekannter Fehler ist aufgetreten.",
     invalidInput: "Die Eingabe ist ungültig.",
