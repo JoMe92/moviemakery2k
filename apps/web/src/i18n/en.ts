@@ -232,6 +232,15 @@ export const en = {
     transition: "Transition:",
     smaller: "Smaller",
     larger: "Larger",
+    videoTrimTitle: "Trim Video Clip {number}",
+    videoTrimIn: "Start",
+    videoTrimOut: "End",
+    videoTrimFile: "Video duration: {duration}",
+    videoTrimFormat: "Times as m:ss.cc or in seconds.",
+    videoTrimRange:
+      "Allowed are start and end from {min} to {max}; the start must lie before the end.",
+    videoPreviewStart: "Frame at the new start",
+    videoPreviewEnd: "Frame at the new end",
   },
   dnd: {
     audio: "Audio “{name}”",

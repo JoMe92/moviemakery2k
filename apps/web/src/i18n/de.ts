@@ -230,6 +230,15 @@ export const de = {
     transition: "Übergang:",
     smaller: "Kleiner",
     larger: "Größer",
+    videoTrimTitle: "Videoclip {number} kürzen",
+    videoTrimIn: "Anfang",
+    videoTrimOut: "Ende",
+    videoTrimFile: "Videodauer: {duration}",
+    videoTrimFormat: "Zeiten als m:ss,cc oder in Sekunden.",
+    videoTrimRange:
+      "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen.",
+    videoPreviewStart: "Bild am neuen Anfang",
+    videoPreviewEnd: "Bild am neuen Ende",
   },
   dnd: {
     audio: "Audio „{name}“",

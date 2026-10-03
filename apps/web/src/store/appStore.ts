@@ -214,6 +214,12 @@ export interface AppState {
   moveSlide(from: number, to: number): void;
   removeSlide(slideId: string): void;
   setSlideDuration(slideId: string, duration: number): boolean;
+  /**
+   * Trims a video slide (spec slideshow-project "Videoclip kürzen"):
+   * `0 <= trimIn < trimOut <= ` the video's decoded duration. `false` =
+   * refused (not a video slide, unknown media or out of range).
+   */
+  setVideoTrim(slideId: string, trimIn: number, trimOut: number): boolean;
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
   /**
@@ -668,6 +674,18 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         if (!isValidSlideDuration(duration)) return false;
         commit(
           updateSlide(get().slides, slideId, (s) => (s.kind === "video" ? s : { ...s, duration })),
+        );
+        return true;
+      },
+      setVideoTrim(slideId, trimIn, trimOut) {
+        const { slides, media } = get();
+        const slide = slides.find((s) => s.id === slideId);
+        if (!slide || slide.kind !== "video") return false;
+        const item = media.find((m) => m.id === slide.mediaId);
+        if (item?.kind !== "video") return false;
+        if (!(trimIn >= 0 && trimIn < trimOut && trimOut <= item.duration)) return false;
+        commit(
+          updateSlide(slides, slideId, (s) => (s.kind === "video" ? { ...s, trimIn, trimOut } : s)),
         );
         return true;
       },
