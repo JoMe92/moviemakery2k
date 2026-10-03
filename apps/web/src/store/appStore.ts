@@ -207,6 +207,11 @@ export interface AppState {
   setSlideDuration(slideId: string, duration: number): boolean;
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
+  /**
+   * Play the transition before this picture once in the monitor, with a
+   * short lead-in and lead-out (transition sheet, add-mobile-layout D9).
+   */
+  playTransitionOnce(slideId: string): void;
   removeTransition(slideId: string): void;
 
   /**
@@ -256,6 +261,9 @@ export interface AppState {
 }
 
 export type AppStore = StoreApi<AppState>;
+
+/** Lead-in and lead-out (s) around a transition played once. */
+export const TRANSITION_LEAD = 0.5;
 
 export interface AppStoreOptions {
   /** Initial UI language; defaults to stored setting → browser → `en`. */
@@ -635,6 +643,15 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             transitionIn: { transitionId, duration: defaultTransitionDuration(transitionId) },
           })),
         );
+      },
+      playTransitionOnce(slideId) {
+        const { slides } = get();
+        const timeline = timelineOf(slides);
+        const placed = timeline.slides.find((p) => p.slide.id === slideId);
+        if (!placed || placed.transitionIn <= 0) return;
+        const from = Math.max(0, placed.start - TRANSITION_LEAD);
+        const until = Math.min(timeline.duration, placed.start + placed.transitionIn + TRANSITION_LEAD);
+        set({ ...noDemo, playback: { playing: true, time: from, until } });
       },
       setTransitionDuration(slideId, duration) {
         if (!isValidTransitionDuration(duration)) return false;
