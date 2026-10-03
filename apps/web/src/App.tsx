@@ -83,9 +83,11 @@ export function App() {
     );
   }
 
+  const medium = layout.mode === "medium";
   return (
     <StoryboardDnd>
       <AppWindow
+        variant={medium ? "medium" : "wide"}
         title={title}
         menuBar={<AppMenus extra={playerMenu} />}
         toolbar={
@@ -95,7 +97,7 @@ export function App() {
             onCollectionChange={(id) => setCollection(id as CollectionId)}
           />
         }
-        taskPane={<TaskPane groups={taskGroups} />}
+        taskPane={medium ? undefined : <TaskPane groups={taskGroups} />}
         collection={
           <LibraryPane name={collectionName}>
             {collection === "transitions" ? (
@@ -111,12 +113,17 @@ export function App() {
         monitor={<Player />}
         storyboard={storyboard}
         statusBar={
-          <StatusBar
-            items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
-              (x): x is string => x !== null,
-            )}
-          />
+          medium ? undefined : (
+            <StatusBar
+              items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
+                (x): x is string => x !== null,
+              )}
+            />
+          )
         }
+        indicators={medium ? <SaveFailedIndicator /> : undefined}
+        taskbar={medium ? <Taskbar /> : undefined}
+        notices={medium ? <StatusNotices /> : undefined}
       />
       <SaveMovieWizardFromStore />
     </StoryboardDnd>

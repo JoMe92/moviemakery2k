@@ -32,6 +32,7 @@
 }
 
 .title {
+  flex: 1;
   margin: 0;
   overflow: hidden;
   font-size: 13px;
@@ -48,4 +49,22 @@
   min-width: 0;
   min-height: 0;
   padding: 4px 4px 0;
+}
+
+/* Medium layout (tablet, phone in landscape): collection | monitor, taskbar below. */
+.window[data-variant="medium"] {
+  grid-template-rows: auto auto auto minmax(0, 1fr) minmax(var(--y2k-storyboard-height), auto) auto;
+}
+
+.window[data-variant="medium"] .titlebar {
+  min-height: var(--y2k-touch-target);
+  padding-top: var(--y2k-safe-top);
+  padding-right: calc(8px + var(--y2k-safe-right));
+  padding-left: calc(8px + var(--y2k-safe-left));
+}
+
+.window[data-variant="medium"] .workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding-right: calc(4px + var(--y2k-safe-right));
+  padding-left: calc(4px + var(--y2k-safe-left));
 }
