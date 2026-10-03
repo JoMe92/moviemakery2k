@@ -32,6 +32,10 @@ class Settings:
         return self.catalog_dir / "transitions.json"
 
     @property
+    def title_catalog_file(self) -> Path:
+        return self.catalog_dir / "titles.json"
+
+    @property
     def title_font_file(self) -> Path:
         return self.fonts_dir / TITLE_FONT_FILE
 
