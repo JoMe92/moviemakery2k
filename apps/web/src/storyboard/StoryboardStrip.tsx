@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
-import { useLayoutMode } from "../shell/layoutMode";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
+import { TransitionSheet } from "../transitions/TransitionSheet";
 import { catalogName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
@@ -37,7 +38,11 @@ export function StoryboardStrip() {
   const removeTransition = useAppStore((s) => s.removeTransition);
   const insertIndex = useInsertIndex();
   // Phones and tablets add pictures via the taskbar instead of dragging.
-  const stepHint = useLayoutMode().mode !== "wide";
+  const layout = useLayoutMode();
+  const stepHint = layout.mode !== "wide";
+  const touch = isTouchLayout(layout);
+  // Transition sheet of one slot (touch operation, add-mobile-layout D9).
+  const [transitionSheet, setTransitionSheet] = useState<string | null>(null);
   // During playback: the picture currently visible (changes only when the picture changes).
   const playingIndex = useAppStore((s) =>
     s.playback.playing ? slideIndexAt(timelineOf(s.slides), s.playback.time) : null,
@@ -59,7 +64,10 @@ export function StoryboardStrip() {
     if (!("slideId" in editRequest)) return;
     const { slideId } = editRequest;
     if (editRequest.kind === "slideDuration") setDialog({ kind: "slide", slideId });
-    else if (editRequest.kind === "transition") setDialog({ kind: "transition", slideId });
+    else if (editRequest.kind === "transition") {
+      if (touch) setTransitionSheet(slideId);
+      else setDialog({ kind: "transition", slideId });
+    }
     else {
       const rect = tiles.current.get(slideId)?.getBoundingClientRect();
       setMenu({
@@ -69,7 +77,7 @@ export function StoryboardStrip() {
         y: rect ? rect.top + rect.height / 2 : 0,
       });
     }
-  }, [editRequest]);
+  }, [editRequest, touch]);
 
   const remove = (slideId: string) => {
     const index = slides.findIndex((s) => s.id === slideId);
@@ -165,6 +173,7 @@ export function StoryboardStrip() {
                 onTransitionMenu={(x, y) =>
                   setMenu({ kind: "transition", slideId: slide.id, x, y })
                 }
+                onTransitionActivate={touch ? () => setTransitionSheet(slide.id) : undefined}
               />
             ))}
           </ol>
@@ -183,6 +192,7 @@ export function StoryboardStrip() {
           items={menuItems(menu)}
         />
       ) : null}
+      <TransitionSheet slideId={transitionSheet} onClose={() => setTransitionSheet(null)} />
       <DurationDialog
         open={dialog?.kind === "slide" && dialogSlide !== undefined}
         title={t("storyboard.slideProperties", { number: dialog ? numberOf(dialog.slideId) : "" })}

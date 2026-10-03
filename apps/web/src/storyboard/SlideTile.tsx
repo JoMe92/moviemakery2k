@@ -27,6 +27,8 @@ export interface SlideTileProps {
   onTransitionProperties: () => void;
   onTransitionRemove: () => void;
   onTransitionMenu: (x: number, y: number) => void;
+  /** Tap on the transition slot with touch operation. */
+  onTransitionActivate?: () => void;
   tileRef?: (el: HTMLButtonElement | null) => void;
   /** Insertion marker before or after this tile (dragging from the collection). */
   marker?: "before" | "after" | null;
@@ -46,6 +48,7 @@ export function SlideTile({
   onTransitionProperties,
   onTransitionRemove,
   onTransitionMenu,
+  onTransitionActivate,
   tileRef,
   marker = null,
 }: SlideTileProps) {
@@ -108,6 +111,7 @@ export function SlideTile({
           onProperties={onTransitionProperties}
           onRemove={onTransitionRemove}
           onMenu={onTransitionMenu}
+          onActivate={onTransitionActivate}
         />
       ) : null}
       {marker ? (

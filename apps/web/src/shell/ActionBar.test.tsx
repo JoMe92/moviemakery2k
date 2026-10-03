@@ -94,7 +94,8 @@ describe("action bar (add-mobile-layout design.md D6)", () => {
     expect(screen.getByRole("dialog", { name: "Eigenschaften von Bild 2" })).toHaveClass("sheet");
     await user.click(screen.getByRole("button", { name: "Dialog schließen" }));
     await user.click(action("Übergang davor…"));
-    expect(screen.getByRole("dialog", { name: "Übergang vor Bild 2" })).toBeInTheDocument();
+    // With touch operation this is the transition sheet (TASK-WEB-042).
+    expect(screen.getByRole("dialog", { name: "Übergang" })).toBeInTheDocument();
   });
 
   it("disables 'Übergang davor…' on the first picture", async () => {

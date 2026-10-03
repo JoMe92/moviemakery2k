@@ -270,6 +270,17 @@ export const en = {
     trimRange:
       "Allowed are start and end from {min} to {max}; the start must lie before the end and the length must be at least {length} s.",
   },
+  stepper: {
+    decrease: "Decrease {label}",
+    increase: "Increase {label}",
+  },
+  transitionSheet: {
+    title: "Transition",
+    none: "No transition",
+    list: "Transitions to choose from",
+    duration: "Transition duration",
+    done: "Done",
+  },
   actions: {
     bar: "Actions",
     duration: "Duration…",

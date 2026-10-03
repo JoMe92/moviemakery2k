@@ -1,0 +1,38 @@
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--y2k-touch-gap);
+}
+
+.button {
+  width: var(--y2k-touch-target);
+  height: var(--y2k-touch-target);
+  padding: 0;
+  border: 1px solid var(--y2k-button-border);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-button-top), var(--y2k-button-bottom));
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.button:active:not(:disabled) {
+  background: linear-gradient(
+    to bottom,
+    var(--y2k-button-pressed-top),
+    var(--y2k-button-pressed-bottom)
+  );
+}
+
+.button:disabled {
+  border-color: var(--y2k-edge-dark);
+  color: var(--y2k-text-disabled);
+  cursor: default;
+}
+
+.value {
+  min-width: 5em;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
