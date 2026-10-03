@@ -161,7 +161,13 @@ export function SlideTile({
       >
         <span className={styles.thumb}>
           {media?.kind === "image" ? (
-            <img src={media.thumbnailUrl} alt="" loading="lazy" draggable={false} />
+            <img
+              src={media.thumbnailUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+            />
           ) : null}
           <span className={styles.number}>{number}</span>
         </span>

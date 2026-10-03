@@ -165,3 +165,9 @@ textarea {
 :root[data-pointer="coarse"] :is(input, select, textarea) {
   font-size: max(16px, 1em);
 }
+
+/* Dragging and swiping never trigger pull-to-refresh (add-mobile-layout D14). */
+html,
+body {
+  overscroll-behavior-y: none;
+}

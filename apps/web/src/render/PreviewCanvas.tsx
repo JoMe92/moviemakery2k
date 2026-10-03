@@ -63,7 +63,8 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
     const renderer = rendererRef.current;
     if (!renderer || renderer.isContextLost) return;
     const { width, height } = sizeRef.current;
-    renderer.resize(width, height, window.devicePixelRatio || 1);
+    // Capped buffer: ×2 at most, 1920 px wide at most (add-mobile-layout D14).
+    renderer.resize(width, height, window.devicePixelRatio || 1, true);
     const { frame, images, params } = propsRef.current;
     if (frame.kind === "still") {
       const tex = textureFor(renderer, images(frame.slideIndex));

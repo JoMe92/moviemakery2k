@@ -106,6 +106,19 @@ describe("Renderer", () => {
     expect([canvas.width, canvas.height]).toEqual([1000, 750]);
   });
 
+  it("caps the preview buffer at ×2 and 1920 px (add-mobile-layout D14)", () => {
+    const { gl } = fakeGl();
+    const canvas = canvasWith(gl);
+    const r = new Renderer(canvas);
+    r.resize(400, 300, 3, true);
+    expect([canvas.width, canvas.height]).toEqual([800, 600]);
+    r.resize(1600, 1200, 2, true);
+    expect([canvas.width, canvas.height]).toEqual([1920, 1440]);
+    // Without the preview flag (e.g. the debug view) the plain DPR applies.
+    r.resize(400, 300, 3);
+    expect([canvas.width, canvas.height]).toEqual([1200, 900]);
+  });
+
   it("stops drawing after context loss", () => {
     const { gl, calls } = fakeGl();
     const canvas = canvasWith(gl);

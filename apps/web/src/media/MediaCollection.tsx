@@ -131,7 +131,13 @@ function MediaTile({
       aria-label={item.filename}
       title={item.filename}
       thumbnail={
-        <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
+        <img
+          src={item.thumbnailUrl}
+          alt={item.filename}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+        />
       }
       selected={selected}
       {...handlers}

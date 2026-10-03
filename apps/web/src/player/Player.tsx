@@ -103,6 +103,18 @@ export function Player() {
     });
   }, [running, store, audio]);
 
+  // A hidden tab pauses playback, which also stops the rAF clock; the
+  // monitor keeps the paused position (add-mobile-layout design.md D14).
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "hidden") return;
+      const state = store.getState();
+      if (state.playback.playing) state.pause();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [store]);
+
   // Space bar: play/pause (except in input fields, dialogs, menus and while dragging).
   const draggingRef = useRef(false);
   useDndMonitor({
