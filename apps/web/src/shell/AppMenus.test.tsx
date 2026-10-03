@@ -26,7 +26,7 @@ describe("Menu bar", () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
-    const undo = screen.getByRole("menuitem", { name: "Rückgängig" });
+    const undo = screen.getByRole("menuitem", { name: /Rückgängig/ });
     expect(undo).toHaveAttribute("aria-disabled", "true");
     await user.click(undo);
     expect(screen.getByRole("menu", { name: "Bearbeiten" })).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("Menu bar", () => {
     expect(store.getState().slides).toHaveLength(1);
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
-    const redo = screen.getByRole("menuitem", { name: "Wiederholen" });
+    const redo = screen.getByRole("menuitem", { name: /Wiederholen/ });
     expect(redo).not.toHaveAttribute("aria-disabled");
     await user.click(redo);
     expect(store.getState().slides).toHaveLength(2);
@@ -68,7 +68,7 @@ describe("Menu bar", () => {
     expect(store.getState().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
-    const paste = screen.getByRole("menuitem", { name: "Einfügen" });
+    const paste = screen.getByRole("menuitem", { name: /Einfügen/ });
     expect(paste).not.toHaveAttribute("aria-disabled");
     await user.click(paste);
     expect(store.getState().slides).toHaveLength(2);
@@ -91,21 +91,48 @@ describe("Menu bar", () => {
     store.getState().selectMusicClip(clipId);
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
-    const copy = screen.getByRole("menuitem", { name: "Kopieren" });
+    const copy = screen.getByRole("menuitem", { name: /Kopieren/ });
     expect(copy).not.toHaveAttribute("aria-disabled");
     await user.click(copy);
     expect(store.getState().clipboard?.kind).toBe("musicClip");
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
-    await user.click(screen.getByRole("menuitem", { name: "Einfügen" }));
+    await user.click(screen.getByRole("menuitem", { name: /Einfügen/ }));
     expect(store.getState().music).toHaveLength(2);
+  });
+
+  it("Spec app-shell: 'Projekt öffnen…', 'Projekt speichern' and 'Alles auswählen' stay disabled", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole("menuitem", { name: "Datei" }));
+    for (const name of ["Projekt öffnen…", "Projekt speichern"]) {
+      const entry = screen.getByRole("menuitem", { name });
+      expect(entry).toHaveAttribute("aria-disabled", "true");
+      expect(entry).toBeVisible();
+    }
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    const selectAll = screen.getByRole("menuitem", { name: "Alles auswählen" });
+    expect(selectAll).toHaveAttribute("aria-disabled", "true");
+    expect(selectAll).toBeVisible();
+  });
+
+  it("the Edit menu shows the shortcut keys for Undo/Redo/Cut/Copy/Paste", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    expect(screen.getByRole("menuitem", { name: /Rückgängig/ }).textContent).toContain("Strg+Z");
+    expect(screen.getByRole("menuitem", { name: /Wiederholen/ }).textContent).toContain("Strg+Y");
+    expect(screen.getByRole("menuitem", { name: /Ausschneiden/ }).textContent).toContain("Strg+X");
+    expect(screen.getByRole("menuitem", { name: /Kopieren/ }).textContent).toContain("Strg+C");
+    expect(screen.getByRole("menuitem", { name: /Einfügen/ }).textContent).toContain("Strg+V");
   });
 
   it("Ausschneiden/Kopieren/Einfügen are disabled without a selection or an empty clipboard", async () => {
     const user = userEvent.setup();
     renderApp();
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
-    for (const name of ["Ausschneiden", "Kopieren", "Einfügen"]) {
+    for (const name of [/Ausschneiden/, /Kopieren/, /Einfügen/]) {
       expect(screen.getByRole("menuitem", { name })).toHaveAttribute("aria-disabled", "true");
     }
   });
