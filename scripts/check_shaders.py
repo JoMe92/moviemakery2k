@@ -1,7 +1,9 @@
 """Checks the shared shaders (invocation: `pixi run check-shaders`).
 
-1. Every transition program (prelude + transitions/<id>.glsl + epilogue) and the
-   vertex shader compile with glslangValidator as GLSL ES 3.00.
+1. Every transition program (prelude + transitions/<id>.glsl + epilogue), the
+   vertex shader and the title-vertex/title-fragment program (for titles and
+   credits, independent of the transition contract) compile with
+   glslangValidator as GLSL ES 3.00.
 2. Catalog and shaders match: every shader file exists, every catalog
    parameter is declared as `uniform float <name>;` and vice versa.
 
@@ -43,6 +45,18 @@ def main() -> int:
         tmp = Path(tmpdir)
         problems += validate(
             (SHADERS / "vertex.glsl").read_text(encoding="utf-8"), "vert", "vertex", tmp
+        )
+        problems += validate(
+            (SHADERS / "title-vertex.glsl").read_text(encoding="utf-8"),
+            "vert",
+            "title-vertex",
+            tmp,
+        )
+        problems += validate(
+            (SHADERS / "title-fragment.glsl").read_text(encoding="utf-8"),
+            "frag",
+            "title-fragment",
+            tmp,
         )
         for entry in catalog:
             shader = SHADERS / "transitions" / entry["shader"]
