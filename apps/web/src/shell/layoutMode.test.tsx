@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { renderApp } from "../test/renderApp";
 import { mockLayout, mockViewport } from "../test/mockLayout";
+import { renderApp } from "../test/renderApp";
 import { isTouchLayout, readLayout, useLayoutMode, WIDE_LAYOUT } from "./layoutMode";
 
 function viewport(width: number, height: number, coarse = false) {

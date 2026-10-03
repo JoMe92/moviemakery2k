@@ -47,11 +47,7 @@ import {
   resolveDrop,
   STRIP_DROPPABLE_ID,
 } from "./dropLogic";
-import {
-  StoryboardPointerSensor,
-  StoryboardTouchSensor,
-  TOUCH_ACTIVATION,
-} from "./pointerSensor";
+import { StoryboardPointerSensor, StoryboardTouchSensor, TOUCH_ACTIVATION } from "./pointerSensor";
 import styles from "./StoryboardStrip.module.css";
 
 /** Insertion marker for pictures from the collection (0…n) or null. */
@@ -290,8 +286,8 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   const x = start
     ? start.x + event.delta.x
     : translated
-        ? center(translated).x
-        : center(over.rect).x;
+      ? center(translated).x
+      : center(over.rect).x;
   const after = x > center(over.rect).x;
   return data.type === "music"
     ? { type: "musicClip", clipId: data.clipId, after }

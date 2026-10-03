@@ -90,7 +90,6 @@ function renderOptions() {
   return renderInApp(<OptionsDialog open onClose={() => {}} />);
 }
 
-
 function renderInApp(ui: React.ReactElement) {
   const store = createAppStore(mockApi());
   return render(<AppStoreContext.Provider value={store}>{ui}</AppStoreContext.Provider>);

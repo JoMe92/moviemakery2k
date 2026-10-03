@@ -650,7 +650,10 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         const placed = timeline.slides.find((p) => p.slide.id === slideId);
         if (!placed || placed.transitionIn <= 0) return;
         const from = Math.max(0, placed.start - TRANSITION_LEAD);
-        const until = Math.min(timeline.duration, placed.start + placed.transitionIn + TRANSITION_LEAD);
+        const until = Math.min(
+          timeline.duration,
+          placed.start + placed.transitionIn + TRANSITION_LEAD,
+        );
         set({ ...noDemo, playback: { playing: true, time: from, until } });
       },
       setTransitionDuration(slideId, duration) {

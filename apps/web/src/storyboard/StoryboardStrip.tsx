@@ -3,8 +3,8 @@ import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortabl
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
-import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
+import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
 import { TransitionSheet } from "../transitions/TransitionSheet";
@@ -12,12 +12,12 @@ import { catalogName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { ContextMenu, type ContextMenuItem } from "../ui/ContextMenu";
 import { DurationDialog } from "../ui/DurationDialog";
+import { usePinch } from "../ui/usePinch";
 import { STRIP_DROPPABLE_ID } from "./dropLogic";
 import { SlideTile } from "./SlideTile";
 import { useInsertIndex } from "./StoryboardDnd";
-import { stepTileSize, useTileSize } from "./tileSize";
-import { usePinch } from "../ui/usePinch";
 import styles from "./StoryboardStrip.module.css";
+import { stepTileSize, useTileSize } from "./tileSize";
 
 type Target = { kind: "slide" | "transition"; slideId: string };
 type MenuState = Target & { x: number; y: number };
@@ -76,8 +76,7 @@ export function StoryboardStrip() {
     else if (editRequest.kind === "transition") {
       if (touch) setTransitionSheet(slideId);
       else setDialog({ kind: "transition", slideId });
-    }
-    else {
+    } else {
       const rect = tiles.current.get(slideId)?.getBoundingClientRect();
       setMenu({
         kind: "slide",

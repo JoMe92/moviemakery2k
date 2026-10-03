@@ -33,7 +33,9 @@ async function setup(slides: Slide[] = [], locale: "de" | "en" = "de") {
   const taskbar = screen.getByRole("navigation");
   await user.click(within(taskbar).getAllByRole("button")[1] as HTMLElement);
   await user.click(
-    screen.getByRole("button", { name: locale === "de" ? "Sammlungen anzeigen" : "View collections" }),
+    screen.getByRole("button", {
+      name: locale === "de" ? "Sammlungen anzeigen" : "View collections",
+    }),
   );
   const sheet = screen.getByRole("dialog", {
     name: locale === "de" ? "Sammlungen" : "Collections",
@@ -121,10 +123,11 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     fireEvent.pointerUp(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
     vi.useRealTimers();
     const menu = screen.getByRole("menu", { name: "Bild „b.jpg“" });
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
-      "Eigenschaften",
-      "Löschen",
-    ]);
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((i) => i.textContent),
+    ).toEqual(["Eigenschaften", "Löschen"]);
     expect(tile).toHaveAttribute("aria-pressed", "false");
     await user.click(within(menu).getByRole("menuitem", { name: "Eigenschaften" }));
     const props = screen.getByRole("dialog", { name: "Eigenschaften von „b.jpg“" });

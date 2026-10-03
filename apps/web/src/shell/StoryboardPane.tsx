@@ -1,8 +1,8 @@
 import { type ReactNode, useId } from "react";
 import { useT } from "../i18n/useT";
+import { stepTileSize, TILE_SIZES, useTileSize } from "../storyboard/tileSize";
 import { Button } from "../ui/Button";
 import { TimelineIcon } from "../ui/icons";
-import { stepTileSize, TILE_SIZES, useTileSize } from "../storyboard/tileSize";
 import { isTouchLayout, useLayoutMode } from "./layoutMode";
 import pane from "./Pane.module.css";
 import styles from "./StoryboardPane.module.css";

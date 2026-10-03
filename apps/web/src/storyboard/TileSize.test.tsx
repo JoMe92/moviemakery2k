@@ -56,7 +56,12 @@ describe("tile size (add-mobile-layout design.md D12)", () => {
 
   it("zooms with two fingers", async () => {
     await setup();
-    const touch = (id: number, x: number) => ({ pointerId: id, pointerType: "touch", clientX: x, clientY: 50 });
+    const touch = (id: number, x: number) => ({
+      pointerId: id,
+      pointerType: "touch",
+      clientX: x,
+      clientY: 50,
+    });
     fireEvent.pointerDown(strip(), touch(1, 100));
     fireEvent.pointerDown(strip(), touch(2, 200));
     fireEvent.pointerMove(strip(), touch(2, 240));

@@ -189,81 +189,83 @@ export function Player() {
       ref={rootRef}
       className={styles.root}
       data-fullscreen={fullscreen.mode}
-      data-controls={fullscreen.mode !== "off" && !fullscreen.controlsVisible ? "hidden" : undefined}
+      data-controls={
+        fullscreen.mode !== "off" && !fullscreen.controlsVisible ? "hidden" : undefined
+      }
       onPointerDown={fullscreen.mode !== "off" ? fullscreen.showControls : undefined}
     >
-    <MonitorPane
-      controls={
-        <div className={styles.controls}>
-          <input
-            className={styles.seek}
-            type="range"
-            aria-label={t("player.seek")}
-            min={0}
-            max={timeline.duration}
-            step={0.01}
-            value={Math.min(playback.time, timeline.duration)}
-            aria-valuetext={formatTime(playback.time)}
-            disabled={empty}
-            onChange={(event) => state().seek(Number(event.target.value))}
-          />
-          <div className={styles.buttons}>
-            <Button
-              variant="toolbar"
-              icon={playing ? <PauseIcon /> : <PlayIcon />}
-              label={playing ? t("player.pause") : t("player.play")}
+      <MonitorPane
+        controls={
+          <div className={styles.controls}>
+            <input
+              className={styles.seek}
+              type="range"
+              aria-label={t("player.seek")}
+              min={0}
+              max={timeline.duration}
+              step={0.01}
+              value={Math.min(playback.time, timeline.duration)}
+              aria-valuetext={formatTime(playback.time)}
               disabled={empty}
-              onClick={() => {
-                audio.unlock();
-                state().togglePlay();
-              }}
+              onChange={(event) => state().seek(Number(event.target.value))}
             />
-            <Button
-              variant="toolbar"
-              icon={<StopIcon />}
-              label={t("player.stop")}
-              disabled={empty}
-              onClick={() => state().stop()}
-            />
-            <Button
-              variant="toolbar"
-              icon={<PrevIcon />}
-              label={t("player.previous")}
-              disabled={empty}
-              onClick={() => state().prevSlide()}
-            />
-            <Button
-              variant="toolbar"
-              icon={<NextIcon />}
-              label={t("player.next")}
-              disabled={empty}
-              onClick={() => state().nextSlide()}
-            />
-            <output className={styles.time} aria-label={t("player.time")}>
-              {formatTime(playback.time)} / {formatTime(timeline.duration)}
-            </output>
-            {fullscreen.mode !== "off" ? (
-              <Button variant="toolbar" onClick={fullscreen.exit}>
-                {t("player.exitFullscreen")}
-              </Button>
-            ) : touch ? (
-              <Button variant="toolbar" onClick={fullscreen.enter}>
-                {t("player.fullscreen")}
-              </Button>
-            ) : null}
+            <div className={styles.buttons}>
+              <Button
+                variant="toolbar"
+                icon={playing ? <PauseIcon /> : <PlayIcon />}
+                label={playing ? t("player.pause") : t("player.play")}
+                disabled={empty}
+                onClick={() => {
+                  audio.unlock();
+                  state().togglePlay();
+                }}
+              />
+              <Button
+                variant="toolbar"
+                icon={<StopIcon />}
+                label={t("player.stop")}
+                disabled={empty}
+                onClick={() => state().stop()}
+              />
+              <Button
+                variant="toolbar"
+                icon={<PrevIcon />}
+                label={t("player.previous")}
+                disabled={empty}
+                onClick={() => state().prevSlide()}
+              />
+              <Button
+                variant="toolbar"
+                icon={<NextIcon />}
+                label={t("player.next")}
+                disabled={empty}
+                onClick={() => state().nextSlide()}
+              />
+              <output className={styles.time} aria-label={t("player.time")}>
+                {formatTime(playback.time)} / {formatTime(timeline.duration)}
+              </output>
+              {fullscreen.mode !== "off" ? (
+                <Button variant="toolbar" onClick={fullscreen.exit}>
+                  {t("player.exitFullscreen")}
+                </Button>
+              ) : touch ? (
+                <Button variant="toolbar" onClick={fullscreen.enter}>
+                  {t("player.fullscreen")}
+                </Button>
+              ) : null}
+            </div>
           </div>
+        }
+      >
+        <div className={styles.gestures} data-testid="monitor-gestures" {...gestures}>
+          <PreviewCanvas frame={frame} images={images} params={params} />
         </div>
-      }
-    >
-      <div className={styles.gestures} data-testid="monitor-gestures" {...gestures}>
-        <PreviewCanvas frame={frame} images={images} params={params} />
-      </div>
-      {demoTransition ? (
-        <p className={styles.sample} role="status">
-          {t("player.sample", { name: transitionName(demoTransition, locale) })}
-        </p>
-      ) : null}
-    </MonitorPane>
+        {demoTransition ? (
+          <p className={styles.sample} role="status">
+            {t("player.sample", { name: transitionName(demoTransition, locale) })}
+          </p>
+        ) : null}
+      </MonitorPane>
     </div>
   );
 }

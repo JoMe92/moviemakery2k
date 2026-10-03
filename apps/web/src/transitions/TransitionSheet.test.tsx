@@ -26,7 +26,9 @@ async function setup(slides: Slide[], locale: "de" | "en" = "de") {
 }
 
 const slot = (n: number) =>
-  screen.getByRole("button", { name: new RegExp(`^(Übergang vor Bild|Transition before picture) ${n}:`) });
+  screen.getByRole("button", {
+    name: new RegExp(`^(Übergang vor Bild|Transition before picture) ${n}:`),
+  });
 
 describe("transition sheet (add-mobile-layout design.md D9)", () => {
   it("sets 'Kreis' with its default duration, plays it once and saves", async () => {
@@ -34,17 +36,20 @@ describe("transition sheet (add-mobile-layout design.md D9)", () => {
     await user.click(slot(2));
     const sheet = within(screen.getByRole("dialog", { name: "Übergang" }));
     const options = sheet.getByRole("list", { name: "Übergänge zur Auswahl" });
-    expect(within(options).getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "–Kein Übergang",
-      "Überblenden",
-      "Kreis",
-    ]);
+    expect(
+      within(options)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["–Kein Übergang", "Überblenden", "Kreis"]);
     expect(sheet.getByRole("button", { name: /Kein Übergang/ })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
     await user.click(sheet.getByRole("button", { name: "Kreis" }));
-    expect(store.getState().slides[1]?.transitionIn).toEqual({ transitionId: "circle", duration: 1.5 });
+    expect(store.getState().slides[1]?.transitionIn).toEqual({
+      transitionId: "circle",
+      duration: 1.5,
+    });
     expect(sheet.getByRole("button", { name: "Kreis" })).toHaveAttribute("aria-pressed", "true");
     // Played once in the monitor: from shortly before the transition, pausing after it.
     const { playback } = store.getState();

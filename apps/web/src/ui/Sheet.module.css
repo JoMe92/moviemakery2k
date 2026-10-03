@@ -98,11 +98,7 @@
   gap: 8px;
   min-height: var(--y2k-touch-target);
   padding: 0 4px 0 12px;
-  background: linear-gradient(
-    to bottom,
-    var(--y2k-title-mid),
-    var(--y2k-title-bottom)
-  );
+  background: linear-gradient(to bottom, var(--y2k-title-mid), var(--y2k-title-bottom));
   color: var(--y2k-title-text);
 }
 

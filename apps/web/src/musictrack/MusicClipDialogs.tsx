@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { formatNumber, parseDecimal } from "../i18n/format";
 import { useT } from "../i18n/useT";
-import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import type { MusicClip } from "../lib/apiClient";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { MUSIC_CLIP_MIN_LENGTH, MUSIC_VOLUME } from "../store/musicOps";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";

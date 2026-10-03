@@ -3,11 +3,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef } from "react";
 import { formatClipDuration } from "../i18n/format";
 import { useT } from "../i18n/useT";
-import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { type DragItem, musicClipSortableId } from "../storyboard/dropLogic";
-import styles from "./MusicTrack.module.css";
 import { chain, useLongPress } from "../ui/useLongPress";
+import styles from "./MusicTrack.module.css";
 import { Waveform } from "./Waveform";
 
 /** Width of one second of music on the music track (blocks are proportional to their length). */

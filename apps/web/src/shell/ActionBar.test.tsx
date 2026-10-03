@@ -42,7 +42,8 @@ async function setup(layout: "compact" | "wide" = "compact") {
 }
 
 const tile = (n: number) => screen.getByRole("button", { name: new RegExp(`^Bild ${n}:`) });
-const clipBlock = (n: number) => screen.getByRole("button", { name: new RegExp(`^Musikstück ${n}:`) });
+const clipBlock = (n: number) =>
+  screen.getByRole("button", { name: new RegExp(`^Musikstück ${n}:`) });
 const bar = () => screen.getByRole("toolbar", { name: /^Aktionen:/ });
 const action = (name: string) => within(bar()).getByRole("button", { name });
 
@@ -50,9 +51,20 @@ function longPress(el: HTMLElement, move = 0) {
   vi.useFakeTimers();
   try {
     fireEvent.pointerDown(el, { pointerId: 7, pointerType: "touch", clientX: 50, clientY: 50 });
-    if (move) fireEvent.pointerMove(el, { pointerId: 7, pointerType: "touch", clientX: 50 + move, clientY: 50 });
+    if (move)
+      fireEvent.pointerMove(el, {
+        pointerId: 7,
+        pointerType: "touch",
+        clientX: 50 + move,
+        clientY: 50,
+      });
     act(() => vi.advanceTimersByTime(400));
-    fireEvent.pointerUp(el, { pointerId: 7, pointerType: "touch", clientX: 50 + move, clientY: 50 });
+    fireEvent.pointerUp(el, {
+      pointerId: 7,
+      pointerType: "touch",
+      clientX: 50 + move,
+      clientY: 50,
+    });
   } finally {
     vi.useRealTimers();
   }
@@ -142,9 +154,13 @@ describe("action sheets (long press and ⋯)", () => {
     const sheet = screen.getByRole("dialog", { name: "Musikstück 1 der Musikleiste" });
     expect(sheet).toHaveClass("sheet");
     const menu = within(sheet).getByRole("menu");
-    expect(
-      Array.from(menu.querySelectorAll("button")).map((i) => i.textContent?.trim()),
-    ).toEqual(["Entfernen", "Lautstärke…", "Einblenden", "Ausblenden", "Kürzen…"]);
+    expect(Array.from(menu.querySelectorAll("button")).map((i) => i.textContent?.trim())).toEqual([
+      "Entfernen",
+      "Lautstärke…",
+      "Einblenden",
+      "Ausblenden",
+      "Kürzen…",
+    ]);
     expect(within(menu).getByRole("menuitemcheckbox", { name: "Einblenden" })).toHaveAttribute(
       "aria-checked",
       "false",

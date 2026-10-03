@@ -37,7 +37,11 @@
   min-height: var(--y2k-touch-target);
   padding: 0 8px;
   border: 0;
-  background: linear-gradient(to right, var(--y2k-taskgroup-head-left), var(--y2k-taskgroup-head-right));
+  background: linear-gradient(
+    to right,
+    var(--y2k-taskgroup-head-left),
+    var(--y2k-taskgroup-head-right)
+  );
   color: var(--y2k-taskgroup-head-text);
   font-size: 15px;
   font-weight: bold;

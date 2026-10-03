@@ -26,7 +26,10 @@ interface GuardListeners {
  * `pointerdown`, so the guard is dropped at the next `pointerdown` after the
  * drag ended; the original 50 ms timeout still applies otherwise.
  */
-function withEndFlag(props: PointerSensorProps): { props: PointerSensorProps; ended: () => boolean } {
+function withEndFlag(props: PointerSensorProps): {
+  props: PointerSensorProps;
+  ended: () => boolean;
+} {
   let ended = false;
   return {
     props: {
@@ -44,11 +47,7 @@ function withEndFlag(props: PointerSensorProps): { props: PointerSensorProps; en
   };
 }
 
-function releaseGuardOnNextPress(
-  sensor: object,
-  event: Event,
-  ended: () => boolean,
-): void {
+function releaseGuardOnNextPress(sensor: object, event: Event, ended: () => boolean): void {
   const doc = getOwnerDocument(event.target);
   // Internal of @dnd-kit/core 6.3 (private in its typings): the document
   // listeners holding the click guard. This is why apps/web/package.json pins

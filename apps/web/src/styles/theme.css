@@ -124,6 +124,13 @@ body,
   height: 100%;
 }
 
+/* Dynamic viewport height: the taskbar stays visible with the browser bars (add-mobile-layout D2). */
+@supports (height: 100dvh) {
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   margin: 0;
   overflow-x: hidden;

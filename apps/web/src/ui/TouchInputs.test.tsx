@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { Locale } from "../i18n/locale";
 import type { Slide } from "../lib/apiClient";
 import { TrimDialog, VolumeDialog } from "../musictrack/MusicClipDialogs";
-import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { createAppStore } from "../store/appStore";
+import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { mediaItem, mockApi } from "../store/testApi";
 import { AppStoreContext } from "../store/useAppStore";
 import { mockLayout } from "../test/mockLayout";
@@ -51,7 +51,11 @@ describe("touch inputs (add-mobile-layout design.md D10)", () => {
 
   it("does so in English with the same step", async () => {
     const user = userEvent.setup();
-    const onConfirm = durationDialog(3, vi.fn(() => true), "en");
+    const onConfirm = durationDialog(
+      3,
+      vi.fn(() => true),
+      "en",
+    );
     await user.click(screen.getByRole("button", { name: "Increase Picture duration (seconds)" }));
     await user.click(screen.getByRole("button", { name: "OK" }));
     expect(onConfirm).toHaveBeenCalledWith(3.5);
@@ -69,7 +73,10 @@ describe("touch inputs (add-mobile-layout design.md D10)", () => {
 
   it("keeps a numeric keyboard and the validity rules for typed values", async () => {
     const user = userEvent.setup();
-    const onConfirm = durationDialog(3, vi.fn(() => false));
+    const onConfirm = durationDialog(
+      3,
+      vi.fn(() => false),
+    );
     const field = screen.getByRole("textbox", { name: "Bilddauer (Sekunden):" });
     expect(field).toHaveAttribute("inputmode", "decimal");
     await user.clear(field);
@@ -107,7 +114,9 @@ describe("touch inputs (add-mobile-layout design.md D10)", () => {
     mockLayout("compact");
     const user = userEvent.setup();
     const onConfirm = vi.fn(() => true);
-    renderIn(<VolumeDialog open number={1} volume={1.95} onConfirm={onConfirm} onClose={() => {}} />);
+    renderIn(
+      <VolumeDialog open number={1} volume={1.95} onConfirm={onConfirm} onClose={() => {}} />,
+    );
     const plus = screen.getByRole("button", { name: "Lautstärke erhöhen" });
     await user.click(plus);
     expect(plus).toBeDisabled();

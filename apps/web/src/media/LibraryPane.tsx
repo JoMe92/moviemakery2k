@@ -1,8 +1,8 @@
 import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { CollectionPane } from "../shell/CollectionPane";
+import { ImportInput } from "./ImportInput";
 import styles from "./LibraryPane.module.css";
 import { UploadPanel } from "./UploadPanel";
-import { ImportInput } from "./ImportInput";
 import { useImport } from "./useImport";
 
 export interface LibraryPaneProps {

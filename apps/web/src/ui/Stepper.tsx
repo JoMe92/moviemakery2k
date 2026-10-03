@@ -39,7 +39,7 @@ export function Stepper({
     if (next !== value) onChange(next);
   };
   return (
-    <div className={styles.stepper} role="group" aria-label={label}>
+    <fieldset className={styles.stepper} aria-label={label}>
       <button
         type="button"
         className={styles.button}
@@ -61,6 +61,6 @@ export function Stepper({
       >
         +
       </button>
-    </div>
+    </fieldset>
   );
 }

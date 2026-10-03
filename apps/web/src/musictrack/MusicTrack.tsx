@@ -6,8 +6,8 @@ import type { Translate } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
-import { audioDurations } from "../store/musicOps";
 import { useLayoutMode } from "../shell/layoutMode";
+import { audioDurations } from "../store/musicOps";
 import { useAppStore } from "../store/useAppStore";
 import {
   type DropRejection,

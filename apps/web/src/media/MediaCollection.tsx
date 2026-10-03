@@ -26,8 +26,8 @@ import { Dialog } from "../ui/Dialog";
 import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
 import { chain, useLongPress } from "../ui/useLongPress";
-import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
 import styles from "./MediaCollection.module.css";
+import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
 
 /** Per-kind collection text: empty hint, tile list label, context menu and delete dialog. */
 const COLLECTION_TEXT: Record<
@@ -412,15 +412,15 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
             ...(picking
               ? [{ label: t("media.properties"), onSelect: () => setProperties(menu.item) }]
               : menu.item.kind === "image"
-              ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
-              : menu.item.kind === "audio"
-                ? [
-                    {
-                      label: t("media.addToMusicTrack"),
-                      onSelect: () => addMusicClip(menu.item.id),
-                    },
-                  ]
-                : []),
+                ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
+                : menu.item.kind === "audio"
+                  ? [
+                      {
+                        label: t("media.addToMusicTrack"),
+                        onSelect: () => addMusicClip(menu.item.id),
+                      },
+                    ]
+                  : []),
             { label: t("media.delete"), onSelect: () => setPendingDelete(menu.item) },
           ]}
         />

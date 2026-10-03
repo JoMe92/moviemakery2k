@@ -51,7 +51,7 @@ export function CollectionSheet() {
         ? state.slides.findIndex((s) => s.id === state.selection?.slideId)
         : -1;
       const start = index >= 0 ? index + 1 : state.slides.length;
-      picked.forEach((id, k) => addSlide(id, start + k));
+      for (const [k, id] of picked.entries()) addSlide(id, start + k);
     } else {
       for (const id of picked) addMusicClip(id);
     }
@@ -70,9 +70,12 @@ export function CollectionSheet() {
       footer={
         collection === "transitions" ? undefined : (
           <Button disabled={count === 0} onClick={add} className={styles.add}>
-            {t(collection === "music" ? "collectionSheet.addMusic" : "collectionSheet.addPictures", {
-              count,
-            })}
+            {t(
+              collection === "music" ? "collectionSheet.addMusic" : "collectionSheet.addPictures",
+              {
+                count,
+              },
+            )}
           </Button>
         )
       }

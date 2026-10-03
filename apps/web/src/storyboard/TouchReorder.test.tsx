@@ -58,24 +58,27 @@ afterEach(() => restoreRects?.());
 
 const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
 const touches = (x: number, y: number) => ({ touches: [{ clientX: x, clientY: y }] });
-const end = (x: number, y: number) => ({ changedTouches: [{ clientX: x, clientY: y }], touches: [] });
+const end = (x: number, y: number) => ({
+  changedTouches: [{ clientX: x, clientY: y }],
+  touches: [],
+});
 
 async function setup() {
   mockLayout("compact", { coarse: true });
   const api = mockApi({
-      listMedia: async () => [
-        mediaItem("a"),
-        mediaItem("b"),
-        mediaItem("c"),
-        audioItem("x", 50),
-        audioItem("y", 50),
-        audioItem("z", 50),
-      ],
-      getProject: vi.fn(async () => ({
-        schemaVersion: 2 as const,
-        slides: [slide("s1", "a"), slide("s2", "b"), slide("s3", "c")],
-        music: [clip("m1", "x"), clip("m2", "y"), clip("m3", "z")],
-      })),
+    listMedia: async () => [
+      mediaItem("a"),
+      mediaItem("b"),
+      mediaItem("c"),
+      audioItem("x", 50),
+      audioItem("y", 50),
+      audioItem("z", 50),
+    ],
+    getProject: vi.fn(async () => ({
+      schemaVersion: 2 as const,
+      slides: [slide("s1", "a"), slide("s2", "b"), slide("s3", "c")],
+      music: [clip("m1", "x"), clip("m2", "y"), clip("m3", "z")],
+    })),
   });
   const view = renderApp(api);
   await act(() => view.ready);

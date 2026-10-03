@@ -26,7 +26,9 @@ describe("tab in the background (add-mobile-layout design.md D14)", () => {
     mockLayout("compact");
     const cancel = vi.spyOn(window, "cancelAnimationFrame");
     const { store, ready } = renderApp(
-      mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })) }),
+      mockApi({
+        getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+      }),
     );
     await act(() => ready);
     act(() => {

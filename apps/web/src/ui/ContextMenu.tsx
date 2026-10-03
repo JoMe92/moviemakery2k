@@ -55,7 +55,12 @@ function ActionSheet({ label, items, onClose }: ContextMenuProps) {
               {item.label}
             </button>
           ) : (
-            <button key={item.label} role="menuitemcheckbox" aria-checked={item.checked} {...common}>
+            <button
+              key={item.label}
+              role="menuitemcheckbox"
+              aria-checked={item.checked}
+              {...common}
+            >
               <span aria-hidden="true" className={styles.check}>
                 {item.checked ? "✓" : ""}
               </span>

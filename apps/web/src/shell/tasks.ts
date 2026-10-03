@@ -3,7 +3,6 @@ import type { Translate } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { CollectionId, ImportKind } from "../store/appStore";
 import { useAppStore } from "../store/useAppStore";
-import { useLayoutMode } from "./layoutMode";
 import {
   AudioIcon,
   EffectsIcon,
@@ -14,6 +13,7 @@ import {
   TitleIcon,
   TransitionsIcon,
 } from "../ui/icons";
+import { useLayoutMode } from "./layoutMode";
 
 /*
  * Task groups of the task pane as data (add-mobile-layout design.md D4).
