@@ -24,7 +24,11 @@ export function MonitorPane({ children, controls }: MonitorPaneProps) {
       <div className={styles.stage}>
         <div className={styles.screen}>{children}</div>
       </div>
-      {controls ? <div className={styles.controls}>{controls}</div> : null}
+      {controls ? (
+        <div className={styles.controls} data-monitor-controls>
+          {controls}
+        </div>
+      ) : null}
     </section>
   );
 }

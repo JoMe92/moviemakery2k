@@ -6,16 +6,19 @@ import type { MediaItem, Slide } from "../lib/apiClient";
 import { loadImage } from "../render/imageCache";
 import { PreviewCanvas } from "../render/PreviewCanvas";
 import type { ImageSource } from "../render/Renderer";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { MonitorPane } from "../shell/MonitorPane";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { frameAt } from "../timeline/timeline";
 import { transitionName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon, StopIcon } from "../ui/icons";
+import { useGestures } from "../ui/useGestures";
 import { startClock } from "./clock";
 import { demoFrame, shouldToggleOnSpace, timelineOf } from "./controls";
 import styles from "./Player.module.css";
 import { sampleImages } from "./sampleImages";
+import { useFullscreen } from "./useFullscreen";
 
 /** Load the preview images (previewUrl) of all images in the filmstrip, in order. */
 function useSlideImages(slides: readonly Slide[], media: readonly MediaItem[]) {
@@ -149,7 +152,34 @@ export function Player() {
   const playing = playback.playing && !demo;
   const state = store.getState;
 
+  // Gestures and full screen (add-mobile-layout design.md D12).
+  const touch = isTouchLayout(useLayoutMode());
+  const rootRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useFullscreen(rootRef);
+  const gestures = useGestures(
+    {
+      onSwipeLeft: () => {
+        if (store.getState().slides.length > 0) store.getState().nextSlide();
+      },
+      onSwipeRight: () => {
+        if (store.getState().slides.length > 0) store.getState().prevSlide();
+      },
+      onDoubleTap: () => (fullscreen.mode === "off" ? fullscreen.enter() : fullscreen.exit()),
+      onActivity: () => {
+        if (fullscreen.mode !== "off") fullscreen.showControls();
+      },
+    },
+    touch,
+  );
+
   return (
+    <div
+      ref={rootRef}
+      className={styles.root}
+      data-fullscreen={fullscreen.mode}
+      data-controls={fullscreen.mode !== "off" && !fullscreen.controlsVisible ? "hidden" : undefined}
+      onPointerDown={fullscreen.mode !== "off" ? fullscreen.showControls : undefined}
+    >
     <MonitorPane
       controls={
         <div className={styles.controls}>
@@ -200,16 +230,28 @@ export function Player() {
             <output className={styles.time} aria-label={t("player.time")}>
               {formatTime(playback.time)} / {formatTime(timeline.duration)}
             </output>
+            {fullscreen.mode !== "off" ? (
+              <Button variant="toolbar" onClick={fullscreen.exit}>
+                {t("player.exitFullscreen")}
+              </Button>
+            ) : touch ? (
+              <Button variant="toolbar" onClick={fullscreen.enter}>
+                {t("player.fullscreen")}
+              </Button>
+            ) : null}
           </div>
         </div>
       }
     >
-      <PreviewCanvas frame={frame} images={images} params={params} />
+      <div className={styles.gestures} data-testid="monitor-gestures" {...gestures}>
+        <PreviewCanvas frame={frame} images={images} params={params} />
+      </div>
       {demoTransition ? (
         <p className={styles.sample} role="status">
           {t("player.sample", { name: transitionName(demoTransition, locale) })}
         </p>
       ) : null}
     </MonitorPane>
+    </div>
   );
 }

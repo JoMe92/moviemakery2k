@@ -308,6 +308,8 @@ export const en = {
     stop: "Stop",
     previous: "Previous picture",
     next: "Next picture",
+    fullscreen: "Full screen",
+    exitFullscreen: "Exit full screen",
     time: "Time",
     canvas: "Preview picture",
     sample: "Sample: {name}",

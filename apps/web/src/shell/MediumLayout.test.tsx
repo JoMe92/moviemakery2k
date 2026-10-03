@@ -66,7 +66,9 @@ describe("medium layout (add-mobile-layout design.md D3)", () => {
     await setup();
     const collection = screen.getByRole("region", { name: "Sammlung: Meine Bilder" });
     const monitor = screen.getByRole("region", { name: "Vorschau" });
-    expect(collection.parentElement).toBe(monitor.parentElement);
+    // Same workspace row (the monitor sits in a layout-neutral full-screen container).
+    expect(collection.closest(".workspace")).not.toBeNull();
+    expect(monitor.closest(".workspace")).toBe(collection.closest(".workspace"));
     expect(screen.getByRole("region", { name: "Storyboard" })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Filmschritte" })).toBeInTheDocument();
     expect(screen.getByRole("menubar", { name: "Menüleiste" })).toBeInTheDocument();
