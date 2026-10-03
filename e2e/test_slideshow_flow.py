@@ -1,4 +1,5 @@
-"""End to end: import → storyboard → transition → play → reload (TASK-WEB-011).
+"""End to end: import → storyboard → transition → play → reload (TASK-WEB-011);
+video import into "Meine Videos" (TASK-INFRA-019, add-video-import).
 
 The monitor is evaluated from an element screenshot; a WebGL canvas without
 preserveDrawingBuffer cannot be read back reliably with drawImage.
@@ -32,7 +33,9 @@ def drag(page: Page, source: Locator, target: Locator) -> None:
     page.mouse.up()
 
 
-def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, Path]) -> None:
+def test_build_and_play_a_slideshow(
+    page: Page, server: str, images: dict[str, Path], video: Path
+) -> None:
     page.set_viewport_size({"width": 1280, "height": 800})
     page.goto(server)
     expect(page.get_by_text("Backend bereit")).to_be_visible()
@@ -92,11 +95,24 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     later = mean_rgb(monitor)
     assert later[2] > 150 and later[0] < 80, f"picture 2 should be blue: {later}"
 
+    # Video: a video-only import switches to "Meine Videos" with a poster and
+    # duration tile (add-video-import D4; cannot yet be added to the storyboard).
+    page.locator("input[type=file]").set_input_files(video)
+    video_tile = page.get_by_role("list", name="Videos").get_by_role(
+        "button", name="urlaub.mp4, 1:45"
+    )
+    expect(video_tile).to_be_visible()
+    expect(video_tile.get_by_role("img")).to_be_visible()
+
     # Reload: everything is restored
     page.reload()
     strip = page.get_by_role("list", name="Bildstreifen")
     expect(strip.get_by_role("button", name="Bild 3: gruen.png, 5,00 s")).to_be_visible()
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
+    page.get_by_role("combobox", name="Sammlungen:").select_option("video")
+    expect(
+        page.get_by_role("list", name="Videos").get_by_role("button", name="urlaub.mp4, 1:45")
+    ).to_be_visible()
 
 
 def test_undo_redo_and_clipboard(page: Page, server: str, images: dict[str, Path]) -> None:
