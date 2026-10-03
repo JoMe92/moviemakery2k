@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>moviemakerY2K</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a8cf7"/>
+      <stop offset="1" stop-color="#0b3fae"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="512" height="512" rx="92.16"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#clip)">
+    <rect width="512" height="512" fill="url(#tile)"/>
+    <ellipse cx="256" cy="-40.96" rx="358.4" ry="276.5" fill="#ffffff" fill-opacity="0.251"/>
+    <rect x="61.44" y="143.4" width="389.1" height="225.3" rx="20.48" fill="#1e1e24"/>
+    <rect x="79.6" y="161.3" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="79.6" y="330.2" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="144.5" y="161.3" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="144.5" y="330.2" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="209.3" y="161.3" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="209.3" y="330.2" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="274.2" y="161.3" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="274.2" y="330.2" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="339" y="161.3" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="339" y="330.2" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="403.9" y="161.3" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="403.9" y="330.2" width="28.54" height="20.48" rx="4.096" fill="#ece9d8"/>
+    <rect x="74.24" y="202.2" width="104.1" height="107.5" rx="7.68" fill="#f8b33a"/>
+    <rect x="203.9" y="202.2" width="104.1" height="107.5" rx="7.68" fill="#6fbf4a"/>
+    <rect x="333.7" y="202.2" width="104.1" height="107.5" rx="7.68" fill="#7ba2e7"/>
+  </g>
+</svg>

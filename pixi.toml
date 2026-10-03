@@ -97,6 +97,8 @@ gen-api = { cmd = "python -m mmy_backend.openapi apps/web/src/generated/openapi.
 e2e-browsers = { cmd = "playwright install chromium", description = "Chromium for the E2E tests (into .pixi/playwright-browsers)" }
 test-e2e = { cmd = "pytest -c e2e/pytest.ini e2e", depends-on = ["build", "e2e-browsers"], description = "Browser tests against backend + built web app" }
 
+gen-icons = { cmd = "python scripts/gen_icons.py", description = "PNG/SVG icons of the installable app from the own design (apps/web/public/icons)" }
+
 check-shaders = { cmd = "python scripts/check_shaders.py", description = "Compile GLSL ES 3.00 shaders and check them against the catalog" }
 
 check-render-env = { cmd = "python scripts/check_render_env.py", description = "Export renderer: EGL/llvmpipe context, test frame, FFmpeg libx264 + aac" }
