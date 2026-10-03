@@ -421,6 +421,114 @@
         "ref": "SMPTE 263 \"Windshield\" (DxtJpeg MaskNum 263) per movie-maker-reference.md §3; approximated as a single angular sweep",
         "estimated": ["defaultDuration", "gradientSize"]
       }
+    },
+    {
+      "id": "iris",
+      "names": { "de": "Iris", "en": "Iris" },
+      "shader": "iris.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 20 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "DXT Iris transition, Basic catalog per movie-maker-reference.md §3 (same shape as circle.glsl's SMPTE 119; GUID not identified in research)",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "circles-replicate",
+      "names": { "de": "Kreise (Replikat 8x6)", "en": "Circles (Replicate 8x6)" },
+      "shader": "circles-replicate.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 20, "replicateX": 8, "replicateY": 6 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 119 \"Circle, Out, Soft\", Replicate 8x6 variant (DxtJpeg MaskNum 119) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "wheel",
+      "names": { "de": "Rad", "en": "Wheel" },
+      "shader": "wheel.glsl",
+      "defaultDuration": 1.25,
+      "params": { "startAngleDeg": 90, "spokes": 4, "borderSoftness": 0.02 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "DXT Wheel transition, Basic catalog, 4 spokes per movie-maker-reference.md §3 (GUID not identified in research)",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
+    },
+    {
+      "id": "star",
+      "names": { "de": "Stern", "en": "Star" },
+      "shader": "star.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 0.02 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 128 \"Star\" (DxtJpeg MaskNum 128) per movie-maker-reference.md §3; exact point geometry estimated (polar flower approximation)",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
+    },
+    {
+      "id": "heart",
+      "names": { "de": "Herz", "en": "Heart" },
+      "shader": "heart.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 0.02 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 130 \"Heart\" (DxtJpeg MaskNum 130) per movie-maker-reference.md §3; exact curve estimated (cardioid approximation)",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
+    },
+    {
+      "id": "key-hole",
+      "names": { "de": "Schlüsselloch", "en": "Key hole" },
+      "shader": "key-hole.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 0.03 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 131 \"Key Hole\" (DxtJpeg MaskNum 131) per movie-maker-reference.md §3; exact proportions estimated",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
+    },
+    {
+      "id": "eye",
+      "names": { "de": "Auge", "en": "Eye" },
+      "shader": "eye.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 0.02 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 122 \"Eye\" (DxtJpeg MaskNum 122) per movie-maker-reference.md §3; exact curve estimated (almond approximation)",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
+    },
+    {
+      "id": "sweep-diagonal",
+      "names": { "de": "Schwenk, diagonal", "en": "Sweep, diagonal" },
+      "shader": "sweep-diagonal.glsl",
+      "defaultDuration": 1.25,
+      "params": { "startAngleDeg": 45, "spokes": 1, "borderSoftness": 0.01 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 226 \"Sweep, Diagonal\" (DxtJpeg MaskNum 226) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
+    },
+    {
+      "id": "sweep-horizontal",
+      "names": { "de": "Schwenk, horizontal", "en": "Sweep, horizontal" },
+      "shader": "sweep-horizontal.glsl",
+      "defaultDuration": 1.25,
+      "params": { "startAngleDeg": 0, "spokes": 1, "borderSoftness": 0.01 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 228 \"Sweep, Horizontal\" (DxtJpeg MaskNum 228) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "borderSoftness"]
+      }
     }
   ]
 }

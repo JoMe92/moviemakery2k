@@ -156,3 +156,78 @@ float swingingDoorT(vec2 uv) {
   float bulge = 1.0 - abs(uv.y - 0.5) * 2.0;
   return clamp(p - 0.15 * bulge + 0.15, 0.0, 1.0);
 }
+
+// TASK-FX-007 (design.md D1): the Radial-/Kurven-Wipe family, generalizing
+// circle.glsl's centre-out iris. Angle 0 is +x (right), increasing
+// counter-clockwise, matching barWipeT()'s convention; uv origin bottom left.
+
+float radialAngle(vec2 uv) { return atan(uv.y - 0.5, uv.x - 0.5); }
+float radialDistPx(vec2 uv) { return length((uv - 0.5) * resolution); }
+
+// A circle-family soft-edge size (pixels at a 640 px wide picture, matching
+// circle.glsl's own convention for its own equivalent parameter) as a
+// fraction of half of `sizePx`'s diagonal, for feeding into wipeReveal()
+// alongside a radial *T() below that is itself normalized to that same size
+// (0 at its centre, 1 at its own corner).
+float radialSoftFraction(float softPx, vec2 sizePx) {
+  float soft = max(softPx * resolution.x / 640.0, 1e-3);
+  return soft / max(0.5 * length(sizePx), 1e-3);
+}
+
+// Circle/Iris (SMPTE 119 "Circle, Out, Soft", same formula as circle.glsl):
+// 0 at the centre, 1 at the picture's corners.
+float circleT(vec2 uv) {
+  return clamp(radialDistPx(uv) / max(0.5 * length(resolution), 1e-3), 0.0, 1.0);
+}
+
+// Circles, Replicate N×M (SMPTE 119 variant): an N×M grid of independent
+// circle-shaped irises, one per cell, all on the same global progress.
+float circlesReplicateT(vec2 uv, float replicateX, float replicateY) {
+  vec2 n = max(floor(vec2(replicateX, replicateY)), 1.0);
+  vec2 cellSize = resolution / n;
+  vec2 cellPx = (fract(uv * n) - 0.5) * cellSize;
+  return clamp(length(cellPx) / max(0.5 * length(cellSize), 1e-3), 0.0, 1.0);
+}
+
+// Star (SMPTE 128, 5-pointed): a polar "flower" boundary around the centre.
+float starT(vec2 uv) {
+  float radius = (0.65 + 0.35 * cos(5.0 * radialAngle(uv))) * 0.5 * length(resolution);
+  return clamp(radialDistPx(uv) / max(radius, 1e-3), 0.0, 1.0);
+}
+
+// Heart (SMPTE 130): a cardioid-like polar boundary with its cusp pointing up.
+float heartT(vec2 uv) {
+  float angle = radialAngle(uv) + 1.57079632679;
+  float radius = (0.75 - 0.6 * sin(angle)) * 0.5 * length(resolution);
+  return clamp(radialDistPx(uv) / max(radius, 1e-3), 0.0, 1.0);
+}
+
+// Eye (SMPTE 122): a flattened, almond-like polar boundary - narrower at the
+// top/bottom, fuller at the sides.
+float eyeT(vec2 uv) {
+  float radius = (0.35 + 0.65 * abs(cos(radialAngle(uv)))) * 0.5 * length(resolution);
+  return clamp(radialDistPx(uv) / max(radius, 1e-3), 0.0, 1.0);
+}
+
+// Key Hole (SMPTE 131): the union (nearer of the two) of a small round "hole"
+// above centre and the upward wedge (filledVT, apex at the bottom) beneath
+// it, like a literal keyhole silhouette.
+float keyHoleT(vec2 uv) {
+  vec2 p = (uv - 0.5) * resolution;
+  vec2 holeCentre = vec2(0.0, 0.15 * length(resolution));
+  float hole = clamp(length(p - holeCentre) / max(0.55 * 0.5 * length(resolution), 1e-3), 0.0, 1.0);
+  float neck = filledVT(uv, 90.0);
+  return clamp(min(hole, neck), 0.0, 1.0);
+}
+
+// Angular sweep: the picture is divided into `spokes` equal pie slices (1 = a
+// single clock-wipe sector, e.g. "Sweep Diagonal/Horizontal"; >1 = every
+// slice opens in sync, e.g. the 4-spoke "Wheel"), each slice's own sweep
+// starting at `startAngleDeg` and opening counter-clockwise.
+float sweepT(vec2 uv, float startAngleDeg, float spokes) {
+  float n = max(floor(spokes), 1.0);
+  float sector = 6.28318530718 / n;
+  float angle = radialAngle(uv) - radians(startAngleDeg);
+  float local = mod(angle, sector);
+  return clamp(local / sector, 0.0, 1.0);
+}
