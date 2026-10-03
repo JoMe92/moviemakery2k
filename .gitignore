@@ -37,6 +37,9 @@ dist/
 .DS_Store
 .idea/
 
+# Scratch notes (research, drafts) — never committed
+.tmp/
+
 # Pixi
 .pixi/
 
