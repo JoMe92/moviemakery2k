@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatClipDuration } from "../i18n/format";
 import type { Translate } from "../i18n/t";
 import { useT } from "../i18n/useT";
@@ -99,6 +99,26 @@ export function MusicTrack() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const tiles = useRef(new Map<string, HTMLButtonElement>());
+
+  // Action bar and "⋯" (touch operation) open the same dialogs and menus.
+  const editRequest = useAppStore((s) => s.editRequest);
+  const seenEdit = useRef(editRequest?.seq ?? 0);
+  useEffect(() => {
+    if (!editRequest || editRequest.seq === seenEdit.current) return;
+    seenEdit.current = editRequest.seq;
+    if (!("clipId" in editRequest)) return;
+    const { clipId } = editRequest;
+    if (editRequest.kind === "volume") setDialog({ kind: "volume", clipId });
+    else if (editRequest.kind === "trim") setDialog({ kind: "trim", clipId });
+    else {
+      const rect = tiles.current.get(clipId)?.getBoundingClientRect();
+      setMenu({
+        clipId,
+        x: rect ? rect.left + rect.width / 2 : 0,
+        y: rect ? rect.top + rect.height / 2 : 0,
+      });
+    }
+  }, [editRequest]);
 
   const durations = useMemo(() => audioDurations(media), [media]);
   const total = musicDuration(music, durations);

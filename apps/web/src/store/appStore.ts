@@ -101,6 +101,23 @@ export type ClipboardEntry =
     }
   | null;
 
+/**
+ * Request to open an editing dialog or the action menu of an element
+ * (add-mobile-layout design.md D6): the action bar and the "⋯" buttons ask,
+ * the storyboard strip and the music track open their own dialogs, so both
+ * operating models share one editing logic. `seq` makes repeats distinct.
+ */
+export type EditRequest =
+  | { kind: "slideDuration" | "transition" | "slideMenu"; slideId: string; seq: number }
+  | { kind: "volume" | "trim" | "musicMenu"; clipId: string; seq: number };
+
+/** An edit request before the store numbers it. */
+export type EditRequestInput = EditRequest extends infer R
+  ? R extends EditRequest
+    ? Omit<R, "seq">
+    : never
+  : never;
+
 export interface UploadEntry {
   key: string;
   filename: string;
@@ -141,6 +158,8 @@ export interface AppState {
   importRequest: number;
   /** Kind of the last requested file dialog (file types it offers). */
   importKind: ImportKind;
+  /** Last requested editing dialog or action menu (touch operation), or null. */
+  editRequest: EditRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -169,6 +188,8 @@ export interface AppState {
 
   /** Request the import file dialog (opened by the collection); default `any`. */
   requestImport(kind?: ImportKind): void;
+  /** Ask the storyboard or music track to open a dialog or action menu. */
+  requestEdit(request: EditRequestInput): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -388,6 +409,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       uploads: [],
       importRequest: 0,
       importKind: "any",
+      editRequest: null,
       exportWizardOpen: false,
       locale,
       setLocale(next) {
@@ -503,6 +525,10 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       requestImport(kind = "any") {
         set({ importRequest: get().importRequest + 1, importKind: kind });
+      },
+      requestEdit(request) {
+        const seq = (get().editRequest?.seq ?? 0) + 1;
+        set({ editRequest: { ...request, seq } as EditRequest });
       },
 
       async importFiles(files) {

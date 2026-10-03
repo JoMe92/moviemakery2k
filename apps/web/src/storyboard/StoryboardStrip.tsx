@@ -50,6 +50,27 @@ export function StoryboardStrip() {
   const [dialog, setDialog] = useState<Target | null>(null);
   const tiles = useRef(new Map<string, HTMLButtonElement>());
 
+  // Action bar and "⋯" (touch operation) open the same dialogs and menus.
+  const editRequest = useAppStore((s) => s.editRequest);
+  const seenEdit = useRef(editRequest?.seq ?? 0);
+  useEffect(() => {
+    if (!editRequest || editRequest.seq === seenEdit.current) return;
+    seenEdit.current = editRequest.seq;
+    if (!("slideId" in editRequest)) return;
+    const { slideId } = editRequest;
+    if (editRequest.kind === "slideDuration") setDialog({ kind: "slide", slideId });
+    else if (editRequest.kind === "transition") setDialog({ kind: "transition", slideId });
+    else {
+      const rect = tiles.current.get(slideId)?.getBoundingClientRect();
+      setMenu({
+        kind: "slide",
+        slideId,
+        x: rect ? rect.left + rect.width / 2 : 0,
+        y: rect ? rect.top + rect.height / 2 : 0,
+      });
+    }
+  }, [editRequest]);
+
   const remove = (slideId: string) => {
     const index = slides.findIndex((s) => s.id === slideId);
     const neighbour = slides[index + 1] ?? slides[index - 1];
