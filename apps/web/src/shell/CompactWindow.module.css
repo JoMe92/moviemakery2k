@@ -80,8 +80,11 @@
   padding: var(--y2k-safe-top) 0 var(--y2k-safe-bottom) var(--y2k-safe-left);
 }
 
-.monitor > * {
+/* The monitor pane fills the area; the player's full-screen container has no box of its own. */
+.monitor > *,
+.monitor > [data-fullscreen="off"] > * {
   flex: 1;
+  min-height: 0;
 }
 
 .editing {
