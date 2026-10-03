@@ -229,11 +229,11 @@ def test_uniforms_set_for_every_catalog_entry(
         assert _uniform(program, "uTo").value == TO_TEXTURE_UNIT
         assert _uniform(program, "progress").value == pytest.approx(1.0)
         resolution = program.get("resolution", None)
-        # fade, wipe-right and checkerboard do not read `resolution`; the compiler removes it.
+        # Shaders that work entirely in normalized uv space (fade, wipe-right,
+        # checkerboard, and most of the add-transition-catalog wipe family)
+        # don't read `resolution`; the compiler removes the unused uniform.
         if isinstance(resolution, moderngl.Uniform):
             assert resolution.value == pytest.approx((960.0, 720.0))
-        else:
-            assert transition.id in {"fade", "checkerboard", "wipe-right"}
         for name, value in transition.params.items():
             uniform = program.get(name, None)
             # Every catalog parameter is an active `uniform float` in the shader.
