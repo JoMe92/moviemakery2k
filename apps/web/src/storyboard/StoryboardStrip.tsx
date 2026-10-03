@@ -199,6 +199,7 @@ export function StoryboardStrip() {
         label={t("storyboard.slideDuration")}
         value={dialogSlide?.duration ?? SLIDE_DURATION.default}
         range={SLIDE_DURATION}
+        touchStep={0.5}
         onConfirm={(value) => (dialog ? setSlideDuration(dialog.slideId, value) : false)}
         onClose={() => setDialog(null)}
       />
@@ -210,6 +211,7 @@ export function StoryboardStrip() {
         label={t("storyboard.transitionDuration")}
         value={dialogTransition?.duration ?? 1.25}
         range={TRANSITION_DURATION}
+        touchStep={0.25}
         onConfirm={(value) => (dialog ? setTransitionDuration(dialog.slideId, value) : false)}
         onClose={() => setDialog(null)}
         extraAction={

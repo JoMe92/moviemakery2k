@@ -156,3 +156,12 @@ textarea {
   min-width: var(--y2k-touch-target);
   min-height: var(--y2k-touch-target);
 }
+
+/*
+ * No zoom jump on iOS (add-mobile-layout design.md D10): text inputs use at
+ * least 16 px with touch operation.
+ */
+:root[data-layout="compact"] :is(input, select, textarea),
+:root[data-pointer="coarse"] :is(input, select, textarea) {
+  font-size: max(16px, 1em);
+}
