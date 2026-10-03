@@ -81,7 +81,8 @@
   line-height: 1.2;
   text-align: left;
   cursor: grab;
-  touch-action: none;
+  /* Swiping scrolls; a long press starts the drag (add-mobile-layout D8). */
+  touch-action: pan-x pan-y;
   user-select: none;
 }
 
