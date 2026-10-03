@@ -105,14 +105,17 @@ flowchart LR
 
 ### 2. Project
 
-- The project is one versioned JSON document (`schemaVersion: 2`):
+- The project is one versioned JSON document (`schemaVersion: 3`); `slides`
+  is a discriminated union on `kind`:
 
   ```json
   {
-    "schemaVersion": 2,
+    "schemaVersion": 3,
     "slides": [
-      { "id": "s1", "mediaId": "…", "duration": 5, "transitionIn": null },
-      { "id": "s2", "mediaId": "…", "duration": 5,
+      { "kind": "image", "id": "s1", "mediaId": "…", "duration": 5,
+        "transitionIn": null },
+      { "kind": "video", "id": "s2", "mediaId": "…",
+        "trimIn": 0, "trimOut": 8.5,
         "transitionIn": { "transitionId": "circle", "duration": 1.25 } }
     ],
     "music": [
@@ -122,12 +125,17 @@ flowchart LR
   }
   ```
 
-- `music` (at most 100 clips) plays gapless from 0 in list order; slides refer
-  to images, music clips to audio, and each clip's range must satisfy
+- `music` (at most 100 clips) plays gapless from 0 in list order; an `image`
+  slide refers to an image and has a display `duration`; a `video` slide
+  refers to a video and has no separate duration — its length is always
+  `trimOut - trimIn` (`0 ≤ trimIn < trimOut ≤` the video's decoded duration);
+  music clips refer to audio, and each clip's range must satisfy
   `0 ≤ trimStart < end ≤ duration` with a played length of at least 0.5 s
   (`trimEnd: null` = end of the file). A stored version-1 project (before the
-  music track) is loaded with `music: []` and written as version 2 on the next
-  save; the API accepts version 2 only.
+  music track) is loaded with `music: []`; a version-2 project (before video
+  slides) has every slide read as `kind: "image"`, its `duration` unchanged;
+  either is written at version 3 on the next save, and the API accepts
+  version 3 only.
 
 - A transition belongs to its **target** slide (`transitionIn`) and moves with
   it when slides are reordered. The first slide never has one.
@@ -455,7 +463,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/media/{id}/peaks` | Waveform data `{rate: 50, peaks}` (`Cache-Control: immutable`) |
 | `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
-| `PUT` | `/api/project` | Replace the project (`schemaVersion` 2 with `slides` and `music`); `422` leaves the stored state unchanged |
+| `PUT` | `/api/project` | Replace the project (`schemaVersion` 3 with `slides` and `music`); `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
 | `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |

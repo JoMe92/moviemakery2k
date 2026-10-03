@@ -12,9 +12,10 @@ hardening pass over export, errors and UI (OpenSpec change
 `harden-export-and-ui`), a music track (OpenSpec change `add-music-track`),
 undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`),
 video import (OpenSpec change `add-video-import`), a phone and tablet
-layout with full touch operation (OpenSpec change `add-mobile-layout`) and
-use from a phone in the home network, installable and with sharing (OpenSpec
-change `add-mobile-delivery`).
+layout with full touch operation (OpenSpec change `add-mobile-layout`), use
+from a phone in the home network, installable and with sharing (OpenSpec
+change `add-mobile-delivery`) and video clips on the storyboard with a
+timeline view (OpenSpec change `add-timeline-editing`).
 
 ### Added
 
@@ -225,7 +226,41 @@ change `add-mobile-delivery`).
   Slide Up Center, Roll, Spin Out, Page Curl, Shatter, Whirlwind, Shrink)
   remain out of scope, pending a dedicated rendering technique.
 
+- **Video clips on the storyboard**: a video from *My Videos* can be dragged
+  or double-clicked into the storyboard exactly like a picture (full length,
+  no incoming transition), moved, cut/copied/pasted and removed alongside
+  pictures. It plays back muted in the WebGL2 preview (scrubbed to the right
+  source frame on every draw, no decoding ahead of time) and renders in the
+  export from a sequential FFmpeg decode of its own trim range, so the
+  existing transition shaders see it exactly like an image.
+- **Trim a video clip**: a properties dialog (double-click or context menu,
+  like a picture's duration) sets `trimIn`/`trimOut` numerically, with a live
+  poster preview of the resulting frame at each new edge.
+- **Clip → Split**: enabled only for a selected video clip while the playhead
+  is within its own span; splits it at the playhead into two clips sharing
+  the source video — the first keeps the incoming transition, the second
+  starts with a hard cut.
+- **Timeline view** (*View → Timeline*, or the storyboard pane's own toggle):
+  a second, proportional-width track view of the same storyboard with a time
+  ruler, a zoom slider and drag handles at each clip's edges for the same
+  trimming (a picture's display duration, or a video's `trimIn`/`trimOut`);
+  transitions render as a wedge between two clips. Selection and the
+  playhead are shared with the storyboard strip.
+
 ### Changed
+
+- **BREAKING (API):** project **schema version 3**: `slides` is a
+  discriminated union on `kind` — `image` (unchanged, a display `duration`)
+  or `video` (`mediaId` refers to a video medium; `trimIn`/`trimOut` in
+  seconds, `0 ≤ trimIn < trimOut ≤` the video's decoded duration; no separate
+  duration field, the segment length is always `trimOut - trimIn`). A stored
+  version-2 project has every slide read as `kind: "image"`, its `duration`
+  unchanged; `PUT /api/project` accepts version 3 only. The TypeScript types
+  are regenerated (`pixi run gen-api`).
+- **BREAKING (API):** `VideoItem` gains `videoUrl` (the original file, for
+  the preview player) and a new `GET /api/media/{id}/video` endpoint with
+  Range support, mirroring the existing `/audio` endpoint.
+- Deleting a medium whose video is on the storyboard cascades like a picture.
 
 - **BREAKING (API):** project **schema version 2** with a `music` list
   (`id`, `mediaId`, `trimStart`, `trimEnd`, `volume`, `fadeIn`, `fadeOut`;
