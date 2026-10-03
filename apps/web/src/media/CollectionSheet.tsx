@@ -9,7 +9,10 @@ import styles from "./CollectionSheet.module.css";
 import { MediaCollection } from "./MediaCollection";
 import { UploadPanel } from "./UploadPanel";
 
-const TABS: readonly CollectionId[] = ["media", "music", "transitions"];
+const TABS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
+
+/** Media kind of a collection tab (transitions have none). */
+const KIND = { media: "image", music: "audio", video: "video" } as const;
 
 /**
  * Collection sheet of the compact layout (add-mobile-layout design.md D7):
@@ -68,7 +71,8 @@ export function CollectionSheet() {
       height="full"
       onClose={close}
       footer={
-        collection === "transitions" ? undefined : (
+        // Videos cannot be added to the storyboard yet (add-video-import non-goal).
+        collection === "transitions" || collection === "video" ? undefined : (
           <Button disabled={count === 0} onClick={add} className={styles.add}>
             {t(
               collection === "music" ? "collectionSheet.addMusic" : "collectionSheet.addPictures",
@@ -102,7 +106,13 @@ export function CollectionSheet() {
           ))}
         </div>
         {collection === "transitions" ? null : (
-          <Button onClick={() => requestImport(collection === "music" ? "audio" : "pictures")}>
+          <Button
+            onClick={() =>
+              requestImport(
+                collection === "music" ? "audio" : collection === "video" ? "video" : "pictures",
+              )
+            }
+          >
             {t("collectionSheet.import")}
           </Button>
         )}
@@ -118,7 +128,7 @@ export function CollectionSheet() {
         ) : (
           <MediaCollection
             key={collection}
-            kind={collection === "music" ? "audio" : "image"}
+            kind={KIND[collection]}
             picking={{ picked, onToggle: toggle }}
           />
         )}

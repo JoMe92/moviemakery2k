@@ -66,7 +66,13 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           label: t("tasks.capture.importVideo"),
           icon: FilmIcon,
           disabled: false,
-          run: () => ctx.requestImport("video"),
+          run: () => {
+            ctx.requestImport("video");
+            if (ctx.openCollectionSheet) {
+              ctx.setCollection("video");
+              ctx.openCollectionSheet();
+            }
+          },
         },
         {
           id: "importPictures",

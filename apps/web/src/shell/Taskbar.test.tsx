@@ -50,9 +50,9 @@ describe("taskbar (add-mobile-layout design.md D4)", () => {
         .map((b) => b.textContent)
         .filter((x) => x),
     ).toEqual(["Video importieren", "Bilder importieren", "Audio oder Musik importieren"]);
-    expect(within(sheet).getByRole("button", { name: "Video importieren" })).toHaveAttribute(
+    // Video import is enabled since add-video-import.
+    expect(within(sheet).getByRole("button", { name: "Video importieren" })).not.toHaveAttribute(
       "aria-disabled",
-      "true",
     );
     await user.click(within(sheet).getByRole("button", { name: "Bilder importieren" }));
     expect(click).toHaveBeenCalledOnce();

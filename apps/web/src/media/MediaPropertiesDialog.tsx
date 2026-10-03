@@ -26,7 +26,15 @@ export function MediaPropertiesDialog({
           <dt>{t("media.fileName")}</dt>
           <dd>{item.filename}</dd>
           <dt>{t("media.kind")}</dt>
-          <dd>{t(item.kind === "image" ? "media.kindImage" : "media.kindAudio")}</dd>
+          <dd>
+            {t(
+              item.kind === "image"
+                ? "media.kindImage"
+                : item.kind === "video"
+                  ? "media.kindVideo"
+                  : "media.kindAudio",
+            )}
+          </dd>
           {item.kind === "image" ? (
             <>
               <dt>{t("media.size")}</dt>

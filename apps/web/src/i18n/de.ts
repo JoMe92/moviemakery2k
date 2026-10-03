@@ -183,6 +183,7 @@ export const de = {
     kind: "Art",
     kindImage: "Bild",
     kindAudio: "Audio",
+    kindVideo: "Video",
     size: "Abmessungen",
     sizeValue: "{width} × {height} Pixel",
     duration: "Dauer",

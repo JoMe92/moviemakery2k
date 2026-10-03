@@ -185,6 +185,7 @@ export const en = {
     kind: "Kind",
     kindImage: "Picture",
     kindAudio: "Audio",
+    kindVideo: "Video",
     size: "Dimensions",
     sizeValue: "{width} × {height} pixels",
     duration: "Duration",

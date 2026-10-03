@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
 import { SLIDE_DURATION } from "../store/projectOps";
-import { audioItem, mediaItem, mockApi } from "../store/testApi";
+import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
@@ -23,6 +23,7 @@ async function setup(slides: Slide[] = [], locale: "de" | "en" = "de") {
       mediaItem("c"),
       audioItem("song", 60),
       audioItem("tune", 30),
+      videoItem("clip", 12),
     ],
     getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
   });
@@ -49,6 +50,7 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     expect(sheet.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Meine Bilder",
       "Meine Musik",
+      "Meine Videos",
       "Videoübergänge",
     ]);
     const input = screen.getByTestId("media-import-input") as HTMLInputElement;
@@ -145,6 +147,30 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     await user.click(screen.getByRole("menuitem", { name: "Löschen" }));
     expect(screen.getByRole("dialog", { name: "Bild löschen" })).toHaveTextContent(
       "Möchten Sie „c.jpg“ wirklich löschen?",
+    );
+  });
+
+  it("shows My Videos with Properties and Delete but nothing to add", async () => {
+    const { sheet, user, store } = await setup();
+    await user.click(sheet.getByRole("tab", { name: "Meine Videos" }));
+    expect(store.getState().collection).toBe("video");
+    const tile = sheet.getByRole("button", { name: /^clip\.mp4/ });
+    await user.click(tile);
+    expect(tile).toHaveAttribute("aria-pressed", "false");
+    expect(sheet.queryByRole("button", { name: /hinzufügen/ })).toBeNull();
+    const input = screen.getByTestId("media-import-input") as HTMLInputElement;
+    vi.spyOn(input, "click");
+    await user.click(sheet.getByRole("button", { name: "Importieren" }));
+    expect(input.accept).toMatch(/video/);
+    vi.useFakeTimers();
+    fireEvent.pointerDown(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
+    act(() => vi.advanceTimersByTime(400));
+    fireEvent.pointerUp(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
+    vi.useRealTimers();
+    const menu = screen.getByRole("menu", { name: "Video „clip.mp4“" });
+    await user.click(within(menu).getByRole("menuitem", { name: "Eigenschaften" }));
+    expect(screen.getByRole("dialog", { name: "Eigenschaften von „clip.mp4“" })).toHaveTextContent(
+      "Video",
     );
   });
 

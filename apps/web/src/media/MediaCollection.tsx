@@ -232,11 +232,13 @@ function VideoTile({
   item,
   selected,
   tileRef,
-  picking: _picking,
-  onLongPress: _onLongPress,
+  picking,
+  onLongPress,
   ...handlers
 }: TileHandlers & { item: VideoItem }) {
   const { t, locale } = useT();
+  // Not draggable; in the collection sheet a long press offers Properties and Delete.
+  const pointer = usePickingPointer(picking, onLongPress, undefined);
   const duration = formatClipDuration(locale, item.duration);
   return (
     <Tile
@@ -258,6 +260,7 @@ function VideoTile({
         </span>
       }
       {...handlers}
+      {...pointer}
     />
   );
 }
@@ -370,7 +373,11 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
                 else tiles.current.delete(item.id);
               },
               selected: picking ? picking.picked.includes(item.id) : selectedId === item.id,
-              onClick: () => (picking ? picking.onToggle(item.id) : setSelectedId(item.id)),
+              // Videos are not picked (they cannot be added yet); they only offer the menu.
+              onClick: () =>
+                picking
+                  ? item.kind !== "video" && picking.onToggle(item.id)
+                  : setSelectedId(item.id),
               onDoubleClick: () => {
                 if (picking) return;
                 if (item.kind === "image") addSlide(item.id);
