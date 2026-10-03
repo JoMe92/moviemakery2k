@@ -382,7 +382,8 @@ export const de = {
   },
   install: {
     title: "Als App installieren",
-    intro: "Ihr Browser bietet keinen Installationsdialog. So legen Sie moviemakerY2K auf den Home-Bildschirm:",
+    intro:
+      "Ihr Browser bietet keinen Installationsdialog. So legen Sie moviemakerY2K auf den Home-Bildschirm:",
     stepShare: "Tippen Sie in der Browserleiste auf „Teilen“.",
     stepHomeScreen: "Wählen Sie „Zum Home-Bildschirm“.",
   },

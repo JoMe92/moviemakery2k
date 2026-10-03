@@ -11,12 +11,12 @@ import {
   type AppApi,
   type ExportApi,
   type Health,
+  isAuthRequired,
   type MediaItem,
   type MusicClip,
   type Project,
   type Slide,
   type Transition,
-  isAuthRequired,
 } from "../lib/apiClient";
 import {
   advance,

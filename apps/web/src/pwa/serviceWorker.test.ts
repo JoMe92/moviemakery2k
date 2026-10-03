@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  type Registrar,
   type RegisterOptions,
+  type Registrar,
   registerServiceWorker,
   type ServiceWorkerEnv,
   shouldRegister,

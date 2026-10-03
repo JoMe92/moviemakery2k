@@ -2,8 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAppStore } from "../store/appStore";
-import { AppStoreContext } from "../store/useAppStore";
 import { mockApi } from "../store/testApi";
+import { AppStoreContext } from "../store/useAppStore";
 import { updateState } from "./serviceWorker";
 import { UpdateNotice } from "./UpdateNotice";
 
