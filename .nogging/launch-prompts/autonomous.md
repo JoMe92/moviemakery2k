@@ -8,8 +8,15 @@ What this session may do:
   than individual Beads — each Bead the named change scopes, in `tasks.md`
   order. Before implementation, allocate a dedicated worktree from updated
   `develop` using `scripts/nogg worktree implement <bead> <branch>` and
-  work only there. Work one Bead at a time: claim, implement, validate, commit,
-  note, close.
+  work only there. Enter that worktree with a plain Bash `cd <path>` —
+  never use the `EnterWorktree` tool for this: its relocation-approval
+  prompt cannot be suppressed by any permission rule, only by
+  `bypassPermissions`, which this profile does not grant. Work one Bead at a
+  time: claim, implement, validate, commit, note, close. **Immediately
+  continue to the next ready Bead in the same change after closing one — do
+  not end your turn, wait for confirmation, or pause between Beads.** Keep
+  going without stopping until every Bead in the named change is closed or
+  blocked, or the PR is open and green.
 - Run `scripts/test` (and any narrower suite the task calls for) before
   closing a Bead.
 - Commit per Bead with a Conventional Commit subject carrying the
