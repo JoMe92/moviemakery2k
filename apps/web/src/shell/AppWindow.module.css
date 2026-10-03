@@ -3,10 +3,16 @@
   grid-template-rows: auto auto auto minmax(0, 1fr) var(--y2k-storyboard-height) auto;
   width: 100%;
   min-width: 0;
-  height: 100%;
-  min-height: 560px;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--y2k-face);
+}
+
+/* Die Mindesthöhe gilt nur im breiten Modus (design.md D2). */
+:global([data-layout="wide"]) .window,
+:global(:root:not([data-layout])) .window {
+  min-height: 560px;
 }
 
 .titlebar {

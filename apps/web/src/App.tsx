@@ -7,6 +7,7 @@ import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
+import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
 import { StatusBar } from "./shell/StatusBar";
 import { StoryboardPane } from "./shell/StoryboardPane";
 import { TaskPane } from "./shell/TaskPane";
@@ -47,6 +48,9 @@ export function App() {
   const togglePlay = useAppStore((s) => s.togglePlay);
   const stop = useAppStore((s) => s.stop);
   const playerMenu = useMemo(() => ({ togglePlay, stop }), [togglePlay, stop]);
+
+  const layout = useLayoutMode();
+  useLayoutAttributes(layout);
 
   const { t } = useT();
   const collections = useMemo(
