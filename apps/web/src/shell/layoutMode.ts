@@ -67,21 +67,28 @@ function getSnapshot(): Layout {
   return snapshot;
 }
 
+/** Replaces the shared snapshot only when the layout really changed. */
+function refreshSnapshot(): void {
+  const next = readLayout();
+  const prev = snapshot;
+  if (
+    !prev ||
+    prev.mode !== next.mode ||
+    prev.orientation !== next.orientation ||
+    prev.coarse !== next.coarse
+  ) {
+    snapshot = next;
+  }
+}
+
 function subscribe(onChange: () => void): () => void {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
   const lists = Object.values(LAYOUT_QUERIES).map((q) => window.matchMedia(q));
+  // Every subscriber is notified; React skips the render when the snapshot
+  // object stayed the same.
   const handler = () => {
-    const next = readLayout();
-    const prev = snapshot;
-    if (
-      !prev ||
-      prev.mode !== next.mode ||
-      prev.orientation !== next.orientation ||
-      prev.coarse !== next.coarse
-    ) {
-      snapshot = next;
-      onChange();
-    }
+    refreshSnapshot();
+    onChange();
   };
   for (const list of lists) list.addEventListener("change", handler);
   // A matchMedia replaced since the last snapshot (tests) must not leave a stale one.
