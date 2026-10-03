@@ -529,6 +529,42 @@
         "ref": "SMPTE 228 \"Sweep, Horizontal\" (DxtJpeg MaskNum 228) per movie-maker-reference.md §3",
         "estimated": ["defaultDuration", "borderSoftness"]
       }
+    },
+    {
+      "id": "reveal-right",
+      "names": { "de": "Enthüllen, rechts", "en": "Reveal, right" },
+      "shader": "reveal-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 0, "gradientSize": 0.02 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 1 \"Reveal, Right\" (DxtJpeg MaskNum 1) per movie-maker-reference.md §3; hard edge (small gradientSize) distinguishes it from the softer DXT Wipe family",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "reveal-down",
+      "names": { "de": "Enthüllen, unten", "en": "Reveal, down" },
+      "shader": "reveal-down.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 270, "gradientSize": 0.02 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 2 \"Reveal, Down\" (DxtJpeg MaskNum 2) per movie-maker-reference.md §3; hard edge (small gradientSize) distinguishes it from the softer DXT Wipe family",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "stars-replicate",
+      "names": { "de": "Sterne (Replikat)", "en": "Stars (replicate)" },
+      "shader": "stars-replicate.glsl",
+      "defaultDuration": 1.25,
+      "params": { "borderSoftness": 20, "replicateX": 4, "replicateY": 3 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 128 \"Star\", Stars/replicate variant (DxtJpeg MaskNum 128) per movie-maker-reference.md §3; grid size not documented",
+        "estimated": ["defaultDuration", "borderSoftness", "replicateX", "replicateY"]
+      }
     }
   ]
 }

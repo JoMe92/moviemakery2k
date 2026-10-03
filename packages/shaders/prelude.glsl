@@ -195,6 +195,17 @@ float starT(vec2 uv) {
   return clamp(radialDistPx(uv) / max(radius, 1e-3), 0.0, 1.0);
 }
 
+// Stars, Replicate N×M (SMPTE 128 variant, paired with Star the same way
+// Circles pairs with Circle): an N×M grid of independent star irises.
+float starsReplicateT(vec2 uv, float replicateX, float replicateY) {
+  vec2 n = max(floor(vec2(replicateX, replicateY)), 1.0);
+  vec2 cellSize = resolution / n;
+  vec2 cellPx = (fract(uv * n) - 0.5) * cellSize;
+  float angle = atan(cellPx.y, cellPx.x);
+  float radius = (0.65 + 0.35 * cos(5.0 * angle)) * 0.5 * length(cellSize);
+  return clamp(length(cellPx) / max(radius, 1e-3), 0.0, 1.0);
+}
+
 // Heart (SMPTE 130): a cardioid-like polar boundary with its cusp pointing up.
 float heartT(vec2 uv) {
   float angle = radialAngle(uv) + 1.57079632679;
