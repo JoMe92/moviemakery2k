@@ -47,6 +47,9 @@ readonly_root=""
 provider=""
 model=""
 resume=0
+resume_id=""
+session_id=""
+remote_control=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -62,6 +65,9 @@ while [ $# -gt 0 ]; do
     --provider)  provider=$2; shift 2 ;;
     --model)     model=$2; shift 2 ;;
     --read-only) read_only=1; shift ;;
+    --session-id) session_id=$2; shift 2 ;;
+    --resume)    resume_id=$2; shift 2 ;;
+    --remote-control) remote_control=$2; shift 2 ;;
     --continue)  resume=1; shift ;;
     --)          shift; break ;;
     *) echo "session-launch: unknown argument: $1" >&2; exit 2 ;;
@@ -74,16 +80,25 @@ case "$agent" in
   claude)
     set --
     [ -n "$settings" ] && set -- "$@" --settings "$settings"
-    # --continue resumes the most recent conversation for this working dir (the
-    # orchestrator supervisor's restart path). The appended system prompt is
-    # still passed — it is harmless on a resume (applied after the next
-    # compaction) and it carries the persona on a cold start.
-    [ "$resume" -eq 1 ] && set -- "$@" --continue
+    # --resume <id> resumes a specific prior conversation (the orchestrator
+    # supervisor's restart path and any session relaunch that pins a prior
+    # claude_session_id); --continue is the older bare fallback. --session-id
+    # pins a fresh session's id up front so its record can name it before the
+    # first turn. The appended system prompt is still passed in either case —
+    # it is harmless on a resume (applied after the next compaction) and it
+    # carries the persona on a cold start.
+    if [ -n "$resume_id" ]; then
+      set -- "$@" --resume "$resume_id"
+    elif [ "$resume" -eq 1 ]; then
+      set -- "$@" --continue
+    fi
+    [ -n "$session_id" ] && set -- "$@" --session-id "$session_id"
+    [ -n "$remote_control" ] && set -- "$@" --remote-control "$remote_control"
     if [ -n "$prompt" ] && [ -f "$prompt" ]; then
       set -- "$@" --append-system-prompt "$(cat "$prompt")"
     fi
     [ "$read_only" -eq 1 ] && set -- "$@" --permission-mode plan
-    echo "nogg: starting Claude for ${bead:-<no bead>} in $(pwd) (read-only=${read_only} resume=${resume})"
+    echo "nogg: starting Claude for ${bead:-<no bead>} in $(pwd) (read-only=${read_only} resume=${resume_id:-$resume})"
     exec claude "$@"
     ;;
   codex)
