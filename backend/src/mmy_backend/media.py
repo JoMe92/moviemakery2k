@@ -1,20 +1,26 @@
-"""Media store: import, validation and derived files (design.md D7; add-music-track D1).
+"""Media store: import, validation and derived files (design.md D7; add-music-track D1;
+add-video-import D1, D2).
 
-A medium is an image or an audio file (`MediaItem`, discriminated by `kind`).
-Layout in the data directory:
+A medium is an image, a video or an audio file (`MediaItem`, discriminated by
+`kind`). Layout in the data directory:
 
     media.json                  index, list of MediaItem in import order
-    media/<id>/original.<ext>   unchanged original (jpg, png, webp; mp3, wav, m4a, ogg, flac)
+    media/<id>/original.<ext>   unchanged original (jpg, png, webp; mp4, mkv; mp3, wav, m4a,
+                                ogg, flac)
     media/<id>/thumb.jpg        image: thumbnail, fits into 160x120
     media/<id>/preview.jpg      image: preview image, longest edge <= 1920, JPEG q90
     media/<id>/preview.m4a      audio: preview version, AAC 48 kHz stereo 128 kbit/s
     media/<id>/peaks.json       audio: waveform, 50 peaks per second (AudioPeaks)
+    media/<id>/poster.jpg       video: poster frame, JPEG q90 (add-video-import D3)
 
 Entries in media.json without `kind` (written before audio existed) are images.
 
 Detection goes by content, never by name or content type: first Pillow (JPEG,
-PNG, WebP only), then ffprobe for audio. Limits depend on the kind: images 25 MB
-and 40 megapixels, audio 100 MB and 15 minutes.
+PNG, WebP only), then ffprobe. A file with at least one decodable video stream
+in a supported codec (H.264, HEVC, VP9, AV1) is a video, whatever else it
+contains; only then does the existing audio check apply. Limits depend on the
+kind: images 25 MB and 40 megapixels, audio 100 MB and 15 minutes, video
+500 MB and 10 minutes.
 
 Audio derivatives come from one FFmpeg run (add-music-track D2): it decodes the
 original once and writes the AAC preview plus mono PCM to a pipe, from which
@@ -56,6 +62,8 @@ from mmy_backend.storage import write_bytes_atomic
 MAX_IMAGE_BYTES = 25 * 1024 * 1024
 MAX_AUDIO_BYTES = 100 * 1024 * 1024
 MAX_AUDIO_SECONDS = 15 * 60
+MAX_VIDEO_BYTES = 500 * 1024 * 1024
+MAX_VIDEO_SECONDS = 10 * 60
 MAX_PIXELS = 40_000_000
 MAX_FILES_PER_REQUEST = 50
 THUMB_SIZE = (160, 120)
@@ -87,12 +95,20 @@ _AUDIO_EXTENSIONS = {"mp3": "mp3", "wav": "wav", "mov": "m4a", "ogg": "ogg", "fl
 # Decoders checked in the pixi FFmpeg (design.md, architect's pre-check); plus all pcm_*.
 _AUDIO_CODECS = frozenset({"mp3", "aac", "alac", "flac", "vorbis", "opus"})
 
+# ffprobe demuxer (first name of `format_name`) -> extension of the stored original.
+# Both webm and mkv are demuxed as "matroska"; the original is stored as .mkv either way.
+_VIDEO_EXTENSIONS = {"mov": "mp4", "matroska": "mkv"}
+# Decoders checked in the pixi FFmpeg (design.md D1, architect's pre-check).
+_VIDEO_CODECS = frozenset({"h264", "hevc", "vp9", "av1"})
+
 UploadErrorCode = Literal[
     ErrorCode.MEDIA_UNSUPPORTED_TYPE,
     ErrorCode.MEDIA_TOO_LARGE,
     ErrorCode.MEDIA_TOO_MANY_PIXELS,
     ErrorCode.MEDIA_AUDIO_TOO_LONG,
     ErrorCode.MEDIA_NO_AUDIO_STREAM,
+    ErrorCode.MEDIA_VIDEO_TOO_LONG,
+    ErrorCode.MEDIA_NO_VIDEO_STREAM,
     ErrorCode.MEDIA_PROBE_UNAVAILABLE,
 ]
 
@@ -143,6 +159,20 @@ class AudioItem(_MediaModel):
     peaks_url: str = Field(description="Waveform data (50 peaks per second)")
 
 
+class VideoItem(_MediaModel):
+    """An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1."""
+
+    id: Annotated[str, Field(pattern=MEDIA_ID_PATTERN)]
+    kind: Literal["video"]
+    filename: str = Field(description="Original file name, for display only")
+    duration: float = Field(gt=0, description="Decoded duration in seconds")
+    width: int = Field(gt=0, description="Width after rotation")
+    height: int = Field(gt=0, description="Height after rotation")
+    codec: str = Field(description="FFmpeg codec name of the original, e.g. `h264`, `hevc`")
+    created_at: datetime
+    poster_url: str = Field(description="Poster frame (JPEG), add-video-import D3")
+
+
 class AudioPeaks(_MediaModel):
     """Waveform data of an audio medium (`GET /api/media/{id}/peaks`, design.md D2).
 
@@ -157,7 +187,7 @@ class AudioPeaks(_MediaModel):
     )
 
 
-type MediaItem = Annotated[ImageItem | AudioItem, Field(discriminator="kind")]
+type MediaItem = Annotated[ImageItem | AudioItem | VideoItem, Field(discriminator="kind")]
 """An imported medium; `kind` tells the type. Index entries without `kind` are images."""
 
 
@@ -260,6 +290,27 @@ class _PreparedAudio:
     probe: AudioProbe
 
 
+@dataclass(frozen=True, slots=True)
+class VideoProbe:
+    """What ffprobe reports about an accepted video file (design.md D1, D3)."""
+
+    extension: str
+    duration: float
+    width: int
+    """Width in pixels, after rotation (design.md D3)."""
+    height: int
+    """Height in pixels, after rotation (design.md D3)."""
+    codec: str
+    stream_index: int = 0
+    """Index of the described stream in the file; the poster is extracted from this stream."""
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedVideo:
+    id: str
+    probe: VideoProbe
+
+
 def _to_rgb(image: Image.Image) -> Image.Image:
     has_alpha = image.mode in ("RGBA", "LA", "PA", "RGBa", "La") or ("transparency" in image.info)
     if not has_alpha:
@@ -308,13 +359,12 @@ def _number(value: Any) -> float | None:
     return number if number > 0 else None
 
 
-def probe_audio(path: Path) -> AudioProbe:
-    """Checks an audio file with ffprobe; raises MediaError if it is not acceptable.
+def _probe_report(path: Path) -> dict[str, Any]:
+    """Runs ffprobe and parses its JSON report (format + streams).
 
-    Accepted are the demuxers mp3, wav, mov/m4a, ogg and flac with at least one
-    audio stream in a supported codec; the first such stream is described. The
-    duration is ffprobe's value (stream, else container); the decoded length
-    replaces it once a preview is derived (design.md D2).
+    Raises MediaError: `probeUnavailable` if ffprobe is missing or cannot be
+    started, `unsupportedType` if it rejects the file, times out, or its
+    output cannot be parsed as a JSON object.
     """
     binary = ffprobe_binary()
     if binary is None:
@@ -345,7 +395,18 @@ def probe_audio(path: Path) -> AudioProbe:
         raise _unsupported() from exc
     if not isinstance(report, dict):
         raise _unsupported()
+    return report
 
+
+def probe_audio(path: Path) -> AudioProbe:
+    """Checks an audio file with ffprobe; raises MediaError if it is not acceptable.
+
+    Accepted are the demuxers mp3, wav, mov/m4a, ogg and flac with at least one
+    audio stream in a supported codec; the first such stream is described. The
+    duration is ffprobe's value (stream, else container); the decoded length
+    replaces it once a preview is derived (design.md D2).
+    """
+    report = _probe_report(path)
     container = report.get("format") or {}
     demuxer = str(container.get("format_name", "")).split(",", 1)[0]
     extension = _AUDIO_EXTENSIONS.get(demuxer)
@@ -378,6 +439,68 @@ def probe_audio(path: Path) -> AudioProbe:
 
 def _too_long() -> MediaError:
     return MediaError(ErrorCode.MEDIA_AUDIO_TOO_LONG, maxMinutes=MAX_AUDIO_SECONDS // 60)
+
+
+def _video_too_long() -> MediaError:
+    return MediaError(ErrorCode.MEDIA_VIDEO_TOO_LONG, maxMinutes=MAX_VIDEO_SECONDS // 60)
+
+
+def _rotated_size(stream: dict[str, Any], width: int, height: int) -> tuple[int, int]:
+    """Swaps width/height if the stream's display matrix rotates by +-90 degrees.
+
+    Covers container-level rotation (e.g. a phone's tkhd matrix, reported by
+    ffprobe directly on the stream) as well as bitstream-level rotation (e.g. an
+    H.26x display orientation SEI, only visible after decoding a frame); both
+    show up as a `side_data_list` entry with a numeric `rotation` field
+    (design.md D3).
+    """
+    for side in stream.get("side_data_list") or []:
+        rotation = side.get("rotation") if isinstance(side, dict) else None
+        if isinstance(rotation, (int, float)) and round(rotation) % 180 != 0:
+            return height, width
+    return width, height
+
+
+def probe_video(path: Path) -> VideoProbe | None:
+    """Checks for a decodable video stream with ffprobe (design.md D1, D2).
+
+    Returns None if the file has no video stream at all (the existing audio
+    check then applies); raises MediaError if a video stream is present but the
+    file cannot be accepted as video: `unsupportedType` for an unrecognised
+    container, `noVideoStream` if no video stream is in a supported codec
+    (H.264, HEVC, VP9, AV1), `videoTooLong` if the duration exceeds
+    MAX_VIDEO_SECONDS.
+    """
+    report = _probe_report(path)
+    streams = [s for s in report.get("streams") or [] if isinstance(s, dict)]
+    video = [s for s in streams if s.get("codec_type") == "video"]
+    if not video:
+        return None
+    container = report.get("format") or {}
+    demuxer = str(container.get("format_name", "")).split(",", 1)[0]
+    extension = _VIDEO_EXTENSIONS.get(demuxer)
+    if extension is None:
+        raise _unsupported()
+    stream = next((s for s in video if _supported_video_codec(str(s.get("codec_name", "")))), None)
+    if stream is None:
+        raise MediaError(ErrorCode.MEDIA_NO_VIDEO_STREAM)
+
+    duration = _number(stream.get("duration")) or _number(container.get("duration"))
+    width = _number(stream.get("width"))
+    height = _number(stream.get("height"))
+    if duration is None or width is None or height is None:
+        raise _unsupported()
+    if duration > MAX_VIDEO_SECONDS:
+        raise _video_too_long()
+    rotated_width, rotated_height = _rotated_size(stream, int(width), int(height))
+    return VideoProbe(
+        extension=extension,
+        duration=duration,
+        width=rotated_width,
+        height=rotated_height,
+        codec=str(stream["codec_name"]),
+        stream_index=int(stream.get("index", 0)),
+    )
 
 
 class _PeakAccumulator:
@@ -506,8 +629,69 @@ def derive_audio(original: Path, target_dir: Path, stream_index: int = 0) -> flo
     return accumulator.samples / _PCM_RATE
 
 
+def derive_poster(original: Path, target_dir: Path, probe: VideoProbe) -> None:
+    """Extracts the poster frame into `target_dir/poster.jpg` (JPEG, quality 90).
+
+    The frame is taken at 1 s, or at half the duration if the video is shorter
+    than 2 s (design.md D3). FFmpeg decodes the described stream and applies
+    any rotation from its display matrix on its own (the same side data
+    `probe_video` already used for the reported width/height), so the
+    extracted frame comes out already in `probe.width` x `probe.height`.
+    Pillow then re-encodes it at PREVIEW_QUALITY, the same quality used for
+    image previews.
+
+    Raises MediaError: `probeUnavailable` without FFmpeg, `unsupportedType` if
+    the frame cannot be extracted or decoded as an image.
+    """
+    binary = ffmpeg_binary()
+    if binary is None:
+        raise MediaError(ErrorCode.MEDIA_PROBE_UNAVAILABLE)
+    timestamp = probe.duration / 2 if probe.duration < 2 else 1.0
+    raw = target_dir / ".poster-frame.png"
+    command = [
+        binary,
+        "-nostdin",
+        "-hide_banner",
+        "-v",
+        "error",
+        "-ss",
+        f"{timestamp:.3f}",
+        "-i",
+        str(original),
+        "-map",
+        f"0:{probe.stream_index}",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "rgb24",
+        str(raw),
+    ]
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, timeout=PROBE_TIMEOUT_SECONDS, check=False
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise _unsupported() from exc
+    except OSError as exc:
+        raise MediaError(ErrorCode.MEDIA_PROBE_UNAVAILABLE) from exc
+    if completed.returncode != 0 or not raw.is_file():
+        raise _unsupported()
+    try:
+        with Image.open(raw) as frame:
+            frame.load()
+            frame.save(target_dir / "poster.jpg", "JPEG", quality=PREVIEW_QUALITY)
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError) as exc:
+        raise _unsupported() from exc
+    finally:
+        raw.unlink(missing_ok=True)
+
+
 def _supported_codec(name: str) -> bool:
     return name in _AUDIO_CODECS or name.startswith("pcm_")
+
+
+def _supported_video_codec(name: str) -> bool:
+    return name in _VIDEO_CODECS
 
 
 def _read_index_payload(payload: bytes) -> list[MediaItem]:
@@ -577,7 +761,7 @@ class MediaStore:
         payload = _INDEX_ADAPTER.dump_json(list(items), indent=2, by_alias=True)
         write_bytes_atomic(self.index_file, payload)
 
-    def _prepare(self, source: BinaryIO) -> _PreparedImage | _PreparedAudio:
+    def _prepare(self, source: BinaryIO) -> _PreparedImage | _PreparedAudio | _PreparedVideo:
         """Validates a file and stores original + derivatives under media/<id>/.
 
         Runs synchronously (thread pool). It first writes into a staging directory
@@ -589,23 +773,36 @@ class MediaStore:
         try:
             upload = staging / "upload"
             with upload.open("wb") as target:
-                size = _copy_limited(source, target, max(MAX_IMAGE_BYTES, MAX_AUDIO_BYTES))
+                size = _copy_limited(
+                    source, target, max(MAX_IMAGE_BYTES, MAX_AUDIO_BYTES, MAX_VIDEO_BYTES)
+                )
             if _is_image(upload):
                 if size > MAX_IMAGE_BYTES:
                     raise _too_large(MAX_IMAGE_BYTES)
-                prepared: _PreparedImage | _PreparedAudio = self._prepare_image(
+                prepared: _PreparedImage | _PreparedAudio | _PreparedVideo = self._prepare_image(
                     media_id, staging, upload
                 )
             else:
-                if size > MAX_AUDIO_BYTES:
-                    raise _too_large(MAX_AUDIO_BYTES)
-                probe = probe_audio(upload)
-                original = staging / f"original.{probe.extension}"
-                upload.rename(original)
-                duration = derive_audio(original, staging, probe.stream_index)
-                # The decoded length replaces ffprobe's estimate (design.md D2).
-                probe = dataclasses.replace(probe, duration=duration)
-                prepared = _PreparedAudio(id=media_id, probe=probe)
+                # A video stream in a supported codec wins regardless of an audio
+                # track (design.md D1); only its absence falls back to audio.
+                video_probe = probe_video(upload)
+                if video_probe is not None:
+                    if size > MAX_VIDEO_BYTES:
+                        raise _too_large(MAX_VIDEO_BYTES)
+                    original = staging / f"original.{video_probe.extension}"
+                    upload.rename(original)
+                    derive_poster(original, staging, video_probe)
+                    prepared = _PreparedVideo(id=media_id, probe=video_probe)
+                else:
+                    if size > MAX_AUDIO_BYTES:
+                        raise _too_large(MAX_AUDIO_BYTES)
+                    probe = probe_audio(upload)
+                    original = staging / f"original.{probe.extension}"
+                    upload.rename(original)
+                    duration = derive_audio(original, staging, probe.stream_index)
+                    # The decoded length replaces ffprobe's estimate (design.md D2).
+                    probe = dataclasses.replace(probe, duration=duration)
+                    prepared = _PreparedAudio(id=media_id, probe=probe)
             os.replace(staging, self.item_dir(media_id))
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
@@ -652,16 +849,30 @@ class MediaStore:
                 thumbnail_url=f"/api/media/{prepared.id}/thumbnail",
                 preview_url=f"/api/media/{prepared.id}/preview",
             )
+        elif isinstance(prepared, _PreparedVideo):
+            video_probe = prepared.probe
+            item = VideoItem(
+                id=prepared.id,
+                kind="video",
+                filename=display,
+                duration=video_probe.duration,
+                width=video_probe.width,
+                height=video_probe.height,
+                codec=video_probe.codec,
+                created_at=datetime.now(UTC),
+                # Served by GET /api/media/{id}/poster (add-video-import D3).
+                poster_url=f"/api/media/{prepared.id}/poster",
+            )
         else:
-            probe = prepared.probe
+            audio_probe = prepared.probe
             item = AudioItem(
                 id=prepared.id,
                 kind="audio",
                 filename=display,
-                duration=probe.duration,
-                sample_rate=probe.sample_rate,
-                channels=probe.channels,
-                codec=probe.codec,
+                duration=audio_probe.duration,
+                sample_rate=audio_probe.sample_rate,
+                channels=audio_probe.channels,
+                codec=audio_probe.codec,
                 created_at=datetime.now(UTC),
                 # Served by GET /api/media/{id}/audio and /peaks (design.md D2).
                 audio_url=f"/api/media/{prepared.id}/audio",

@@ -46,6 +46,8 @@ class ErrorCode(StrEnum):
     MEDIA_IN_USE_BY_EXPORT = "media.inUseByExport"
     MEDIA_AUDIO_TOO_LONG = "media.audioTooLong"
     MEDIA_NO_AUDIO_STREAM = "media.noAudioStream"
+    MEDIA_VIDEO_TOO_LONG = "media.videoTooLong"
+    MEDIA_NO_VIDEO_STREAM = "media.noVideoStream"
     MEDIA_PROBE_UNAVAILABLE = "media.probeUnavailable"
     PROJECT_SLIDE_DURATION_OUT_OF_RANGE = "project.slideDuration.outOfRange"
     PROJECT_SLIDE_DURATION_OFF_GRID = "project.slideDuration.offGrid"
@@ -107,10 +109,11 @@ _SPECS: dict[str, ErrorSpec] = {
     ),
     # Per-file upload results.
     "media.unsupportedType": ErrorSpec(
-        "Not a supported image or audio file (allowed are JPEG, PNG, WebP, "
+        "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, "
+        "MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), "
         "MP3, WAV, M4A/AAC, OGG and FLAC)."
     ),
-    # `maxMegabytes` depends on the kind: 25 for images, 100 for audio.
+    # `maxMegabytes` depends on the kind: 25 for images, 100 for audio, 500 for video.
     "media.tooLarge": ErrorSpec(
         "The file is too large (at most {maxMegabytes} MB).", ("maxMegabytes",)
     ),
@@ -122,6 +125,12 @@ _SPECS: dict[str, ErrorSpec] = {
         "The audio file is too long (at most {maxMinutes} minutes).", ("maxMinutes",)
     ),
     "media.noAudioStream": ErrorSpec("The file contains no audio track."),
+    "media.videoTooLong": ErrorSpec(
+        "The video file is too long (at most {maxMinutes} minutes).", ("maxMinutes",)
+    ),
+    "media.noVideoStream": ErrorSpec(
+        "The file contains no decodable video track in a supported codec."
+    ),
     "media.probeUnavailable": ErrorSpec(
         "Audio files cannot be checked: ffprobe was not found or could not be started."
     ),

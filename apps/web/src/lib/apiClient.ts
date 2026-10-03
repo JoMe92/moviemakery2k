@@ -10,6 +10,7 @@ export type Health = Schemas["Health"];
 export type MediaItem = Schemas["MediaItem"];
 export type ImageItem = Schemas["ImageItem"];
 export type AudioItem = Schemas["AudioItem"];
+export type VideoItem = Schemas["VideoItem"];
 export type Project = Schemas["Project"];
 export type Slide = Schemas["Slide"];
 export type MusicClip = Schemas["MusicClip"];

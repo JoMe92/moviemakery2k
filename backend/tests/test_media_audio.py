@@ -245,18 +245,21 @@ def test_image_between_image_and_audio_limit_is_too_large_as_image(
 # --- Content checks ---------------------------------------------------------------------
 
 
-def test_video_without_audio_named_m4a_has_no_audio_stream(
+def test_video_without_audio_named_m4a_is_imported_as_video(
     client: TestClient, settings: Settings, tmp_path: Path
 ) -> None:
+    """A video stream wins regardless of the file name or a missing audio track
+
+    (add-video-import D1, media-library spec scenario "Video statt Audio")."""
     [result] = _upload(client, [("clip.m4a", _video_only_mp4(tmp_path))])
-    assert result == {
-        "filename": "clip.m4a",
-        "ok": False,
-        "errorCode": "media.noAudioStream",
-        "errorParams": {},
-        "message": "The file contains no audio track.",
-    }
-    assert _files_under(settings.data_dir) == set()
+    assert result["ok"] is True, result
+    item = result["item"]
+    assert item["kind"] == "video"
+    assert item["filename"] == "clip.m4a"
+    assert item["codec"] == "h264"
+    assert (item["width"], item["height"]) == (64, 48)
+    item_dir = settings.data_dir / "media" / item["id"]
+    assert (item_dir / "original.mp4").is_file()
 
 
 def test_other_audio_container_is_unsupported(client: TestClient, tmp_path: Path) -> None:
@@ -331,6 +334,7 @@ def test_openapi_media_item_is_a_union_by_kind(client: TestClient) -> None:
         "mapping": {
             "audio": "#/components/schemas/AudioItem",
             "image": "#/components/schemas/ImageItem",
+            "video": "#/components/schemas/VideoItem",
         },
     }
     assert schemas["ImageItem"]["properties"]["kind"]["const"] == "image"

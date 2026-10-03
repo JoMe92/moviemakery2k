@@ -60,13 +60,17 @@ export type BackendState =
   | { kind: "ok"; health: Health }
   | { kind: "offline" };
 export type SaveState = "idle" | "saving" | "saved" | "error";
-/** `media` is "My Pictures" (images only), `music` is "My Music" (audio only). */
-export type CollectionId = "media" | "music" | "transitions";
 /**
- * File dialog requested: `any` (File menu: pictures and audio), `pictures`
- * ("Import pictures") or `audio` ("Import audio or music").
+ * `media` is "My Pictures" (images only), `music` is "My Music" (audio only),
+ * `video` is "My Videos" (video only, add-video-import D4).
  */
-export type ImportKind = "any" | "pictures" | "audio";
+export type CollectionId = "media" | "music" | "video" | "transitions";
+/**
+ * File dialog requested: `any` (File menu: pictures, video and audio),
+ * `pictures` ("Import pictures"), `audio` ("Import audio or music") or
+ * `video` ("Import video", add-video-import D4).
+ */
+export type ImportKind = "any" | "pictures" | "audio" | "video";
 export type Selection = { kind: "slide"; slideId: string } | null;
 
 /** Snapshot of the undoable project state (design.md D1): `slides` and `music`. */
