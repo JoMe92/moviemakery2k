@@ -14,6 +14,7 @@ import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
 import { StatusBar } from "./shell/StatusBar";
 import { SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
+import { Taskbar } from "./shell/Taskbar";
 import { TaskPane } from "./shell/TaskPane";
 import { useTaskGroups } from "./shell/tasks";
 import { Toolbar } from "./shell/Toolbar";
@@ -72,6 +73,7 @@ export function App() {
               <UploadPanel />
             </>
           }
+          taskbar={<Taskbar />}
           notices={<StatusNotices />}
         />
         <ImportInput />

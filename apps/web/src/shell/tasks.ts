@@ -34,6 +34,8 @@ export interface TaskEntry {
 export interface TaskGroupData {
   id: TaskGroupId;
   title: string;
+  /** Short label for the taskbar ("1. Capture"). */
+  short: string;
   entries: TaskEntry[];
 }
 
@@ -51,6 +53,7 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
     {
       id: "capture",
       title: t("tasks.capture.title"),
+      short: t("tasks.capture.short"),
       entries: [
         {
           id: "importVideo",
@@ -78,6 +81,7 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
     {
       id: "edit",
       title: t("tasks.edit.title"),
+      short: t("tasks.edit.short"),
       entries: [
         {
           id: "showCollections",
@@ -113,6 +117,7 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
     {
       id: "finish",
       title: t("tasks.finish.title"),
+      short: t("tasks.finish.short"),
       entries: [
         {
           id: "saveToComputer",

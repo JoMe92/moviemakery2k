@@ -34,6 +34,7 @@ export const en = {
     storyboardHint: "Drag pictures here to create a slide show.",
     storyboardHintTouch: "Tap “1. Capture” to import pictures and add them here.",
     editing: "Editing",
+    taskbar: "Movie steps",
   },
   collections: {
     media: "My Pictures",
@@ -102,12 +103,14 @@ export const en = {
   tasks: {
     capture: {
       title: "1. Capture Video",
+      short: "1. Capture",
       importVideo: "Import video",
       importPictures: "Import pictures",
       importAudio: "Import audio or music",
     },
     edit: {
       title: "2. Edit Movie",
+      short: "2. Edit",
       showCollections: "View collections",
       showEffects: "View video effects",
       showTransitions: "View video transitions",
@@ -115,6 +118,7 @@ export const en = {
     },
     finish: {
       title: "3. Finish Movie",
+      short: "3. Finish",
       saveToComputer: "Save to my computer",
       publishWeb: "Publish to the web",
     },

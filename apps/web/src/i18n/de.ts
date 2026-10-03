@@ -30,6 +30,7 @@ export const de = {
     storyboardHintTouch:
       "Tippen Sie auf „1. Aufnehmen“, um Bilder zu importieren und hier hinzuzufügen.",
     editing: "Bearbeitung",
+    taskbar: "Filmschritte",
   },
   collections: {
     media: "Meine Bilder",
@@ -98,12 +99,14 @@ export const de = {
   tasks: {
     capture: {
       title: "1. Aufnehmen",
+      short: "1. Aufnehmen",
       importVideo: "Video importieren",
       importPictures: "Bilder importieren",
       importAudio: "Audio oder Musik importieren",
     },
     edit: {
       title: "2. Film bearbeiten",
+      short: "2. Bearbeiten",
       showCollections: "Sammlungen anzeigen",
       showEffects: "Videoeffekte anzeigen",
       showTransitions: "Videoübergänge anzeigen",
@@ -111,6 +114,7 @@ export const de = {
     },
     finish: {
       title: "3. Film fertig stellen",
+      short: "3. Fertig stellen",
       saveToComputer: "Auf dem Computer speichern",
       publishWeb: "Im Web veröffentlichen",
     },
