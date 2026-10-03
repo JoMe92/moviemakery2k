@@ -99,6 +99,73 @@ def test_build_and_play_a_slideshow(page: Page, server: str, images: dict[str, P
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
 
 
+def test_undo_redo_and_clipboard(page: Page, server: str, images: dict[str, Path]) -> None:
+    """Add, reorder, undo/redo, copy/paste a picture (spec edit-commands); a
+    reload keeps the confirmed storyboard but not the undo history."""
+    page.goto(server)
+    expect(page.get_by_text("Backend bereit")).to_be_visible()
+
+    page.locator("input[type=file]").set_input_files([images["rot.png"], images["blau.png"]])
+    collection = page.get_by_role("list", name="Bilder")
+    for name in ("rot.png", "blau.png"):
+        expect(collection.get_by_role("button", name=name)).to_be_visible()
+
+    collection.get_by_role("button", name="rot.png").dblclick()
+    collection.get_by_role("button", name="blau.png").dblclick()
+    strip = page.get_by_role("list", name="Bildstreifen")
+    first = strip.get_by_role("button", name="Bild 1: rot.png, 5,00 s")
+    expect(first).to_be_visible()
+    expect(strip.get_by_role("button", name="Bild 2: blau.png, 5,00 s")).to_be_visible()
+    expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+
+    # Reorder by keyboard drag (dnd instructions: Enter picks up, arrow keys
+    # move, Enter drops): the red picture moves after the blue one.
+    first.focus()
+    page.keyboard.press("Enter")
+    # dnd-kit's keyboard sensor attaches its move/drop listener via setTimeout(0);
+    # without a beat here, a key pressed right after pickup can arrive too early.
+    page.wait_for_timeout(50)
+    page.keyboard.press("ArrowRight")
+    page.wait_for_timeout(50)
+    page.keyboard.press("Enter")
+    expect(strip.get_by_role("button", name="Bild 1: blau.png, 5,00 s")).to_be_visible()
+    expect(strip.get_by_role("button", name="Bild 2: rot.png, 5,00 s")).to_be_visible()
+
+    # Strg+Z undoes the reorder, Strg+Y redoes it.
+    page.keyboard.press("Control+z")
+    expect(strip.get_by_role("button", name="Bild 1: rot.png, 5,00 s")).to_be_visible()
+    page.keyboard.press("Control+y")
+    expect(strip.get_by_role("button", name="Bild 1: blau.png, 5,00 s")).to_be_visible()
+    expect(strip.get_by_role("button", name="Bild 2: rot.png, 5,00 s")).to_be_visible()
+
+    # Select the red picture, copy it with Strg+C, paste with Strg+V: a
+    # duplicate without an incoming transition appears right after it.
+    rot_tile = strip.get_by_role("button", name="Bild 2: rot.png, 5,00 s")
+    box = rot_tile.bounding_box()
+    assert box
+    page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    expect(rot_tile).to_have_attribute("aria-pressed", "true")
+    page.keyboard.press("Control+c")
+    page.keyboard.press("Control+v")
+    expect(strip.get_by_role("button", name="Bild 3: rot.png, 5,00 s")).to_be_visible()
+    expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
+
+    # Reload: the storyboard keeps the last confirmed state, but Undo/Redo
+    # are disabled again (the history does not survive a reload).
+    page.reload()
+    strip = page.get_by_role("list", name="Bildstreifen")
+    expect(strip.get_by_role("button", name="Bild 1: blau.png, 5,00 s")).to_be_visible()
+    expect(strip.get_by_role("button", name="Bild 2: rot.png, 5,00 s")).to_be_visible()
+    expect(strip.get_by_role("button", name="Bild 3: rot.png, 5,00 s")).to_be_visible()
+    page.get_by_role("menuitem", name="Bearbeiten").click()
+    expect(page.get_by_role("menuitem", name="Rückgängig")).to_have_attribute(
+        "aria-disabled", "true"
+    )
+    expect(page.get_by_role("menuitem", name="Wiederholen")).to_have_attribute(
+        "aria-disabled", "true"
+    )
+
+
 def test_invalid_upload_is_reported_per_file(
     page: Page, server: str, tmp_path: Path, images: dict[str, Path]
 ) -> None:
