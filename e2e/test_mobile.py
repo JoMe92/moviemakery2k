@@ -186,7 +186,7 @@ def test_flow_by_tapping(
     # Transition: tap the slot before picture 2, choose "Kreis", done.
     page.get_by_role("button", name="Übergang vor Bild 2: keiner (harter Schnitt)").tap()
     transition = page.get_by_role("dialog", name="Übergang")
-    transition.get_by_role("button", name="Kreis").tap()
+    transition.get_by_role("button", name="Kreis", exact=True).tap()
     assert small_targets(page) == []
     transition.get_by_role("button", name="Fertig").tap()
     expect(transition).to_be_hidden()
