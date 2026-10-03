@@ -69,6 +69,11 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     }
     expect(sheet.getByRole("button", { name: "c.jpg" })).toHaveAttribute("aria-pressed", "true");
     expect(sheet.getByRole("button", { name: "c.jpg" })).toHaveClass("pickable");
+    // Picking tiles are plain buttons, not disabled draggables.
+    expect(sheet.getByRole("button", { name: "a.jpg" })).not.toHaveAttribute("aria-disabled");
+    expect(sheet.getByRole("button", { name: "a.jpg" })).not.toHaveAttribute(
+      "aria-roledescription",
+    );
     await user.click(add());
     expect(store.getState().slides.map((s) => [s.mediaId, s.duration])).toEqual([
       ["c", SLIDE_DURATION.default],

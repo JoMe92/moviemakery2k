@@ -75,6 +75,26 @@ interface TileHandlers {
   onLongPress: () => void;
 }
 
+/**
+ * dnd-kit attributes for a tile without role and aria-pressed. When picking,
+ * the tile is no draggable at all: dnd-kit would mark the disabled draggable
+ * aria-disabled and describe it as draggable.
+ */
+function tileAttributes(
+  attributes: ReturnType<typeof useDraggable>["attributes"],
+  picking: boolean,
+): Record<string, unknown> {
+  const { "aria-pressed": _pressed, role: _role, ...rest } = attributes;
+  if (!picking) return rest;
+  const {
+    "aria-disabled": _disabled,
+    "aria-roledescription": _description,
+    "aria-describedby": _describedBy,
+    ...plain
+  } = rest;
+  return plain;
+}
+
 type PointerHandler = ((event: PointerEvent<HTMLElement>) => void) | undefined;
 
 /** Long press (picking mode) on top of the dnd-kit listeners. */
@@ -116,7 +136,7 @@ function MediaTile({
   });
   const pointer = usePickingPointer(picking, onLongPress, listeners);
   // aria-pressed stays the tile selection (not the dnd-kit drag state).
-  const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
+  const dragAttributes = tileAttributes(attributes, picking);
   return (
     <Tile
       ref={(el: HTMLButtonElement | null) => {
@@ -173,7 +193,7 @@ function AudioTile({
   });
   const pointer = usePickingPointer(picking, onLongPress, listeners);
   // aria-pressed stays the tile selection (not the dnd-kit drag state).
-  const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
+  const dragAttributes = tileAttributes(attributes, picking);
   return (
     <Tile
       ref={(el: HTMLButtonElement | null) => {
