@@ -6,6 +6,7 @@ import type {
   ImageItem,
   Project,
   Transition,
+  VideoItem,
 } from "../lib/apiClient";
 
 export function mediaItem(id: string): ImageItem {
@@ -33,6 +34,20 @@ export function audioItem(id: string, duration = 192.4, filename = `${id}.mp3`):
     createdAt: "2026-10-02T00:00:00Z",
     audioUrl: `/api/media/${id}/audio`,
     peaksUrl: `/api/media/${id}/peaks`,
+  };
+}
+
+export function videoItem(id: string, duration = 105.0, filename = `${id}.mp4`): VideoItem {
+  return {
+    id,
+    kind: "video",
+    filename,
+    duration,
+    width: 640,
+    height: 480,
+    codec: "h264",
+    createdAt: "2026-10-02T00:00:00Z",
+    posterUrl: `/api/media/${id}/poster`,
   };
 }
 

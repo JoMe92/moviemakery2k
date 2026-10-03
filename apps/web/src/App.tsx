@@ -29,7 +29,7 @@ import {
 import { TaskGroup } from "./ui/TaskGroup";
 import { TaskLink } from "./ui/TaskLink";
 
-const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "transitions"];
+const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
 
 /*
  * Composes the main window. State lives in the app store (store/appStore.ts),
@@ -70,7 +70,7 @@ export function App() {
         taskPane={
           <TaskPane>
             <TaskGroup title={t("tasks.capture.title")}>
-              <TaskLink icon={<FilmIcon />} disabled>
+              <TaskLink icon={<FilmIcon />} onClick={() => requestImport("video")}>
                 {t("tasks.capture.importVideo")}
               </TaskLink>
               <TaskLink icon={<ImportImageIcon />} onClick={() => requestImport("pictures")}>
@@ -83,7 +83,11 @@ export function App() {
             <TaskGroup title={t("tasks.edit.title")}>
               <TaskLink
                 icon={<FolderIcon />}
-                onClick={() => setCollection(collection === "music" ? "music" : "media")}
+                onClick={() =>
+                  setCollection(
+                    collection === "music" || collection === "video" ? collection : "media",
+                  )
+                }
               >
                 {t("tasks.edit.showCollections")}
               </TaskLink>
@@ -112,7 +116,10 @@ export function App() {
             {collection === "transitions" ? (
               <TransitionCollection />
             ) : (
-              <MediaCollection key={collection} kind={collection === "music" ? "audio" : "image"} />
+              <MediaCollection
+                key={collection}
+                kind={collection === "music" ? "audio" : collection === "video" ? "video" : "image"}
+              />
             )}
           </LibraryPane>
         }

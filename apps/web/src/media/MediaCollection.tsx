@@ -2,8 +2,15 @@ import { useDraggable } from "@dnd-kit/core";
 import { type KeyboardEvent, type MouseEvent, useMemo, useRef, useState } from "react";
 import { translateError } from "../i18n/errors";
 import { formatClipDuration } from "../i18n/format";
+import type { MessageKey } from "../i18n/types";
 import { useT } from "../i18n/useT";
-import { ApiError, type AudioItem, type ImageItem, type MediaItem } from "../lib/apiClient";
+import {
+  ApiError,
+  type AudioItem,
+  type ImageItem,
+  type MediaItem,
+  type VideoItem,
+} from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { audioDraggableId, type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
@@ -12,6 +19,40 @@ import { Dialog } from "../ui/Dialog";
 import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
 import styles from "./MediaCollection.module.css";
+
+/** Per-kind collection text: empty hint, tile list label, context menu and delete dialog. */
+const COLLECTION_TEXT: Record<
+  MediaItem["kind"],
+  {
+    emptyHint: MessageKey;
+    list: MessageKey;
+    menu: MessageKey;
+    deleteTitle: MessageKey;
+    deleteQuestion: MessageKey;
+  }
+> = {
+  image: {
+    emptyHint: "media.emptyHint",
+    list: "media.list",
+    menu: "media.menu",
+    deleteTitle: "media.deleteTitle",
+    deleteQuestion: "media.deleteQuestion",
+  },
+  audio: {
+    emptyHint: "media.musicEmptyHint",
+    list: "media.musicList",
+    menu: "media.audioMenu",
+    deleteTitle: "media.deleteAudioTitle",
+    deleteQuestion: "media.deleteAudioQuestion",
+  },
+  video: {
+    emptyHint: "media.videoEmptyHint",
+    list: "media.videoList",
+    menu: "media.videoMenu",
+    deleteTitle: "media.deleteVideoTitle",
+    deleteQuestion: "media.deleteVideoQuestion",
+  },
+};
 
 interface TileHandlers {
   selected: boolean;
@@ -109,6 +150,32 @@ function AudioTile({
   );
 }
 
+/**
+ * "My Videos" tile: poster image with the duration overlaid, file name below.
+ * Not draggable (add-video-import non-goal: a video cannot be added to the
+ * storyboard, played or exported in this change).
+ */
+function VideoTile({ item, selected, tileRef, ...handlers }: TileHandlers & { item: VideoItem }) {
+  const { t, locale } = useT();
+  const duration = formatClipDuration(locale, item.duration);
+  return (
+    <Tile
+      ref={tileRef}
+      selected={selected}
+      caption={item.filename}
+      aria-label={t("media.videoTile", { name: item.filename, duration })}
+      title={item.filename}
+      thumbnail={
+        <span className={styles.video}>
+          <img src={item.posterUrl} alt={item.filename} loading="lazy" draggable={false} />
+          <span className={styles.videoDuration}>{duration}</span>
+        </span>
+      }
+      {...handlers}
+    />
+  );
+}
+
 /** Rejected delete: the picture's name and, if the backend said why, the translated reason. */
 interface DeleteError {
   name: string;
@@ -122,21 +189,22 @@ interface MenuState {
 }
 
 export interface MediaCollectionProps {
-  /** `image` shows "My Pictures", `audio` shows "My Music". */
+  /** `image` shows "My Pictures", `audio` shows "My Music", `video` shows "My Videos". */
   kind?: MediaItem["kind"];
 }
 
 /**
- * "My Pictures" or "My Music" collection: tiles of one media kind in import
- * order. Double-click appends a picture to the storyboard and audio to the
- * music track (never the other way round); Delete or the context menu deletes
- * after confirmation.
+ * "My Pictures", "My Music" or "My Videos" collection: tiles of one media
+ * kind in import order. Double-click appends a picture to the storyboard and
+ * audio to the music track (never the other way round, and never for video -
+ * add-video-import non-goal); Delete or the context menu deletes after
+ * confirmation.
  */
 export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
   const { t, locale } = useT();
   const allMedia = useAppStore((s) => s.media);
   const media = useMemo(() => allMedia.filter((m) => m.kind === kind), [allMedia, kind]);
-  const audio = kind === "audio";
+  const text = COLLECTION_TEXT[kind];
   const addSlide = useAppStore((s) => s.addSlide);
   const addMusicClip = useAppStore((s) => s.addMusicClip);
   const deleteMedia = useAppStore((s) => s.deleteMedia);
@@ -199,9 +267,9 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
   return (
     <>
       {media.length === 0 ? (
-        <p className={styles.hint}>{t(audio ? "media.musicEmptyHint" : "media.emptyHint")}</p>
+        <p className={styles.hint}>{t(text.emptyHint)}</p>
       ) : (
-        <ul className={styles.grid} aria-label={t(audio ? "media.musicList" : "media.list")}>
+        <ul className={styles.grid} aria-label={t(text.list)}>
           {media.map((item) => {
             const handlers: TileHandlers = {
               tileRef: (el) => {
@@ -212,7 +280,7 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
               onClick: () => setSelectedId(item.id),
               onDoubleClick: () => {
                 if (item.kind === "image") addSlide(item.id);
-                else addMusicClip(item.id);
+                else if (item.kind === "audio") addMusicClip(item.id);
               },
               onContextMenu: onContextMenu(item),
               onKeyDown: onKeyDown(item),
@@ -221,6 +289,8 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
               <li key={item.id}>
                 {item.kind === "audio" ? (
                   <AudioTile item={item} {...handlers} />
+                ) : item.kind === "video" ? (
+                  <VideoTile item={item} {...handlers} />
                 ) : (
                   <MediaTile item={item} {...handlers} />
                 )}
@@ -231,25 +301,28 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
       )}
       {menu ? (
         <ContextMenu
-          label={t(menu.item.kind === "audio" ? "media.audioMenu" : "media.menu", {
-            name: menu.item.filename,
-          })}
+          label={t(COLLECTION_TEXT[menu.item.kind].menu, { name: menu.item.filename })}
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
             ...(menu.item.kind === "image"
               ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
-              : [
-                  { label: t("media.addToMusicTrack"), onSelect: () => addMusicClip(menu.item.id) },
-                ]),
+              : menu.item.kind === "audio"
+                ? [
+                    {
+                      label: t("media.addToMusicTrack"),
+                      onSelect: () => addMusicClip(menu.item.id),
+                    },
+                  ]
+                : []),
             { label: t("media.delete"), onSelect: () => setPendingDelete(menu.item) },
           ]}
         />
       ) : null}
       <Dialog
         open={pendingDelete !== null}
-        title={t(pendingDelete?.kind === "audio" ? "media.deleteAudioTitle" : "media.deleteTitle")}
+        title={t(pendingDelete ? COLLECTION_TEXT[pendingDelete.kind].deleteTitle : text.deleteTitle)}
         onClose={() => {
           if (!deleting) setPendingDelete(null);
         }}
@@ -266,16 +339,13 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
       >
         {pendingDelete ? (
           <p className={styles.question}>
-            {t(
-              pendingDelete.kind === "audio" ? "media.deleteAudioQuestion" : "media.deleteQuestion",
-              { name: pendingDelete.filename },
-            )}
+            {t(COLLECTION_TEXT[pendingDelete.kind].deleteQuestion, { name: pendingDelete.filename })}
           </p>
         ) : null}
       </Dialog>
       <Dialog
         open={error !== null}
-        title={t(audio ? "media.deleteAudioTitle" : "media.deleteTitle")}
+        title={t(text.deleteTitle)}
         onClose={() => setError(null)}
         footer={<Button onClick={() => setError(null)}>{t("common.ok")}</Button>}
       >

@@ -36,6 +36,7 @@ export const en = {
   collections: {
     media: "My Pictures",
     music: "My Music",
+    video: "My Videos",
     transitions: "Video Transitions",
   },
   menu: {
@@ -164,6 +165,12 @@ export const en = {
       "Are you sure you want to delete “{name}”? It will also be removed from the music track.",
     audioDraggable: "draggable audio",
     addToMusicTrack: "Add to Music Track",
+    videoEmptyHint: "This collection is empty. Choose “Import video” or drag video files here.",
+    videoList: "Videos",
+    videoTile: "{name}, {duration}",
+    videoMenu: "Video “{name}”",
+    deleteVideoTitle: "Delete Video",
+    deleteVideoQuestion: "Are you sure you want to delete “{name}”?",
   },
   upload: {
     progress: "Importing {current} of {total} …",
@@ -318,11 +325,13 @@ export const en = {
       notFound: "Media item not found.",
       tooManyFiles: "Too many files: at most {max} per import ({count} sent).",
       unsupportedType:
-        "Not a supported image or audio file (allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
+        "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG and FLAC).",
       tooLarge: "The file is too large (at most {maxMegabytes} MB).",
       tooManyPixels: "The image has too many pixels (at most {maxMegapixels} megapixels).",
       audioTooLong: "The audio file is too long (at most {maxMinutes} minutes).",
       noAudioStream: "The file contains no audio track.",
+      videoTooLong: "The video file is too long (at most {maxMinutes} minutes).",
+      noVideoStream: "The file contains no decodable video track in a supported codec.",
       probeUnavailable:
         "Audio files cannot be checked: ffprobe was not found or could not be started.",
       inUseByExport:

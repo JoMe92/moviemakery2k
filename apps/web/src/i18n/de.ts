@@ -31,6 +31,7 @@ export const de = {
   collections: {
     media: "Meine Bilder",
     music: "Meine Musik",
+    video: "Meine Videos",
     transitions: "Videoübergänge",
   },
   menu: {
@@ -160,6 +161,13 @@ export const de = {
       "Möchten Sie „{name}“ wirklich löschen? Es wird auch aus der Musikleiste entfernt.",
     audioDraggable: "ziehbares Audio",
     addToMusicTrack: "Zur Musikleiste hinzufügen",
+    videoEmptyHint:
+      "Diese Sammlung ist leer. Wählen Sie „Video importieren“ oder ziehen Sie Videodateien hierher.",
+    videoList: "Videos",
+    videoTile: "{name}, {duration}",
+    videoMenu: "Video „{name}“",
+    deleteVideoTitle: "Video löschen",
+    deleteVideoQuestion: "Möchten Sie „{name}“ wirklich löschen?",
   },
   upload: {
     progress: "Importiere {current} von {total} …",
@@ -316,11 +324,13 @@ export const de = {
       notFound: "Das Medium wurde nicht gefunden.",
       tooManyFiles: "Zu viele Dateien: höchstens {max} je Import ({count} gesendet).",
       unsupportedType:
-        "Keine unterstützte Bild- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG und FLAC).",
+        "Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG und FLAC).",
       tooLarge: "Die Datei ist zu groß (höchstens {maxMegabytes} MB).",
       tooManyPixels: "Das Bild hat zu viele Pixel (höchstens {maxMegapixels} Megapixel).",
       audioTooLong: "Die Audiodatei ist zu lang (höchstens {maxMinutes} Minuten).",
       noAudioStream: "Die Datei enthält keine Tonspur.",
+      videoTooLong: "Die Videodatei ist zu lang (höchstens {maxMinutes} Minuten).",
+      noVideoStream: "Die Datei enthält keine dekodierbare Videospur in einem unterstützten Codec.",
       probeUnavailable:
         "Audiodateien können nicht geprüft werden: ffprobe wurde nicht gefunden oder ließ sich nicht starten.",
       inUseByExport:
