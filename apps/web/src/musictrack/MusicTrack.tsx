@@ -245,6 +245,8 @@ export function MusicTrack() {
           number={dialogNumber}
           clip={dialogClip}
           fileDuration={dialogAudio.duration}
+          peaksUrl={dialogAudio.peaksUrl}
+          audioUrl={dialogAudio.audioUrl}
           onConfirm={(trimStart, trimEnd) => updateMusicClip(dialogClip.id, { trimStart, trimEnd })}
           onClose={() => setDialog(null)}
         />
