@@ -1,0 +1,161 @@
+{
+  "$schema": "./titles.schema.json",
+  "schemaVersion": 1,
+  "titles": [
+    {
+      "id": "basic-title",
+      "names": { "de": "Einfacher Titel", "en": "Basic Title" },
+      "layout": "one-line",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": { "effect": "fade" },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x one-line title \"Basic Title\" (wmm2x_titles1_rehanfx.xml), centred, static",
+        "estimated": []
+      }
+    },
+    {
+      "id": "fly-in",
+      "names": { "de": "Einfliegen", "en": "Fly In" },
+      "layout": "one-line",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": {
+          "effect": "position",
+          "start": { "x": -1, "y": 0, "scale": 1 },
+          "end": { "x": 0, "y": 0, "scale": 1 }
+        },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x one-line title \"Fly In\" (wmm2x_titles1_rehanfx.xml): entrance from the left",
+        "estimated": ["phases.entrance.start"]
+      }
+    },
+    {
+      "id": "zoom-in",
+      "names": { "de": "Vergrößern", "en": "Zoom In" },
+      "layout": "one-line",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": {
+          "effect": "position",
+          "start": { "x": 0, "y": 0, "scale": 0.3 },
+          "end": { "x": 0, "y": 0, "scale": 1 }
+        },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x one-line title \"Zoom In\" (wmm2x_titles2_rehanfx.xml): 30% to 100%",
+        "estimated": ["phases.entrance.start.scale"]
+      }
+    },
+    {
+      "id": "subtitle",
+      "names": { "de": "Untertitel", "en": "Subtitle" },
+      "layout": "one-line",
+      "anchor": { "x": 0, "y": -0.7, "scale": 1 },
+      "fontScale": 0.7,
+      "phases": {
+        "entrance": { "effect": "fade" },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x one-line title \"Subtitle\" (wmm2x_titles1_rehanfx.xml): bottom, smaller text",
+        "estimated": ["anchor", "fontScale"]
+      }
+    },
+    {
+      "id": "fade-in-and-out",
+      "names": { "de": "Ein- und Ausblenden", "en": "Fade In and Out" },
+      "layout": "two-line",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": { "effect": "fade" },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x two-line title \"Fade In and Out\" (wmm2x_titles2_rehanfx.xml), static",
+        "estimated": []
+      }
+    },
+    {
+      "id": "fly-in-fades",
+      "names": { "de": "Einfliegen, Ausblenden", "en": "Fly In Fades" },
+      "layout": "two-line",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": {
+          "effect": "position",
+          "start": { "x": 0, "y": -1, "scale": 1 },
+          "end": { "x": 0, "y": 0, "scale": 1 }
+        },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x two-line title \"Fly In Fades\" (wmm2x_titles2_rehanfx.xml): entrance from the bottom",
+        "estimated": ["phases.entrance.start"]
+      }
+    },
+    {
+      "id": "scroll-up-stacked",
+      "names": { "de": "Nach oben rollen, gestapelt", "en": "Scroll Up Stacked" },
+      "layout": "credits",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": { "effect": "fade" },
+        "main": {
+          "effect": "position",
+          "start": { "x": 0, "y": -1, "scale": 1 },
+          "end": { "x": 0, "y": 1, "scale": 1 }
+        },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x credits \"Scroll Up Stacked\" (wmm2x_credits_rehanfx.xml): bottom to top over Main",
+        "estimated": ["phases.main.start", "phases.main.end"]
+      }
+    },
+    {
+      "id": "fade-in-and-out-credits",
+      "names": {
+        "de": "Ein- und Ausblenden (Nachspann)",
+        "en": "Fade In and Out (Credits)"
+      },
+      "layout": "credits",
+      "anchor": { "x": 0, "y": 0, "scale": 1 },
+      "fontScale": 1,
+      "phases": {
+        "entrance": { "effect": "fade" },
+        "main": { "effect": "static" },
+        "exit": { "effect": "fade" }
+      },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "WMM 2.x credits \"Fade In and Out\" (wmm2x_credits_rehanfx.xml): static list, no scroll",
+        "estimated": []
+      }
+    }
+  ]
+}

@@ -37,6 +37,8 @@ FROM_TEXTURE_UNIT = 0
 """Texture unit of the source image (`uFrom`)."""
 TO_TEXTURE_UNIT = 1
 """Texture unit of the target image (`uTo`)."""
+TITLE_TEXTURE_UNIT = 0
+"""Texture unit of a title/credits texture (`uTitle`); drawn in its own program."""
 
 FULLSCREEN_TRIANGLE_VERTICES = 3
 
@@ -123,6 +125,16 @@ class ShaderSources:
         """`vertex.glsl` raw (GLSL ES 3.00), like `VERTEX_SOURCE` in TS."""
         return self._required("vertex.glsl")
 
+    @property
+    def title_vertex(self) -> str:
+        """`title-vertex.glsl` raw, like `TITLE_VERTEX_SOURCE` in TS."""
+        return self._required("title-vertex.glsl")
+
+    @property
+    def title_fragment(self) -> str:
+        """`title-fragment.glsl` raw, like `TITLE_FRAGMENT_SOURCE` in TS."""
+        return self._required("title-fragment.glsl")
+
     def body(self, transition_id: str) -> str | None:
         """Raw transition shader `transitions/<id>.glsl`; None if it does not exist."""
         if not _TRANSITION_ID.fullmatch(transition_id):
@@ -143,6 +155,12 @@ class ShaderSources:
 
     def desktop_vertex_source(self) -> str:
         return to_desktop_glsl(self.vertex)
+
+    def desktop_title_vertex_source(self) -> str:
+        return to_desktop_glsl(self.title_vertex)
+
+    def desktop_title_fragment_source(self) -> str:
+        return to_desktop_glsl(self.title_fragment)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -188,6 +206,41 @@ class TransitionProgram:
         self.vao.render(moderngl.TRIANGLES, vertices=FULLSCREEN_TRIANGLE_VERTICES)
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class TitleProgram:
+    """A linked title program with an empty VAO for the full-screen triangle.
+
+    Mirrors `Renderer.drawTitle` in TS (design.md D1-D3 of
+    add-titles-and-credits): a position/zoom transform replaces the fixed
+    full-screen position used for transitions, and whether the draw is
+    opaque or alpha-blended is controlled by the caller's GL blend state,
+    not by this program.
+    """
+
+    program: moderngl.Program
+    vao: moderngl.VertexArray
+
+    def _uniform(self, name: str) -> moderngl.Uniform | None:
+        member = self.program.get(name, None)
+        return member if isinstance(member, moderngl.Uniform) else None
+
+    def set_transform(self, translate: tuple[float, float], scale: tuple[float, float]) -> None:
+        """Sets `uTitle` (fixed texture unit), `uTranslate` and `uScale`."""
+        values: dict[str, int | tuple[float, float]] = {
+            "uTitle": TITLE_TEXTURE_UNIT,
+            "uTranslate": (float(translate[0]), float(translate[1])),
+            "uScale": (float(scale[0]), float(scale[1])),
+        }
+        for name, value in values.items():
+            uniform = self._uniform(name)
+            if uniform is not None:
+                uniform.value = value
+
+    def draw(self) -> None:
+        """Draws the full-screen triangle into the currently bound framebuffer."""
+        self.vao.render(moderngl.TRIANGLES, vertices=FULLSCREEN_TRIANGLE_VERTICES)
+
+
 class ShaderLibrary:
     """Programs per transition ID, compiled lazily and cached (like `Renderer.programFor`)."""
 
@@ -195,6 +248,7 @@ class ShaderLibrary:
         self.ctx = ctx
         self.sources = sources
         self._programs: dict[str, TransitionProgram] = {}
+        self._title_program: TitleProgram | None = None
 
     def precompile(self, transition_ids: Iterable[str]) -> None:
         for transition_id in transition_ids:
@@ -228,6 +282,28 @@ class ShaderLibrary:
         self._programs[transition_id] = program
         return program
 
+    def title_program(self) -> TitleProgram:
+        """The title program, compiled once (own vertex shader, not a transition's).
+
+        Raises ShaderError if the title shaders are missing or fail to compile/link.
+        """
+        if self._title_program is None:
+            self._title_program = self._compile_title()
+        return self._title_program
+
+    def _compile_title(self) -> TitleProgram:
+        try:
+            program = self.ctx.program(
+                vertex_shader=self.sources.desktop_title_vertex_source(),
+                fragment_shader=self.sources.desktop_title_fragment_source(),
+            )
+        except moderngl.Error as exc:
+            raise ShaderError(
+                f"Title shader failed to compile/link ({self.sources.shaders_dir}): {exc}"
+            ) from exc
+        vao = self.ctx.vertex_array(program, [])
+        return TitleProgram(program=program, vao=vao)
+
     def _compile(self, shader_id: str, fragment_source: str) -> TransitionProgram | None:
         try:
             program = self.ctx.program(
@@ -250,3 +326,7 @@ class ShaderLibrary:
             entry.vao.release()
             entry.program.release()
         self._programs.clear()
+        if self._title_program is not None:
+            self._title_program.vao.release()
+            self._title_program.program.release()
+            self._title_program = None

@@ -1,5 +1,6 @@
-"""FastAPI app. `create_app` loads the transition catalog immediately: if it is invalid,
-importing `mmy_backend.main:app` (and therefore uvicorn) already fails."""
+"""FastAPI app. `create_app` loads the transition and title catalogs
+immediately: if either is invalid, importing `mmy_backend.main:app` (and
+therefore uvicorn) already fails."""
 
 import asyncio
 from collections.abc import AsyncIterator
@@ -14,11 +15,13 @@ from mmy_backend.config import Settings
 from mmy_backend.exports import ExportManager
 from mmy_backend.media import MediaStore
 from mmy_backend.project import ProjectStore
+from mmy_backend.title_catalog import load_title_catalog
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     catalog = load_catalog(settings.catalog_file)
+    title_catalog = load_title_catalog(settings.title_catalog_file)
     media = MediaStore(settings.data_dir)
     exports = ExportManager(settings.data_dir, media, catalog, settings.shaders_dir)
 
@@ -36,6 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="moviemakerY2K", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.catalog = catalog
+    app.state.title_catalog = title_catalog
     app.state.media = media
     app.state.project = ProjectStore(settings.data_dir)
     app.state.exports = exports

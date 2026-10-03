@@ -508,6 +508,21 @@
         "title": "ExportStatus",
         "type": "string"
       },
+      "FadePhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "fade",
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "FadePhase",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -817,6 +832,107 @@
         "title": "MusicClip",
         "type": "object"
       },
+      "Phases": {
+        "additionalProperties": false,
+        "properties": {
+          "entrance": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Entrance"
+          },
+          "exit": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Exit"
+          },
+          "main": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Main"
+          }
+        },
+        "required": [
+          "entrance",
+          "main",
+          "exit"
+        ],
+        "title": "Phases",
+        "type": "object"
+      },
+      "PositionPhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "position",
+            "title": "Effect",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/components/schemas/Transform"
+          },
+          "start": {
+            "$ref": "#/components/schemas/Transform"
+          }
+        },
+        "required": [
+          "effect",
+          "start",
+          "end"
+        ],
+        "title": "PositionPhase",
+        "type": "object"
+      },
       "Project": {
         "additionalProperties": false,
         "properties": {
@@ -964,6 +1080,177 @@
           "transitionIn"
         ],
         "title": "Slide",
+        "type": "object"
+      },
+      "StaticPhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "static",
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "StaticPhase",
+        "type": "object"
+      },
+      "Title": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/Transform"
+          },
+          "fontScale": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Fontscale",
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "layout": {
+            "enum": [
+              "one-line",
+              "two-line",
+              "credits"
+            ],
+            "title": "Layout",
+            "type": "string"
+          },
+          "names": {
+            "$ref": "#/components/schemas/TitleNames"
+          },
+          "phases": {
+            "$ref": "#/components/schemas/Phases"
+          },
+          "source": {
+            "$ref": "#/components/schemas/TitleSource"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "layout",
+          "anchor",
+          "fontScale",
+          "phases",
+          "source"
+        ],
+        "title": "Title",
+        "type": "object"
+      },
+      "TitleCatalog": {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "titles": {
+            "items": {
+              "$ref": "#/components/schemas/Title"
+            },
+            "minItems": 1,
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "titles"
+        ],
+        "title": "TitleCatalog",
+        "type": "object"
+      },
+      "TitleNames": {
+        "additionalProperties": false,
+        "description": "Display name per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "TitleNames",
+        "type": "object"
+      },
+      "TitleSource": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fields whose value is not documented but estimated [E]",
+            "title": "Estimated"
+          },
+          "kind": {
+            "const": "wmm2x-xml",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "title": "TitleSource",
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "description": "Position/zoom in title-vertex.glsl's clip-space convention (design.md D3).",
+        "properties": {
+          "scale": {
+            "exclusiveMinimum": 0.0,
+            "title": "Scale",
+            "type": "number"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "scale"
+        ],
+        "title": "Transform",
         "type": "object"
       },
       "Transition": {
@@ -1240,6 +1527,27 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/catalog/titles": {
+      "get": {
+        "operationId": "list_titles_api_catalog_titles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Titles",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/catalog/transitions": {
       "get": {
         "operationId": "list_transitions_api_catalog_transitions_get",

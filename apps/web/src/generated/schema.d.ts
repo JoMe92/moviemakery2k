@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/catalog/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Titles */
+        get: operations["list_titles_api_catalog_titles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/transitions": {
         parameters: {
             query?: never;
@@ -544,6 +561,14 @@ export interface components {
          * @enum {string}
          */
         ExportStatus: "queued" | "running" | "done" | "failed" | "cancelled";
+        /** FadePhase */
+        FadePhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "fade";
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -692,6 +717,25 @@ export interface components {
              */
             volume: number;
         };
+        /** Phases */
+        Phases: {
+            /** Entrance */
+            entrance: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+            /** Exit */
+            exit: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+            /** Main */
+            main: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+        };
+        /** PositionPhase */
+        PositionPhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "position";
+            end: components["schemas"]["Transform"];
+            start: components["schemas"]["Transform"];
+        };
         /** Project */
         Project: {
             /** Music */
@@ -750,6 +794,77 @@ export interface components {
             mediaId: string;
             /** @description Incoming transition from the previous element; always null for the first */
             transitionIn: components["schemas"]["TransitionRef"] | null;
+        };
+        /** StaticPhase */
+        StaticPhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "static";
+        };
+        /** Title */
+        Title: {
+            anchor: components["schemas"]["Transform"];
+            /** Fontscale */
+            fontScale: number;
+            /** Id */
+            id: string;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "one-line" | "two-line" | "credits";
+            names: components["schemas"]["TitleNames"];
+            phases: components["schemas"]["Phases"];
+            source: components["schemas"]["TitleSource"];
+        };
+        /** TitleCatalog */
+        TitleCatalog: {
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: 1;
+            /** Titles */
+            titles: components["schemas"]["Title"][];
+        };
+        /**
+         * TitleNames
+         * @description Display name per UI language; both languages are required.
+         */
+        TitleNames: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
+        };
+        /** TitleSource */
+        TitleSource: {
+            /**
+             * Estimated
+             * @description Fields whose value is not documented but estimated [E]
+             */
+            estimated?: string[] | null;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "wmm2x-xml";
+            /** Ref */
+            ref: string;
+        };
+        /**
+         * Transform
+         * @description Position/zoom in title-vertex.glsl's clip-space convention (design.md D3).
+         */
+        Transform: {
+            /** Scale */
+            scale: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
         };
         /** Transition */
         Transition: {
@@ -893,6 +1008,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_titles_api_catalog_titles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleCatalog"];
+                };
+            };
+        };
+    };
     list_transitions_api_catalog_transitions_get: {
         parameters: {
             query?: never;

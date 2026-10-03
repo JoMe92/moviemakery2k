@@ -34,7 +34,13 @@ from PIL import Image
 from mmy_backend.catalog import TransitionCatalog
 from mmy_backend.media import MediaStore
 from mmy_backend.render.geometry import contain_rect
-from mmy_backend.render.shaders import FROM_TEXTURE_UNIT, TO_TEXTURE_UNIT, ShaderLibrary
+from mmy_backend.render.shaders import (
+    FALLBACK_TRANSITION_ID,
+    FROM_TEXTURE_UNIT,
+    TITLE_TEXTURE_UNIT,
+    TO_TEXTURE_UNIT,
+    ShaderLibrary,
+)
 from mmy_backend.render.timeline import (
     EmptyFrame,
     Frame,
@@ -213,6 +219,90 @@ class FrameRenderer:
         program.draw()
         data = self._fbo.read(components=4, alignment=1)
         return flip_rows(data, self.width, self.height)
+
+    # --- Titles (design.md D1-D3) ----------------------------------------------
+
+    def _title_texture(self, image: Image.Image) -> moderngl.Texture:
+        """Uploads a title/credits image at its own natural size (never
+        letterboxed/fitted) - `draw_title`'s vertex transform positions and
+        scales it instead. The caller releases the returned texture.
+        """
+        rgba = image if image.mode == "RGBA" else image.convert("RGBA")
+        # Origin bottom left, like UNPACK_FLIP_Y_WEBGL.
+        flipped = rgba.transpose(Image.Transpose.FLIP_TOP_BOTTOM).tobytes()
+        texture = self.ctx.texture(rgba.size, 4, flipped)
+        texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        texture.repeat_x = False
+        texture.repeat_y = False
+        return texture
+
+    def draw_title(
+        self,
+        image: Image.Image,
+        *,
+        translate: tuple[float, float] = (0.0, 0.0),
+        scale: tuple[float, float] | float = 1.0,
+        blend: bool,
+    ) -> None:
+        """Draws a title/credits texture into the currently bound framebuffer
+        at `translate`/`scale` (design.md D3), either opaque (`blend=False`,
+        a freestanding title element already fully covering the black
+        background it was rasterised onto, design.md D1) or alpha-blended
+        over whatever was drawn before it (`blend=True`, an overlay title,
+        design.md D2). `gl.BLEND` is always left disabled afterwards.
+        """
+        scale_xy = (scale, scale) if isinstance(scale, int | float) else scale
+        program = self.library.title_program()
+        texture = self._title_texture(image)
+        try:
+            texture.use(location=TITLE_TEXTURE_UNIT)
+            if blend:
+                self.ctx.enable(moderngl.BLEND)
+                self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+            program.set_transform(translate, scale_xy)
+            program.draw()
+            if blend:
+                self.ctx.disable(moderngl.BLEND)
+        finally:
+            texture.release()
+
+    def render_title_standalone(
+        self,
+        image: Image.Image,
+        *,
+        translate: tuple[float, float] = (0.0, 0.0),
+        scale: tuple[float, float] | float = 1.0,
+    ) -> bytes:
+        """A freestanding title element: opaque, on a cleared black frame."""
+        self._fbo.use()
+        self._fbo.clear(0.0, 0.0, 0.0, 1.0)
+        self.draw_title(image, translate=translate, scale=scale, blend=False)
+        return flip_rows(self._fbo.read(components=4, alignment=1), self.width, self.height)
+
+    def render_title_overlay(
+        self,
+        base: Image.Image,
+        title: Image.Image,
+        *,
+        translate: tuple[float, float] = (0.0, 0.0),
+        scale: tuple[float, float] | float = 1.0,
+    ) -> bytes:
+        """An overlay title over an already-drawn still frame (design.md D2)."""
+        canvas = letterbox(base, self.width, self.height)
+        base_entry = _SlideImage(media_id="__title_overlay_base__", canvas=canvas)
+        try:
+            texture = self._texture(base_entry)
+            self._fbo.use()
+            self._fbo.clear(0.0, 0.0, 0.0, 1.0)
+            texture.use(location=FROM_TEXTURE_UNIT)
+            texture.use(location=TO_TEXTURE_UNIT)
+            program = self.library.get(FALLBACK_TRANSITION_ID)
+            program.set_uniforms(progress=0.0, resolution=(self.width, self.height), params={})
+            program.draw()
+            self.draw_title(title, translate=translate, scale=scale, blend=True)
+            return flip_rows(self._fbo.read(components=4, alignment=1), self.width, self.height)
+        finally:
+            base_entry.release()
 
     def iter_frames(
         self, timeline: Timeline, fps: float, catalog: TransitionCatalog

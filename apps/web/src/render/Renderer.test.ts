@@ -16,6 +16,9 @@ function fakeGl(failMarker?: string) {
     LINK_STATUS: 4,
     MAX_TEXTURE_SIZE: 5,
     MAX_VIEWPORT_DIMS: 6,
+    BLEND: 7,
+    SRC_ALPHA: 8,
+    ONE_MINUS_SRC_ALPHA: 9,
   };
   const impl: Record<string, (...args: unknown[]) => unknown> = {
     getParameter: (p) => (p === 5 ? 8192 : new Int32Array([8192, 8192])),
@@ -141,5 +144,69 @@ describe("Renderer", () => {
     const res = calls.find((c) => c.name === "uniform2f");
     expect(res?.args.slice(1)).toEqual([640, 480]);
     expect(calls.some((c) => c.name === "drawArrays" && c.args[2] === 3)).toBe(true);
+  });
+
+  describe("drawTitle", () => {
+    function titleFrame() {
+      return {
+        source: document.createElement("canvas"),
+        texture: {},
+        width: 10,
+        height: 10,
+        disposed: false,
+      };
+    }
+
+    it("draws a freestanding title opaquely, without touching blend state", () => {
+      const { gl, calls } = fakeGl();
+      const r = new Renderer(canvasWith(gl));
+      r.resize(640, 480, 1);
+      const transform = { translate: { x: 0.25, y: -0.5 }, scale: 0.3 };
+      r.drawTitle(titleFrame() as never, transform, { blend: false });
+
+      expect(calls.some((c) => c.name === "enable")).toBe(false);
+      expect(calls.some((c) => c.name === "disable")).toBe(false);
+      const uniforms = calls
+        .filter((c) => c.name === "uniform2f")
+        .map((c) => (c.args[0] as { name: string }).name);
+      expect(uniforms).toContain("uTranslate");
+      expect(uniforms).toContain("uScale");
+      const translate = calls.find(
+        (c) => c.name === "uniform2f" && (c.args[0] as { name: string }).name === "uTranslate",
+      );
+      expect(translate?.args.slice(1)).toEqual([0.25, -0.5]);
+      const scale = calls.find(
+        (c) => c.name === "uniform2f" && (c.args[0] as { name: string }).name === "uScale",
+      );
+      expect(scale?.args.slice(1)).toEqual([0.3, 0.3]);
+      expect(calls.some((c) => c.name === "drawArrays" && c.args[2] === 3)).toBe(true);
+    });
+
+    it("blends an overlay title over the already-drawn frame, then restores state", () => {
+      const { gl, calls } = fakeGl();
+      const r = new Renderer(canvasWith(gl));
+      r.resize(640, 480, 1);
+      r.drawTitle(titleFrame() as never, { translate: { x: 0, y: 0 }, scale: 1 }, { blend: true });
+
+      const enableIndex = calls.findIndex((c) => c.name === "enable");
+      const blendFuncIndex = calls.findIndex((c) => c.name === "blendFunc");
+      const drawIndex = calls.findIndex((c) => c.name === "drawArrays");
+      const disableIndex = calls.findIndex((c) => c.name === "disable");
+      expect(enableIndex).toBeGreaterThanOrEqual(0);
+      expect(calls[enableIndex]?.args).toEqual([gl.BLEND]);
+      expect(calls[blendFuncIndex]?.args).toEqual([gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA]);
+      expect(enableIndex).toBeLessThan(drawIndex);
+      expect(drawIndex).toBeLessThan(disableIndex);
+      expect(calls[disableIndex]?.args).toEqual([gl.BLEND]);
+    });
+
+    it("falls back to doing nothing when the title shader fails to compile", () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { gl, calls } = fakeGl("uTranslate");
+      const r = new Renderer(canvasWith(gl));
+      r.resize(640, 480, 1);
+      r.drawTitle(titleFrame() as never, { translate: { x: 0, y: 0 }, scale: 1 }, { blend: false });
+      expect(calls.some((c) => c.name === "drawArrays")).toBe(false);
+    });
   });
 });
