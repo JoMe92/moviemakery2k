@@ -69,6 +69,15 @@ export type CollectionId = "media" | "music" | "transitions";
 export type ImportKind = "any" | "pictures" | "audio";
 export type Selection = { kind: "slide"; slideId: string } | null;
 
+/** Snapshot of the undoable project state (design.md D1): `slides` and `music`. */
+export interface HistoryEntry {
+  slides: Slide[];
+  music: MusicClip[];
+}
+
+/** Undo history keeps at most this many steps (spec edit-commands, design.md D1). */
+export const UNDO_LIMIT = 50;
+
 export interface UploadEntry {
   key: string;
   filename: string;
@@ -92,6 +101,10 @@ export interface AppState {
   selection: Selection;
   /** Selected clip on the music track (exclusive with `selection`). */
   musicSelection: string | null;
+  /** Undo history (design.md D1), most recent step last; tab-only, not persisted. */
+  undoStack: HistoryEntry[];
+  /** Redo history; cleared by any new change after an undo. */
+  redoStack: HistoryEntry[];
   /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
@@ -169,6 +182,11 @@ export interface AppState {
    */
   fitToMusic(): FitToMusicResult;
   newProject(): void;
+
+  /** Undo the last storyboard/music change (spec edit-commands); no effect if there is none. */
+  undo(): void;
+  /** Redo the last undone change; no effect if there is none. */
+  redo(): void;
 
   /** Run the autosave immediately (tests, page change). */
   flushSave(): Promise<void>;
@@ -248,8 +266,20 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       return { playing: playback.playing, time: clampTime(playback.time, duration) };
     }
 
+    /**
+     * Snapshot the state before a project-changing action (design.md D1): push
+     * it on the undo stack (dropping the oldest beyond UNDO_LIMIT) and discard
+     * the redo stack.
+     */
+    function pushHistory(previous: HistoryEntry): void {
+      const next = [...get().undoStack, previous];
+      if (next.length > UNDO_LIMIT) next.shift();
+      set({ undoStack: next, redoStack: [] });
+    }
+
     function commit(slides: Slide[]): void {
-      const { selection } = get();
+      const { selection, music, slides: prevSlides } = get();
+      pushHistory({ slides: prevSlides, music });
       const stillThere = selection && slides.some((s) => s.id === selection.slideId);
       set({ slides, selection: stillThere ? selection : null, playback: playbackFor(slides) });
       scheduleSave();
@@ -257,9 +287,25 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
     /** Store a changed music track; keeps the music selection if the clip is still there. */
     function commitMusic(music: MusicClip[]): void {
-      const { musicSelection } = get();
+      const { musicSelection, slides, music: prevMusic } = get();
+      pushHistory({ slides, music: prevMusic });
       const stillThere = musicSelection !== null && music.some((c) => c.id === musicSelection);
       set({ music, musicSelection: stillThere ? musicSelection : null });
+      scheduleSave();
+    }
+
+    /** Jump to a history entry (undo/redo): restores selections if still valid. */
+    function restore(entry: HistoryEntry): void {
+      const { selection, musicSelection } = get();
+      const stillSlide = selection && entry.slides.some((s) => s.id === selection.slideId);
+      const stillMusic = musicSelection !== null && entry.music.some((c) => c.id === musicSelection);
+      set({
+        slides: entry.slides,
+        music: entry.music,
+        selection: stillSlide ? selection : null,
+        musicSelection: stillMusic ? musicSelection : null,
+        playback: playbackFor(entry.slides),
+      });
       scheduleSave();
     }
 
@@ -281,6 +327,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       collection: "media",
       selection: null,
       musicSelection: null,
+      undoStack: [],
+      redoStack: [],
       previewTransitionId: null,
       playback: STOPPED,
       demo: null,
@@ -557,8 +605,25 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         return result;
       },
       newProject() {
-        set({ music: [], musicSelection: null });
-        commit([]);
+        const { slides, music } = get();
+        pushHistory({ slides, music });
+        set({ music: [], musicSelection: null, slides: [], selection: null, playback: STOPPED });
+        scheduleSave();
+      },
+
+      undo() {
+        const { undoStack, slides, music } = get();
+        const top = undoStack[undoStack.length - 1];
+        if (!top) return;
+        set({ undoStack: undoStack.slice(0, -1), redoStack: [...get().redoStack, { slides, music }] });
+        restore(top);
+      },
+      redo() {
+        const { redoStack, slides, music } = get();
+        const top = redoStack[redoStack.length - 1];
+        if (!top) return;
+        set({ redoStack: redoStack.slice(0, -1), undoStack: [...get().undoStack, { slides, music }] });
+        restore(top);
       },
 
       async flushSave() {

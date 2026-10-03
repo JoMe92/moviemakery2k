@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/apiClient";
 import { AUTOSAVE_DELAY_MS, createAppStore } from "./appStore";
-import { mediaItem, mockApi } from "./testApi";
+import { audioItem, mediaItem, mockApi } from "./testApi";
 
 describe("appStore", () => {
   beforeEach(() => {
@@ -256,6 +256,119 @@ describe("appStore", () => {
 
     st().removeTransition(second);
     expect(tIn()).toBeNull();
+  });
+
+  describe("history (undo/redo, spec edit-commands)", () => {
+    it("undoes and redoes add, reorder, duration and transition changes", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+
+      st().addSlide("a");
+      st().addSlide("b");
+      const [first, second] = st().slides.map((s) => s.id) as [string, string];
+      st().moveSlide(0, 1);
+      expect(st().slides.map((s) => s.id)).toEqual([second, first]);
+      st().setSlideDuration(first, 2.5);
+      st().setTransition(first, "fade");
+      st().removeTransition(first);
+
+      // Six steps: add, add, move, duration, set transition, remove transition.
+      expect(st().undoStack).toHaveLength(6);
+      expect(st().redoStack).toEqual([]);
+
+      st().undo(); // undoes removeTransition
+      expect(st().slides.find((s) => s.id === first)?.transitionIn).toEqual({
+        transitionId: "fade",
+        duration: 1.25,
+      });
+      st().undo(); // undoes setTransition
+      expect(st().slides.find((s) => s.id === first)?.transitionIn).toBeNull();
+      st().undo(); // undoes setSlideDuration
+      expect(st().slides.find((s) => s.id === first)?.duration).toBe(5);
+      st().undo(); // undoes moveSlide
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+      st().undo(); // undoes addSlide("b")
+      expect(st().slides.map((s) => s.id)).toEqual([first]);
+      st().undo(); // undoes addSlide("a")
+      expect(st().slides).toEqual([]);
+      expect(st().undoStack).toEqual([]);
+
+      st().redo();
+      expect(st().slides.map((s) => s.id)).toEqual([first]);
+      for (let i = 0; i < 5; i++) st().redo();
+      expect(st().slides.map((s) => s.id)).toEqual([second, first]);
+      expect(st().slides.find((s) => s.id === first)?.duration).toBe(2.5);
+      expect(st().slides.find((s) => s.id === first)?.transitionIn).toBeNull();
+      expect(st().redoStack).toEqual([]);
+    });
+
+    it("keeps at most 50 undo steps", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      for (let i = 0; i < 55; i++) store.getState().addSlide("a");
+      expect(store.getState().undoStack).toHaveLength(50);
+      expect(store.getState().slides).toHaveLength(55);
+      for (let i = 0; i < 50; i++) store.getState().undo();
+      expect(store.getState().slides).toHaveLength(5);
+      expect(store.getState().undoStack).toEqual([]);
+    });
+
+    it("a new change after undo discards the redo history", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addSlide("b");
+      st().undo();
+      expect(st().redoStack).toHaveLength(1);
+      st().addSlide("b", 0);
+      expect(st().redoStack).toEqual([]);
+      expect(st().slides.map((s) => s.mediaId)).toEqual(["b", "a"]);
+    });
+
+    it("Rückgängig/Wiederholen are disabled (empty stacks) until there is history", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      expect(store.getState().undoStack).toEqual([]);
+      expect(store.getState().redoStack).toEqual([]);
+      store.getState().addSlide("a");
+      expect(store.getState().undoStack).toHaveLength(1);
+      store.getState().undo();
+      expect(store.getState().undoStack).toEqual([]);
+      expect(store.getState().redoStack).toHaveLength(1);
+      store.getState().redo();
+      expect(store.getState().redoStack).toEqual([]);
+    });
+
+    it("undo/redo beyond the history does nothing", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      store.getState().undo();
+      store.getState().redo();
+      expect(store.getState().slides).toEqual([]);
+    });
+
+    it("music track changes are undoable and redoable (spec edit-commands)", async () => {
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addMusicClip("song");
+      const clipId = st().music[0]?.id ?? "";
+      st().updateMusicClip(clipId, { volume: 0.5 });
+      expect(st().music[0]?.volume).toBe(0.5);
+      st().undo();
+      expect(st().music[0]?.volume).toBe(1);
+      st().undo();
+      expect(st().music).toEqual([]);
+      st().redo();
+      expect(st().music).toHaveLength(1);
+      st().redo();
+      expect(st().music[0]?.volume).toBe(0.5);
+    });
   });
 
   describe("playback", () => {

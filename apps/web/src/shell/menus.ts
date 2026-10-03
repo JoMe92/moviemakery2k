@@ -21,6 +21,10 @@ export interface MenuHandlers {
   /** "Save Movie" wizard; absent when the storyboard is empty (item disabled). */
   saveMovie?: () => void;
   deleteSelection?: () => void;
+  /** Bearbeiten → "Rückgängig"; absent while the undo history is empty. */
+  undo?: () => void;
+  /** Bearbeiten → "Wiederholen"; absent while the redo history is empty. */
+  redo?: () => void;
   togglePlay?: () => void;
   stop?: () => void;
   about?: () => void;
@@ -60,8 +64,8 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
       id: "edit",
       label: t("menu.edit.label"),
       entries: [
-        item("undo", t("menu.edit.undo")),
-        item("redo", t("menu.edit.redo")),
+        item("undo", t("menu.edit.undo"), h.undo),
+        item("redo", t("menu.edit.redo"), h.redo),
         separator,
         item("cut", t("menu.edit.cut")),
         item("copy", t("menu.edit.copy")),

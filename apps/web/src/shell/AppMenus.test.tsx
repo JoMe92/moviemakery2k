@@ -31,6 +31,45 @@ describe("Menu bar", () => {
     expect(screen.getByRole("menu", { name: "Bearbeiten" })).toBeInTheDocument();
   });
 
+  it("Edit → Undo/Redo via the menu and Strg+Z/Strg+Y (spec edit-commands)", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp();
+    await ready;
+    store.getState().addSlide("a");
+    store.getState().addSlide("b");
+    expect(store.getState().slides).toHaveLength(2);
+
+    await user.keyboard("{Control>}z{/Control}");
+    expect(store.getState().slides).toHaveLength(1);
+
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    const redo = screen.getByRole("menuitem", { name: "Wiederholen" });
+    expect(redo).not.toHaveAttribute("aria-disabled");
+    await user.click(redo);
+    expect(store.getState().slides).toHaveLength(2);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    await user.keyboard("{Control>}z{/Control}");
+    expect(store.getState().slides).toHaveLength(1);
+    await user.keyboard("{Control>}y{/Control}");
+    expect(store.getState().slides).toHaveLength(2);
+  });
+
+  it("Strg+Z is ignored while focus is in an input field (e.g. the duration dialog)", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp();
+    await ready;
+    store.getState().addSlide("a");
+    const before = store.getState().slides;
+
+    const input = document.createElement("input");
+    document.body.append(input);
+    input.focus();
+    await user.keyboard("{Control>}z{/Control}");
+    expect(store.getState().slides).toBe(before);
+    input.remove();
+  });
+
   it("Help → About shows the Microsoft notice", async () => {
     const user = userEvent.setup();
     renderApp();
