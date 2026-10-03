@@ -2,6 +2,7 @@ import { type ReactNode, useId } from "react";
 import { useT } from "../i18n/useT";
 import { Button } from "../ui/Button";
 import { TimelineIcon } from "../ui/icons";
+import { useLayoutMode } from "./layoutMode";
 import pane from "./Pane.module.css";
 import styles from "./StoryboardPane.module.css";
 
@@ -17,18 +18,22 @@ export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
   const { t } = useT();
   const headingId = useId();
   const isEmpty = children === undefined || children === null || children === false;
+  // The disabled timeline toggle is left out on phones (design.md D3).
+  const compact = useLayoutMode().mode === "compact";
   return (
     <section className={`${pane.pane} ${styles.storyboard}`} aria-labelledby={headingId}>
       <div className={pane.header}>
-        <Button
-          variant="toolbar"
-          icon={<TimelineIcon />}
-          aria-pressed={false}
-          disabled
-          className={styles.toggle}
-        >
-          {t("shell.showTimeline")}
-        </Button>
+        {compact ? null : (
+          <Button
+            variant="toolbar"
+            icon={<TimelineIcon />}
+            aria-pressed={false}
+            disabled
+            className={styles.toggle}
+          >
+            {t("shell.showTimeline")}
+          </Button>
+        )}
         <h2 id={headingId} className={pane.heading}>
           {t("shell.storyboard")}
         </h2>

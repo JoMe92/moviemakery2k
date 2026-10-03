@@ -1,14 +1,18 @@
 import { useMemo } from "react";
 import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { useT } from "./i18n/useT";
+import { ImportInput } from "./media/ImportInput";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
+import { UploadPanel } from "./media/UploadPanel";
 import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
+import { CompactWindow } from "./shell/CompactWindow";
 import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
 import { StatusBar } from "./shell/StatusBar";
+import { SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
 import { TaskPane } from "./shell/TaskPane";
 import { useTaskGroups } from "./shell/tasks";
@@ -47,10 +51,39 @@ export function App() {
   );
   const collectionName = t(`collections.${collection}`);
 
+  const title = t("shell.windowTitle", { app: t("app.name") });
+  const storyboard = (
+    <StoryboardPane musicTrack={<MusicTrack />}>
+      <StoryboardStrip />
+    </StoryboardPane>
+  );
+
+  if (layout.mode === "compact") {
+    return (
+      <StoryboardDnd>
+        <CompactWindow
+          title={title}
+          orientation={layout.orientation}
+          indicators={<SaveFailedIndicator />}
+          monitor={<Player />}
+          editing={
+            <>
+              {storyboard}
+              <UploadPanel />
+            </>
+          }
+          notices={<StatusNotices />}
+        />
+        <ImportInput />
+        <SaveMovieWizardFromStore />
+      </StoryboardDnd>
+    );
+  }
+
   return (
     <StoryboardDnd>
       <AppWindow
-        title={t("shell.windowTitle", { app: t("app.name") })}
+        title={title}
         menuBar={<AppMenus extra={playerMenu} />}
         toolbar={
           <Toolbar
@@ -73,11 +106,7 @@ export function App() {
           </LibraryPane>
         }
         monitor={<Player />}
-        storyboard={
-          <StoryboardPane musicTrack={<MusicTrack />}>
-            <StoryboardStrip />
-          </StoryboardPane>
-        }
+        storyboard={storyboard}
         statusBar={
           <StatusBar
             items={[describeBackend(backend, t), describeSave(saveState, t)].filter(

@@ -6,6 +6,11 @@
   flex: none;
 }
 
+:global([data-layout="compact"]) .storyboard {
+  flex: 1 0 auto;
+  margin: 0;
+}
+
 .body {
   display: flex;
   align-items: center;

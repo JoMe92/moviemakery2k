@@ -239,3 +239,8 @@
   background: var(--y2k-pane);
   color: var(--y2k-border-strong);
 }
+
+/* Phones and tablets: the empty hint wraps inside the visible width. */
+:global(:root:not([data-layout="wide"])) .strip:has(> .hint) {
+  min-width: 0;
+}

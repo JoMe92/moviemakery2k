@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
+import { useLayoutMode } from "../shell/layoutMode";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
 import { catalogName } from "../transitions/transitionName";
@@ -35,6 +36,8 @@ export function StoryboardStrip() {
   const setTransitionDuration = useAppStore((s) => s.setTransitionDuration);
   const removeTransition = useAppStore((s) => s.removeTransition);
   const insertIndex = useInsertIndex();
+  // Phones and tablets add pictures via the taskbar instead of dragging.
+  const stepHint = useLayoutMode().mode !== "wide";
   // During playback: the picture currently visible (changes only when the picture changes).
   const playingIndex = useAppStore((s) =>
     s.playback.playing ? slideIndexAt(timelineOf(s.slides), s.playback.time) : null,
@@ -107,7 +110,9 @@ export function StoryboardStrip() {
       data-over={(empty && isOver && insertIndex !== null) || undefined}
     >
       {empty ? (
-        <p className={styles.hint}>{t("shell.storyboardHint")}</p>
+        <p className={styles.hint}>
+          {t(stepHint ? "shell.storyboardHintTouch" : "shell.storyboardHint")}
+        </p>
       ) : (
         <SortableContext items={slides.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
           <ol className={styles.list} aria-label={t("storyboard.list")}>

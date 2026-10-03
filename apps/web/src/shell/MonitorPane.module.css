@@ -27,3 +27,8 @@
   border-top: 1px solid var(--y2k-border);
   background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-face));
 }
+
+/* The compact layout shows the monitor without a pane header (design.md D3). */
+:global([data-layout="compact"]) .header {
+  display: none;
+}

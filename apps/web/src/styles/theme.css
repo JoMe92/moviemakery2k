@@ -145,3 +145,14 @@ textarea {
   outline: 2px solid var(--y2k-focus);
   outline-offset: 1px;
 }
+
+/*
+ * Touch targets (add-mobile-layout design.md D2, app-shell "Grundlegende
+ * Barrierefreiheit"): with a coarse pointer and in the compact layout every
+ * interactive element gets at least 44×44 px.
+ */
+:root[data-layout="compact"] :is(button, [role="button"], select, input:not([type="hidden"])),
+:root[data-pointer="coarse"] :is(button, [role="button"], select, input:not([type="hidden"])) {
+  min-width: var(--y2k-touch-target);
+  min-height: var(--y2k-touch-target);
+}

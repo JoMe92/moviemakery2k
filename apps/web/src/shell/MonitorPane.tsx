@@ -16,7 +16,7 @@ export function MonitorPane({ children, controls }: MonitorPaneProps) {
   const headingId = useId();
   return (
     <section className={pane.pane} aria-labelledby={headingId}>
-      <div className={pane.header}>
+      <div className={`${pane.header} ${styles.header}`}>
         <h2 id={headingId} className={pane.heading}>
           {t("shell.preview")}
         </h2>

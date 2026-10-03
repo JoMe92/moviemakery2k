@@ -27,6 +27,9 @@ export const de = {
     storyboard: "Storyboard",
     showTimeline: "Zeitachse anzeigen",
     storyboardHint: "Ziehen Sie Bilder hierher, um eine Diashow zu erstellen.",
+    storyboardHintTouch:
+      "Tippen Sie auf „1. Aufnehmen“, um Bilder zu importieren und hier hinzuzufügen.",
+    editing: "Bearbeitung",
   },
   collections: {
     media: "Meine Bilder",

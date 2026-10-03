@@ -32,6 +32,8 @@ export const en = {
     storyboard: "Storyboard",
     showTimeline: "Show Timeline",
     storyboardHint: "Drag pictures here to create a slide show.",
+    storyboardHintTouch: "Tap “1. Capture” to import pictures and add them here.",
+    editing: "Editing",
   },
   collections: {
     media: "My Pictures",
