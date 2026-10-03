@@ -8,6 +8,7 @@ import { UploadPanel } from "./media/UploadPanel";
 import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
 import { AppMenus } from "./shell/AppMenus";
+import { ActionBar } from "./shell/ActionBar";
 import { AppWindow } from "./shell/AppWindow";
 import { CompactWindow } from "./shell/CompactWindow";
 import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
@@ -74,6 +75,7 @@ export function App() {
               <UploadPanel />
             </>
           }
+          actionBar={<ActionBar />}
           taskbar={<Taskbar />}
           notices={<StatusNotices />}
         />
@@ -123,6 +125,7 @@ export function App() {
         }
         indicators={medium ? <SaveFailedIndicator /> : undefined}
         taskbar={medium ? <Taskbar /> : undefined}
+        actionBar={<ActionBar />}
         notices={medium ? <StatusNotices /> : undefined}
       />
       <SaveMovieWizardFromStore />

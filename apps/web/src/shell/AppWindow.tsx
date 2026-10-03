@@ -15,6 +15,8 @@ export interface AppWindowProps {
   statusBar?: ReactNode;
   /** … or the taskbar with the three steps (medium layout). */
   taskbar?: ReactNode;
+  /** Actions of the selected element (touch operation). */
+  actionBar?: ReactNode;
   /** Lasting state symbols in the title bar. */
   indicators?: ReactNode;
   /** Short notices (medium layout, instead of the status bar). */
@@ -39,6 +41,7 @@ export function AppWindow({
   storyboard,
   statusBar,
   taskbar,
+  actionBar,
   indicators,
   notices,
   variant = "wide",
@@ -58,8 +61,11 @@ export function AppWindow({
         {monitor}
       </div>
       {storyboard}
-      {statusBar}
-      {taskbar}
+      <div className={styles.bottom}>
+        {actionBar}
+        {statusBar}
+        {taskbar}
+      </div>
       {notices}
     </div>
   );

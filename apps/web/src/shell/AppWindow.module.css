@@ -68,3 +68,7 @@
   padding-right: calc(4px + var(--y2k-safe-right));
   padding-left: calc(4px + var(--y2k-safe-left));
 }
+
+.bottom {
+  min-width: 0;
+}
