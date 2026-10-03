@@ -5,7 +5,7 @@ zweite von neun geplanten WMM-2.x-Lücken-Changes umgesetzt und archiviert.
 
 ## 1. Backend
 
-- [ ] TASK-API-016 Erkennung und Datenmodell: dritter Erkennungszweig in
+- [x] TASK-API-016 Erkennung und Datenmodell: dritter Erkennungszweig in
   `media.py` (Pillow → Video-Check per ffprobe → Audio-Check), `VideoItem`
   (`kind: "video"`, `filename`, `duration`, `width`, `height`, `codec`,
   `created_at`, `poster_url`), Grenzen 500 MB/10 Minuten, Fehlercodes
@@ -14,7 +14,7 @@ zweite von neun geplanten WMM-2.x-Lücken-Changes umgesetzt und archiviert.
   langes Video, ein zu großes Video, ein Video ohne Videostream mit
   Audiostream (gilt dann als Audio) und eine Datei ohne jeden nutzbaren
   Stream abdeckt.
-- [ ] TASK-API-017 Posterbild: ein FFmpeg-Lauf extrahiert ein Frame bei 1 s
+- [x] TASK-API-017 Posterbild: ein FFmpeg-Lauf extrahiert ein Frame bei 1 s
   bzw. der halben Laufzeit bei kürzeren Videos als JPEG (Qualität 90),
   Dreh-Metadatung berücksichtigt, Endpunkt `GET /api/media/{id}/poster`
   (nach TASK-API-016; design.md D3). Erledigt, wenn pytest den
@@ -23,7 +23,7 @@ zweite von neun geplanten WMM-2.x-Lücken-Changes umgesetzt und archiviert.
 
 ## 2. Oberfläche
 
-- [ ] TASK-WEB-056 Sammlung „Meine Videos“ und Aufgabenbereich:
+- [x] TASK-WEB-056 Sammlung „Meine Videos“ und Aufgabenbereich:
   Store-Erweiterung um `kind: "video"`, dritte Kachel-Gruppe mit
   Posterbild, Dateiname und Dauer (`mm:ss`), Aufgabenbereich „Video
   importieren“ mit gefiltertem Dateidialog aktiv, generischer Import und
@@ -33,14 +33,14 @@ zweite von neun geplanten WMM-2.x-Lücken-Changes umgesetzt und archiviert.
   über den gefilterten Dialog, gemischten Import aller drei Arten,
   Kachel-Anzeige mit Posterbild/Dauer und Löschen (auch während eines
   laufenden Exports eines anderen Mediums) abdecken.
-- [ ] TASK-WEB-057 Menü- und Text-Abschluss: `app-shell`-Spec-Zustand im
+- [x] TASK-WEB-057 Menü- und Text-Abschluss: `app-shell`-Spec-Zustand im
   Code nachgezogen (Aufgabenbereich-Eintrag „Video importieren“ aus der
   deaktivierten Liste raus), README/CHANGELOG „Unreleased“ (nach
   TASK-WEB-056). Erledigt, wenn `pixi run check` grün ist.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-019 E2E-Szenario: Playwright-Smoke erweitert um einen
+- [x] TASK-INFRA-019 E2E-Szenario: Playwright-Smoke erweitert um einen
   Video-Import (Datei mit bekannter Dauer), Kachel mit Posterbild und Dauer
   in „Meine Videos“, Bestand nach Neuladen; bestehende Smoke-Szenarien
   (Bild/Audio-Import, Übergang, Export) bleiben unverändert grün (nach

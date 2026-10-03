@@ -14,7 +14,7 @@ unabhängig von den anderen archiviert.
 
 ## 2. Shader
 
-- [ ] TASK-FX-008 Effekt-Rendering-Infrastruktur und einfache Effekte: ein
+- [x] TASK-FX-008 Effekt-Rendering-Infrastruktur und einfache Effekte: ein
   Ein-Textur-Programm-Typ (Zwischentextur/zusätzliches Framebuffer-Objekt
   in `Renderer.ts` und `FrameRenderer`), Katalogeinträge und Shader für
   Sepia, Negative, Posterisieren, Schwellenwert, Schwarzweiß, Helligkeit+,
@@ -22,7 +22,7 @@ unabhängig von den anderen archiviert.
   (design.md D1, D2). Erledigt, wenn für jeden Eintrag ein Golden-Frame-Test
   das erwartete Bild bei einem bekannten Eingabebild prüft und ein Test
   zeigt, dass ein Element ohne `effectId` unverändert bleibt.
-- [ ] TASK-FX-009 Stilisierte Effekte: Unschärfe, Verpixeln, Film-Alterung
+- [x] TASK-FX-009 Stilisierte Effekte: Unschärfe, Verpixeln, Film-Alterung
   Alt/Älter/Am ältesten, Filmkörnung, Kohlestift, Federzeichnung, Aquarell
   (nach TASK-FX-008; design.md D1). Erledigt, wenn für jeden Eintrag ein
   Golden-Frame-Test das erwartete Bild bei einem bekannten Eingabebild
@@ -30,7 +30,7 @@ unabhängig von den anderen archiviert.
 
 ## 3. Katalog und Oberfläche
 
-- [ ] TASK-CAT-006 Katalog-Validierung: alle 22 Einträge in
+- [x] TASK-CAT-006 Katalog-Validierung: alle 22 Einträge in
   `packages/catalog/effects.json` mit Quelle, Start-Validierung, Abgleich
   gegen `docs/research/movie-maker-reference.md` §3 (nach TASK-FX-009).
   Erledigt, wenn ein Test die Gesamtzahl (22) und die Abwesenheit der

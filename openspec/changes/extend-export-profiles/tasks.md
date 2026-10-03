@@ -5,7 +5,7 @@ der neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 1. Backend
 
-- [ ] TASK-API-022 Drittes Qualitätsprofil: `ExportProfile.EMAIL_WEB`
+- [x] TASK-API-022 Drittes Qualitätsprofil: `ExportProfile.EMAIL_WEB`
   (320×240, dieselbe Kodierung wie die bestehenden Profile), Empfehlungs-
   Textschlüssel je Profil in der API-Antwort, geschätzte Dateigröße für
   das neue Profil, `gen-api` (design.md D1, D2). Erledigt, wenn pytest
@@ -15,7 +15,7 @@ der neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 2. Oberfläche
 
-- [ ] TASK-WEB-070 Assistent um drittes Profil und Empfehlungstexte
+- [x] TASK-WEB-070 Assistent um drittes Profil und Empfehlungstexte
   erweitert: Schritt „Qualität“ zeigt alle drei Profile groß zu klein mit
   Empfehlungstext in `de`/`en` (nach TASK-API-022; design.md D2).
   Erledigt, wenn Komponententests alle drei Profile mit Dateigröße und
@@ -24,6 +24,6 @@ der neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-026 E2E und Doku: Playwright-Smoke erweitert um einen
+- [x] TASK-INFRA-026 E2E und Doku: Playwright-Smoke erweitert um einen
   Export mit dem Profil „Für E-Mail/Web“; README/CHANGELOG „Unreleased“
   (nach TASK-WEB-070). Erledigt, wenn `pixi run test-e2e` grün ist.

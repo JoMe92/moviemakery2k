@@ -16,14 +16,14 @@ wieder, ohne deren Kataloge zu ändern.
 
 ## 2. Render-Bausteine
 
-- [ ] TASK-FX-010 Web-Renderer-Bausteine: Canvas2D-Textrasterung mit
+- [x] TASK-FX-010 Web-Renderer-Bausteine: Canvas2D-Textrasterung mit
   gebündelter Schriftart „Liberation Sans“ auf alpha-erhaltendem Canvas,
   Alpha-Blend-Zeichenmodus für Overlay-Titel, Vertex-Transform-Uniform für
   Position/Zoom pro Phase (design.md D1–D3). Erledigt, wenn
   Komponententests ein freistehendes Titel-Element (opak, wie ein Bild),
   einen Overlay-Titel über einem bereits gezeichneten Bild (Blend) und
   eine Position/Zoom-Animation über die Phasen hinweg prüfen.
-- [ ] TASK-RENDER-008 Backend-Render-Bausteine: dieselbe Textrasterung
+- [x] TASK-RENDER-008 Backend-Render-Bausteine: dieselbe Textrasterung
   (dieselbe Schriftdatei wie TASK-FX-010), derselbe Alpha-Blend- und
   Vertex-Transform-Mechanismus im `FrameRenderer` für den Export (nach
   TASK-FX-010; design.md D1–D3). Erledigt, wenn pytest denselben Frame
@@ -33,7 +33,7 @@ wieder, ohne deren Kataloge zu ändern.
 
 ## 3. Katalog und Oberfläche
 
-- [ ] TASK-CAT-007 Titel-Katalog: 8 MVP-Einträge in
+- [x] TASK-CAT-007 Titel-Katalog: 8 MVP-Einträge in
   `packages/catalog/titles.json` (Basic Title, Fly In, Zoom In, Subtitle,
   Fade In and Out, Fly In Fades, Scroll Up Stacked, Fade In and Out
   (Nachspann)), Start-Validierung (nach TASK-FX-010, TASK-RENDER-008;
