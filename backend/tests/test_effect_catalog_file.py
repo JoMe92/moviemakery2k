@@ -1,8 +1,10 @@
-"""The effect catalog in packages/catalog is valid against its JSON Schema (TASK-FX-008).
+"""The effect catalog in packages/catalog is valid against its JSON Schema (TASK-FX-008/009).
 
-Full validation of all 22 entries (count, cross-check against the research
-notes) is TASK-CAT-006; this only covers the TASK-FX-008 subset introduced
-here (stateless colour/geometry effects).
+Full validation of the catalog (exact count, cross-check against the research
+notes) is TASK-CAT-006; this only covers the TASK-FX-008 (stateless
+colour/geometry effects) and TASK-FX-009 (stylised effects) subsets
+introduced here - each is checked as a subset, not an exact match, since
+further entries may still be added by later tasks of this change.
 """
 
 import json
@@ -30,6 +32,17 @@ FX_008_IDS = {
     "rotate-180",
     "rotate-270",
 }
+FX_009_IDS = {
+    "blur",
+    "pixelate",
+    "film-age-old",
+    "film-age-older",
+    "film-age-oldest",
+    "film-grain",
+    "charcoal",
+    "pen-and-ink",
+    "watercolor",
+}
 
 
 def _load(name: str) -> Any:
@@ -43,10 +56,11 @@ def test_catalog_matches_schema() -> None:
     assert errors == []
 
 
-def test_catalog_contains_exactly_the_task_fx_008_effects() -> None:
+def test_catalog_contains_the_task_fx_008_and_fx_009_effects() -> None:
     ids = [e["id"] for e in _load("effects.json")["effects"]]
     assert len(ids) == len(set(ids))
-    assert set(ids) == FX_008_IDS
+    assert set(ids) >= FX_008_IDS
+    assert set(ids) >= FX_009_IDS
 
 
 def test_every_effect_has_a_german_and_an_english_name() -> None:
@@ -67,7 +81,9 @@ def test_every_effect_names_its_own_shader_file() -> None:
 def test_load_effect_catalog_reads_the_real_file() -> None:
     catalog = load_effect_catalog(CATALOG_DIR / "effects.json")
     assert catalog.schema_version == 1
-    assert {e.id for e in catalog.effects} == FX_008_IDS
+    ids = {e.id for e in catalog.effects}
+    assert ids >= FX_008_IDS
+    assert ids >= FX_009_IDS
     sepia = next(e for e in catalog.effects if e.id == "sepia")
     assert sepia.names.de == "Sepia"
     assert sepia.source.kind == "wmm2x-xml"

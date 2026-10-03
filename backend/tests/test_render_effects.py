@@ -19,6 +19,9 @@ from mmy_backend.config import DEFAULT_SHADERS_DIR, REPO_ROOT
 from mmy_backend.render.effects import IMAGE_TEXTURE_UNIT, EffectLibrary, EffectSources
 
 CATALOG_FILE = REPO_ROOT / "packages" / "catalog" / "effects.json"
+# This file's own subset (TASK-FX-008); the catalog also carries TASK-FX-009's
+# entries by now (see test_render_stylized_effects.py) - checked as a subset,
+# not an exact match, same as test_effect_catalog_file.py.
 EXPECTED_IDS = {
     "sepia",
     "negative",
@@ -72,10 +75,10 @@ def _copy_shaders(dest: Path) -> Path:
 # --- Source texts (contract of effectSource.ts) -------------------------------
 
 
-def test_catalog_covers_twelve_effects_with_shader_files(
+def test_catalog_covers_the_fx_008_effects_with_shader_files(
     catalog: EffectCatalog, sources: EffectSources
 ) -> None:
-    assert {e.id for e in catalog.effects} == EXPECTED_IDS
+    assert {e.id for e in catalog.effects} >= EXPECTED_IDS
     for effect in catalog.effects:
         assert effect.shader == f"{effect.id}.glsl"
         assert sources.body(effect.id) is not None

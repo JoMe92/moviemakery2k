@@ -32,7 +32,7 @@ describe("effectSources", () => {
 
   it("contains exactly the catalog's effects", () => {
     expect(Object.keys(sources).sort()).toEqual([...ids].sort());
-    expect(ids).toHaveLength(12);
+    expect(ids).toHaveLength(21);
   });
 
   it.each(catalog.effects.map((e) => [e.id, e] as const))(

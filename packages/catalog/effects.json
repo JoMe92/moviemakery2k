@@ -127,6 +127,105 @@
         "ref": "Video effect \"Rotate, 270°\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation",
         "estimated": ["direction"]
       }
+    },
+    {
+      "id": "blur",
+      "names": { "de": "Unschärfe", "en": "Blur" },
+      "shader": "blur.glsl",
+      "params": { "radius": 1 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Blur\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation; approximated as a 3x3 box blur (movie-maker-reference.md §4 approximation table names ffmpeg gblur)",
+        "estimated": ["radius"]
+      }
+    },
+    {
+      "id": "pixelate",
+      "names": { "de": "Verpixeln", "en": "Pixelate" },
+      "shader": "pixelate.glsl",
+      "params": { "blockSize": 20 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Pixelate\" (movie-maker-reference.md §3), distinct from the Pixelate transition in transitions.json; GUID not verifiable without a reference installation",
+        "estimated": ["blockSize"]
+      }
+    },
+    {
+      "id": "film-age-old",
+      "names": { "de": "Film-Alterung, Alt", "en": "Film Age, Old" },
+      "shader": "film-age-old.glsl",
+      "params": { "age": 30 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Film Age, Old\" (`Age` 30; movie-maker-reference.md §3/§4); the original's ~10 Film Aging parameters (noise/scratches/flicker/jitter/posterize/vignette) are approximated here as vignette + deterministic grain + desaturation; GUID not verifiable without a reference installation",
+        "estimated": ["age"]
+      }
+    },
+    {
+      "id": "film-age-older",
+      "names": { "de": "Film-Alterung, Älter", "en": "Film Age, Older" },
+      "shader": "film-age-older.glsl",
+      "params": { "age": 60 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Film Age, Older\" (`Age` 60; movie-maker-reference.md §3/§4); same approximation as film-age-old at a higher intensity; GUID not verifiable without a reference installation",
+        "estimated": ["age"]
+      }
+    },
+    {
+      "id": "film-age-oldest",
+      "names": { "de": "Film-Alterung, Am ältesten", "en": "Film Age, Oldest" },
+      "shader": "film-age-oldest.glsl",
+      "params": { "age": 90 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Film Age, Oldest\" (`Age` 90; movie-maker-reference.md §3/§4); same approximation as film-age-old at the highest intensity; GUID not verifiable without a reference installation",
+        "estimated": ["age"]
+      }
+    },
+    {
+      "id": "film-grain",
+      "names": { "de": "Filmkörnung", "en": "Film Grain" },
+      "shader": "film-grain.glsl",
+      "params": { "amount": 0.08 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Artistic filter \"Film Grain\" (EffectID 16, movie-maker-reference.md §4); approximated as deterministic per-pixel noise (same PCG hash as the Dissolve transition) rather than the original's own noise texture; GUID not verifiable without a reference installation",
+        "estimated": ["amount"]
+      }
+    },
+    {
+      "id": "charcoal",
+      "names": { "de": "Kohlestift", "en": "Charcoal" },
+      "shader": "charcoal.glsl",
+      "params": { "strength": 2 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Artistic filter \"Smudge Stick\" (movie-maker-reference.md §3); approximated as a Sobel edge sketch on a light paper tone; GUID not verifiable without a reference installation",
+        "estimated": ["strength"]
+      }
+    },
+    {
+      "id": "pen-and-ink",
+      "names": { "de": "Federzeichnung", "en": "Pen and Ink" },
+      "shader": "pen-and-ink.glsl",
+      "params": { "threshold": 0.15 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Artistic filter \"Graphic Pen\" (movie-maker-reference.md §3, possibly not visible in 2.1); approximated as a thresholded Sobel edge sketch (black-on-white line art); GUID not verifiable without a reference installation",
+        "estimated": ["threshold"]
+      }
+    },
+    {
+      "id": "watercolor",
+      "names": { "de": "Aquarell", "en": "Watercolor" },
+      "shader": "watercolor.glsl",
+      "params": { "radius": 1, "levels": 6 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Artistic filter \"Watercolor\" (EffectID 40, movie-maker-reference.md §4, named there as a Kuwahara filter); approximated here as 3x3 box smoothing + posterize, reusing the already-validated blur and posterize shaders' maths, rather than implementing a true Kuwahara filter; GUID not verifiable without a reference installation",
+        "estimated": ["radius", "levels"]
+      }
     }
   ]
 }
