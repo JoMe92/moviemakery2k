@@ -26,3 +26,8 @@
   color: var(--y2k-text-muted);
   text-align: center;
 }
+
+/* The horizontally scrolling strip never scrolls or reloads the page (design.md D8). */
+.body {
+  overscroll-behavior: contain;
+}

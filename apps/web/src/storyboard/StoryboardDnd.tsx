@@ -61,6 +61,9 @@ export const useInsertIndex = () => useContext(InsertIndexContext);
 const MusicInsertIndexContext = createContext<number | null>(null);
 export const useMusicInsertIndex = () => useContext(MusicInsertIndexContext);
 
+/** Edge auto-scroll while dragging (add-mobile-layout design.md D8): horizontal strips. */
+export const AUTO_SCROLL = { enabled: true } as const;
+
 /** How long the hint about a refused drop stays visible. */
 export const DROP_NOTICE_MS = 6000;
 
@@ -423,6 +426,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     <DndContext
       sensors={sensors}
       collisionDetection={collisionDetection}
+      // Scroll the storyboard strip and music track at their edges while dragging.
+      autoScroll={AUTO_SCROLL}
       accessibility={{
         announcements,
         screenReaderInstructions: {

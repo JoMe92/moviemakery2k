@@ -206,3 +206,12 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/* Touch reordering (add-mobile-layout design.md D8). */
+.lane {
+  overscroll-behavior: contain;
+}
+
+.slot[data-dragging="true"] .block {
+  touch-action: none;
+}

@@ -263,3 +263,16 @@
   line-height: 1;
   cursor: pointer;
 }
+
+/*
+ * Touch reordering (add-mobile-layout design.md D8): the dragged tile takes
+ * every touch move itself, and scrolling the strip never chains to the page.
+ */
+.slot[data-dragging="true"] .tile {
+  touch-action: none;
+}
+
+:global(:root[data-pointer="coarse"]) .list,
+:global(:root[data-layout="compact"]) .list {
+  overscroll-behavior: contain;
+}
