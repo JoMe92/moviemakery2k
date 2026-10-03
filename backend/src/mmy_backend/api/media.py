@@ -199,7 +199,10 @@ async def upload_media(
     store: Annotated[MediaStore, Depends(get_media_store)],
     files: Annotated[
         list[UploadFile],
-        File(description="Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)"),
+        File(
+            description="Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, "
+            "VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)"
+        ),
     ],
 ) -> MediaUploadResponse:
     if len(files) > MAX_FILES_PER_REQUEST:

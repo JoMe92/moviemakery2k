@@ -441,7 +441,7 @@ export interface components {
         Body_upload_media_api_media_post: {
             /**
              * Files
-             * @description Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
+             * @description Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
              */
             files: string[];
         };
@@ -452,7 +452,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -579,7 +579,7 @@ export interface components {
         MediaDeleteResponse: {
             project: components["schemas"]["Project"];
         };
-        MediaItem: components["schemas"]["ImageItem"] | components["schemas"]["AudioItem"];
+        MediaItem: components["schemas"]["ImageItem"] | components["schemas"]["AudioItem"] | components["schemas"]["VideoItem"];
         /** MediaListResponse */
         MediaListResponse: {
             /**
@@ -590,7 +590,7 @@ export interface components {
         };
         /** MediaUploadFailure */
         MediaUploadFailure: {
-            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable */
+            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.videoTooLong, media.noVideoStream, media.probeUnavailable */
             errorCode: components["schemas"]["ErrorCode"];
             /**
              * Errorparams
@@ -813,6 +813,54 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VideoItem
+         * @description An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1.
+         */
+        VideoItem: {
+            /**
+             * Codec
+             * @description FFmpeg codec name of the original, e.g. `h264`, `hevc`
+             */
+            codec: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Duration
+             * @description Decoded duration in seconds
+             */
+            duration: number;
+            /**
+             * Filename
+             * @description Original file name, for display only
+             */
+            filename: string;
+            /**
+             * Height
+             * @description Height after rotation
+             */
+            height: number;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "video";
+            /**
+             * Posterurl
+             * @description Poster frame (JPEG), add-video-import D3
+             */
+            posterUrl: string;
+            /**
+             * Width
+             * @description Width after rotation
+             */
+            width: number;
         };
     };
     responses: never;

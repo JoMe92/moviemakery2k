@@ -286,7 +286,7 @@
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
-            "description": "Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
+            "description": "Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
             "items": {
               "contentMediaType": "application/octet-stream",
               "type": "string"
@@ -312,6 +312,8 @@
           "media.inUseByExport",
           "media.audioTooLong",
           "media.noAudioStream",
+          "media.videoTooLong",
+          "media.noVideoStream",
           "media.probeUnavailable",
           "project.slideDuration.outOfRange",
           "project.slideDuration.offGrid",
@@ -618,7 +620,8 @@
         "discriminator": {
           "mapping": {
             "audio": "#/components/schemas/AudioItem",
-            "image": "#/components/schemas/ImageItem"
+            "image": "#/components/schemas/ImageItem",
+            "video": "#/components/schemas/VideoItem"
           },
           "propertyName": "kind"
         },
@@ -628,6 +631,9 @@
           },
           {
             "$ref": "#/components/schemas/AudioItem"
+          },
+          {
+            "$ref": "#/components/schemas/VideoItem"
           }
         ]
       },
@@ -654,7 +660,7 @@
         "properties": {
           "errorCode": {
             "$ref": "#/components/schemas/ErrorCode",
-            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable"
+            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.videoTooLong, media.noVideoStream, media.probeUnavailable"
           },
           "errorParams": {
             "additionalProperties": {
@@ -1157,6 +1163,73 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VideoItem": {
+        "additionalProperties": false,
+        "description": "An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1.",
+        "properties": {
+          "codec": {
+            "description": "FFmpeg codec name of the original, e.g. `h264`, `hevc`",
+            "title": "Codec",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Decoded duration in seconds",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "height": {
+            "description": "Height after rotation",
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "posterUrl": {
+            "description": "Poster frame (JPEG), add-video-import D3",
+            "title": "Posterurl",
+            "type": "string"
+          },
+          "width": {
+            "description": "Width after rotation",
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "duration",
+          "width",
+          "height",
+          "codec",
+          "createdAt",
+          "posterUrl"
+        ],
+        "title": "VideoItem",
         "type": "object"
       }
     }
