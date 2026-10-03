@@ -73,6 +73,8 @@ interface TileHandlers {
   /** Picking in the collection sheet: no dragging, long press opens the menu. */
   picking: boolean;
   onLongPress: () => void;
+  /** A plain tap while picking (real touch, bypassing the racy native click). */
+  onTap: () => void;
 }
 
 /**
@@ -101,14 +103,18 @@ type PointerHandler = ((event: PointerEvent<HTMLElement>) => void) | undefined;
 function usePickingPointer(
   picking: boolean,
   onLongPress: () => void,
+  onTap: () => void,
   listeners: Record<string, unknown> | undefined,
 ) {
-  const longPress = useLongPress(onLongPress, { enabled: picking });
+  const longPress = useLongPress(onLongPress, { enabled: picking, onTap });
   return {
-    onPointerDown: chain(listeners?.onPointerDown as PointerHandler, longPress.onPointerDown),
-    onPointerMove: longPress.onPointerMove,
-    onPointerUp: longPress.onPointerUp,
-    onPointerCancel: longPress.onPointerCancel,
+    pointer: {
+      onPointerDown: chain(listeners?.onPointerDown as PointerHandler, longPress.onPointerDown),
+      onPointerMove: longPress.onPointerMove,
+      onPointerUp: longPress.onPointerUp,
+      onPointerCancel: longPress.onPointerCancel,
+    },
+    guardClick: longPress.guardClick,
   };
 }
 
@@ -124,6 +130,7 @@ function MediaTile({
   onKeyDown,
   picking,
   onLongPress,
+  onTap,
   ...handlers
 }: MediaTileProps) {
   const { t } = useT();
@@ -134,7 +141,7 @@ function MediaTile({
     disabled: picking,
     attributes: { roleDescription: t("media.draggable") },
   });
-  const pointer = usePickingPointer(picking, onLongPress, listeners);
+  const { pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
   // aria-pressed stays the tile selection (not the dnd-kit drag state).
   const dragAttributes = tileAttributes(attributes, picking);
   return (
@@ -161,6 +168,7 @@ function MediaTile({
       }
       selected={selected}
       {...handlers}
+      onClick={() => guardClick(handlers.onClick)}
       onKeyDown={(event) => {
         onKeyDown(event);
         if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
@@ -180,6 +188,7 @@ function AudioTile({
   onKeyDown,
   picking,
   onLongPress,
+  onTap,
   ...handlers
 }: TileHandlers & { item: AudioItem }) {
   const { t, locale } = useT();
@@ -191,7 +200,7 @@ function AudioTile({
     disabled: picking,
     attributes: { roleDescription: t("media.audioDraggable") },
   });
-  const pointer = usePickingPointer(picking, onLongPress, listeners);
+  const { pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
   // aria-pressed stays the tile selection (not the dnd-kit drag state).
   const dragAttributes = tileAttributes(attributes, picking);
   return (
@@ -215,6 +224,7 @@ function AudioTile({
         </span>
       }
       {...handlers}
+      onClick={() => guardClick(handlers.onClick)}
       onKeyDown={(event) => {
         onKeyDown(event);
         if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
@@ -234,11 +244,12 @@ function VideoTile({
   tileRef,
   picking,
   onLongPress,
+  onTap,
   ...handlers
 }: TileHandlers & { item: VideoItem }) {
   const { t, locale } = useT();
   // Not draggable; in the collection sheet a long press offers Properties and Delete.
-  const pointer = usePickingPointer(picking, onLongPress, undefined);
+  const { pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, undefined);
   const duration = formatClipDuration(locale, item.duration);
   return (
     <Tile
@@ -261,6 +272,7 @@ function VideoTile({
       }
       {...handlers}
       {...pointer}
+      onClick={() => guardClick(handlers.onClick)}
     />
   );
 }
@@ -367,17 +379,21 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
       ) : (
         <ul className={styles.grid} aria-label={t(text.list)}>
           {media.map((item) => {
+            // Videos are not picked (they cannot be added yet); they only offer the menu.
+            const pickToggle = () => {
+              if (picking && item.kind !== "video") picking.onToggle(item.id);
+            };
             const handlers: TileHandlers = {
               tileRef: (el) => {
                 if (el) tiles.current.set(item.id, el);
                 else tiles.current.delete(item.id);
               },
               selected: picking ? picking.picked.includes(item.id) : selectedId === item.id,
-              // Videos are not picked (they cannot be added yet); they only offer the menu.
-              onClick: () =>
-                picking
-                  ? item.kind !== "video" && picking.onToggle(item.id)
-                  : setSelectedId(item.id),
+              onClick: () => (picking ? pickToggle() : setSelectedId(item.id)),
+              // Real touch: a plain tap toggles here instead of racing the native
+              // click (mmy-edq). Mouse pointers never reach useLongPress's onTap,
+              // so they keep using onClick above.
+              onTap: pickToggle,
               onDoubleClick: () => {
                 if (picking) return;
                 if (item.kind === "image") addSlide(item.id);

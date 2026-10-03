@@ -14,13 +14,14 @@ The desktop tests in the other modules keep their 1280 px viewport unchanged.
 
 import math
 import struct
+import time
 import wave
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
-from playwright.sync_api import Browser, Locator, Page, Playwright, expect
+from playwright.sync_api import Browser, CDPSession, Locator, Page, Playwright, expect
 from test_export_flow import EXPORT_TIMEOUT_MS
 
 TOUCH_TARGET = 44
@@ -132,6 +133,26 @@ def tap_import(page: Page, entry: str, files: list[Path]) -> None:
     chooser.value.set_files(files)
 
 
+def realistic_tap(
+    cdp: CDPSession, x: float, y: float, *, jitter: float = 4.0, hold_ms: float = 140.0
+) -> None:
+    """touchstart -> a few small-jitter touchmoves -> touchend, like a real
+    finger (mmy-edq): unlike Playwright's `.tap()`/`.click()`, which dispatch
+    an instantaneous, zero-movement touch, a real tap has nonzero duration and
+    a few px of incidental movement, which used to be enough to drop the
+    CollectionSheet's picking tap on real hardware."""
+    point = {"x": x, "y": y, "radiusX": 12, "radiusY": 12, "force": 1}
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [point]})
+    steps = 4
+    for i in range(1, steps + 1):
+        time.sleep(hold_ms / 1000 / steps)
+        dx = jitter if i % 2 else -jitter * 0.6
+        dy = -jitter * 0.5 if i % 2 else jitter
+        moved = {**point, "x": x + dx, "y": y + dy}
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [moved]})
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+
 @pytest.mark.parametrize(
     ("name", "landscape", "expected"),
     [
@@ -240,6 +261,37 @@ def test_menu_sheet_keeps_the_target_size(open_device: Any) -> None:
     expect(menu.get_by_role("button", name="Neues Projekt")).to_be_visible()
     assert small_targets(page) == []
     no_horizontal_scroll(page)
+
+
+def test_pick_tap_registers_with_realistic_touch_timing(
+    open_device: Any, images: dict[str, Path]
+) -> None:
+    """mmy-edq: tapping a CollectionSheet tile to pick it, then the footer's
+    add button, must still work when the taps have a real finger's nonzero
+    duration and a few px of jitter - Playwright's idealized .tap() (zero
+    duration, zero movement) could not reproduce the reported failure."""
+    page = open_device("Pixel 7")
+    names = ("rot.png", "blau.png")
+    tap_import(page, "Bilder importieren", [images[n] for n in names])
+    sheet = page.get_by_role("dialog", name="Sammlungen")
+    cdp = page.context.new_cdp_session(page)
+
+    for name in names:
+        tile = sheet.get_by_role("list", name="Bilder").get_by_role("button", name=name)
+        expect(tile).to_be_visible()
+        box = tile.bounding_box()
+        assert box is not None
+        realistic_tap(cdp, box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        expect(tile).to_have_attribute("aria-pressed", "true")
+
+    add = sheet.get_by_role("button", name="Zum Bildstreifen hinzufügen (2)")
+    box = add.bounding_box()
+    assert box is not None
+    realistic_tap(cdp, box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    expect(sheet).to_be_hidden()
+    strip = page.get_by_role("list", name="Bildstreifen")
+    expect(strip.get_by_role("button", name=f"Bild 1: {names[0]}, 5,00 s")).to_be_visible()
+    expect(strip.get_by_role("button", name=f"Bild 2: {names[1]}, 5,00 s")).to_be_visible()
 
 
 def test_tablet_shows_monitor_and_collection_side_by_side(open_device: Any) -> None:
