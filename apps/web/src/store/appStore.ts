@@ -31,6 +31,7 @@ import {
   startPlayback,
   timelineOf,
   toTimelineSlides,
+  videoSplitPoint,
 } from "../player/controls";
 import { type FitToMusicResult, fitToMusic } from "../timeline/fitToMusic";
 import { musicDuration } from "../timeline/music";
@@ -54,6 +55,7 @@ import {
   newSlideId,
   removeSlide,
   SLIDE_DURATION,
+  splitSlide,
   updateSlide,
 } from "./projectOps";
 
@@ -220,6 +222,12 @@ export interface AppState {
    * refused (not a video slide, unknown media or out of range).
    */
   setVideoTrim(slideId: string, trimIn: number, trimOut: number): boolean;
+  /**
+   * Clip → "Teilen" (design.md D4): splits the selected video slide in two at
+   * the playhead. `false` = refused (no selection, not a video, or the
+   * playhead isn't strictly within the clip's own trim window).
+   */
+  splitSlide(): boolean;
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
   /**
@@ -687,6 +695,14 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         commit(
           updateSlide(slides, slideId, (s) => (s.kind === "video" ? { ...s, trimIn, trimOut } : s)),
         );
+        return true;
+      },
+      splitSlide() {
+        const { selection, slides, playback } = get();
+        if (!selection) return false;
+        const point = videoSplitPoint(slides, selection.slideId, playback.time);
+        if (point === null) return false;
+        commit(splitSlide(slides, selection.slideId, point));
         return true;
       },
       setTransition(slideId, transitionId) {

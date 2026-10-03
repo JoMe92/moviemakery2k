@@ -74,6 +74,26 @@ export function timelineOf(slides: readonly Slide[]): Timeline {
   return tl;
 }
 
+/**
+ * Trim-relative split point for Clip → "Teilen" (design.md D4): the selected
+ * slide's source-video time at the playhead, or `null` when the slide isn't a
+ * video clip, isn't found, or the playhead isn't strictly within its own trim
+ * window (splitting exactly at an edge would leave an empty half).
+ */
+export function videoSplitPoint(
+  slides: readonly Slide[],
+  slideId: string,
+  time: number,
+): number | null {
+  const index = slides.findIndex((s) => s.id === slideId);
+  const slide = slides[index];
+  if (!slide || slide.kind !== "video") return null;
+  const placed = timelineOf(slides).slides[index];
+  if (!placed) return null;
+  const point = videoScrubTime(slide.trimIn, slide.trimOut, placed.start, time);
+  return point > slide.trimIn && point < slide.trimOut ? point : null;
+}
+
 export function clampTime(time: number, duration: number): number {
   if (!Number.isFinite(time)) return 0;
   return Math.min(Math.max(time, 0), Math.max(duration, 0));

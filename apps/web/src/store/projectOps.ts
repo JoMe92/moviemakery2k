@@ -73,3 +73,28 @@ export function updateSlide(
 ): Slide[] {
   return normalize(slides.map((s) => (s.id === id ? patch(s) : s)));
 }
+
+/**
+ * Splits a video slide in two at `splitPoint` (a trim-relative time, strictly
+ * inside its own trim window; add-timeline-editing design.md D4): the first
+ * keeps the id and the incoming transition and gets `trimOut = splitPoint`;
+ * the second is a new slide with `trimIn = splitPoint` and no incoming
+ * transition (hard cut at the new inner edge). The transition to the
+ * following element is unaffected. A non-video slide, or one not found, is
+ * returned unchanged — callers validate with `videoSplitPoint` first.
+ */
+export function splitSlide(slides: readonly Slide[], id: string, splitPoint: number): Slide[] {
+  const index = slides.findIndex((s) => s.id === id);
+  const slide = slides[index];
+  if (!slide || slide.kind !== "video") return [...slides];
+  const first: Slide = { ...slide, trimOut: splitPoint };
+  const second: Slide = {
+    kind: "video",
+    id: newSlideId(),
+    mediaId: slide.mediaId,
+    trimIn: splitPoint,
+    trimOut: slide.trimOut,
+    transitionIn: null,
+  };
+  return normalize([...slides.slice(0, index), first, second, ...slides.slice(index + 1)]);
+}
