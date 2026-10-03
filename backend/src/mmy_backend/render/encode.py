@@ -40,8 +40,9 @@ from mmy_backend.catalog import TransitionCatalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR
 from mmy_backend.errors import Params, ParamValue, error_message
 from mmy_backend.ffmpeg import ffmpeg_binary
+from mmy_backend.project import Slide
 from mmy_backend.render.context import RenderContextError, create_render_context
-from mmy_backend.render.frames import FrameRenderer, ImageLoader
+from mmy_backend.render.frames import FrameRenderer, ImageLoader, VideoLoader
 from mmy_backend.render.shaders import ShaderError, ShaderLibrary, ShaderSources
 from mmy_backend.render.timeline import Timeline, frame_count
 
@@ -250,6 +251,8 @@ def export_movie(
     cancel: threading.Event | None = None,
     audio_input: AudioInput = silent_audio_input,
     shaders_dir: Path = DEFAULT_SHADERS_DIR,
+    load_video: VideoLoader | None = None,
+    project_slides: Sequence[Slide] = (),
 ) -> Path:
     """Renders and encodes the slideshow to `out_path` (MP4); returns `out_path`.
 
@@ -286,7 +289,15 @@ def export_movie(
         with ctx:
             library = ShaderLibrary(ctx, ShaderSources(shaders_dir))
             try:
-                with FrameRenderer(ctx, library, spec.width, spec.height, load_image) as renderer:
+                with FrameRenderer(
+                    ctx,
+                    library,
+                    spec.width,
+                    spec.height,
+                    load_image,
+                    load_video=load_video,
+                    project_slides=project_slides,
+                ) as renderer:
                     command = build_ffmpeg_command(
                         binary, spec, part, audio_input(total / spec.fps)
                     )

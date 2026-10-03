@@ -74,7 +74,7 @@ from mmy_backend.render.encode import (
     silent_audio_input,
     video_duration,
 )
-from mmy_backend.render.frames import preview_loader
+from mmy_backend.render.frames import preview_loader, video_loader
 from mmy_backend.render.mixdown import MIX_FILENAME, file_audio_input, mix_music
 from mmy_backend.render.music import MusicClipInput, music_schedule
 from mmy_backend.render.timeline import Timeline, build_timeline, timeline_slides_from_project
@@ -544,6 +544,8 @@ class ExportManager:
                     cancel=job.cancel,
                     audio_input=audio_input,
                     shaders_dir=self._shaders_dir,
+                    load_video=video_loader(self._media),
+                    project_slides=job.project.slides,
                 )
             finally:
                 (job.directory / MIX_FILENAME).unlink(missing_ok=True)
