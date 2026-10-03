@@ -98,6 +98,15 @@ installation (§8). [E]
 - **3D/particles, WMTFX (13):** Flip, Slide Up, Slide Up Center, Roll, Spin
   Out, Page Curl ×2, Shatter ×4, Whirlwind, Shrink
 
+> **Status (2026-10-03, OpenSpec change `add-transition-catalog`):** all of
+> Basic (9) and SMPTE wipes (34) above are implemented as 41 catalog entries
+> (plus the 6 MVP transitions already in `add-slideshow-mvp`: Fade, Dissolve,
+> Pixelate, Checkerboard, and one preset each of Wipe and Circle) — see
+> `packages/catalog/transitions.json` for the exact entry per MaskNum/GUID.
+> The 13 WMTFX 3D/particle transitions remain open; they need a 3D-quad
+> renderer or a particle system, which this project does not have yet (no
+> open template for either, per the research above).
+
 ### Video effects: 30 in the XML, probably 28 in the UI [V]
 - Sepia, Negative*, Posterize, Threshold, Hue Cycle, Grayscale
 - Brightness ±
