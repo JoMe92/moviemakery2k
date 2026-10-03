@@ -400,6 +400,7 @@ def _music_project(
     [audio] = _upload(client, [("tune.mp3", sine.read_bytes())])
     slides = [
         {
+            "kind": "image",
             "id": f"s{i}",
             "mediaId": media_id,
             "duration": 1.0,
@@ -418,7 +419,7 @@ def _music_project(
             "fadeOut": False,
         }
     ]
-    project = {"schemaVersion": 2, "slides": slides, "music": clips if music else []}
+    project = {"schemaVersion": 3, "slides": slides, "music": clips if music else []}
     res = client.put("/api/project", json=project)
     assert res.status_code == 200, res.text
     return images, audio

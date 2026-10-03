@@ -209,12 +209,14 @@ def frame_time(n: int, fps: float) -> float:
 
 
 def timeline_slide_from_project(slide: Slide) -> TimelineSlide:
-    """A project element as input to the time model."""
+    """A project element as input to the time model; a video slide's duration is
+    always `trimOut - trimIn` (add-timeline-editing design.md D1)."""
     ref = slide.transition_in
+    duration = slide.duration if slide.kind == "image" else slide.trim_out - slide.trim_in
     return TimelineSlide(
         id=slide.id,
         media_id=slide.media_id,
-        duration=slide.duration,
+        duration=duration,
         transition_in=(
             TransitionIn(transition_id=ref.transition_id, duration=ref.duration)
             if ref is not None

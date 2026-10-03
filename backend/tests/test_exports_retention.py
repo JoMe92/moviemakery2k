@@ -54,9 +54,15 @@ def client(settings: Settings, fake: FakeExport) -> Iterator[TestClient]:
         Image.new("RGB", (8, 6), (200, 10, 10)).save(buf, "PNG")
         res = test_client.post("/api/media", files=[("files", ("a.png", buf.getvalue()))])
         media_id = res.json()["items"][0]["item"]["id"]
-        slide = {"id": "s0", "mediaId": media_id, "duration": 1.0, "transitionIn": None}
+        slide = {
+            "kind": "image",
+            "id": "s0",
+            "mediaId": media_id,
+            "duration": 1.0,
+            "transitionIn": None,
+        }
         res = test_client.put(
-            "/api/project", json={"schemaVersion": 2, "slides": [slide], "music": []}
+            "/api/project", json={"schemaVersion": 3, "slides": [slide], "music": []}
         )
         assert res.status_code == 200, res.text
         yield test_client

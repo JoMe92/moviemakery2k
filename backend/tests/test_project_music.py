@@ -21,10 +21,10 @@ from mmy_backend.config import Settings
 from mmy_backend.main import create_app
 from mmy_backend.project import (
     MAX_MUSIC_CLIPS,
+    ImageSlide,
     MusicClip,
     Project,
     ProjectStore,
-    Slide,
     migrate_project_data,
     remove_media_slides,
 )
@@ -80,7 +80,13 @@ def _media(client: TestClient) -> tuple[list[str], list[str]]:
 
 
 def _slide(slide_id: str, media_id: str) -> dict[str, Any]:
-    return {"id": slide_id, "mediaId": media_id, "duration": 3.0, "transitionIn": None}
+    return {
+        "kind": "image",
+        "id": slide_id,
+        "mediaId": media_id,
+        "duration": 3.0,
+        "transitionIn": None,
+    }
 
 
 def _clip(clip_id: str, media_id: str, **fields: Any) -> dict[str, Any]:
@@ -99,7 +105,7 @@ def _clip(clip_id: str, media_id: str, **fields: Any) -> dict[str, Any]:
 
 def _project(images: list[str], audio: list[str]) -> dict[str, Any]:
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "slides": [_slide("s1", images[0]), _slide("s2", images[1])],
         "music": [
             _clip("m1", audio[0], trimStart=0.5, trimEnd=2.5, volume=0.5, fadeIn=True),
@@ -145,28 +151,29 @@ def test_max_music_clips_are_accepted(client: TestClient) -> None:
     assert client.put("/api/project", json=project).status_code == 200
 
 
-# --- Migration from version 1 ----------------------------------------------------------
+# --- Migration from version 1 and version 2 ---------------------------------------------
 
 
-def test_version_1_file_loads_with_empty_music_and_saves_as_version_2(
+def test_version_1_file_loads_with_empty_music_and_saves_as_current_version(
     settings: Settings,
 ) -> None:
     with TestClient(create_app(settings)) as client:
         images, audio = _media(client)
-    v1 = {
-        "schemaVersion": 1,
-        "slides": [
-            _slide("s1", images[0]),
-            {**_slide("s2", images[1]), "transitionIn": {"transitionId": "fade", "duration": 1}},
-        ],
-    }
+    # A version-1 slide has no `kind` either; the migration adds it on the way to version 3.
+    v1_slides: list[dict[str, Any]] = [
+        _slide("s1", images[0]),
+        {**_slide("s2", images[1]), "transitionIn": {"transitionId": "fade", "duration": 1}},
+    ]
+    for slide in v1_slides:
+        del slide["kind"]
+    v1 = {"schemaVersion": 1, "slides": v1_slides}
     project_file = settings.data_dir / "project.json"
     project_file.write_text(json.dumps(v1))
 
     with TestClient(create_app(settings)) as client:
         loaded = client.get("/api/project").json()
         assert loaded == {
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "slides": [
                 _slide("s1", images[0]),
                 {
@@ -184,32 +191,94 @@ def test_version_1_file_loads_with_empty_music_and_saves_as_version_2(
         assert client.put("/api/project", json=loaded).status_code == 200
 
     on_disk = json.loads(project_file.read_text())
-    assert on_disk["schemaVersion"] == 2
+    assert on_disk["schemaVersion"] == 3
     assert [c["id"] for c in on_disk["music"]] == ["m1"]
     assert ProjectStore(settings.data_dir).get().model_dump(mode="json") == on_disk
 
 
-def test_version_1_file_cascade_writes_version_2(settings: Settings) -> None:
+def test_version_1_file_cascade_writes_current_version(settings: Settings) -> None:
     settings.data_dir.mkdir(parents=True)
+    slide = _slide("s1", "a" * 32)
+    del slide["kind"]
     (settings.data_dir / "project.json").write_text(
-        json.dumps({"schemaVersion": 1, "slides": [_slide("s1", "a" * 32)]})
+        json.dumps({"schemaVersion": 1, "slides": [slide]})
     )
     store = ProjectStore(settings.data_dir)
     asyncio.run(store.remove_media("a" * 32))
     assert json.loads((settings.data_dir / "project.json").read_text()) == {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "slides": [],
         "music": [],
     }
 
 
+def test_version_2_file_loads_slides_as_image_and_saves_as_current_version(
+    settings: Settings,
+) -> None:
+    with TestClient(create_app(settings)) as client:
+        images, _audio = _media(client)
+    v2_slide = _slide("s1", images[0])
+    del v2_slide["kind"]
+    v2 = {"schemaVersion": 2, "slides": [v2_slide], "music": []}
+    project_file = settings.data_dir / "project.json"
+    project_file.write_text(json.dumps(v2))
+
+    with TestClient(create_app(settings)) as client:
+        loaded = client.get("/api/project").json()
+        assert loaded == {"schemaVersion": 3, "slides": [_slide("s1", images[0])], "music": []}
+        # Loading alone does not rewrite the file.
+        assert json.loads(project_file.read_text()) == v2
+
+        assert client.put("/api/project", json=loaded).status_code == 200
+
+    on_disk = json.loads(project_file.read_text())
+    assert on_disk == loaded
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
-        ({"schemaVersion": 1, "slides": []}, {"schemaVersion": 2, "slides": [], "music": []}),
+        ({"schemaVersion": 1, "slides": []}, {"schemaVersion": 3, "slides": [], "music": []}),
         (
             {"schemaVersion": 2, "slides": [], "music": []},
-            {"schemaVersion": 2, "slides": [], "music": []},
+            {"schemaVersion": 3, "slides": [], "music": []},
+        ),
+        (
+            {
+                "schemaVersion": 2,
+                "slides": [{"id": "s1", "mediaId": "m", "duration": 3.0, "transitionIn": None}],
+                "music": [],
+            },
+            {
+                "schemaVersion": 3,
+                "slides": [
+                    {
+                        "kind": "image",
+                        "id": "s1",
+                        "mediaId": "m",
+                        "duration": 3.0,
+                        "transitionIn": None,
+                    }
+                ],
+                "music": [],
+            },
+        ),
+        # A slide that already carries `kind` (e.g. a video slide) is left untouched.
+        (
+            {
+                "schemaVersion": 2,
+                "slides": [
+                    {"kind": "video", "id": "v1", "mediaId": "m", "trimIn": 0, "trimOut": 5}
+                ],
+                "music": [],
+            },
+            {
+                "schemaVersion": 3,
+                "slides": [
+                    {"kind": "video", "id": "v1", "mediaId": "m", "trimIn": 0, "trimOut": 5}
+                ],
+                "music": [],
+            },
         ),
         # Not a clean version 1: left as is, so validation rejects it.
         ({"schemaVersion": 1, "slides": [], "music": []}, None),
@@ -223,7 +292,7 @@ def test_migrate_project_data(raw: Any, expected: Any) -> None:
 @pytest.mark.parametrize(
     "content",
     [
-        {"schemaVersion": 3, "slides": [], "music": []},
+        {"schemaVersion": 4, "slides": [], "music": []},
         {"schemaVersion": 1, "slides": [], "music": []},
         {"schemaVersion": 2, "slides": []},
         {"schemaVersion": 1, "slides": [{"id": "x"}]},
@@ -233,7 +302,7 @@ def test_invalid_stored_project_counts_as_corrupt(settings: Settings, content: A
     settings.data_dir.mkdir(parents=True)
     (settings.data_dir / "project.json").write_text(json.dumps(content))
     store = ProjectStore(settings.data_dir)
-    assert store.get() == Project(schema_version=2, slides=[], music=[])
+    assert store.get() == Project(schema_version=3, slides=[], music=[])
 
 
 # --- Rejections ---------------------------------------------------------------------------
@@ -461,8 +530,8 @@ def test_remove_media_slides_drops_music_clips() -> None:
         )
 
     project = Project(
-        schema_version=2,
-        slides=[Slide(id="s", media_id="img", duration=3, transition_in=None)],
+        schema_version=3,
+        slides=[ImageSlide(kind="image", id="s", media_id="img", duration=3, transition_in=None)],
         music=[clip("a", "x"), clip("b", "y"), clip("c", "x")],
     )
     updated = remove_media_slides(project, "x")
@@ -546,7 +615,7 @@ def test_delete_audio_is_rejected_while_an_export_uses_it(
 def test_openapi_documents_music_clip(client: TestClient) -> None:
     schemas = client.get("/openapi.json").json()["components"]["schemas"]
     assert schemas["Project"]["required"] == ["schemaVersion", "slides", "music"]
-    assert schemas["Project"]["properties"]["schemaVersion"]["const"] == 2
+    assert schemas["Project"]["properties"]["schemaVersion"]["const"] == 3
     clip = schemas["MusicClip"]
     assert clip["required"] == [
         "id",

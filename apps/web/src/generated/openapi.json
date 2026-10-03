@@ -322,12 +322,16 @@
           "project.transitionDuration.offGrid",
           "project.musicVolume.outOfRange",
           "project.musicTrim.negative",
+          "project.slideTrim.negative",
           "project.invalid",
           "project.slide.duplicateId",
           "project.slide.unknownMedia",
           "project.slide.firstHasTransition",
           "project.slide.unknownTransition",
           "project.slide.notImage",
+          "project.slide.notVideo",
+          "project.slide.trimOutBeyondFile",
+          "project.slide.trimInNotBeforeTrimOut",
           "project.music.duplicateId",
           "project.music.unknownMedia",
           "project.music.notAudio",
@@ -617,6 +621,55 @@
           "previewUrl"
         ],
         "title": "ImageItem",
+        "type": "object"
+      },
+      "ImageSlide": {
+        "additionalProperties": false,
+        "properties": {
+          "duration": {
+            "description": "Display duration in seconds",
+            "maximum": 60.0,
+            "minimum": 0.5,
+            "multipleOf": 0.25,
+            "title": "Duration",
+            "type": "number"
+          },
+          "id": {
+            "description": "Assigned by the client, unique within the project",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "image",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of an image from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "transitionIn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Incoming transition from the previous element; always null for the first"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "mediaId",
+          "duration",
+          "transitionIn"
+        ],
+        "title": "ImageSlide",
         "type": "object"
       },
       "MediaDeleteResponse": {
@@ -946,7 +999,7 @@
             "type": "array"
           },
           "schemaVersion": {
-            "const": 2,
+            "const": 3,
             "title": "Schemaversion",
             "type": "integer"
           },
@@ -1041,47 +1094,21 @@
         "type": "object"
       },
       "Slide": {
-        "additionalProperties": false,
-        "properties": {
-          "duration": {
-            "description": "Display duration in seconds",
-            "maximum": 60.0,
-            "minimum": 0.5,
-            "multipleOf": 0.25,
-            "title": "Duration",
-            "type": "number"
+        "discriminator": {
+          "mapping": {
+            "image": "#/components/schemas/ImageSlide",
+            "video": "#/components/schemas/VideoSlide"
           },
-          "id": {
-            "description": "Assigned by the client, unique within the project",
-            "pattern": "^[A-Za-z0-9_-]{1,64}$",
-            "title": "Id",
-            "type": "string"
-          },
-          "mediaId": {
-            "description": "ID of a medium from /api/media",
-            "title": "Mediaid",
-            "type": "string"
-          },
-          "transitionIn": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TransitionRef"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Incoming transition from the previous element; always null for the first"
-          }
+          "propertyName": "kind"
         },
-        "required": [
-          "id",
-          "mediaId",
-          "duration",
-          "transitionIn"
-        ],
-        "title": "Slide",
-        "type": "object"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ImageSlide"
+          },
+          {
+            "$ref": "#/components/schemas/VideoSlide"
+          }
+        ]
       },
       "StaticPhase": {
         "additionalProperties": false,
@@ -1518,6 +1545,61 @@
           "posterUrl"
         ],
         "title": "VideoItem",
+        "type": "object"
+      },
+      "VideoSlide": {
+        "additionalProperties": false,
+        "description": "A video clip element (add-timeline-editing design.md D1); its length is\nalways `trimOut - trimIn`, there is no separate duration field.",
+        "properties": {
+          "id": {
+            "description": "Assigned by the client, unique within the project",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of a video from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "transitionIn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Incoming transition from the previous element; always null for the first"
+          },
+          "trimIn": {
+            "description": "Start within the video in seconds (new clip: 0)",
+            "minimum": 0.0,
+            "title": "Trimin",
+            "type": "number"
+          },
+          "trimOut": {
+            "description": "End within the video in seconds (new clip: the video's full duration)",
+            "minimum": 0.0,
+            "title": "Trimout",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "mediaId",
+          "trimIn",
+          "trimOut",
+          "transitionIn"
+        ],
+        "title": "VideoSlide",
         "type": "object"
       }
     }
