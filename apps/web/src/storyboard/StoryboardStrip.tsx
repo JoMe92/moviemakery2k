@@ -15,6 +15,8 @@ import { DurationDialog } from "../ui/DurationDialog";
 import { STRIP_DROPPABLE_ID } from "./dropLogic";
 import { SlideTile } from "./SlideTile";
 import { useInsertIndex } from "./StoryboardDnd";
+import { stepTileSize, useTileSize } from "./tileSize";
+import { usePinch } from "../ui/usePinch";
 import styles from "./StoryboardStrip.module.css";
 
 type Target = { kind: "slide" | "transition"; slideId: string };
@@ -41,6 +43,13 @@ export function StoryboardStrip() {
   const layout = useLayoutMode();
   const stepHint = layout.mode !== "wide";
   const touch = isTouchLayout(layout);
+  const tileSize = useTileSize();
+  // Two-finger zoom of the tile size (design.md D12).
+  const pinch = usePinch(
+    () => stepTileSize(1),
+    () => stepTileSize(-1),
+    touch,
+  );
   // Transition sheet of one slot (touch operation, add-mobile-layout D9).
   const [transitionSheet, setTransitionSheet] = useState<string | null>(null);
   // During playback: the picture currently visible (changes only when the picture changes).
@@ -136,6 +145,8 @@ export function StoryboardStrip() {
       ref={setNodeRef}
       className={styles.strip}
       data-testid="storyboard-strip"
+      data-tile-size={tileSize}
+      {...pinch}
       data-over={(empty && isOver && insertIndex !== null) || undefined}
     >
       {empty ? (

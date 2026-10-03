@@ -222,6 +222,8 @@ export const de = {
     transitionDuration: "Übergangsdauer (Sekunden):",
     transition: "Übergang:",
   },
+    smaller: "Kleiner",
+    larger: "Größer",
   dnd: {
     audio: "Audio „{name}“",
     musicClip: "Musikstück {number}",

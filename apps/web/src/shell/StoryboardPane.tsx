@@ -2,7 +2,8 @@ import { type ReactNode, useId } from "react";
 import { useT } from "../i18n/useT";
 import { Button } from "../ui/Button";
 import { TimelineIcon } from "../ui/icons";
-import { useLayoutMode } from "./layoutMode";
+import { stepTileSize, TILE_SIZES, useTileSize } from "../storyboard/tileSize";
+import { isTouchLayout, useLayoutMode } from "./layoutMode";
 import pane from "./Pane.module.css";
 import styles from "./StoryboardPane.module.css";
 
@@ -19,7 +20,10 @@ export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
   const headingId = useId();
   const isEmpty = children === undefined || children === null || children === false;
   // The disabled timeline toggle is left out on phones (design.md D3).
-  const compact = useLayoutMode().mode === "compact";
+  const layout = useLayoutMode();
+  const compact = layout.mode === "compact";
+  const touch = isTouchLayout(layout);
+  const tileSize = useTileSize();
   return (
     <section className={`${pane.pane} ${styles.storyboard}`} aria-labelledby={headingId}>
       <div className={pane.header}>
@@ -37,6 +41,25 @@ export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
         <h2 id={headingId} className={pane.heading}>
           {t("shell.storyboard")}
         </h2>
+        {touch ? (
+          <>
+            {/* Alternative to the two-finger zoom of the tiles (design.md D12). */}
+            <Button
+              variant="toolbar"
+              disabled={tileSize === TILE_SIZES[0]}
+              onClick={() => stepTileSize(-1)}
+            >
+              {t("storyboard.smaller")}
+            </Button>
+            <Button
+              variant="toolbar"
+              disabled={tileSize === TILE_SIZES[TILE_SIZES.length - 1]}
+              onClick={() => stepTileSize(1)}
+            >
+              {t("storyboard.larger")}
+            </Button>
+          </>
+        ) : null}
       </div>
       <div className={`${pane.body} ${styles.body}`}>
         {isEmpty ? <p className={styles.hint}>{t("shell.storyboardHint")}</p> : children}

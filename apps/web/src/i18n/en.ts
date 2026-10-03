@@ -224,6 +224,8 @@ export const en = {
     transitionDuration: "Transition duration (seconds):",
     transition: "Transition:",
   },
+    smaller: "Smaller",
+    larger: "Larger",
   dnd: {
     audio: "Audio “{name}”",
     musicClip: "Music clip {number}",

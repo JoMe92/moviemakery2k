@@ -277,3 +277,28 @@
 :global(:root[data-layout="compact"]) .list {
   overscroll-behavior: contain;
 }
+
+/* Tile sizes (add-mobile-layout design.md D12); "medium" is the desktop size. */
+.strip[data-tile-size="small"] .tile {
+  width: 80px;
+}
+
+.strip[data-tile-size="small"] .thumb {
+  width: 70px;
+  height: 52px;
+}
+
+.strip[data-tile-size="large"] .tile {
+  width: 144px;
+}
+
+.strip[data-tile-size="large"] .thumb {
+  width: 134px;
+  height: 100px;
+}
+
+/* Pinch zooms the tiles, not the page. */
+:global(:root[data-pointer="coarse"]) .strip,
+:global(:root[data-layout="compact"]) .strip {
+  touch-action: pan-x pan-y;
+}
