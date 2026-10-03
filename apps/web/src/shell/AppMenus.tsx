@@ -32,6 +32,10 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const canRedo = useAppStore((s) => s.redoStack.length > 0);
   const undo = useAppStore((s) => s.undo);
   const redo = useAppStore((s) => s.redo);
+  const canPaste = useAppStore((s) => s.clipboard !== null);
+  const cut = useAppStore((s) => s.cut);
+  const copy = useAppStore((s) => s.copy);
+  const paste = useAppStore((s) => s.paste);
   const { t } = useT();
 
   const menus = useMemo(
@@ -52,6 +56,10 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
               : undefined,
           undo: canUndo ? undo : undefined,
           redo: canRedo ? redo : undefined,
+          // Cut/copy of the storyboard selection (music clips follow in TASK-WEB-054).
+          cut: selection ? cut : undefined,
+          copy: selection ? copy : undefined,
+          paste: canPaste ? paste : undefined,
           fitToMusic: canFit
             ? () => {
                 const result = fitToMusic();
@@ -80,12 +88,16 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
       canRedo,
       undo,
       redo,
+      canPaste,
+      cut,
+      copy,
+      paste,
       t,
     ],
   );
 
-  // Global shortcuts (design.md D3): Strg+Z/Strg+Y/Strg+Umschalt+Z, not while
-  // typing or dragging. Menu items stay the equally usable alternative.
+  // Global shortcuts (design.md D3): Strg+Z/Y/Umschalt+Z and Strg+X/C/V, not
+  // while typing or dragging. Menu items stay the equally usable alternative.
   const storeApi = useAppStoreApi();
   const draggingRef = useRef(false);
   useDndMonitor({

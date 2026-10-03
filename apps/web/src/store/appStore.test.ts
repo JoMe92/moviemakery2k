@@ -371,6 +371,91 @@ describe("appStore", () => {
     });
   });
 
+  describe("clipboard (cut/copy/paste a storyboard picture, spec edit-commands)", () => {
+    it("copies, then pastes a duplicate right after the original without a transition, selected", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addSlide("b");
+      const [first, second] = st().slides.map((s) => s.id) as [string, string];
+      st().setTransition(second, "fade");
+      st().select({ kind: "slide", slideId: first });
+
+      st().copy();
+      expect(st().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+      // The original is still there and still selected.
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+      expect(st().selection).toEqual({ kind: "slide", slideId: first });
+
+      st().paste();
+      const ids = st().slides.map((s) => s.id);
+      expect(ids).toHaveLength(3);
+      expect(ids[0]).toBe(first);
+      expect(ids[2]).toBe(second);
+      const pastedId = ids[1] as string;
+      expect(st().slides[1]).toMatchObject({ mediaId: "a", duration: 5, transitionIn: null });
+      expect(st().selection).toEqual({ kind: "slide", slideId: pastedId });
+      // Copy itself did not touch the project; paste is its own, single undo step.
+      st().undo();
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+    });
+
+    it("cuts and pastes a picture: removal and insertion are separate undo steps, cut is one step", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addSlide("b");
+      const [first, second] = st().slides.map((s) => s.id) as [string, string];
+      const stepsBeforeCut = st().undoStack.length;
+
+      st().select({ kind: "slide", slideId: first });
+      st().cut();
+      expect(st().slides.map((s) => s.id)).toEqual([second]);
+      expect(st().selection).toBeNull();
+      expect(st().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+      // Exactly one more undo step for the whole cut (not two for copy+remove).
+      expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
+
+      st().select({ kind: "slide", slideId: second });
+      st().paste();
+      expect(st().slides.map((s) => s.mediaId)).toEqual(["b", "a"]);
+
+      st().undo(); // undoes the paste only
+      expect(st().slides.map((s) => s.id)).toEqual([second]);
+      st().undo(); // undoes the cut's removal; the original is back
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+    });
+
+    it("pastes at the end when nothing is selected", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().select({ kind: "slide", slideId: st().slides[0]?.id ?? "" });
+      st().copy();
+      st().select(null);
+      st().addSlide("b");
+      st().paste();
+      expect(st().slides.map((s) => s.mediaId)).toEqual(["a", "b", "a"]);
+    });
+
+    it("paste does nothing while the clipboard is empty; cut/copy do nothing without a selection", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      const before = st().slides;
+      st().paste();
+      expect(st().slides).toBe(before);
+      st().cut();
+      st().copy();
+      expect(st().slides).toBe(before);
+      expect(st().clipboard).toBeNull();
+    });
+  });
+
   describe("playback", () => {
     async function threeSlides() {
       const store = createAppStore(

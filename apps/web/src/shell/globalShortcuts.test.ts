@@ -11,6 +11,16 @@ const el = (html: string) => {
 describe("global shortcuts (design.md D3)", () => {
   const ctx = { dragging: false };
 
+  it("Strg+X/C/V are cut/copy/paste", () => {
+    expect(matchShortcut({ key: "x", ctrlKey: true, target: document.body }, ctx)).toBe("cut");
+    expect(matchShortcut({ key: "c", ctrlKey: true, target: document.body }, ctx)).toBe("copy");
+    expect(matchShortcut({ key: "v", ctrlKey: true, target: document.body }, ctx)).toBe("paste");
+    // Shift variants of cut/copy/paste are not shortcuts here.
+    expect(
+      matchShortcut({ key: "c", ctrlKey: true, shiftKey: true, target: document.body }, ctx),
+    ).toBeNull();
+  });
+
   it("Strg+Z is undo, Strg+Y and Strg+Umschalt+Z are redo", () => {
     expect(matchShortcut({ key: "z", ctrlKey: true, target: document.body }, ctx)).toBe("undo");
     expect(matchShortcut({ key: "y", ctrlKey: true, target: document.body }, ctx)).toBe("redo");

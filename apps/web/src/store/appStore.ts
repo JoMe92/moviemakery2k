@@ -78,6 +78,13 @@ export interface HistoryEntry {
 /** Undo history keeps at most this many steps (spec edit-commands, design.md D1). */
 export const UNDO_LIMIT = 50;
 
+/**
+ * Internal clipboard (spec edit-commands, design.md D4): at most one element,
+ * holding only its content (never an incoming transition, which belongs to
+ * the storyboard slot, not the picture).
+ */
+export type ClipboardEntry = { kind: "slide"; mediaId: string; duration: number } | null;
+
 export interface UploadEntry {
   key: string;
   filename: string;
@@ -105,6 +112,8 @@ export interface AppState {
   undoStack: HistoryEntry[];
   /** Redo history; cleared by any new change after an undo. */
   redoStack: HistoryEntry[];
+  /** Internal single-element clipboard (design.md D4); replaced wholesale by cut/copy. */
+  clipboard: ClipboardEntry;
   /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
@@ -158,6 +167,17 @@ export interface AppState {
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
   removeTransition(slideId: string): void;
+
+  /**
+   * Edit → Cut/Copy/Paste for the selected storyboard picture (spec
+   * edit-commands, design.md D4/D5). No effect without a selection (cut,
+   * copy) or an empty clipboard (paste). Paste inserts a hard cut (no
+   * incoming transition) after the selected picture, or at the end, and
+   * selects it; cut is one undo step for the whole operation.
+   */
+  cut(): void;
+  copy(): void;
+  paste(): void;
 
   /** Select a clip on the music track (null clears); ends a picture selection. */
   selectMusicClip(clipId: string | null): void;
@@ -329,6 +349,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       musicSelection: null,
       undoStack: [],
       redoStack: [],
+      clipboard: null,
       previewTransitionId: null,
       playback: STOPPED,
       demo: null,
@@ -560,6 +581,33 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       removeTransition(slideId) {
         commit(updateSlide(get().slides, slideId, (s) => ({ ...s, transitionIn: null })));
+      },
+
+      cut() {
+        const { selection, slides } = get();
+        const slide = selection && slides.find((s) => s.id === selection.slideId);
+        if (!slide) return;
+        set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+        commit(removeSlide(slides, slide.id));
+      },
+      copy() {
+        const { selection, slides } = get();
+        const slide = selection && slides.find((s) => s.id === selection.slideId);
+        if (!slide) return;
+        set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+      },
+      paste() {
+        const { clipboard, selection, slides } = get();
+        if (!clipboard) return;
+        const newSlide: Slide = {
+          id: newSlideId(),
+          mediaId: clipboard.mediaId,
+          duration: clipboard.duration,
+          transitionIn: null,
+        };
+        const at = selection ? slides.findIndex((s) => s.id === selection.slideId) + 1 : slides.length;
+        commit(insertSlide(slides, newSlide, at));
+        get().select({ kind: "slide", slideId: newSlide.id });
       },
 
       selectMusicClip(clipId) {

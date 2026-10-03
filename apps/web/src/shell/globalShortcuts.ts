@@ -5,7 +5,7 @@
  */
 import { isTypingTarget } from "../player/controls";
 
-export type ShortcutAction = "undo" | "redo";
+export type ShortcutAction = "undo" | "redo" | "cut" | "copy" | "paste";
 
 export interface ShortcutKeyEvent {
   key: string;
@@ -26,6 +26,10 @@ export function matchShortcut(
   if (context.dragging || isTypingTarget(event.target)) return null;
   const key = event.key.toLowerCase();
   if (key === "z") return event.shiftKey ? "redo" : "undo";
-  if (key === "y" && !event.shiftKey) return "redo";
+  if (event.shiftKey) return null;
+  if (key === "y") return "redo";
+  if (key === "x") return "cut";
+  if (key === "c") return "copy";
+  if (key === "v") return "paste";
   return null;
 }

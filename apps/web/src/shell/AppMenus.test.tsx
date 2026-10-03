@@ -55,6 +55,39 @@ describe("Menu bar", () => {
     expect(store.getState().slides).toHaveLength(2);
   });
 
+  it("Edit → Cut/Copy/Paste via the menu and Strg+X/C/V (spec edit-commands)", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp();
+    await ready;
+    store.getState().addSlide("a");
+    const id = store.getState().slides[0]?.id ?? "";
+    store.getState().select({ kind: "slide", slideId: id });
+
+    await user.keyboard("{Control>}c{/Control}");
+    expect(store.getState().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    const paste = screen.getByRole("menuitem", { name: "Einfügen" });
+    expect(paste).not.toHaveAttribute("aria-disabled");
+    await user.click(paste);
+    expect(store.getState().slides).toHaveLength(2);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    await user.keyboard("{Control>}x{/Control}");
+    expect(store.getState().slides).toHaveLength(1);
+    await user.keyboard("{Control>}v{/Control}");
+    expect(store.getState().slides).toHaveLength(2);
+  });
+
+  it("Ausschneiden/Kopieren/Einfügen are disabled without a selection or an empty clipboard", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    for (const name of ["Ausschneiden", "Kopieren", "Einfügen"]) {
+      expect(screen.getByRole("menuitem", { name })).toHaveAttribute("aria-disabled", "true");
+    }
+  });
+
   it("Strg+Z is ignored while focus is in an input field (e.g. the duration dialog)", async () => {
     const user = userEvent.setup();
     const { store, ready } = renderApp();
