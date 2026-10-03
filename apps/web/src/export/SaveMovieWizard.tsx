@@ -25,6 +25,7 @@ import {
   percent,
 } from "./exportFormat";
 import styles from "./SaveMovieWizard.module.css";
+import { currentShareEnv, type ShareEnv, shareFile, useShareFile } from "./share";
 import { failureMessage, useExportRun } from "./useExportRun";
 
 /** Starts the download of the finished file (replaceable in tests). */
@@ -50,6 +51,8 @@ export interface SaveMovieWizardProps {
   /** Run before starting (e.g. finish the autosave so the snapshot is current). */
   prepare?: () => Promise<void>;
   download?: DownloadFn;
+  /** Web Share API and fetch for "Share…" (replaceable in tests). */
+  share?: ShareEnv;
 }
 
 /** The wizard; its state starts fresh every time it opens. */
@@ -58,7 +61,13 @@ export function SaveMovieWizard({ open, ...rest }: SaveMovieWizardProps) {
 }
 
 /** Connected to the app store: opens via `openExportWizard()`. */
-export function SaveMovieWizardFromStore({ download }: { download?: DownloadFn }) {
+export function SaveMovieWizardFromStore({
+  download,
+  share,
+}: {
+  download?: DownloadFn;
+  share?: ShareEnv;
+}) {
   const open = useAppStore((s) => s.exportWizardOpen);
   const close = useAppStore((s) => s.closeExportWizard);
   const api = useAppStore((s) => s.exportApi);
@@ -72,6 +81,7 @@ export function SaveMovieWizardFromStore({ download }: { download?: DownloadFn }
       duration={duration}
       prepare={flushSave}
       download={download}
+      share={share}
     />
   );
 }
@@ -93,6 +103,7 @@ function Wizard({
   duration,
   prepare,
   download = downloadViaAnchor,
+  share,
 }: Omit<SaveMovieWizardProps, "open">) {
   const { t, locale } = useT();
   const [step, setStep] = useState<Step>("name");
@@ -110,6 +121,25 @@ function Wizard({
   // On failure, the progress page stays behind the error dialog.
   const view: View = run.phase === "idle" ? step : run.phase === "done" ? "done" : "progress";
   const busy = run.phase === "starting" || run.phase === "running";
+
+  // "Share…" (add-mobile-delivery design.md D8): preload the finished file.
+  const [shareEnv] = useState<ShareEnv>(() => share ?? currentShareEnv());
+  const doneJob = run.phase === "done" ? run.job : null;
+  const doneFileName = `${doneJob?.fileName ?? ""}${FILE_EXTENSION}`;
+  const shareState = useShareFile(
+    shareEnv,
+    doneJob ? api.exportFileUrl(doneJob.id) : null,
+    doneFileName,
+  );
+  const [shareFailed, setShareFailed] = useState(false);
+  const onShare = () => {
+    if (shareState.kind !== "ready") return;
+    setShareFailed(false);
+    // Called directly in the tap: the share dialog needs the user gesture.
+    void shareFile(shareEnv, shareState.file, doneFileName).then((outcome) =>
+      setShareFailed(outcome === "failed"),
+    );
+  };
 
   // On step change, focus the first control (keyboard operation).
   const lastView = useRef<View | null>(null);
@@ -253,19 +283,32 @@ function Wizard({
       </>
     );
   } else {
-    const job = run.phase === "done" ? run.job : null;
-    const fileName = `${job?.fileName ?? ""}${FILE_EXTENSION}`;
+    const job = doneJob;
+    const fileName = doneFileName;
     body = (
       <>
         <p>{t("export.saved", { file: fileName })}</p>
-        <p>
+        <p className={styles.actions}>
           <Button
             data-autofocus
             onClick={() => job && download(api.exportFileUrl(job.id), fileName)}
           >
             {t("export.download")}
           </Button>
+          {shareState.kind !== "hidden" ? (
+            <Button disabled={shareState.kind !== "ready"} onClick={onShare}>
+              {t("export.share")}
+            </Button>
+          ) : null}
         </p>
+        <p className={styles.hint} aria-live="polite">
+          {shareState.kind === "preparing" ? t("export.sharePreparing") : null}
+        </p>
+        {shareFailed ? (
+          <p className={styles.errorMessage} role="alert">
+            {t("export.shareFailed")}
+          </p>
+        ) : null}
         <p className={styles.hint}>{t("export.finishHint")}</p>
       </>
     );
