@@ -1,6 +1,7 @@
 """Configuration from environment variables.
 
-MMY_DATA_DIR, MMY_CATALOG_DIR, MMY_WEB_DIST and MMY_SHADERS_DIR (export renderer).
+MMY_DATA_DIR, MMY_CATALOG_DIR, MMY_WEB_DIST, MMY_SHADERS_DIR (export renderer) and
+MMY_ACCESS_TOKEN (LAN mode; unset means no access protection).
 """
 
 import os
@@ -20,6 +21,8 @@ class Settings:
     web_dist: Path
     shaders_dir: Path = DEFAULT_SHADERS_DIR
     """packages/shaders: prelude/epilogue/vertex.glsl and transitions/<id>.glsl"""
+    access_token: str | None = None
+    """LAN mode: token required for /api/ (`mmy_backend.access`); None disables the check."""
 
     @property
     def catalog_file(self) -> Path:
@@ -39,4 +42,5 @@ class Settings:
             catalog_dir=path("MMY_CATALOG_DIR", REPO_ROOT / "packages" / "catalog"),
             web_dist=path("MMY_WEB_DIST", REPO_ROOT / "apps" / "web" / "dist"),
             shaders_dir=path("MMY_SHADERS_DIR", DEFAULT_SHADERS_DIR),
+            access_token=source.get("MMY_ACCESS_TOKEN") or None,
         )

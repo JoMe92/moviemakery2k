@@ -10,7 +10,7 @@ from mmy_backend.config import Settings
 from mmy_backend.errors import ERRORS, ErrorCode, api_error, error_message
 from mmy_backend.main import create_app
 
-CODE = re.compile(r"^(media|project|export)(\.[a-z][A-Za-z]*)+$")
+CODE = re.compile(r"^(auth|media|project|export)(\.[a-z][A-Za-z]*)+$")
 
 
 @pytest.mark.parametrize("code", sorted(ERRORS))

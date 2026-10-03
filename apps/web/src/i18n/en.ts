@@ -303,6 +303,9 @@ export const en = {
       offline: "The backend is not reachable.",
       requestFailed: "The request to the backend failed (status {status}).",
     },
+    auth: {
+      required: "Access required: open the link or QR code from the terminal again.",
+    },
     media: {
       notFound: "Media item not found.",
       tooManyFiles: "Too many files: at most {max} per import ({count} sent).",

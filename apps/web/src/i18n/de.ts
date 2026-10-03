@@ -301,6 +301,9 @@ export const de = {
       offline: "Das Backend ist nicht erreichbar.",
       requestFailed: "Die Anfrage an das Backend ist fehlgeschlagen (Status {status}).",
     },
+    auth: {
+      required: "Zugang erforderlich: Öffnen Sie den Link oder QR-Code aus dem Terminal erneut.",
+    },
     media: {
       notFound: "Das Medium wurde nicht gefunden.",
       tooManyFiles: "Zu viele Dateien: höchstens {max} je Import ({count} gesendet).",

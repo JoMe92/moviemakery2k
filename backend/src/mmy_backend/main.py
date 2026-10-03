@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from mmy_backend.access import AccessTokenMiddleware
 from mmy_backend.api import router
 from mmy_backend.catalog import load_catalog
 from mmy_backend.config import Settings
@@ -40,6 +41,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.project = ProjectStore(settings.data_dir)
     app.state.exports = exports
     app.include_router(router)
+    # LAN mode (`pixi run serve-lan`): /api/ only with the access token.
+    if settings.access_token:
+        app.add_middleware(AccessTokenMiddleware, token=settings.access_token)
     # `pixi run demo`: serve the built web app under / (one process, one port).
     if (settings.web_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.web_dist, html=True), name="web")

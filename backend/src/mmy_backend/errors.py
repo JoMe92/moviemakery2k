@@ -38,6 +38,7 @@ class ErrorCode(StrEnum):
     Never rename a code, add a new one instead.
     """
 
+    AUTH_REQUIRED = "auth.required"
     MEDIA_NOT_FOUND = "media.notFound"
     MEDIA_TOO_MANY_FILES = "media.tooManyFiles"
     MEDIA_UNSUPPORTED_TYPE = "media.unsupportedType"
@@ -98,6 +99,11 @@ class ErrorSpec:
 
 
 _SPECS: dict[str, ErrorSpec] = {
+    # --- Access -----------------------------------------------------------------
+    # 401 in the LAN mode without a valid access token (mmy_backend.access).
+    "auth.required": ErrorSpec(
+        "Access required: open the link or QR code from the terminal again."
+    ),
     # --- Media ------------------------------------------------------------------
     # 404 for an unknown or malformed media id (thumbnail, preview, delete).
     "media.notFound": ErrorSpec("Media item not found.", ("mediaId",)),
