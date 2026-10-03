@@ -46,6 +46,7 @@ from mmy_backend.catalog import TransitionCatalog
 from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.media import MediaStore, VideoItem
 from mmy_backend.project import Slide
+from mmy_backend.render.effects import IMAGE_TEXTURE_UNIT, EffectLibrary
 from mmy_backend.render.geometry import contain_rect
 from mmy_backend.render.shaders import (
     FALLBACK_TRANSITION_ID,
@@ -301,6 +302,17 @@ class FrameRenderer:
         self._black = b"\x00\x00\x00\xff" * (width * height)
         self._color = ctx.renderbuffer((width, height), components=4)
         self._fbo = ctx.framebuffer(color_attachments=[self._color])
+        # Two extra framebuffers for the effect pass (design.md D2), one per
+        # slot (0 = from/still, 1 = to): a transition may need an effect on
+        # both images at once, so one intermediate texture alone would let the
+        # second pass overwrite the first result before the main pass reads it.
+        # Textures (not renderbuffers), since the result feeds back in as a
+        # texture input to the still/transition pass that follows.
+        self._effect_textures = (ctx.texture((width, height), 4), ctx.texture((width, height), 4))
+        self._effect_fbos = (
+            ctx.framebuffer(color_attachments=[self._effect_textures[0]]),
+            ctx.framebuffer(color_attachments=[self._effect_textures[1]]),
+        )
         self.peak_textures = 0
         """Maximum number of image textures alive at the same time (for tests/diagnostics)."""
 
@@ -387,6 +399,36 @@ class FrameRenderer:
             entry.texture.write(flipped)
             entry.dirty = False
         return entry.texture
+
+    # --- Effect pass (design.md D2) --------------------------------------------
+
+    def apply_effect(
+        self,
+        texture: moderngl.Texture,
+        effect_id: str | None,
+        library: EffectLibrary,
+        params: Mapping[str, float] = {},
+        slot: int = 0,
+    ) -> moderngl.Texture:
+        """Runs the effect pass ahead of the still/transition pass.
+
+        Without an effect ID, or on a missing/broken shader, returns `texture`
+        unchanged (no copy) — matches `Renderer.resolveEffect` in the browser.
+        `slot` (0 = from/still, 1 = to) picks which intermediate texture is
+        used, so a transition can apply different effects to both images at once.
+        """
+        if not effect_id:
+            return texture
+        program = library.get(effect_id)
+        if program is None:
+            return texture
+        fbo = self._effect_fbos[slot]
+        fbo.use()
+        fbo.clear(0.0, 0.0, 0.0, 1.0)
+        texture.use(location=IMAGE_TEXTURE_UNIT)
+        program.set_uniforms(resolution=(self.width, self.height), params=params)
+        program.draw()
+        return self._effect_textures[slot]
 
     # --- Drawing --------------------------------------------------------------
 
@@ -540,6 +582,10 @@ class FrameRenderer:
         self._images.clear()
         self._fbo.release()
         self._color.release()
+        for fbo in self._effect_fbos:
+            fbo.release()
+        for texture in self._effect_textures:
+            texture.release()
 
     def __enter__(self) -> Self:
         return self

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JoMe92/moviemakery2k/packages/catalog/effects.schema.json",
+  "title": "moviemakerY2K – effect catalog",
+  "type": "object",
+  "required": ["schemaVersion", "effects"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "effects": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/effect" }
+    }
+  },
+  "$defs": {
+    "effect": {
+      "type": "object",
+      "required": ["id", "names", "shader", "params", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "names": {
+          "description": "Display name per UI language; both are required",
+          "type": "object",
+          "required": ["de", "en"],
+          "additionalProperties": false,
+          "properties": {
+            "de": { "type": "string", "minLength": 1 },
+            "en": { "type": "string", "minLength": 1 }
+          }
+        },
+        "shader": {
+          "description": "File name in packages/shaders/effects/",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+\\.glsl$"
+        },
+        "params": {
+          "description": "Becomes `uniform float <name>` in the shader, 1:1",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]*$" },
+          "additionalProperties": { "type": "number" }
+        },
+        "source": {
+          "type": "object",
+          "required": ["kind", "ref"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["wmm2x-xml"] },
+            "ref": { "type": "string", "minLength": 1 },
+            "estimated": {
+              "description": "Parameters whose value is estimated rather than documented [E]",
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

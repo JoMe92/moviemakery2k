@@ -39,6 +39,7 @@ function fakeGl(failMarker?: string) {
     isContextLost: () => false,
     createTexture: () => ({}),
     createVertexArray: () => ({}),
+    createFramebuffer: () => ({}),
   };
   const gl = new Proxy(constants, {
     get(target, prop: string) {
@@ -267,5 +268,55 @@ describe("Renderer", () => {
       r.drawTitle(titleFrame() as never, { translate: { x: 0, y: 0 }, scale: 1 }, { blend: false });
       expect(calls.some((c) => c.name === "drawArrays")).toBe(false);
     });
+  });
+
+  it("skips the effect pass entirely without an effectId (no copy)", () => {
+    const { gl, calls } = fakeGl();
+    const r = new Renderer(canvasWith(gl));
+    r.resize(640, 480, 1);
+    const frame = { source: canvasWith(gl), texture: {}, width: 640, height: 480, disposed: false };
+    r.drawStill(frame as never);
+    expect(calls.some((c) => c.name === "createFramebuffer")).toBe(false);
+    const bound = calls.filter((c) => c.name === "bindTexture").map((c) => c.args[1]);
+    // Both texture units of the fade-at-0 still draw read the frame's own texture.
+    expect(bound.every((t) => t === frame.texture)).toBe(true);
+  });
+
+  it("runs the effect pass into an intermediate texture and feeds that to the main draw", () => {
+    const { gl, calls } = fakeGl();
+    const r = new Renderer(canvasWith(gl));
+    r.resize(640, 480, 1);
+    const frame = { source: canvasWith(gl), texture: {}, width: 640, height: 480, disposed: false };
+    r.drawStill(frame as never, { id: "negative", params: {} });
+
+    expect(calls.filter((c) => c.name === "createFramebuffer")).toHaveLength(1);
+    // drawStill resolves the effect once per slot (from/to), each into its own
+    // intermediate texture (one shared FBO, rebound).
+    const attachedTargets = calls
+      .filter((c) => c.name === "framebufferTexture2D")
+      .map((c) => c.args[3]);
+    expect(attachedTargets).toHaveLength(2);
+    expect(attachedTargets[0]).not.toBe(attachedTargets[1]);
+    // One extra program (the effect) on top of the fade program.
+    expect(calls.filter((c) => c.name === "linkProgram")).toHaveLength(2);
+    const bound = calls.filter((c) => c.name === "bindTexture").map((c) => c.args[1]);
+    // The effect pass itself reads the original frame texture…
+    expect(bound).toContain(frame.texture);
+    // …but the main pass (from, then to) reads the effect's intermediate textures.
+    expect(bound.at(-2)).toBe(attachedTargets[0]);
+    expect(bound.at(-1)).toBe(attachedTargets[1]);
+  });
+
+  it("falls back to the original texture and logs on an unknown effect", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { gl, calls } = fakeGl();
+    const r = new Renderer(canvasWith(gl));
+    r.resize(640, 480, 1);
+    const frame = { source: canvasWith(gl), texture: {}, width: 640, height: 480, disposed: false };
+    r.drawStill(frame as never, { id: "gibt-es-nicht", params: {} });
+    expect(err).toHaveBeenCalled();
+    expect(calls.some((c) => c.name === "createFramebuffer")).toBe(false);
+    const bound = calls.filter((c) => c.name === "bindTexture").map((c) => c.args[1]);
+    expect(bound.every((t) => t === frame.texture)).toBe(true);
   });
 });

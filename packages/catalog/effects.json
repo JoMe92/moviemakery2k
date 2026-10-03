@@ -1,0 +1,132 @@
+{
+  "$schema": "./effects.schema.json",
+  "schemaVersion": 1,
+  "effects": [
+    {
+      "id": "sepia",
+      "names": { "de": "Sepia", "en": "Sepia" },
+      "shader": "sepia.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Sepia\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation"
+      }
+    },
+    {
+      "id": "negative",
+      "names": { "de": "Negativ", "en": "Negative" },
+      "shader": "negative.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Negative\" (movie-maker-reference.md §3, possibly not visible in 2.1); GUID not verifiable without a reference installation"
+      }
+    },
+    {
+      "id": "posterize",
+      "names": { "de": "Posterisieren", "en": "Posterize" },
+      "shader": "posterize.glsl",
+      "params": { "levels": 4 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Posterize\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation",
+        "estimated": ["levels"]
+      }
+    },
+    {
+      "id": "threshold",
+      "names": { "de": "Schwellenwert", "en": "Threshold" },
+      "shader": "threshold.glsl",
+      "params": { "threshold": 0.5 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Threshold\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation",
+        "estimated": ["threshold"]
+      }
+    },
+    {
+      "id": "grayscale",
+      "names": { "de": "Schwarzweiß", "en": "Grayscale" },
+      "shader": "grayscale.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Grayscale\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation"
+      }
+    },
+    {
+      "id": "brightness-up",
+      "names": { "de": "Helligkeit +", "en": "Brightness +" },
+      "shader": "brightness-up.glsl",
+      "params": { "amount": 0.25 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Brightness\" (+ direction; movie-maker-reference.md §3); GUID not verifiable without a reference installation",
+        "estimated": ["amount"]
+      }
+    },
+    {
+      "id": "brightness-down",
+      "names": { "de": "Helligkeit −", "en": "Brightness −" },
+      "shader": "brightness-down.glsl",
+      "params": { "amount": 0.25 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Brightness\" (− direction; movie-maker-reference.md §3); GUID not verifiable without a reference installation",
+        "estimated": ["amount"]
+      }
+    },
+    {
+      "id": "mirror-horizontal",
+      "names": { "de": "Spiegeln horizontal", "en": "Mirror horizontal" },
+      "shader": "mirror-horizontal.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Mirror, Horizontal\" ~ ffmpeg hflip (movie-maker-reference.md §3/§4); GUID not verifiable without a reference installation"
+      }
+    },
+    {
+      "id": "mirror-vertical",
+      "names": { "de": "Spiegeln vertikal", "en": "Mirror vertical" },
+      "shader": "mirror-vertical.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Mirror, Vertical\" ~ ffmpeg vflip (movie-maker-reference.md §3/§4); GUID not verifiable without a reference installation"
+      }
+    },
+    {
+      "id": "rotate-90",
+      "names": { "de": "Rotieren 90°", "en": "Rotate 90°" },
+      "shader": "rotate-90.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Rotate, 90°\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation",
+        "estimated": ["direction"]
+      }
+    },
+    {
+      "id": "rotate-180",
+      "names": { "de": "Rotieren 180°", "en": "Rotate 180°" },
+      "shader": "rotate-180.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Rotate, 180°\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation"
+      }
+    },
+    {
+      "id": "rotate-270",
+      "names": { "de": "Rotieren 270°", "en": "Rotate 270°" },
+      "shader": "rotate-270.glsl",
+      "params": {},
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Video effect \"Rotate, 270°\" (movie-maker-reference.md §3); GUID not verifiable without a reference installation",
+        "estimated": ["direction"]
+      }
+    }
+  ]
+}

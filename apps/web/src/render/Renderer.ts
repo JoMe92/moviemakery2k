@@ -9,10 +9,17 @@
  *   and cached. A compile/link error is logged and falls back to Fade.
  * - A lost context silently stops drawing.
  */
+import { effectFragmentSourceFor } from "./effectSource";
 import { bufferSize, containRect, previewBufferSize } from "./geometry";
 import { FALLBACK_TRANSITION_ID, fragmentSourceFor, VERTEX_SOURCE } from "./shaderSource";
 import type { Transform as TitleTransform } from "./titlePhase";
 import { TITLE_FRAGMENT_SOURCE, TITLE_VERTEX_SOURCE } from "./titleShaderSource";
+
+/** An effect (design.md D1–D3): catalog ID plus its fixed parameters. */
+export interface EffectSpec {
+  id: string;
+  params: Readonly<Record<string, number>>;
+}
 
 export type ImageSource = ImageBitmap | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement;
 export type { TitleTransform };
@@ -47,6 +54,13 @@ interface TitleProgramInfo {
   translate: WebGLUniformLocation | null;
   scale: WebGLUniformLocation | null;
   title: WebGLUniformLocation | null;
+}
+
+interface EffectProgramInfo {
+  program: WebGLProgram;
+  resolution: WebGLUniformLocation | null;
+  image: WebGLUniformLocation | null;
+  params: Map<string, WebGLUniformLocation | null>;
 }
 
 /** How a title texture is drawn: see `Renderer.drawTitle`. */
@@ -94,8 +108,20 @@ export class Renderer {
   private readonly programs = new Map<string, ProgramInfo | null>();
   /** Lazily compiled; `undefined` = not yet attempted, `null` = compile/link failed. */
   private titleProgram: TitleProgramInfo | null | undefined;
+  /** Result per effect ID; `null` on a missing/broken shader (effect skipped). */
+  private readonly effectPrograms = new Map<string, EffectProgramInfo | null>();
   private readonly frames = new Set<FrameTexture>();
   private letterboxCanvas: Canvas2D | null = null;
+  /**
+   * One extra FBO for the effect pass (design.md D2), rebound to one of two
+   * intermediate textures: a transition may need an effect on `from` and `to`
+   * at once, so one texture alone would let the second pass overwrite the
+   * first result.
+   */
+  private effectFbo: WebGLFramebuffer | null = null;
+  private effectTextures: [WebGLTexture, WebGLTexture] | null = null;
+  private effectWidth = 0;
+  private effectHeight = 0;
   private lost = false;
   private disposed = false;
   private readonly maxSize: number;
@@ -145,6 +171,11 @@ export class Renderer {
   /** Precompiles all known transitions (otherwise this happens on the first draw). */
   precompile(ids: Iterable<string>): void {
     for (const id of ids) this.programFor(id);
+  }
+
+  /** Precompiles all known effects (otherwise this happens on the first draw). */
+  precompileEffects(ids: Iterable<string>): void {
+    for (const id of ids) this.effectProgramFor(id);
   }
 
   createFrame(source: ImageSource): FrameTexture {
@@ -205,8 +236,8 @@ export class Renderer {
   }
 
   /** A single image: Fade program with from = to, progress 0. */
-  drawStill(frame: FrameTexture): void {
-    this.drawTransition(frame, frame, FALLBACK_TRANSITION_ID, 0, {});
+  drawStill(frame: FrameTexture, effect?: EffectSpec | null): void {
+    this.drawTransition(frame, frame, FALLBACK_TRANSITION_ID, 0, {}, effect, effect);
   }
 
   drawTransition(
@@ -215,6 +246,8 @@ export class Renderer {
     transitionId: string,
     progress: number,
     params: Readonly<Record<string, number>>,
+    fromEffect?: EffectSpec | null,
+    toEffect?: EffectSpec | null,
   ): void {
     if (!this.canDraw()) return;
     const info = this.programFor(transitionId);
@@ -225,6 +258,10 @@ export class Renderer {
     const { gl } = this;
     this.ensureLetterboxed(from);
     this.ensureLetterboxed(to);
+    // Effect pass (design.md D2): runs before the still/transition pass below,
+    // into an intermediate texture; without an effect this is a no-op (no copy).
+    const fromTexture = this.resolveEffect(from, fromEffect, 0);
+    const toTexture = this.resolveEffect(to, toEffect, 1);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
@@ -233,9 +270,9 @@ export class Renderer {
     gl.bindVertexArray(this.vao);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, from.texture);
+    gl.bindTexture(gl.TEXTURE_2D, fromTexture);
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, to.texture);
+    gl.bindTexture(gl.TEXTURE_2D, toTexture);
     gl.uniform1i(info.from, 0);
     gl.uniform1i(info.to, 1);
     gl.uniform1f(info.progress, Math.min(Math.max(progress, 0), 1));
@@ -288,6 +325,123 @@ export class Renderer {
     if (options.blend) gl.disable(gl.BLEND);
   }
 
+  /**
+   * Runs the effect pass for one frame (design.md D2): without an effect (or
+   * on a missing/broken shader), returns `frame.texture` unchanged — no copy.
+   * Otherwise renders into intermediate texture `slot` (0 = from, 1 = to) and
+   * returns that.
+   */
+  private resolveEffect(
+    frame: FrameTexture,
+    effect: EffectSpec | null | undefined,
+    slot: 0 | 1,
+  ): WebGLTexture {
+    if (!effect) return frame.texture;
+    const info = this.effectProgramFor(effect.id);
+    if (!info) return frame.texture;
+    const { gl } = this;
+    const target = this.ensureEffectTargets()[slot];
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.effectFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.useProgram(info.program);
+    gl.bindVertexArray(this.vao);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, frame.texture);
+    gl.uniform1i(info.image, 0);
+    gl.uniform2f(info.resolution, this.canvas.width, this.canvas.height);
+    for (const [name, value] of Object.entries(effect.params)) {
+      let loc = info.params.get(name);
+      if (loc === undefined) {
+        loc = gl.getUniformLocation(info.program, name);
+        info.params.set(name, loc);
+      }
+      if (loc !== null) gl.uniform1f(loc, value);
+    }
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+    return target;
+  }
+
+  private ensureEffectTargets(): [WebGLTexture, WebGLTexture] {
+    const { gl } = this;
+    if (!this.effectFbo) this.effectFbo = gl.createFramebuffer();
+    if (!this.effectTextures) {
+      this.effectTextures = [this.createEffectTexture(), this.createEffectTexture()];
+    }
+    if (this.effectWidth !== this.canvas.width || this.effectHeight !== this.canvas.height) {
+      for (const texture of this.effectTextures) {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA8,
+          this.canvas.width,
+          this.canvas.height,
+          0,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          null,
+        );
+      }
+      this.effectWidth = this.canvas.width;
+      this.effectHeight = this.canvas.height;
+    }
+    return this.effectTextures;
+  }
+
+  private createEffectTexture(): WebGLTexture {
+    const { gl } = this;
+    const texture = gl.createTexture();
+    if (!texture) throw new Error("Textur konnte nicht angelegt werden.");
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return texture;
+  }
+
+  private effectProgramFor(effectId: string): EffectProgramInfo | null {
+    const cached = this.effectPrograms.get(effectId);
+    if (cached !== undefined) return cached;
+
+    let info: EffectProgramInfo | null = null;
+    const source = effectFragmentSourceFor(effectId);
+    if (source === undefined) {
+      console.error(`Kein Shader für Effekt „${effectId}“; Effekt wird übersprungen.`);
+    } else {
+      info = this.compileEffect(effectId, source);
+    }
+    this.effectPrograms.set(effectId, info);
+    return info;
+  }
+
+  private compileEffect(id: string, fragmentSource: string): EffectProgramInfo | null {
+    const { gl } = this;
+    const vs = this.vertex();
+    if (!vs) return null;
+    const fs = this.shader(gl.FRAGMENT_SHADER, fragmentSource, id);
+    if (!fs) return null;
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    gl.deleteShader(fs);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error(`Effekt „${id}“ lässt sich nicht linken:`, gl.getProgramInfoLog(program));
+      gl.deleteProgram(program);
+      return null;
+    }
+    return {
+      program,
+      resolution: gl.getUniformLocation(program, "resolution"),
+      image: gl.getUniformLocation(program, "uImage"),
+      params: new Map(),
+    };
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -295,6 +449,22 @@ export class Renderer {
     if (this.isContextLost) return;
     const { gl } = this;
     for (const frame of [...this.frames]) this.deleteFrame(frame);
+    if (this.effectTextures) {
+      for (const texture of this.effectTextures) gl.deleteTexture(texture);
+      this.effectTextures = null;
+    }
+    if (this.effectFbo) {
+      gl.deleteFramebuffer(this.effectFbo);
+      this.effectFbo = null;
+    }
+    const deletedEffects = new Set<WebGLProgram>();
+    for (const info of this.effectPrograms.values()) {
+      if (info && !deletedEffects.has(info.program)) {
+        gl.deleteProgram(info.program);
+        deletedEffects.add(info.program);
+      }
+    }
+    this.effectPrograms.clear();
     const deleted = new Set<WebGLProgram>();
     for (const info of this.programs.values()) {
       if (info && !deleted.has(info.program)) {

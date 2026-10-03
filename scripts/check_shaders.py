@@ -1,9 +1,9 @@
 """Checks the shared shaders (invocation: `pixi run check-shaders`).
 
-1. Every transition program (prelude + transitions/<id>.glsl + epilogue), the
-   vertex shader and the title-vertex/title-fragment program (for titles and
-   credits, independent of the transition contract) compile with
-   glslangValidator as GLSL ES 3.00.
+1. Every transition/effect program (prelude + <transitions|effects>/<id>.glsl +
+   epilogue), the vertex shader and the title-vertex/title-fragment program
+   (for titles and credits, independent of the transition contract) compile
+   with glslangValidator as GLSL ES 3.00.
 2. Catalog and shaders match: every shader file exists, every catalog
    parameter is declared as `uniform float <name>;` and vice versa.
 
@@ -15,12 +15,42 @@ import re
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SHADERS = ROOT / "packages" / "shaders"
-CATALOG = ROOT / "packages" / "catalog" / "transitions.json"
 UNIFORM_RE = re.compile(r"^\s*uniform\s+float\s+(\w+)\s*;", re.M)
+
+
+@dataclass(frozen=True)
+class CatalogSpec:
+    label: str
+    catalog: Path
+    entries_key: str
+    shader_dir: Path
+    prelude: Path
+    epilogue: Path
+
+
+CATALOGS = [
+    CatalogSpec(
+        label="transitions",
+        catalog=ROOT / "packages" / "catalog" / "transitions.json",
+        entries_key="transitions",
+        shader_dir=SHADERS / "transitions",
+        prelude=SHADERS / "prelude.glsl",
+        epilogue=SHADERS / "epilogue.glsl",
+    ),
+    CatalogSpec(
+        label="effects",
+        catalog=ROOT / "packages" / "catalog" / "effects.json",
+        entries_key="effects",
+        shader_dir=SHADERS / "effects",
+        prelude=SHADERS / "effect-prelude.glsl",
+        epilogue=SHADERS / "effect-epilogue.glsl",
+    ),
+]
 
 
 def validate(source: str, stage: str, label: str, tmp: Path) -> list[str]:
@@ -34,12 +64,38 @@ def validate(source: str, stage: str, label: str, tmp: Path) -> list[str]:
     return [f"{label}: glslangValidator\n{(res.stdout + res.stderr).strip()}"]
 
 
-def main() -> int:
-    prelude = (SHADERS / "prelude.glsl").read_text(encoding="utf-8")
-    epilogue = (SHADERS / "epilogue.glsl").read_text(encoding="utf-8")
-    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))["transitions"]
+def check_catalog(spec: CatalogSpec, tmp: Path) -> tuple[list[str], int]:
+    prelude = spec.prelude.read_text(encoding="utf-8")
+    epilogue = spec.epilogue.read_text(encoding="utf-8")
+    entries = json.loads(spec.catalog.read_text(encoding="utf-8"))[spec.entries_key]
     problems: list[str] = []
     referenced: set[str] = set()
+
+    for entry in entries:
+        shader = spec.shader_dir / entry["shader"]
+        referenced.add(shader.name)
+        if not shader.is_file():
+            problems.append(f"{entry['id']}: shader missing: {shader.relative_to(ROOT)}")
+            continue
+        body = shader.read_text(encoding="utf-8")
+        declared = set(UNIFORM_RE.findall(body))
+        expected = set(entry["params"])
+        if declared != expected:
+            problems.append(
+                f"{entry['id']}: uniforms {sorted(declared)} do not match "
+                f"catalog parameters {sorted(expected)}"
+            )
+        problems += validate(prelude + "\n" + body + "\n" + epilogue, "frag", entry["id"], tmp)
+
+    for orphan in sorted(p.name for p in spec.shader_dir.glob("*.glsl")):
+        if orphan not in referenced:
+            problems.append(f"{orphan}: shader without catalog entry")
+
+    return problems, len(entries)
+
+
+def main() -> int:
+    problems: list[str] = []
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
@@ -58,30 +114,14 @@ def main() -> int:
             "title-fragment",
             tmp,
         )
-        for entry in catalog:
-            shader = SHADERS / "transitions" / entry["shader"]
-            referenced.add(shader.name)
-            if not shader.is_file():
-                problems.append(f"{entry['id']}: shader missing: {shader.relative_to(ROOT)}")
-                continue
-            body = shader.read_text(encoding="utf-8")
-            declared = set(UNIFORM_RE.findall(body))
-            expected = set(entry["params"])
-            if declared != expected:
-                problems.append(
-                    f"{entry['id']}: uniforms {sorted(declared)} do not match "
-                    f"catalog parameters {sorted(expected)}"
-                )
-            problems += validate(prelude + "\n" + body + "\n" + epilogue, "frag", entry["id"], tmp)
-
-    for orphan in sorted(p.name for p in (SHADERS / "transitions").glob("*.glsl")):
-        if orphan not in referenced:
-            problems.append(f"{orphan}: shader without catalog entry")
+        for spec in CATALOGS:
+            catalog_problems, count = check_catalog(spec, tmp)
+            problems += catalog_problems
+            if not catalog_problems:
+                print(f"OK  {count} {spec.label}")
 
     for problem in problems:
         print(f"ERROR {problem}", file=sys.stderr)
-    if not problems:
-        print(f"OK  {len(catalog)} transitions + vertex shader")
     return 1 if problems else 0
 
 
