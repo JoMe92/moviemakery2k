@@ -1,7 +1,7 @@
 .notices {
   position: fixed;
+  top: calc(var(--y2k-safe-top) + var(--y2k-touch-target) + 8px);
   right: 0;
-  bottom: calc(var(--y2k-taskbar-height) + var(--y2k-safe-bottom) + 8px);
   left: 0;
   z-index: 20;
   display: flex;
