@@ -35,6 +35,15 @@ export function newSlideId(): string {
   return crypto.randomUUID().replaceAll("-", "").slice(0, 16);
 }
 
+/**
+ * A slide's length in the time model: a video clip's trim window
+ * (`trimOut - trimIn`), a picture's display duration (add-timeline-editing
+ * design.md D1).
+ */
+export function slideDuration(slide: Slide): number {
+  return slide.kind === "video" ? slide.trimOut - slide.trimIn : slide.duration;
+}
+
 /** First item without an incoming transition. */
 export function normalize(slides: readonly Slide[]): Slide[] {
   return slides.map((s, i) => (i === 0 && s.transitionIn ? { ...s, transitionIn: null } : s));

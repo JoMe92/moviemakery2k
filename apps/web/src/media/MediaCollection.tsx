@@ -19,13 +19,18 @@ import {
   type VideoItem,
 } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
-import { audioDraggableId, type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
+import {
+  audioDraggableId,
+  type DragItem,
+  mediaDraggableId,
+  videoDraggableId,
+} from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
 import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
-import { chain, HOLD_MS, LONG_PRESS_MS, useLongPress } from "../ui/useLongPress";
+import { chain, HOLD_MS, useLongPress } from "../ui/useLongPress";
 import styles from "./MediaCollection.module.css";
 import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
 
@@ -112,9 +117,9 @@ function usePickingPointer(
   onTap: () => void,
   listeners: Record<string, unknown> | undefined,
   /**
-   * Hold the action sheet needs: HOLD_MS wherever a tap picks the tile, the
-   * plain LONG_PRESS_MS on a video tile, whose tap means nothing (videos
-   * cannot be added yet), so there is no ambiguity to resolve.
+   * Hold the action sheet needs: HOLD_MS wherever a tap picks the tile, which
+   * is every kind since a video can be added to the storyboard too
+   * (add-timeline-editing D2).
    */
   delay: number = HOLD_MS,
 ) {
@@ -257,31 +262,42 @@ function AudioTile({
 
 /**
  * "My Videos" tile: poster image with the duration overlaid, file name below.
- * Not draggable (add-video-import non-goal: a video cannot be added to the
- * storyboard, played or exported in this change).
+ * Draggable into the storyboard like a picture (add-timeline-editing D2); with
+ * touch operation it is picked instead (add-mobile-layout D6).
  */
 function VideoTile({
   item,
   selected,
   tileRef,
+  onKeyDown,
   picking,
   onLongPress,
   onTap,
   ...handlers
 }: TileHandlers & { item: VideoItem }) {
   const { t, locale } = useT();
-  // Not draggable; in the collection sheet a long press offers Properties and Delete.
-  const { armed, pointer, guardClick } = usePickingPointer(
-    picking,
-    onLongPress,
-    onTap,
-    undefined,
-    LONG_PRESS_MS,
-  );
   const duration = formatClipDuration(locale, item.duration);
+  const data: DragItem = { type: "video", mediaId: item.id };
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: videoDraggableId(item.id),
+    data,
+    disabled: picking,
+    attributes: { roleDescription: t("media.videoDraggable") },
+  });
+  const { armed, pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
+  const dragAttributes = tileAttributes(attributes, picking);
   return (
     <Tile
-      ref={tileRef}
+      ref={(el: HTMLButtonElement | null) => {
+        setNodeRef(el);
+        tileRef(el);
+      }}
+      {...dragAttributes}
+      {...listeners}
+      {...pointer}
+      className={picking ? styles.pickable : undefined}
+      data-armed={armed || undefined}
       selected={selected}
       caption={item.filename}
       aria-label={t("media.videoTile", { name: item.filename, duration })}
@@ -299,9 +315,11 @@ function VideoTile({
         </span>
       }
       {...handlers}
-      {...pointer}
-      data-armed={armed || undefined}
       onClick={() => guardClick(handlers.onClick)}
+      onKeyDown={(event) => {
+        onKeyDown(event);
+        if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
+      }}
     />
   );
 }
@@ -331,9 +349,9 @@ export interface MediaCollectionProps {
 
 /**
  * "My Pictures", "My Music" or "My Videos" collection: tiles of one media
- * kind in import order. Double-click appends a picture to the storyboard and
- * audio to the music track (never the other way round, and never for video -
- * add-video-import non-goal); Delete or the context menu deletes after
+ * kind in import order. Double-click appends a picture or video to the
+ * storyboard and audio to the music track, never the other way round
+ * (add-timeline-editing D2); Delete or the context menu deletes after
  * confirmation.
  */
 export function MediaCollection({ kind = "image", picking }: MediaCollectionProps) {
@@ -408,9 +426,9 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
       ) : (
         <ul className={styles.grid} aria-label={t(text.list)}>
           {media.map((item) => {
-            // Videos are not picked (they cannot be added yet); they only offer the menu.
+            // A video is picked like a picture (add-timeline-editing D2).
             const pickToggle = () => {
-              if (picking && item.kind !== "video") picking.onToggle(item.id);
+              if (picking) picking.onToggle(item.id);
             };
             const handlers: TileHandlers = {
               tileRef: (el) => {
@@ -425,7 +443,7 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
               onTap: pickToggle,
               onDoubleClick: () => {
                 if (picking) return;
-                if (item.kind === "image") addSlide(item.id);
+                if (item.kind === "image" || item.kind === "video") addSlide(item.id);
                 else if (item.kind === "audio") addMusicClip(item.id);
               },
               picking: picking !== undefined,
@@ -463,7 +481,7 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
           items={[
             ...(picking
               ? [{ label: t("media.properties"), onSelect: () => setProperties(menu.item) }]
-              : menu.item.kind === "image"
+              : menu.item.kind === "image" || menu.item.kind === "video"
                 ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
                 : menu.item.kind === "audio"
                   ? [

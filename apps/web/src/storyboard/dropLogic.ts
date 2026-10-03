@@ -14,6 +14,8 @@ export type DragItem =
   | { type: "media"; mediaId: string }
   /** Audio from "My Music" (add-music-track D7). */
   | { type: "audio"; mediaId: string }
+  /** Video from "My Videos" (add-timeline-editing D2). */
+  | { type: "video"; mediaId: string }
   | { type: "slide"; slideId: string }
   /** Clip on the music track. */
   | { type: "music"; clipId: string }
@@ -43,6 +45,7 @@ export type DropAction =
 
 export const STRIP_DROPPABLE_ID = "storyboard-strip";
 export const mediaDraggableId = (mediaId: string) => `media:${mediaId}`;
+export const videoDraggableId = (mediaId: string) => `video:${mediaId}`;
 export const transitionDraggableId = (transitionId: string) => `transition:${transitionId}`;
 export const transitionSlotId = (slideId: string) => `slot:${slideId}`;
 export const MUSIC_DROPPABLE_ID = "music-strip";
@@ -113,7 +116,9 @@ export function resolveDrop(
     return { kind: "moveMusic", from, to };
   }
   if (isMusicTarget(target)) {
-    return item.type === "media" ? { kind: "reject", reason: "pictureOnMusic" } : { kind: "none" };
+    return item.type === "media" || item.type === "video"
+      ? { kind: "reject", reason: "pictureOnMusic" }
+      : { kind: "none" };
   }
   if (item.type === "transition") {
     if (target.type !== "transitionSlot") return { kind: "none" };
@@ -123,7 +128,7 @@ export function resolveDrop(
       : { kind: "none" };
   }
   if (target.type === "transitionSlot") return { kind: "none" };
-  if (item.type === "media") {
+  if (item.type === "media" || item.type === "video") {
     const index = insertionIndex(target, slides);
     return index === null ? { kind: "none" } : { kind: "insert", mediaId: item.mediaId, index };
   }

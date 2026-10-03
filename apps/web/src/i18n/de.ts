@@ -178,8 +178,10 @@ export const de = {
     videoList: "Videos",
     videoTile: "{name}, {duration}",
     videoMenu: "Video „{name}“",
+    videoDraggable: "ziehbares Video",
     deleteVideoTitle: "Video löschen",
-    deleteVideoQuestion: "Möchten Sie „{name}“ wirklich löschen?",
+    deleteVideoQuestion:
+      "Möchten Sie „{name}“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.",
     properties: "Eigenschaften",
     propertiesTitle: "Eigenschaften von „{name}“",
     fileName: "Dateiname",
@@ -236,6 +238,7 @@ export const de = {
     element: "Element",
     transition: "Übergang „{name}“",
     picture: "Bild „{name}“",
+    video: "Video „{name}“",
     pickedUp:
       "{item} aufgenommen. Pfeiltasten bewegen, Eingabe- oder Leertaste legt ab, Escape bricht ab.",
     overSlot: "Über dem Übergangsplatz vor Bild {number}.",
@@ -433,6 +436,9 @@ export const de = {
       musicTrim: {
         negative: "Anfang und Ende eines Musikstücks dürfen nicht vor 0 s liegen (ist {value} s).",
       },
+      slideTrim: {
+        negative: "Anfang und Ende eines Videoclips dürfen nicht vor 0 s liegen (ist {value} s).",
+      },
       invalid: "Das Projekt ist ungültig: {summary}",
       slide: {
         duplicateId:
@@ -442,6 +448,11 @@ export const de = {
           "Bild {slide} (ID „{slideId}“): Das erste Bild kann keinen eingehenden Übergang haben.",
         unknownTransition: "Bild {slide} (ID „{slideId}“): unbekannter Übergang „{transitionId}“.",
         notImage: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Bild.",
+        notVideo: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Video.",
+        trimOutBeyondFile:
+          "Bild {slide} (ID „{slideId}“): Das Ende ({trimOut} s) liegt hinter dem Ende des Videos ({duration} s).",
+        trimInNotBeforeTrimOut:
+          "Bild {slide} (ID „{slideId}“): Der Anfang ({trimIn} s) muss vor dem Ende ({trimOut} s) liegen.",
       },
       music: {
         duplicateId:

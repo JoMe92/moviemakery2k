@@ -105,10 +105,14 @@ export function StoryboardStrip() {
 
   const menuItems = (m: MenuState): ContextMenuItem[] => {
     if (m.kind === "slide") {
+      // The duration dialog is for a picture's display duration; a video
+      // clip's length is its trim (its own properties dialog, TASK-WEB-060).
+      const isVideo = slides.find((s) => s.id === m.slideId)?.kind === "video";
       return [
         { label: t("storyboard.remove"), onSelect: () => remove(m.slideId) },
         {
           label: t("storyboard.properties"),
+          disabled: isVideo,
           onSelect: () => setDialog({ kind: "slide", slideId: m.slideId }),
         },
       ];
@@ -204,10 +208,10 @@ export function StoryboardStrip() {
       ) : null}
       <TransitionSheet slideId={transitionSheet} onClose={() => setTransitionSheet(null)} />
       <DurationDialog
-        open={dialog?.kind === "slide" && dialogSlide !== undefined}
+        open={dialog?.kind === "slide" && dialogSlide?.kind === "image"}
         title={t("storyboard.slideProperties", { number: dialog ? numberOf(dialog.slideId) : "" })}
         label={t("storyboard.slideDuration")}
-        value={dialogSlide?.duration ?? SLIDE_DURATION.default}
+        value={dialogSlide?.kind === "image" ? dialogSlide.duration : SLIDE_DURATION.default}
         range={SLIDE_DURATION}
         touchStep={0.5}
         onConfirm={(value) => (dialog ? setSlideDuration(dialog.slideId, value) : false)}

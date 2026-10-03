@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "../lib/apiClient";
+import { ApiError, type Slide } from "../lib/apiClient";
 import { AUTOSAVE_DELAY_MS, createAppStore } from "./appStore";
+import { slideDuration } from "./projectOps";
 import { audioItem, mediaItem, mockApi } from "./testApi";
 
 describe("appStore", () => {
@@ -81,7 +82,7 @@ describe("appStore", () => {
     expect(store.getState().slides[0]?.transitionIn).toBeNull();
     expect(store.getState().setSlideDuration(first, 0.1)).toBe(false);
     expect(store.getState().setSlideDuration(first, 2.5)).toBe(true);
-    expect(store.getState().slides[0]?.duration).toBe(2.5);
+    expect(slideDuration(store.getState().slides[0] as Slide)).toBe(2.5);
   });
 
   it("import: partial success is reported per file", async () => {
@@ -137,12 +138,12 @@ describe("appStore", () => {
     });
     const api = mockApi({
       getProject: vi.fn(async () => ({
-        schemaVersion: 2 as const,
+        schemaVersion: 3 as const,
         slides: [],
         music: [clip("m1", "x"), clip("m2", "y")],
       })),
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 2 as const,
+        schemaVersion: 3 as const,
         slides: [],
         music: [clip("m2", "y")],
       })),
@@ -161,7 +162,7 @@ describe("appStore", () => {
     store.getState().newProject();
     await store.getState().flushSave();
     expect(store.getState().music).toEqual([]);
-    expect(api.saved.at(-1)).toEqual({ schemaVersion: 2, slides: [], music: [] });
+    expect(api.saved.at(-1)).toEqual({ schemaVersion: 3, slides: [], music: [] });
   });
 
   it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
@@ -203,7 +204,7 @@ describe("appStore", () => {
     // Append by double-click: to the end with the default duration.
     st().addSlide("a");
     st().addSlide("b");
-    expect(st().slides.every((x) => x.duration === 5)).toBe(true);
+    expect(st().slides.every((x) => slideDuration(x) === 5)).toBe(true);
     // Insert between the first and second item → position 2.
     st().addSlide("b", 1);
     expect(media()).toEqual(["a", "b", "b"]);
@@ -252,7 +253,8 @@ describe("appStore", () => {
 
     expect(st().setSlideDuration(second, 0.1)).toBe(false);
     expect(st().setSlideDuration(second, 61)).toBe(false);
-    expect(st().slides[1]?.duration).toBe(5);
+    const secondSlide = st().slides[1];
+    expect(secondSlide && slideDuration(secondSlide)).toBe(5);
 
     st().removeTransition(second);
     expect(tIn()).toBeNull();
@@ -285,7 +287,8 @@ describe("appStore", () => {
       st().undo(); // undoes setTransition
       expect(st().slides.find((s) => s.id === first)?.transitionIn).toBeNull();
       st().undo(); // undoes setSlideDuration
-      expect(st().slides.find((s) => s.id === first)?.duration).toBe(5);
+      const firstAfterUndo = st().slides.find((s) => s.id === first);
+      expect(firstAfterUndo && slideDuration(firstAfterUndo)).toBe(5);
       st().undo(); // undoes moveSlide
       expect(st().slides.map((s) => s.id)).toEqual([first, second]);
       st().undo(); // undoes addSlide("b")
@@ -298,7 +301,8 @@ describe("appStore", () => {
       expect(st().slides.map((s) => s.id)).toEqual([first]);
       for (let i = 0; i < 5; i++) st().redo();
       expect(st().slides.map((s) => s.id)).toEqual([second, first]);
-      expect(st().slides.find((s) => s.id === first)?.duration).toBe(2.5);
+      const firstAfterRedo = st().slides.find((s) => s.id === first);
+      expect(firstAfterRedo && slideDuration(firstAfterRedo)).toBe(2.5);
       expect(st().slides.find((s) => s.id === first)?.transitionIn).toBeNull();
       expect(st().redoStack).toEqual([]);
     });
@@ -383,7 +387,10 @@ describe("appStore", () => {
       st().select({ kind: "slide", slideId: first });
 
       st().copy();
-      expect(st().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+      expect(st().clipboard).toEqual({
+        kind: "slide",
+        content: { kind: "image", mediaId: "a", duration: 5 },
+      });
       // The original is still there and still selected.
       expect(st().slides.map((s) => s.id)).toEqual([first, second]);
       expect(st().selection).toEqual({ kind: "slide", slideId: first });
@@ -414,7 +421,10 @@ describe("appStore", () => {
       st().cut();
       expect(st().slides.map((s) => s.id)).toEqual([second]);
       expect(st().selection).toBeNull();
-      expect(st().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+      expect(st().clipboard).toEqual({
+        kind: "slide",
+        content: { kind: "image", mediaId: "a", duration: 5 },
+      });
       // Exactly one more undo step for the whole cut (not two for copy+remove).
       expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
 
@@ -545,17 +555,19 @@ describe("appStore", () => {
       const store = createAppStore(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 2 as const,
+            schemaVersion: 3 as const,
             music: [],
             slides: [
-              { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+              { kind: "image" as const, id: "s1", mediaId: "a", duration: 5, transitionIn: null },
               {
+                kind: "image" as const,
                 id: "s2",
                 mediaId: "b",
                 duration: 5,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
               {
+                kind: "image" as const,
                 id: "s3",
                 mediaId: "a",
                 duration: 5,

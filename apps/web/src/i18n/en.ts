@@ -180,8 +180,10 @@ export const en = {
     videoList: "Videos",
     videoTile: "{name}, {duration}",
     videoMenu: "Video “{name}”",
+    videoDraggable: "draggable video",
     deleteVideoTitle: "Delete Video",
-    deleteVideoQuestion: "Are you sure you want to delete “{name}”?",
+    deleteVideoQuestion:
+      "Are you sure you want to delete “{name}”? It will also be removed from the storyboard.",
     properties: "Properties",
     propertiesTitle: "Properties of “{name}”",
     fileName: "File name",
@@ -238,6 +240,7 @@ export const en = {
     element: "Element",
     transition: "Transition “{name}”",
     picture: "Picture “{name}”",
+    video: "Video “{name}”",
     pickedUp: "{item} picked up. Arrow keys move, Enter or Space drops, Escape cancels.",
     overSlot: "Over the transition slot before picture {number}.",
     overStoryboard: "Over the storyboard.",
@@ -432,6 +435,9 @@ export const en = {
       musicTrim: {
         negative: "The start and end of a music clip must be 0 s or later (is {value} s).",
       },
+      slideTrim: {
+        negative: "The start and end of a video clip must be 0 s or later (is {value} s).",
+      },
       invalid: "The project is invalid: {summary}",
       slide: {
         duplicateId:
@@ -441,6 +447,11 @@ export const en = {
           "Picture {slide} (ID “{slideId}”): the first picture cannot have an incoming transition.",
         unknownTransition: "Picture {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
         notImage: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
+        notVideo: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not a video.",
+        trimOutBeyondFile:
+          "Picture {slide} (ID “{slideId}”): the end ({trimOut} s) lies beyond the end of the video ({duration} s).",
+        trimInNotBeforeTrimOut:
+          "Picture {slide} (ID “{slideId}”): the start ({trimIn} s) must lie before the end ({trimOut} s).",
       },
       music: {
         duplicateId:

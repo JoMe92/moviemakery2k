@@ -205,9 +205,11 @@ describe("media collection", () => {
     const user = userEvent.setup();
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 2 as const,
+        schemaVersion: 3 as const,
         music: [],
-        slides: [{ id: "s3", mediaId: "b", duration: 4, transitionIn: null }],
+        slides: [
+          { kind: "image" as const, id: "s3", mediaId: "b", duration: 4, transitionIn: null },
+        ],
       })),
     });
     const { ready, store } = renderApp(api);
@@ -245,11 +247,11 @@ describe("media collection", () => {
       const user = userEvent.setup();
       const api = mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 2 as const,
+          schemaVersion: 3 as const,
           music: [],
           slides: [
-            { id: "s1", mediaId: "a", duration: 4, transitionIn: null },
-            { id: "s2", mediaId: "b", duration: 4, transitionIn: null },
+            { kind: "image" as const, id: "s1", mediaId: "a", duration: 4, transitionIn: null },
+            { kind: "image" as const, id: "s2", mediaId: "b", duration: 4, transitionIn: null },
           ],
         })),
         deleteMedia: vi.fn(async () => {

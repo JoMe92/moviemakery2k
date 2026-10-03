@@ -2,19 +2,26 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
+import { slideDuration } from "../store/projectOps";
 import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 const slide = (id: string, mediaId: string, duration = 5, t: string | null = null): Slide => ({
+  kind: "image",
   id,
   mediaId,
   duration,
   transitionIn: t ? { transitionId: t, duration: 1.25 } : null,
 });
 
+function durationAt(slides: readonly Slide[], index: number): number | undefined {
+  const s = slides[index];
+  return s ? slideDuration(s) : undefined;
+}
+
 async function setup(slides: Slide[]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -230,7 +237,7 @@ describe("Storyboard", () => {
     await user.keyboard("[Space]");
     await tick();
     expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
-    expect(store.getState().slides[0]?.duration).toBe(5);
+    expect(durationAt(store.getState().slides, 0)).toBe(5);
   });
 
   it("sets a transition on a slot by keyboard and replaces an existing one", async () => {
@@ -321,9 +328,9 @@ describe("Storyboard", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "Erlaubt sind 0,5 bis 60 Sekunden in Schritten von 0,25.",
     );
-    expect(store.getState().slides[1]?.duration).toBe(5);
+    expect(durationAt(store.getState().slides, 1)).toBe(5);
     await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
-    expect(store.getState().slides[1]?.duration).toBe(5);
+    expect(durationAt(store.getState().slides, 1)).toBe(5);
 
     fireEvent.contextMenu(within(strip()).getByRole("button", { name: /^Bild 2:/ }), {
       clientX: 10,
@@ -335,7 +342,7 @@ describe("Storyboard", () => {
     await user.clear(again);
     await user.type(again, "2,5");
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
-    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(durationAt(store.getState().slides, 1)).toBe(2.5);
     expect(tileLabels()[1]).toBe("Bild 2: b.jpg, 2,50 s");
   });
 
@@ -359,7 +366,7 @@ describe("Storyboard", () => {
     await user.clear(input);
     await user.type(input, "2,5");
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
-    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(durationAt(store.getState().slides, 1)).toBe(2.5);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(within(enStrip).getByRole("button", { name: /^Picture 2:/ })).toHaveTextContent(
       "2.50 s",
@@ -384,7 +391,7 @@ describe("Storyboard", () => {
     await user.clear(input);
     await user.type(input, "2.5");
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
-    expect(store.getState().slides[0]?.duration).toBe(2.5);
+    expect(durationAt(store.getState().slides, 0)).toBe(2.5);
     expect(tileLabels()[0]).toBe("Bild 1: a.jpg, 2,50 s");
   });
 });

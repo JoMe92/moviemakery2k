@@ -65,7 +65,10 @@ describe("Menu bar", () => {
     store.getState().select({ kind: "slide", slideId: id });
 
     await user.keyboard("{Control>}c{/Control}");
-    expect(store.getState().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+    expect(store.getState().clipboard).toEqual({
+      kind: "slide",
+      content: { kind: "image", mediaId: "a", duration: 5 },
+    });
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
     const paste = screen.getByRole("menuitem", { name: /Einfügen/ });

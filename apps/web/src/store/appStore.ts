@@ -11,12 +11,14 @@ import {
   type AppApi,
   type ExportApi,
   type Health,
+  type ImageSlide,
   isAuthRequired,
   type MediaItem,
   type MusicClip,
   type Project,
   type Slide,
   type Transition,
+  type VideoSlide,
 } from "../lib/apiClient";
 import {
   advance,
@@ -28,6 +30,7 @@ import {
   STOPPED,
   startPlayback,
   timelineOf,
+  toTimelineSlides,
 } from "../player/controls";
 import { type FitToMusicResult, fitToMusic } from "../timeline/fitToMusic";
 import { musicDuration } from "../timeline/music";
@@ -92,7 +95,10 @@ export const UNDO_LIMIT = 50;
  * replaces the previous content regardless of its kind.
  */
 export type ClipboardEntry =
-  | { kind: "slide"; mediaId: string; duration: number }
+  | {
+      kind: "slide";
+      content: Omit<ImageSlide, "id" | "transitionIn"> | Omit<VideoSlide, "id" | "transitionIn">;
+    }
   | {
       kind: "musicClip";
       mediaId: string;
@@ -292,7 +298,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
   const store = createStore<AppState>()((set, get) => {
     const toProject = (): Project => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       slides: get().slides,
       music: get().music,
     });
@@ -387,6 +393,12 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
     const duration = () => timelineOf(get().slides).duration;
     const noDemo = { previewTransitionId: null, demo: null } as const;
+
+    /** Clipboard content copied from a slide (design.md D4): never its id or transition. */
+    function clipboardOfSlide(slide: Slide): ClipboardEntry {
+      const { id: _id, transitionIn: _transitionIn, ...content } = slide;
+      return { kind: "slide", content };
+    }
 
     /** Clipboard content copied from a music clip (design.md D4): never its id. */
     function clipboardOf(clip: MusicClip): ClipboardEntry {
@@ -620,14 +632,28 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       addSlide(mediaId, index) {
-        // Only pictures belong in the filmstrip; audio goes to the music track.
-        if (get().media.find((m) => m.id === mediaId)?.kind === "audio") return;
-        const slide: Slide = {
-          id: newSlideId(),
-          mediaId,
-          duration: SLIDE_DURATION.default,
-          transitionIn: null,
-        };
+        // Pictures and videos belong in the filmstrip; audio goes to the music track.
+        const item = get().media.find((m) => m.id === mediaId);
+        if (item?.kind === "audio") return;
+        // New video clip: full trim, no incoming transition (hard cut), like a
+        // newly inserted picture (add-timeline-editing design.md D2).
+        const slide: Slide =
+          item?.kind === "video"
+            ? {
+                kind: "video",
+                id: newSlideId(),
+                mediaId,
+                trimIn: 0,
+                trimOut: item.duration,
+                transitionIn: null,
+              }
+            : {
+                kind: "image",
+                id: newSlideId(),
+                mediaId,
+                duration: SLIDE_DURATION.default,
+                transitionIn: null,
+              };
         const { slides } = get();
         commit(insertSlide(slides, slide, index ?? slides.length));
       },
@@ -638,8 +664,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         commit(removeSlide(get().slides, slideId));
       },
       setSlideDuration(slideId, duration) {
+        // Only a picture has a display duration; a video clip's length is its trim.
         if (!isValidSlideDuration(duration)) return false;
-        commit(updateSlide(get().slides, slideId, (s) => ({ ...s, duration })));
+        commit(
+          updateSlide(get().slides, slideId, (s) => (s.kind === "video" ? s : { ...s, duration })),
+        );
         return true;
       },
       setTransition(slideId, transitionId) {
@@ -682,7 +711,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         if (selection) {
           const slide = slides.find((s) => s.id === selection.slideId);
           if (!slide) return;
-          set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+          set({ clipboard: clipboardOfSlide(slide) });
           commit(removeSlide(slides, slide.id));
         } else if (musicSelection !== null) {
           const clip = music.find((c) => c.id === musicSelection);
@@ -696,7 +725,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         if (selection) {
           const slide = slides.find((s) => s.id === selection.slideId);
           if (!slide) return;
-          set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+          set({ clipboard: clipboardOfSlide(slide) });
         } else if (musicSelection !== null) {
           const clip = music.find((c) => c.id === musicSelection);
           if (!clip) return;
@@ -708,12 +737,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         if (!clipboard) return;
         if (clipboard.kind === "slide") {
           const { selection, slides } = get();
-          const newSlide: Slide = {
-            id: newSlideId(),
-            mediaId: clipboard.mediaId,
-            duration: clipboard.duration,
-            transitionIn: null,
-          };
+          const newSlide: Slide = { ...clipboard.content, id: newSlideId(), transitionIn: null };
           const at = selection
             ? slides.findIndex((s) => s.id === selection.slideId) + 1
             : slides.length;
@@ -776,9 +800,15 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       fitToMusic() {
         const { slides, music, media } = get();
-        const result = fitToMusic(slides, projectMusicDuration(music, media));
+        const result = fitToMusic(toTimelineSlides(slides), projectMusicDuration(music, media));
         if (result.kind === "ok") {
-          commit(slides.map((s, i) => ({ ...s, duration: result.durations[i] ?? s.duration })));
+          // A video clip's length is its trim, not a display duration to stretch
+          // (add-timeline-editing non-goal); only pictures are resized here.
+          commit(
+            slides.map((s, i) =>
+              s.kind === "video" ? s : { ...s, duration: result.durations[i] ?? s.duration },
+            ),
+          );
         }
         return result;
       },

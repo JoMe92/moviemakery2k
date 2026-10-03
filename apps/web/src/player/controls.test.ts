@@ -17,6 +17,7 @@ import {
 } from "./controls";
 
 const slide = (id: string, duration = 5, t: number | null = null) => ({
+  kind: "image" as const,
   id,
   mediaId: `m${id}`,
   duration,

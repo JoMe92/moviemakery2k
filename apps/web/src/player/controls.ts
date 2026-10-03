@@ -2,6 +2,8 @@
  * Pure control logic of the player (spec preview-player "Wiedergabesteuerung").
  * No clock, no DOM: the store calls these functions, the rAF clock supplies dt.
  */
+import type { Slide } from "../lib/apiClient";
+import { slideDuration } from "../store/projectOps";
 import {
   buildTimeline,
   type Frame,
@@ -26,13 +28,30 @@ export const MAX_STEP = 0.25;
 export const PREV_GRACE = 0.5;
 const EPS = 1e-6;
 
-const timelines = new WeakMap<readonly TimelineSlide[], Timeline>();
+/**
+ * A project element as input to the time model; a video slide's duration is
+ * always `trimOut - trimIn` (add-timeline-editing design.md D1).
+ */
+export function toTimelineSlide(slide: Slide): TimelineSlide {
+  return {
+    id: slide.id,
+    mediaId: slide.mediaId,
+    duration: slideDuration(slide),
+    transitionIn: slide.transitionIn,
+  };
+}
+
+export function toTimelineSlides(slides: readonly Slide[]): TimelineSlide[] {
+  return slides.map(toTimelineSlide);
+}
+
+const timelines = new WeakMap<readonly Slide[], Timeline>();
 
 /** Timeline for the (immutable) slides array, computed only once per array. */
-export function timelineOf(slides: readonly TimelineSlide[]): Timeline {
+export function timelineOf(slides: readonly Slide[]): Timeline {
   let tl = timelines.get(slides);
   if (!tl) {
-    tl = buildTimeline(slides);
+    tl = buildTimeline(toTimelineSlides(slides));
     timelines.set(slides, tl);
   }
   return tl;
