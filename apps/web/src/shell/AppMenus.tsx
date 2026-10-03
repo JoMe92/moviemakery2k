@@ -8,11 +8,18 @@ import { AboutDialog, ConfirmDialog } from "./AppDialogs";
 import { FitToMusicDialog, type FitToMusicNotice } from "./FitToMusicDialog";
 import { matchShortcut } from "./globalShortcuts";
 import { MenuBar } from "./MenuBar";
+import { MenuSheet } from "./MenuSheet";
 import { buildMenus, type MenuHandlers } from "./menus";
 import { OptionsDialog } from "./OptionsDialog";
 
-/** Menu bar together with the dialogs it opens (About, Options, New Project). */
-export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
+export interface AppMenusProps {
+  extra?: MenuHandlers;
+  /** `bar`: desktop menu bar; `sheet`: "☰" button with the menu sheet (compact layout). */
+  variant?: "bar" | "sheet";
+}
+
+/** Menu bar (or menu sheet) together with the dialogs it opens (About, Options, New Project). */
+export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const [about, setAbout] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [options, setOptions] = useState(false);
@@ -124,7 +131,7 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
 
   return (
     <>
-      <MenuBar menus={menus} />
+      {variant === "sheet" ? <MenuSheet menus={menus} /> : <MenuBar menus={menus} />}
       <AboutDialog open={about} onClose={() => setAbout(false)} />
       <OptionsDialog open={options} onClose={() => setOptions(false)} />
       <FitToMusicDialog notice={fitNotice} onClose={() => setFitNotice(null)} />

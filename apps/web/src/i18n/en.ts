@@ -44,6 +44,7 @@ export const en = {
   },
   menu: {
     bar: "Menu bar",
+    sheet: "Menu",
     file: {
       label: "File",
       newProject: "New Project",

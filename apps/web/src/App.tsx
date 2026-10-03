@@ -66,6 +66,7 @@ export function App() {
           title={title}
           orientation={layout.orientation}
           indicators={<SaveFailedIndicator />}
+          menuButton={<AppMenus variant="sheet" extra={playerMenu} />}
           monitor={<Player />}
           editing={
             <>

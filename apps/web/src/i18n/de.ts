@@ -40,6 +40,7 @@ export const de = {
   },
   menu: {
     bar: "Menüleiste",
+    sheet: "Menü",
     file: {
       label: "Datei",
       newProject: "Neues Projekt",
