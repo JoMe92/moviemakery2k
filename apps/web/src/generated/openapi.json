@@ -1746,6 +1746,55 @@
         ]
       }
     },
+    "/api/media/{media_id}/poster": {
+      "get": {
+        "description": "Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.\n\n404 for images, audio and unknown IDs (add-video-import D3).",
+        "operationId": "get_poster_api_media__media_id__poster_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "JPEG image"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Poster",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/media/{media_id}/preview": {
       "get": {
         "description": "Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`.",

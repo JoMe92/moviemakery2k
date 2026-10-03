@@ -1,9 +1,10 @@
-"""Media endpoints (TASK-API-002, TASK-API-003).
+"""Media endpoints (TASK-API-002, TASK-API-003; add-video-import TASK-API-017).
 
-- POST   /api/media                 import pictures and audio, one result per file
+- POST   /api/media                 import pictures, video and audio, one result per file
 - GET    /api/media                 collection in import order
 - GET    /api/media/{id}/thumbnail  thumbnail (JPEG, immutable)
 - GET    /api/media/{id}/preview    preview image (JPEG, immutable)
+- GET    /api/media/{id}/poster     video poster frame (JPEG, immutable)
 - GET    /api/media/{id}/audio      audio preview version (AAC in M4A, immutable)
 - GET    /api/media/{id}/peaks      waveform data (JSON, immutable)
 - DELETE /api/media/{id}            delete a medium, cascading into the project
@@ -27,6 +28,7 @@ from mmy_backend.media import (
     MediaUploadResponse,
     MediaUploadResult,
     MediaUploadSuccess,
+    VideoItem,
 )
 from mmy_backend.project import Project, ProjectStore
 
@@ -96,6 +98,25 @@ def get_thumbnail(media_id: str, store: Annotated[MediaStore, Depends(get_media_
 def get_preview(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
     """Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`."""
     return _image_response(store, media_id, "preview")
+
+
+def _poster_response(store: MediaStore, media_id: str) -> Any:
+    # Images, audio and unknown or malformed IDs are 404; get() checks the ID format first.
+    if not isinstance(store.get(media_id), VideoItem):
+        raise _not_found(media_id)
+    path = store.item_dir(media_id) / "poster.jpg"
+    if not path.is_file():
+        raise _not_found(media_id)
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": IMMUTABLE_CACHE})
+
+
+@router.get("/{media_id}/poster", response_class=FileResponse, responses=_IMAGE_RESPONSES)
+def get_poster(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
+    """Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.
+
+    404 for images, audio and unknown IDs (add-video-import D3).
+    """
+    return _poster_response(store, media_id)
 
 
 def _audio_file_response(store: MediaStore, media_id: str, filename: str, media_type: str) -> Any:

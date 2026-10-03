@@ -217,6 +217,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media/{media_id}/poster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Poster
+         * @description Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.
+         *
+         *     404 for images, audio and unknown IDs (add-video-import D3).
+         */
+        get: operations["get_poster_api_media__media_id__poster_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/media/{media_id}/preview": {
         parameters: {
             query?: never;
@@ -1269,6 +1291,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AudioPeaks"];
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_poster_api_media__media_id__poster_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JPEG image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
                 };
             };
             /** @description Unknown or invalid media id (`media.notFound`) */

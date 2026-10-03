@@ -1,16 +1,20 @@
-"""Video import: detection, limits and data model (TASK-API-016, design.md D1, D2).
+"""Video import: detection, limits, data model and poster (TASK-API-016, TASK-API-017,
+design.md D1, D2, D3).
 
 The video fixtures are generated with the FFmpeg of the pixi environment at
 test time (tiny lavfi test patterns), so no binary test data is committed.
 """
 
+import io
 import json
+import struct
 import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from mmy_backend import media
 from mmy_backend.config import Settings
@@ -101,6 +105,113 @@ def _mjpeg_mp4(tmp_path: Path, seconds: float = 1.0) -> bytes:
     )
 
 
+def _two_color_mp4(
+    tmp_path: Path, name: str, first_seconds: float, second_seconds: float, rate: int = 20
+) -> bytes:
+    """A video that is plain red for `first_seconds`, then plain blue for
+    `second_seconds` (concatenated), so the poster frame's color reveals which
+    moment FFmpeg actually extracted."""
+    out = tmp_path / "fixtures" / name
+    out.parent.mkdir(parents=True, exist_ok=True)
+    command = [
+        _ffmpeg(),
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=red:size=64x48:rate={rate}:duration={first_seconds}",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=blue:size=64x48:rate={rate}:duration={second_seconds}",
+        "-filter_complex",
+        "[0:v]format=yuv420p[a];[1:v]format=yuv420p[b];[a][b]concat=n=2:v=1:a=0[v]",
+        "-map",
+        "[v]",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        str(out),
+    ]
+    subprocess.run(command, check=True, capture_output=True)
+    return out.read_bytes()
+
+
+def _center_color(path: Path, width: int = 64, height: int = 48) -> str:
+    """ "red" or "blue", whichever channel dominates the center pixel.
+
+    Tolerant of JPEG compression rounding (e.g. 255 -> 254), unlike an exact
+    RGB comparison.
+    """
+    raw = path.with_suffix(".center.raw")
+    subprocess.run(
+        [
+            _ffmpeg(),
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(path),
+            "-pix_fmt",
+            "rgb24",
+            "-f",
+            "rawvideo",
+            str(raw),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    data = raw.read_bytes()
+    raw.unlink()
+    index = ((height // 2) * width + width // 2) * 3
+    red, _green, blue = data[index], data[index + 1], data[index + 2]
+    return "red" if red > blue else "blue"
+
+
+def _find_tkhd(data: bytearray) -> int:
+    """Byte offset of the first `tkhd` box inside an mp4/mov's `moov` atom."""
+
+    def walk(start: int, end: int) -> int | None:
+        pos = start
+        while pos + 8 <= end:
+            size = struct.unpack(">I", data[pos : pos + 4])[0]
+            typ = bytes(data[pos + 4 : pos + 8])
+            if typ in (b"moov", b"trak"):
+                found = walk(pos + 8, pos + size)
+                if found is not None:
+                    return found
+            elif typ == b"tkhd":
+                return pos
+            pos += size
+        return None
+
+    found = walk(0, len(data))
+    assert found is not None, "no tkhd box found"
+    return found
+
+
+def _rotate_90(path: Path) -> None:
+    """Patches the first track's `tkhd` matrix to a +-90 degree rotation, as a
+    real device's container-level rotation metadata would be (no FFmpeg build
+    in this environment can write one on encode, so the test patches the box
+    directly instead of shipping a binary fixture)."""
+    data = bytearray(path.read_bytes())
+    pos = _find_tkhd(data)
+    body_start = pos + 8
+    version = data[body_start]
+    matrix_off = body_start + (40 if version == 0 else 52)
+    # Verified against this FFmpeg's own ffprobe/autorotate: swaps width/height
+    # and reports `rotation` (sign per av_display_rotation_get's convention).
+    matrix = struct.pack(">9i", 0, 65536, 0, -65536, 0, 0, 0, 0, 1 << 30)
+    data[matrix_off : matrix_off + 36] = matrix
+    path.write_bytes(data)
+
+
 def _upload(client: TestClient, files: list[tuple[str, bytes]]) -> Any:
     res = client.post(
         "/api/media",
@@ -154,7 +265,9 @@ def test_video_is_imported_with_metadata_and_original(
 
     # The original is stored unchanged under a name derived from its content.
     item_dir = settings.data_dir / "media" / media_id
-    assert sorted(p.name for p in item_dir.iterdir()) == [f"original.{stored_ext}"]
+    assert sorted(p.name for p in item_dir.iterdir()) == sorted(
+        [f"original.{stored_ext}", "poster.jpg"]
+    )
     assert (item_dir / f"original.{stored_ext}").read_bytes() == data
 
     index = json.loads((settings.data_dir / "media.json").read_text(encoding="utf-8"))
@@ -286,11 +399,123 @@ def test_missing_ffprobe_reports_probe_unavailable_for_video(
     assert result["errorCode"] == "media.probeUnavailable"
 
 
+# --- Poster (TASK-API-017, design.md D3) -------------------------------------------------
+
+
+def test_poster_at_two_seconds_or_more_is_extracted_at_one_second(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    # Exactly 2 s: the boundary still uses the 1 s rule, not the half-duration one.
+    data = _two_color_mp4(tmp_path, "boundary.mp4", first_seconds=0.9, second_seconds=1.1)
+    [result] = _upload(client, [("clip.mp4", data)])
+    assert result["ok"] is True, result
+    item = result["item"]
+    assert item["duration"] == pytest.approx(2.0, abs=0.05)
+    poster = settings.data_dir / "media" / item["id"] / "poster.jpg"
+    assert _center_color(poster) == "blue"  # the 1 s mark, not the half (1 s too)
+
+
+def test_poster_under_two_seconds_is_extracted_at_half_duration(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    # 1.6 s total: half (0.8 s) is still red, the literal 1 s mark is already blue -
+    # the two rules disagree here, so this proves half-duration is actually used.
+    data = _two_color_mp4(tmp_path, "short.mp4", first_seconds=0.9, second_seconds=0.7)
+    [result] = _upload(client, [("clip.mp4", data)])
+    assert result["ok"] is True, result
+    item = result["item"]
+    assert item["duration"] == pytest.approx(1.6, abs=0.05)
+    poster = settings.data_dir / "media" / item["id"] / "poster.jpg"
+    assert _center_color(poster) == "red"  # the half-duration mark (0.8 s)
+
+
+def test_poster_of_a_rotated_video_is_upright_and_matches_reported_size(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    data = bytearray(_test_pattern(tmp_path, "h264", seconds=1.5))
+    path = tmp_path / "fixtures" / "rotated.mp4"
+    path.write_bytes(data)
+    _rotate_90(path)
+
+    [result] = _upload(client, [("rotated.mp4", path.read_bytes())])
+    assert result["ok"] is True, result
+    item = result["item"]
+    # The source is 64x48 (landscape); rotated by +-90 degrees it is portrait.
+    assert (item["width"], item["height"]) == (48, 64)
+
+    poster = settings.data_dir / "media" / item["id"] / "poster.jpg"
+    with Image.open(poster) as image:
+        assert image.size == (item["width"], item["height"])
+
+
+def test_poster_is_a_jpeg_at_the_image_preview_quality(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    [result] = _upload(client, [("clip.mp4", _test_pattern(tmp_path, "h264", seconds=2.0))])
+    poster = settings.data_dir / "media" / result["item"]["id"] / "poster.jpg"
+    with Image.open(poster) as image:
+        assert image.format == "JPEG"
+        assert image.size == (64, 48)
+        poster_quantization = image.quantization  # type: ignore[attr-defined]
+
+    # Quantization tables are a deterministic function of the quality setting
+    # (independent of image content), so this confirms the same quality as
+    # image previews/thumbnails (PREVIEW_QUALITY) without a brittle byte compare.
+    reference = io.BytesIO()
+    Image.new("RGB", (64, 48), (10, 20, 30)).save(reference, "JPEG", quality=media.PREVIEW_QUALITY)
+    reference.seek(0)
+    with Image.open(reference) as ref_image:
+        assert poster_quantization == ref_image.quantization  # type: ignore[attr-defined]
+
+
+def test_poster_endpoint_serves_immutable_jpeg(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    [result] = _upload(client, [("clip.mp4", _test_pattern(tmp_path, "h264"))])
+    item = result["item"]
+
+    res = client.get(item["posterUrl"])
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "image/jpeg"
+    assert res.headers["cache-control"] == "public, max-age=31536000, immutable"
+    item_dir = settings.data_dir / "media" / item["id"]
+    assert res.content == (item_dir / "poster.jpg").read_bytes()
+
+
+def test_poster_endpoint_is_404_for_images_audio_and_unknown_ids(
+    client: TestClient, tmp_path: Path
+) -> None:
+    image = io.BytesIO()
+    Image.new("RGB", (16, 12), (1, 2, 3)).save(image, "JPEG")
+    sine = _run_ffmpeg(
+        tmp_path, "tone.mp3", ["-f", "lavfi", "-i", "sine=duration=1", "-c:a", "libmp3lame"]
+    )
+    [as_image, as_audio] = _upload(client, [("a.jpg", image.getvalue()), ("tone.mp3", sine)])
+    for media_id in (as_image["item"]["id"], as_audio["item"]["id"], "f" * 32, "not-an-id"):
+        res = client.get(f"/api/media/{media_id}/poster")
+        assert res.status_code == 404, media_id
+        assert res.json()["detail"]["code"] == "media.notFound"
+
+
+def test_missing_ffmpeg_rejects_video_without_leftovers(
+    client: TestClient, settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(media, "ffmpeg_binary", lambda: None)
+    [result] = _upload(client, [("clip.mp4", _test_pattern(tmp_path, "h264"))])
+    assert result["errorCode"] == "media.probeUnavailable"
+    assert _files_under(settings.data_dir) == set()
+
+
 # --- OpenAPI ------------------------------------------------------------------------------
 
 
 def test_openapi_video_item_is_part_of_the_media_union(client: TestClient) -> None:
-    schemas = client.get("/openapi.json").json()["components"]["schemas"]
+    doc = client.get("/openapi.json").json()
+    poster = doc["paths"]["/api/media/{media_id}/poster"]["get"]["responses"]
+    assert "image/jpeg" in poster["200"]["content"]
+    assert "404" in poster
+
+    schemas = doc["components"]["schemas"]
     assert schemas["MediaItem"]["discriminator"]["mapping"]["video"] == (
         "#/components/schemas/VideoItem"
     )

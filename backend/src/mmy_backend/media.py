@@ -629,6 +629,63 @@ def derive_audio(original: Path, target_dir: Path, stream_index: int = 0) -> flo
     return accumulator.samples / _PCM_RATE
 
 
+def derive_poster(original: Path, target_dir: Path, probe: VideoProbe) -> None:
+    """Extracts the poster frame into `target_dir/poster.jpg` (JPEG, quality 90).
+
+    The frame is taken at 1 s, or at half the duration if the video is shorter
+    than 2 s (design.md D3). FFmpeg decodes the described stream and applies
+    any rotation from its display matrix on its own (the same side data
+    `probe_video` already used for the reported width/height), so the
+    extracted frame comes out already in `probe.width` x `probe.height`.
+    Pillow then re-encodes it at PREVIEW_QUALITY, the same quality used for
+    image previews.
+
+    Raises MediaError: `probeUnavailable` without FFmpeg, `unsupportedType` if
+    the frame cannot be extracted or decoded as an image.
+    """
+    binary = ffmpeg_binary()
+    if binary is None:
+        raise MediaError(ErrorCode.MEDIA_PROBE_UNAVAILABLE)
+    timestamp = probe.duration / 2 if probe.duration < 2 else 1.0
+    raw = target_dir / ".poster-frame.png"
+    command = [
+        binary,
+        "-nostdin",
+        "-hide_banner",
+        "-v",
+        "error",
+        "-ss",
+        f"{timestamp:.3f}",
+        "-i",
+        str(original),
+        "-map",
+        f"0:{probe.stream_index}",
+        "-frames:v",
+        "1",
+        "-pix_fmt",
+        "rgb24",
+        str(raw),
+    ]
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, timeout=PROBE_TIMEOUT_SECONDS, check=False
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise _unsupported() from exc
+    except OSError as exc:
+        raise MediaError(ErrorCode.MEDIA_PROBE_UNAVAILABLE) from exc
+    if completed.returncode != 0 or not raw.is_file():
+        raise _unsupported()
+    try:
+        with Image.open(raw) as frame:
+            frame.load()
+            frame.save(target_dir / "poster.jpg", "JPEG", quality=PREVIEW_QUALITY)
+    except (UnidentifiedImageError, OSError, SyntaxError, ValueError, EOFError) as exc:
+        raise _unsupported() from exc
+    finally:
+        raw.unlink(missing_ok=True)
+
+
 def _supported_codec(name: str) -> bool:
     return name in _AUDIO_CODECS or name.startswith("pcm_")
 
@@ -732,7 +789,9 @@ class MediaStore:
                 if video_probe is not None:
                     if size > MAX_VIDEO_BYTES:
                         raise _too_large(MAX_VIDEO_BYTES)
-                    upload.rename(staging / f"original.{video_probe.extension}")
+                    original = staging / f"original.{video_probe.extension}"
+                    upload.rename(original)
+                    derive_poster(original, staging, video_probe)
                     prepared = _PreparedVideo(id=media_id, probe=video_probe)
                 else:
                     if size > MAX_AUDIO_BYTES:
