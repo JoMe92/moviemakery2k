@@ -244,3 +244,22 @@
 :global(:root:not([data-layout="wide"])) .strip:has(> .hint) {
   min-width: 0;
 }
+
+/* "⋯" on a tile with touch operation (add-mobile-layout design.md D6). */
+.more {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--y2k-touch-target);
+  height: var(--y2k-touch-target);
+  padding: 0;
+  border: 1px solid var(--y2k-button-border);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-button-top), var(--y2k-button-bottom));
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}

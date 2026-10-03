@@ -252,6 +252,21 @@ export const de = {
     trimRange:
       "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen, die Länge mindestens {length} s betragen.",
   },
+  actions: {
+    bar: "Aktionen",
+    duration: "Dauer…",
+    moveLeft: "Nach links",
+    moveRight: "Nach rechts",
+    transitionBefore: "Übergang davor…",
+    remove: "Entfernen",
+    volume: "Lautstärke…",
+    trim: "Kürzen…",
+    fadeIn: "Einblenden",
+    fadeOut: "Ausblenden",
+    more: "Weitere Aktionen",
+    slideMore: "Aktionen für Bild {number}",
+    clipMore: "Aktionen für Musikstück {number}",
+  },
   transitions: {
     unavailable: "Der Übergangskatalog ist nicht verfügbar.",
     list: "Übergänge",

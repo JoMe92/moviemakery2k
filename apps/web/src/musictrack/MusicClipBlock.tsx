@@ -1,11 +1,13 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { KeyboardEvent, MouseEvent } from "react";
+import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef } from "react";
 import { formatClipDuration } from "../i18n/format";
 import { useT } from "../i18n/useT";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
 import { type DragItem, musicClipSortableId } from "../storyboard/dropLogic";
 import styles from "./MusicTrack.module.css";
+import { chain, useLongPress } from "../ui/useLongPress";
 import { Waveform } from "./Waveform";
 
 /** Width of one second of music on the music track (blocks are proportional to their length). */
@@ -54,6 +56,17 @@ export function MusicClipBlock({
   const duration = formatClipDuration(locale, length);
   const width = Math.max(0, length) * MUSIC_PX_PER_SECOND;
   const end = item ? (clip.trimEnd === null ? item.duration : clip.trimEnd) : 0;
+  const touch = isTouchLayout(useLayoutMode());
+  const blockEl = useRef<HTMLButtonElement | null>(null);
+  const openMenuAt = (el: HTMLElement) => {
+    onSelect();
+    const rect = el.getBoundingClientRect();
+    onMenu(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+  // Long press opens the action sheet (add-mobile-layout design.md D6).
+  const longPress = useLongPress(() => blockEl.current && openMenuAt(blockEl.current), {
+    enabled: touch,
+  });
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (isDragging) return;
@@ -64,9 +77,7 @@ export function MusicClipBlock({
     }
     if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
       event.preventDefault();
-      onSelect();
-      const rect = event.currentTarget.getBoundingClientRect();
-      onMenu(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      openMenuAt(event.currentTarget);
       return;
     }
     listeners?.onKeyDown?.(event);
@@ -95,11 +106,19 @@ export function MusicClipBlock({
       <button
         type="button"
         ref={(el) => {
+          blockEl.current = el;
           setNodeRef(el);
           tileRef?.(el);
         }}
         {...dragAttributes}
         {...listeners}
+        onPointerDown={chain(
+          listeners?.onPointerDown as ((event: PointerEvent<HTMLElement>) => void) | undefined,
+          longPress.onPointerDown,
+        )}
+        onPointerMove={longPress.onPointerMove}
+        onPointerUp={longPress.onPointerUp}
+        onPointerCancel={longPress.onPointerCancel}
         className={styles.block}
         style={{ width: `${width}px` }}
         aria-pressed={selected}
@@ -115,6 +134,17 @@ export function MusicClipBlock({
         <span className={styles.name}>{name}</span>
         <span className={styles.duration}>{duration}</span>
       </button>
+      {touch ? (
+        <button
+          type="button"
+          className={styles.more}
+          aria-label={t("actions.clipMore", { number })}
+          aria-haspopup="menu"
+          onClick={(event) => openMenuAt(event.currentTarget)}
+        >
+          ⋯
+        </button>
+      ) : null}
     </li>
   );
 }

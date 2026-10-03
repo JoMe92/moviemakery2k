@@ -1,9 +1,11 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { KeyboardEvent, MouseEvent } from "react";
+import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef } from "react";
 import { useT } from "../i18n/useT";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { EffectsIcon } from "../ui/icons";
+import { chain, useLongPress } from "../ui/useLongPress";
 import { type DragItem, formatDuration } from "./dropLogic";
 import styles from "./StoryboardStrip.module.css";
 import { TransitionSlot } from "./TransitionSlot";
@@ -58,6 +60,17 @@ export function SlideTile({
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   const name = media?.filename ?? t("storyboard.missingImage");
   const duration = formatDuration(slide.duration, locale);
+  const touch = isTouchLayout(useLayoutMode());
+  const openMenuAt = (el: HTMLElement) => {
+    onSelect();
+    const rect = el.getBoundingClientRect();
+    onMenu(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+  const tileEl = useRef<HTMLButtonElement | null>(null);
+  // Long press opens the action sheet (add-mobile-layout design.md D6).
+  const longPress = useLongPress(() => tileEl.current && openMenuAt(tileEl.current), {
+    enabled: touch,
+  });
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (isDragging) return;
@@ -68,9 +81,7 @@ export function SlideTile({
     }
     if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
       event.preventDefault();
-      onSelect();
-      const rect = event.currentTarget.getBoundingClientRect();
-      onMenu(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      openMenuAt(event.currentTarget);
       return;
     }
     listeners?.onKeyDown?.(event);
@@ -115,11 +126,19 @@ export function SlideTile({
       <button
         type="button"
         ref={(el) => {
+          tileEl.current = el;
           setNodeRef(el);
           tileRef?.(el);
         }}
         {...dragAttributes}
         {...listeners}
+        onPointerDown={chain(
+          listeners?.onPointerDown as ((event: PointerEvent<HTMLElement>) => void) | undefined,
+          longPress.onPointerDown,
+        )}
+        onPointerMove={longPress.onPointerMove}
+        onPointerUp={longPress.onPointerUp}
+        onPointerCancel={longPress.onPointerCancel}
         className={styles.tile}
         aria-pressed={selected}
         aria-current={playing ? "true" : undefined}
@@ -142,16 +161,28 @@ export function SlideTile({
         </span>
         <span className={styles.duration}>{duration}</span>
       </button>
-      <button
-        type="button"
-        className={styles.effect}
-        aria-disabled="true"
-        aria-label={t("storyboard.effectSlot", { number })}
-        title={t("storyboard.effectsLater")}
-        tabIndex={-1}
-      >
-        <EffectsIcon size={12} />
-      </button>
+      {touch ? (
+        <button
+          type="button"
+          className={styles.more}
+          aria-label={t("actions.slideMore", { number })}
+          aria-haspopup="menu"
+          onClick={(event) => openMenuAt(event.currentTarget)}
+        >
+          ⋯
+        </button>
+      ) : (
+        <button
+          type="button"
+          className={styles.effect}
+          aria-disabled="true"
+          aria-label={t("storyboard.effectSlot", { number })}
+          title={t("storyboard.effectsLater")}
+          tabIndex={-1}
+        >
+          <EffectsIcon size={12} />
+        </button>
+      )}
     </li>
   );
 }

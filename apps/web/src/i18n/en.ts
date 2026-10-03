@@ -252,6 +252,21 @@ export const en = {
     trimRange:
       "Allowed are start and end from {min} to {max}; the start must lie before the end and the length must be at least {length} s.",
   },
+  actions: {
+    bar: "Actions",
+    duration: "Duration…",
+    moveLeft: "Move left",
+    moveRight: "Move right",
+    transitionBefore: "Transition before…",
+    remove: "Remove",
+    volume: "Volume…",
+    trim: "Trim…",
+    fadeIn: "Fade in",
+    fadeOut: "Fade out",
+    more: "More actions",
+    slideMore: "Actions for picture {number}",
+    clipMore: "Actions for music clip {number}",
+  },
   transitions: {
     unavailable: "The transition catalog is not available.",
     list: "Transitions",
