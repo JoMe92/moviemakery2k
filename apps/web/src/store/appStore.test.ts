@@ -442,7 +442,9 @@ describe("appStore", () => {
     });
 
     it("copies, then pastes a music clip, keeping trim, volume and fades, selected", async () => {
-      const api = mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]) });
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
       const store = createAppStore(api);
       await store.getState().init();
       const st = () => store.getState();
@@ -477,7 +479,9 @@ describe("appStore", () => {
     });
 
     it("cuts a music clip: one undo step for the whole operation, then pastes it back", async () => {
-      const api = mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]) });
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
       const store = createAppStore(api);
       await store.getState().init();
       const st = () => store.getState();
@@ -500,7 +504,9 @@ describe("appStore", () => {
     });
 
     it("copying a music clip after copying a picture replaces the clipboard and retargets paste", async () => {
-      const api = mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]) });
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
       const store = createAppStore(api);
       await store.getState().init();
       const st = () => store.getState();
