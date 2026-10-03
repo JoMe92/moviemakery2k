@@ -89,7 +89,28 @@
   --y2k-title-radius: 7px;
   --y2k-taskpane-width: 220px;
   --y2k-storyboard-height: 216px;
+
+  /* Touch und Mobilgeräte (add-mobile-layout design.md D2) */
+  --y2k-touch-target: 44px;
+  --y2k-touch-gap: 8px;
+  --y2k-taskbar-height: calc(var(--y2k-touch-target) + 8px);
+  --y2k-sheet-radius: 8px;
+  --y2k-safe-top: env(safe-area-inset-top, 0px);
+  --y2k-safe-right: env(safe-area-inset-right, 0px);
+  --y2k-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --y2k-safe-left: env(safe-area-inset-left, 0px);
+  --y2k-taskbar-start-top: #4ba54b;
+  --y2k-taskbar-start-bottom: #2d8a2d;
 }
+
+/*
+ * Layout-Modi (Grenzen wie src/shell/layoutMode.ts; das Wurzelelement trägt
+ * data-layout="compact|medium|wide", data-orientation und data-pointer):
+ *   @custom-media --y2k-compact (max-width: 599px),
+ *     ((orientation: landscape) and (max-height: 499px));
+ *   @custom-media --y2k-medium (min-width: 600px) and (max-width: 1279px);
+ *   @custom-media --y2k-wide (min-width: 1280px);
+ */
 
 *,
 *::before,
@@ -101,6 +122,13 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/* Dynamic viewport height: the taskbar stays visible with the browser bars (add-mobile-layout D2). */
+@supports (height: 100dvh) {
+  #root {
+    height: 100dvh;
+  }
 }
 
 body {
@@ -123,4 +151,30 @@ textarea {
 :focus-visible {
   outline: 2px solid var(--y2k-focus);
   outline-offset: 1px;
+}
+
+/*
+ * Touch targets (add-mobile-layout design.md D2, app-shell "Grundlegende
+ * Barrierefreiheit"): with a coarse pointer and in the compact layout every
+ * interactive element gets at least 44×44 px.
+ */
+:root[data-layout="compact"] :is(button, [role="button"], select, input:not([type="hidden"])),
+:root[data-pointer="coarse"] :is(button, [role="button"], select, input:not([type="hidden"])) {
+  min-width: var(--y2k-touch-target);
+  min-height: var(--y2k-touch-target);
+}
+
+/*
+ * No zoom jump on iOS (add-mobile-layout design.md D10): text inputs use at
+ * least 16 px with touch operation.
+ */
+:root[data-layout="compact"] :is(input, select, textarea),
+:root[data-pointer="coarse"] :is(input, select, textarea) {
+  font-size: max(16px, 1em);
+}
+
+/* Dragging and swiping never trigger pull-to-refresh (add-mobile-layout D14). */
+html,
+body {
+  overscroll-behavior-y: none;
 }

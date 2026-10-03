@@ -9,7 +9,7 @@
  *   and cached. A compile/link error is logged and falls back to Fade.
  * - A lost context silently stops drawing.
  */
-import { bufferSize, containRect } from "./geometry";
+import { bufferSize, containRect, previewBufferSize } from "./geometry";
 import { FALLBACK_TRANSITION_ID, fragmentSourceFor, VERTEX_SOURCE } from "./shaderSource";
 import type { Transform as TitleTransform } from "./titlePhase";
 import { TITLE_FRAGMENT_SOURCE, TITLE_VERTEX_SOURCE } from "./titleShaderSource";
@@ -128,8 +128,9 @@ export class Renderer {
   }
 
   /** Set the buffer to the largest integer 4:3 area of the CSS box (times DPR). */
-  resize(cssWidth: number, cssHeight: number, dpr: number): void {
-    const { width, height } = bufferSize(cssWidth, cssHeight, dpr, this.maxSize);
+  resize(cssWidth: number, cssHeight: number, dpr: number, preview = false): void {
+    const size = preview ? previewBufferSize : bufferSize;
+    const { width, height } = size(cssWidth, cssHeight, dpr, this.maxSize);
     if (this.canvas.width !== width) this.canvas.width = width;
     if (this.canvas.height !== height) this.canvas.height = height;
   }

@@ -490,6 +490,72 @@ Mesa (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
 shell hook (which contains the EGL variables) in its entrypoint, and runs the
 render environment check during the build.
 
+## Layout modes and touch
+
+One React app serves desktop, tablet and phone; only the shell and the input
+model change, the store, time model and API stay the same
+(OpenSpec change `add-mobile-layout`).
+
+**Layout modes.** `apps/web/src/shell/layoutMode.ts` holds the only
+breakpoints and `useLayoutMode()`, which derives the mode from `matchMedia`:
+
+| Mode | Condition | Shell |
+|---|---|---|
+| `wide` | width ≥ 1280 px | `AppWindow` — the Movie Maker window (task pane, status bar) |
+| `medium` | 600–1279 px | `AppWindow variant="medium"` — collection and monitor side by side, taskbar instead of task pane and status bar |
+| `compact` | width < 600 px, or landscape with height < 500 px | `CompactWindow` — title bar with *☰*, monitor (≤ 45 % height), storyboard and music track, action bar, taskbar; landscape puts the monitor left |
+
+The root element mirrors the result as `data-layout`, `data-orientation` and
+`data-pointer` (`coarse` for touch screens); CSS keys mode-specific rules on
+these attributes, and `theme.css` adds touch, taskbar, sheet and safe-area
+tokens (`--y2k-touch-target: 44px`, `--y2k-safe-*` from
+`env(safe-area-inset-*)`). With a coarse pointer or in the compact layout every
+interactive element is at least 44 × 44 px. Switching modes keeps the store
+untouched, so project, selection and playback survive a rotation.
+
+**Touch operation** (`isTouchLayout`: coarse pointer or compact) replaces
+hover, double click, right click and dragging, never adding a second editing
+logic:
+
+- **Task groups as data.** `shell/tasks.ts` describes the three task groups
+  (label, icon, action, activation). The desktop task pane and the taskbar's
+  step sheets render the same entries; in the compact layout the collection
+  entries also open the collection sheet.
+- **Sheets.** `ui/Sheet.tsx` is a modal bottom sheet on `<dialog>` (grip,
+  `auto`/`full` height, close via button, Escape, backdrop and swipe down,
+  focus trap and return through the shared `useModal` hook, reduced motion).
+  `Dialog` renders as a sheet in the compact layout, and `ContextMenu`
+  renders as an action sheet with touch operation, so existing dialogs and
+  menus follow without changes of their own. `MenuSheet` shows the menus of
+  `menus.ts` behind *☰*.
+- **Selection and actions.** A tap selects (store `selection` /
+  `musicSelection`). `ActionBar` offers the element's actions; they call the
+  store functions the desktop uses (`moveSlide`, `removeSlide`,
+  `updateMusicClip` …) or raise an **edit request** (`requestEdit`, like
+  `requestImport`): the storyboard strip and music track own their dialogs
+  and context menus and open them for a request, a long press
+  (`ui/useLongPress`, 400 ms within 8 px) or the *⋯* button.
+- **Picking.** `media/CollectionSheet` hosts `MediaCollection` in picking
+  mode (tap toggles, order kept, no draggable) and inserts the picks with
+  `addSlide`/`addMusicClip`.
+- **Dragging.** `StoryboardDnd` uses two sensors: the pointer sensor for
+  mouse and pen (5 px) and a `TouchSensor` that activates after a 400 ms press
+  within 8 px, so a swipe scrolls the strip. Both release dnd-kit's click
+  guard at the next press (mmy-fa5). Only the dragged item switches to
+  `touch-action: none`; the strips contain their overscroll.
+- **Transitions** are set in `transitions/TransitionSheet` (catalog list,
+  stepper); `playTransitionOnce` plays the slot once in the monitor by
+  playing up to `Playback.until`.
+- **Gestures and haptics.** `ui/useGestures` (swipe, double tap) and
+  `ui/usePinch` read Pointer Events directly, without a library;
+  `player/useFullscreen` uses the Fullscreen API on the monitor container or
+  a fixed overlay. `ui/haptics` wraps `navigator.vibrate` behind the stored
+  *Vibration* option.
+
+**Performance.** The preview buffer is the CSS size × min(devicePixelRatio, 2)
+and at most 1920 px wide (`previewBufferSize`); a hidden tab pauses playback,
+which stops the rAF clock. Thumbnails load lazily and decode asynchronously.
+
 ## Localisation
 
 The UI is available in German and English (OpenSpec change
@@ -543,9 +609,9 @@ covers the switch to English and the browser-language detection.
 |---|---|---|
 | Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
 | Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
-| Web | Vitest + Testing Library | Timeline maths, music schedule (shared vectors), *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
+| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
-| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Slideshow flow in the real app; language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); golden frames; preview ↔ export frame comparison |
+| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Device profiles iPhone 13, Pixel 7 and iPad (gen 7) with touch: no horizontal scroll, 44 px targets, the whole flow by tapping in portrait and landscape (`e2e/test_mobile.py`); slideshow flow in the real app; language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |
 | Static | Biome, Ruff (backend, `e2e/`, `scripts/`), mypy (strict), TypeScript (strict) | Lint, formatting, types |
 

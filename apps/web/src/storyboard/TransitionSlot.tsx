@@ -18,6 +18,8 @@ export interface TransitionSlotProps {
   onProperties: () => void;
   onRemove: () => void;
   onMenu: (x: number, y: number) => void;
+  /** Tap with touch operation: opens the transition sheet (add-mobile-layout D9). */
+  onActivate?: () => void;
 }
 
 /**
@@ -31,6 +33,7 @@ export function TransitionSlot({
   onProperties,
   onRemove,
   onMenu,
+  onActivate,
 }: TransitionSlotProps) {
   const { t, locale } = useT();
   const data: DropTarget = { type: "transitionSlot", slideId };
@@ -54,6 +57,10 @@ export function TransitionSlot({
       : t("storyboard.noTransition");
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (onActivate && (event.key === "Enter" || event.key === " ")) {
+      // The click handler opens the sheet (touch operation).
+      return;
+    }
     if (event.key === "Enter" && transitionIn) {
       event.preventDefault();
       onProperties();
@@ -83,6 +90,7 @@ export function TransitionSlot({
       data-testid={`transition-slot-${slideId}`}
       data-filled={transitionIn ? "true" : "false"}
       data-drop={dropping || undefined}
+      onClick={onActivate}
       onDoubleClick={() => {
         if (transitionIn) onProperties();
       }}

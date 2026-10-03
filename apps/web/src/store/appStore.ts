@@ -101,6 +101,23 @@ export type ClipboardEntry =
     }
   | null;
 
+/**
+ * Request to open an editing dialog or the action menu of an element
+ * (add-mobile-layout design.md D6): the action bar and the "⋯" buttons ask,
+ * the storyboard strip and the music track open their own dialogs, so both
+ * operating models share one editing logic. `seq` makes repeats distinct.
+ */
+export type EditRequest =
+  | { kind: "slideDuration" | "transition" | "slideMenu"; slideId: string; seq: number }
+  | { kind: "volume" | "trim" | "musicMenu"; clipId: string; seq: number };
+
+/** An edit request before the store numbers it. */
+export type EditRequestInput = EditRequest extends infer R
+  ? R extends EditRequest
+    ? Omit<R, "seq">
+    : never
+  : never;
+
 export interface UploadEntry {
   key: string;
   filename: string;
@@ -141,6 +158,10 @@ export interface AppState {
   importRequest: number;
   /** Kind of the last requested file dialog (file types it offers). */
   importKind: ImportKind;
+  /** Collection sheet of the compact layout open (add-mobile-layout design.md D7). */
+  collectionSheetOpen: boolean;
+  /** Last requested editing dialog or action menu (touch operation), or null. */
+  editRequest: EditRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -169,6 +190,10 @@ export interface AppState {
 
   /** Request the import file dialog (opened by the collection); default `any`. */
   requestImport(kind?: ImportKind): void;
+  /** Open or close the collection sheet (compact layout). */
+  setCollectionSheetOpen(open: boolean): void;
+  /** Ask the storyboard or music track to open a dialog or action menu. */
+  requestEdit(request: EditRequestInput): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -182,6 +207,11 @@ export interface AppState {
   setSlideDuration(slideId: string, duration: number): boolean;
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
+  /**
+   * Play the transition before this picture once in the monitor, with a
+   * short lead-in and lead-out (transition sheet, add-mobile-layout D9).
+   */
+  playTransitionOnce(slideId: string): void;
   removeTransition(slideId: string): void;
 
   /**
@@ -231,6 +261,9 @@ export interface AppState {
 }
 
 export type AppStore = StoreApi<AppState>;
+
+/** Lead-in and lead-out (s) around a transition played once. */
+export const TRANSITION_LEAD = 0.5;
 
 export interface AppStoreOptions {
   /** Initial UI language; defaults to stored setting → browser → `en`. */
@@ -388,6 +421,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       uploads: [],
       importRequest: 0,
       importKind: "any",
+      editRequest: null,
+      collectionSheetOpen: false,
       exportWizardOpen: false,
       locale,
       setLocale(next) {
@@ -504,6 +539,13 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       requestImport(kind = "any") {
         set({ importRequest: get().importRequest + 1, importKind: kind });
       },
+      setCollectionSheetOpen(open) {
+        set({ collectionSheetOpen: open });
+      },
+      requestEdit(request) {
+        const seq = (get().editRequest?.seq ?? 0) + 1;
+        set({ editRequest: { ...request, seq } as EditRequest });
+      },
 
       async importFiles(files) {
         const entries: UploadEntry[] = files.map((f, i) => ({
@@ -601,6 +643,18 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             transitionIn: { transitionId, duration: defaultTransitionDuration(transitionId) },
           })),
         );
+      },
+      playTransitionOnce(slideId) {
+        const { slides } = get();
+        const timeline = timelineOf(slides);
+        const placed = timeline.slides.find((p) => p.slide.id === slideId);
+        if (!placed || placed.transitionIn <= 0) return;
+        const from = Math.max(0, placed.start - TRANSITION_LEAD);
+        const until = Math.min(
+          timeline.duration,
+          placed.start + placed.transitionIn + TRANSITION_LEAD,
+        );
+        set({ ...noDemo, playback: { playing: true, time: from, until } });
       },
       setTransitionDuration(slideId, duration) {
         if (!isValidTransitionDuration(duration)) return false;

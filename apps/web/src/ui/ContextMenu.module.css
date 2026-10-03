@@ -44,3 +44,36 @@
   position: absolute;
   left: 6px;
 }
+
+/* Action sheet (touch operation): large entries in a column. */
+.sheetMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheetItem {
+  min-height: var(--y2k-touch-target);
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--y2k-separator);
+  background: none;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sheetItem:active:not([aria-disabled="true"]) {
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+}
+
+.sheetItem[aria-disabled="true"] {
+  color: var(--y2k-text-disabled);
+  cursor: default;
+}
+
+.check {
+  display: inline-block;
+  width: 1.5em;
+}

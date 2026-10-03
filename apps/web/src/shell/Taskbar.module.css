@@ -1,0 +1,71 @@
+/* XP-like taskbar with the three steps (add-mobile-layout design.md D2/D4). */
+.taskbar {
+  min-height: var(--y2k-taskbar-height);
+  padding: 4px calc(4px + var(--y2k-safe-right)) calc(4px + var(--y2k-safe-bottom))
+    calc(4px + var(--y2k-safe-left));
+  border-top: 1px solid var(--y2k-title-top);
+  background: linear-gradient(
+    to bottom,
+    var(--y2k-title-top),
+    var(--y2k-title-mid) 30%,
+    var(--y2k-title-bottom)
+  );
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  min-width: 0;
+}
+
+.button {
+  width: 100%;
+  min-height: var(--y2k-touch-target);
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-title-edge);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-title-top), var(--y2k-title-mid));
+  box-shadow: inset 1px 1px 0 rgb(255 255 255 / 35%);
+  color: var(--y2k-title-text);
+  font-weight: bold;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 0 var(--y2k-title-shadow);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:active {
+  box-shadow: inset 1px 1px 3px var(--y2k-title-shadow);
+}
+
+/* Active step: green "start" accent (own interpretation, no XP bitmaps). */
+.button[aria-current="step"] {
+  border-color: var(--y2k-taskbar-start-bottom);
+  background: linear-gradient(
+    to bottom,
+    var(--y2k-taskbar-start-top),
+    var(--y2k-taskbar-start-bottom)
+  );
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--y2k-touch-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entries button {
+  align-items: center;
+  font-size: 15px;
+}

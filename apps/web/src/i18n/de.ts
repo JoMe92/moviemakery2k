@@ -15,6 +15,7 @@ export const de = {
   options: {
     title: "Optionen",
     language: "Sprache der Benutzeroberfläche:",
+    vibration: "Vibration",
   },
   shell: {
     windowTitle: "{app} – Unbenanntes Projekt",
@@ -27,6 +28,10 @@ export const de = {
     storyboard: "Storyboard",
     showTimeline: "Zeitachse anzeigen",
     storyboardHint: "Ziehen Sie Bilder hierher, um eine Diashow zu erstellen.",
+    storyboardHintTouch:
+      "Tippen Sie auf „1. Aufnehmen“, um Bilder zu importieren und hier hinzuzufügen.",
+    editing: "Bearbeitung",
+    taskbar: "Filmschritte",
   },
   collections: {
     media: "Meine Bilder",
@@ -36,6 +41,7 @@ export const de = {
   },
   menu: {
     bar: "Menüleiste",
+    sheet: "Menü",
     file: {
       label: "Datei",
       newProject: "Neues Projekt",
@@ -95,12 +101,14 @@ export const de = {
   tasks: {
     capture: {
       title: "1. Aufnehmen",
+      short: "1. Aufnehmen",
       importVideo: "Video importieren",
       importPictures: "Bilder importieren",
       importAudio: "Audio oder Musik importieren",
     },
     edit: {
       title: "2. Film bearbeiten",
+      short: "2. Bearbeiten",
       showCollections: "Sammlungen anzeigen",
       showEffects: "Videoeffekte anzeigen",
       showTransitions: "Videoübergänge anzeigen",
@@ -108,6 +116,7 @@ export const de = {
     },
     finish: {
       title: "3. Film fertig stellen",
+      short: "3. Fertig stellen",
       saveToComputer: "Auf dem Computer speichern",
       publishWeb: "Im Web veröffentlichen",
     },
@@ -168,6 +177,24 @@ export const de = {
     videoMenu: "Video „{name}“",
     deleteVideoTitle: "Video löschen",
     deleteVideoQuestion: "Möchten Sie „{name}“ wirklich löschen?",
+    properties: "Eigenschaften",
+    propertiesTitle: "Eigenschaften von „{name}“",
+    fileName: "Dateiname",
+    kind: "Art",
+    kindImage: "Bild",
+    kindAudio: "Audio",
+    kindVideo: "Video",
+    size: "Abmessungen",
+    sizeValue: "{width} × {height} Pixel",
+    duration: "Dauer",
+    picked: "ausgewählt",
+  },
+  collectionSheet: {
+    title: "Sammlungen",
+    tabs: "Sammlung wählen",
+    import: "Importieren",
+    addPictures: "Zum Bildstreifen hinzufügen ({count})",
+    addMusic: "Zur Musikleiste hinzufügen ({count})",
   },
   upload: {
     progress: "Importiere {current} von {total} …",
@@ -196,6 +223,8 @@ export const de = {
     slideDuration: "Bilddauer (Sekunden):",
     transitionDuration: "Übergangsdauer (Sekunden):",
     transition: "Übergang:",
+    smaller: "Kleiner",
+    larger: "Größer",
   },
   dnd: {
     audio: "Audio „{name}“",
@@ -219,6 +248,7 @@ export const de = {
     label: "Audio/Musik",
     list: "Musikleiste",
     emptyHint: "Ziehen Sie Musik aus „Meine Musik“ hierher.",
+    emptyHintTouch: "Musik fügen Sie über „2. Bearbeiten“ → „Sammlungen anzeigen“ hinzu.",
     sortable: "verschiebbares Musikstück",
     clip: "Musikstück {number}: {name}, {duration}",
     clipMenu: "Musikstück {number} der Musikleiste",
@@ -244,6 +274,32 @@ export const de = {
     trimRange:
       "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen, die Länge mindestens {length} s betragen.",
   },
+  stepper: {
+    decrease: "{label} verringern",
+    increase: "{label} erhöhen",
+  },
+  transitionSheet: {
+    title: "Übergang",
+    none: "Kein Übergang",
+    list: "Übergänge zur Auswahl",
+    duration: "Übergangsdauer",
+    done: "Fertig",
+  },
+  actions: {
+    bar: "Aktionen",
+    duration: "Dauer…",
+    moveLeft: "Nach links",
+    moveRight: "Nach rechts",
+    transitionBefore: "Übergang davor…",
+    remove: "Entfernen",
+    volume: "Lautstärke…",
+    trim: "Kürzen…",
+    fadeIn: "Einblenden",
+    fadeOut: "Ausblenden",
+    more: "Weitere Aktionen",
+    slideMore: "Aktionen für Bild {number}",
+    clipMore: "Aktionen für Musikstück {number}",
+  },
   transitions: {
     unavailable: "Der Übergangskatalog ist nicht verfügbar.",
     list: "Übergänge",
@@ -256,6 +312,8 @@ export const de = {
     stop: "Stopp",
     previous: "Vorheriges Bild",
     next: "Nächstes Bild",
+    fullscreen: "Vollbild",
+    exitFullscreen: "Vollbild beenden",
     time: "Zeit",
     canvas: "Vorschaubild",
     sample: "Beispiel: {name}",

@@ -1,0 +1,40 @@
+.notices {
+  position: fixed;
+  top: calc(var(--y2k-safe-top) + var(--y2k-touch-target) + 8px);
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.notice {
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--y2k-border-strong);
+  border-radius: var(--y2k-radius);
+  background: var(--y2k-face-light);
+  box-shadow: 2px 2px 6px var(--y2k-shadow);
+  animation: notice-in 150ms ease-out;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notice {
+    animation: none;
+  }
+}
+
+.saveFailed {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--y2k-touch-target);
+  min-height: var(--y2k-touch-target);
+}

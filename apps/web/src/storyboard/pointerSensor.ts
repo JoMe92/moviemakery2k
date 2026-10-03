@@ -1,28 +1,38 @@
-import { PointerSensor, type PointerSensorProps } from "@dnd-kit/core";
+import {
+  PointerSensor,
+  type PointerSensorOptions,
+  type PointerSensorProps,
+  TouchSensor,
+} from "@dnd-kit/core";
 import { getOwnerDocument } from "@dnd-kit/utilities";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 interface GuardListeners {
   removeAll?: () => void;
 }
 
 /**
- * PointerSensor whose click guard ends at the next pointer press.
+ * Wraps the sensor callbacks so that dnd-kit's click guard ends at the next
+ * pointer press after the drag.
  *
  * Once a drag activates, dnd-kit adds a capture-phase `click` listener on the
  * document that stops propagation, so the click ending the drag gesture does
  * not select anything. After the drop it removes that listener only 50 ms
  * later (`setTimeout` in `AbstractPointerSensor.detach`). A fresh click within
  * that window, e.g. selecting a storyboard tile right after a drop, never
- * reached React and was lost.
+ * reached React and was lost (mmy-fa5).
  *
  * The click belonging to the drag gesture always fires before any new
- * `pointerdown`, so this sensor drops the guard at the next `pointerdown` after
- * the drag ended; the original 50 ms timeout still applies otherwise.
+ * `pointerdown`, so the guard is dropped at the next `pointerdown` after the
+ * drag ended; the original 50 ms timeout still applies otherwise.
  */
-export class StoryboardPointerSensor extends PointerSensor {
-  constructor(props: PointerSensorProps) {
-    let ended = false;
-    super({
+function withEndFlag(props: PointerSensorProps): {
+  props: PointerSensorProps;
+  ended: () => boolean;
+} {
+  let ended = false;
+  return {
+    props: {
       ...props,
       onEnd: () => {
         ended = true;
@@ -32,18 +42,59 @@ export class StoryboardPointerSensor extends PointerSensor {
         ended = true;
         props.onCancel();
       },
-    });
-    const doc = getOwnerDocument(props.event.target);
-    // Internal of @dnd-kit/core 6.3 (private in its typings): the document
-    // listeners holding the click guard. This is why apps/web/package.json pins
-    // @dnd-kit/core to ~6.3.1; on an upgrade re-check `documentListeners` in
-    // AbstractPointerSensor and the e2e test for selecting a tile right after a drop.
-    const guard = (this as unknown as { documentListeners?: GuardListeners }).documentListeners;
-    const onPointerDown = () => {
-      if (!ended) return;
-      doc.removeEventListener("pointerdown", onPointerDown, true);
-      guard?.removeAll?.();
-    };
-    doc.addEventListener("pointerdown", onPointerDown, true);
+    },
+    ended: () => ended,
+  };
+}
+
+function releaseGuardOnNextPress(sensor: object, event: Event, ended: () => boolean): void {
+  const doc = getOwnerDocument(event.target);
+  // Internal of @dnd-kit/core 6.3 (private in its typings): the document
+  // listeners holding the click guard. This is why apps/web/package.json pins
+  // @dnd-kit/core to ~6.3.1; on an upgrade re-check `documentListeners` in
+  // AbstractPointerSensor and the e2e test for selecting a tile right after a drop.
+  const guard = (sensor as { documentListeners?: GuardListeners }).documentListeners;
+  const onPointerDown = () => {
+    if (!ended()) return;
+    doc.removeEventListener("pointerdown", onPointerDown, true);
+    guard?.removeAll?.();
+  };
+  doc.addEventListener("pointerdown", onPointerDown, true);
+}
+
+/**
+ * PointerSensor for mouse and pen (activation after a few pixels, so click and
+ * double-click keep working). Touch pointers are left to StoryboardTouchSensor
+ * so that a short touch with movement scrolls instead of dragging
+ * (add-mobile-layout design.md D8).
+ */
+export class StoryboardPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: "onPointerDown" as const,
+      handler: (event: ReactPointerEvent, options: PointerSensorOptions): boolean => {
+        if (event.nativeEvent.pointerType === "touch") return false;
+        const base = PointerSensor.activators[0];
+        return base ? base.handler(event, options) : false;
+      },
+    },
+  ];
+
+  constructor(props: PointerSensorProps) {
+    const wrapped = withEndFlag(props);
+    super(wrapped.props);
+    releaseGuardOnNextPress(this, props.event, wrapped.ended);
+  }
+}
+
+/** Touch: drag only after a long press (400 ms within 8 px), see design.md D8. */
+export const TOUCH_ACTIVATION = { delay: 400, tolerance: 8 } as const;
+
+/** TouchSensor with the same click-guard release as StoryboardPointerSensor. */
+export class StoryboardTouchSensor extends TouchSensor {
+  constructor(props: PointerSensorProps) {
+    const wrapped = withEndFlag(props);
+    super(wrapped.props);
+    releaseGuardOnNextPress(this, props.event, wrapped.ended);
   }
 }

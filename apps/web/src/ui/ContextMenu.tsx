@@ -1,5 +1,7 @@
 import { type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import styles from "./ContextMenu.module.css";
+import { Sheet } from "./Sheet";
 
 export interface ContextMenuItem {
   label: string;
@@ -24,11 +26,59 @@ export interface ContextMenuProps {
 }
 
 /**
+ * Context menu of an element. With touch operation (coarse pointer or compact
+ * layout) it appears as an action sheet with the same entries and logic
+ * (add-mobile-layout design.md D6), otherwise as a small popup at the pointer.
+ */
+export function ContextMenu(props: ContextMenuProps) {
+  const touch = isTouchLayout(useLayoutMode());
+  return touch ? <ActionSheet {...props} /> : <PopupMenu {...props} />;
+}
+
+function ActionSheet({ label, items, onClose }: ContextMenuProps) {
+  return (
+    <Sheet open title={label} onClose={onClose}>
+      <div role="menu" aria-label={label} className={styles.sheetMenu}>
+        {items.map((item) => {
+          const common = {
+            type: "button",
+            className: styles.sheetItem,
+            "aria-disabled": item.disabled || undefined,
+            onClick: () => {
+              if (item.disabled) return;
+              onClose();
+              item.onSelect();
+            },
+          } as const;
+          return item.checked === undefined ? (
+            <button key={item.label} role="menuitem" {...common}>
+              {item.label}
+            </button>
+          ) : (
+            <button
+              key={item.label}
+              role="menuitemcheckbox"
+              aria-checked={item.checked}
+              {...common}
+            >
+              <span aria-hidden="true" className={styles.check}>
+                {item.checked ? "✓" : ""}
+              </span>
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </Sheet>
+  );
+}
+
+/**
  * Small Y2K context menu. Focus jumps to the first item on open,
  * arrow keys/Home/End move it, Escape closes; afterwards focus returns
  * to the triggering element.
  */
-export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
+function PopupMenu({ label, x, y, items, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;

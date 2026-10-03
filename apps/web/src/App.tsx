@@ -1,33 +1,31 @@
 import { useMemo } from "react";
 import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { useT } from "./i18n/useT";
+import { CollectionSheet } from "./media/CollectionSheet";
+import { ImportInput } from "./media/ImportInput";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
+import { UploadPanel } from "./media/UploadPanel";
 import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
+import { ActionBar } from "./shell/ActionBar";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
+import { CompactWindow } from "./shell/CompactWindow";
+import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
 import { StatusBar } from "./shell/StatusBar";
+import { SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
+import { Taskbar } from "./shell/Taskbar";
 import { TaskPane } from "./shell/TaskPane";
 import { Toolbar } from "./shell/Toolbar";
+import { useTaskGroups } from "./shell/tasks";
 import type { CollectionId } from "./store/appStore";
 import { describeBackend, describeSave } from "./store/status";
 import { useAppStore } from "./store/useAppStore";
 import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
 import { TransitionCollection } from "./transitions/TransitionCollection";
-import {
-  AudioIcon,
-  EffectsIcon,
-  FilmIcon,
-  FolderIcon,
-  ImportImageIcon,
-  TitleIcon,
-  TransitionsIcon,
-} from "./ui/icons";
-import { TaskGroup } from "./ui/TaskGroup";
-import { TaskLink } from "./ui/TaskLink";
 
 const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
 
@@ -38,16 +36,17 @@ const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "video", "tra
 export function App() {
   const collection = useAppStore((s) => s.collection);
   const setCollection = useAppStore((s) => s.setCollection);
-  const requestImport = useAppStore((s) => s.requestImport);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
-  const hasSlides = useAppStore((s) => s.slides.length > 0);
-  const openExportWizard = useAppStore((s) => s.openExportWizard);
 
   const togglePlay = useAppStore((s) => s.togglePlay);
   const stop = useAppStore((s) => s.stop);
   const playerMenu = useMemo(() => ({ togglePlay, stop }), [togglePlay, stop]);
 
+  const layout = useLayoutMode();
+  useLayoutAttributes(layout);
+
+  const taskGroups = useTaskGroups();
   const { t } = useT();
   const collections = useMemo(
     () => COLLECTION_IDS.map((id) => ({ id, label: t(`collections.${id}`) })),
@@ -55,10 +54,45 @@ export function App() {
   );
   const collectionName = t(`collections.${collection}`);
 
+  const title = t("shell.windowTitle", { app: t("app.name") });
+  const storyboard = (
+    <StoryboardPane musicTrack={<MusicTrack />}>
+      <StoryboardStrip />
+    </StoryboardPane>
+  );
+
+  if (layout.mode === "compact") {
+    return (
+      <StoryboardDnd>
+        <CompactWindow
+          title={title}
+          orientation={layout.orientation}
+          indicators={<SaveFailedIndicator />}
+          menuButton={<AppMenus variant="sheet" extra={playerMenu} />}
+          monitor={<Player />}
+          editing={
+            <>
+              {storyboard}
+              <UploadPanel />
+            </>
+          }
+          actionBar={<ActionBar />}
+          taskbar={<Taskbar />}
+          notices={<StatusNotices />}
+        />
+        <ImportInput />
+        <CollectionSheet />
+        <SaveMovieWizardFromStore />
+      </StoryboardDnd>
+    );
+  }
+
+  const medium = layout.mode === "medium";
   return (
     <StoryboardDnd>
       <AppWindow
-        title={t("shell.windowTitle", { app: t("app.name") })}
+        variant={medium ? "medium" : "wide"}
+        title={title}
         menuBar={<AppMenus extra={playerMenu} />}
         toolbar={
           <Toolbar
@@ -67,50 +101,7 @@ export function App() {
             onCollectionChange={(id) => setCollection(id as CollectionId)}
           />
         }
-        taskPane={
-          <TaskPane>
-            <TaskGroup title={t("tasks.capture.title")}>
-              <TaskLink icon={<FilmIcon />} onClick={() => requestImport("video")}>
-                {t("tasks.capture.importVideo")}
-              </TaskLink>
-              <TaskLink icon={<ImportImageIcon />} onClick={() => requestImport("pictures")}>
-                {t("tasks.capture.importPictures")}
-              </TaskLink>
-              <TaskLink icon={<AudioIcon />} onClick={() => requestImport("audio")}>
-                {t("tasks.capture.importAudio")}
-              </TaskLink>
-            </TaskGroup>
-            <TaskGroup title={t("tasks.edit.title")}>
-              <TaskLink
-                icon={<FolderIcon />}
-                onClick={() =>
-                  setCollection(
-                    collection === "music" || collection === "video" ? collection : "media",
-                  )
-                }
-              >
-                {t("tasks.edit.showCollections")}
-              </TaskLink>
-              <TaskLink icon={<EffectsIcon />} disabled>
-                {t("tasks.edit.showEffects")}
-              </TaskLink>
-              <TaskLink icon={<TransitionsIcon />} onClick={() => setCollection("transitions")}>
-                {t("tasks.edit.showTransitions")}
-              </TaskLink>
-              <TaskLink icon={<TitleIcon />} disabled>
-                {t("tasks.edit.makeTitles")}
-              </TaskLink>
-            </TaskGroup>
-            <TaskGroup title={t("tasks.finish.title")}>
-              <TaskLink icon={<FilmIcon />} disabled={!hasSlides} onClick={openExportWizard}>
-                {t("tasks.finish.saveToComputer")}
-              </TaskLink>
-              <TaskLink icon={<FilmIcon />} disabled>
-                {t("tasks.finish.publishWeb")}
-              </TaskLink>
-            </TaskGroup>
-          </TaskPane>
-        }
+        taskPane={medium ? undefined : <TaskPane groups={taskGroups} />}
         collection={
           <LibraryPane name={collectionName}>
             {collection === "transitions" ? (
@@ -124,18 +115,20 @@ export function App() {
           </LibraryPane>
         }
         monitor={<Player />}
-        storyboard={
-          <StoryboardPane musicTrack={<MusicTrack />}>
-            <StoryboardStrip />
-          </StoryboardPane>
-        }
+        storyboard={storyboard}
         statusBar={
-          <StatusBar
-            items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
-              (x): x is string => x !== null,
-            )}
-          />
+          medium ? undefined : (
+            <StatusBar
+              items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
+                (x): x is string => x !== null,
+              )}
+            />
+          )
         }
+        indicators={medium ? <SaveFailedIndicator /> : undefined}
+        taskbar={medium ? <Taskbar /> : undefined}
+        actionBar={<ActionBar />}
+        notices={medium ? <StatusNotices /> : undefined}
       />
       <SaveMovieWizardFromStore />
     </StoryboardDnd>

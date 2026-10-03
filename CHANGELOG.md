@@ -10,8 +10,9 @@ MP4 export of the slideshow (OpenSpec change `add-movie-export`), a
 German/English user interface (OpenSpec change `add-ui-localisation`), a
 hardening pass over export, errors and UI (OpenSpec change
 `harden-export-and-ui`), a music track (OpenSpec change `add-music-track`),
-undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`) and
-video import (OpenSpec change `add-video-import`).
+undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`),
+video import (OpenSpec change `add-video-import`) and a phone and tablet
+layout with full touch operation (OpenSpec change `add-mobile-layout`).
 
 ### Added
 
@@ -42,6 +43,41 @@ video import (OpenSpec change `add-video-import`).
   picture has no incoming transition (hard cut), and the new element is
   selected. A global keyboard handler ignores these shortcuts while typing
   in a field or dragging.
+- **Phone and tablet layouts**: below 1280 px the window switches to a
+  *medium* layout (600–1279 px: collection and monitor side by side,
+  storyboard below, taskbar) or a *compact* phone layout (title bar with
+  *☰*, monitor at most 45 % high, storyboard and music track, action bar,
+  taskbar; monitor on the left in landscape). The desktop layout is
+  unchanged. Safe areas (`viewport-fit=cover`), `100dvh`, no pull-to-refresh
+  and no zoom jump on inputs (16 px).
+- **Taskbar** with *1. Capture*, *2. Edit* and *3. Finish*, each opening a
+  sheet with the entries of the task pane group (shared `tasks.ts`); the menus
+  live in a *Menu* sheet behind *☰* on phones.
+- **Y2K bottom sheets** (`ui/Sheet`): grip, swipe down, backdrop and Escape
+  to close, focus trap, reduced motion. Every dialog is a sheet on phones; the
+  *Save Movie* wizard fills the screen. Status changes appear as short
+  notices; a failed save shows a lasting warning symbol in the title bar.
+- **Touch operation** with a coarse pointer or on phones: 44 × 44 px targets,
+  tap to select, an **action bar** for the selected picture or music clip,
+  **action sheets** by long press (400 ms) or *⋯* with the same entries as the
+  desktop context menus, a **collection sheet** with tabs, *Import* and
+  picking in order (*Add to storyboard (n)*, *Add to music track (n)*),
+  reordering by long press and drag (a swipe scrolls), a **transition sheet**
+  that sets and plays a transition at once, steppers and sliders in the
+  duration, volume and trim dialogs, and trim handles on the waveform with a
+  two-second preview.
+- **Gestures with button alternatives**: swipe in the monitor for the
+  previous/next picture, double-tap or *Full screen* for the full-screen
+  preview (Fullscreen API or an overlay on the iPhone), pinch or
+  *Smaller*/*Larger* for three remembered tile sizes.
+- **Haptics**: short vibrations on long press, drop and refused drop, with a
+  *Vibration* switch in *Tools → Options…* where the device supports it.
+- Preview limits on phones: drawing buffer at most ×2 and 1920 px wide; a
+  hidden tab pauses playback and stops the render clock.
+- E2E tests on the device profiles iPhone 13, Pixel 7 and iPad (gen 7) with
+  touch: no horizontal scroll, 44 px targets and the full flow by tapping in
+  portrait and landscape.
+
 - **Audio import**: MP3, WAV, M4A/AAC, OGG (Vorbis/Opus) and FLAC through the
   same import as pictures (dialog, drag & drop, and the now enabled task
   *Import audio or music*). The backend detects the kind by content (Pillow,

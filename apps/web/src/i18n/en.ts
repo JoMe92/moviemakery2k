@@ -20,6 +20,7 @@ export const en = {
   options: {
     title: "Options",
     language: "Language of the user interface:",
+    vibration: "Vibration",
   },
   shell: {
     windowTitle: "{app} – Untitled Project",
@@ -32,6 +33,9 @@ export const en = {
     storyboard: "Storyboard",
     showTimeline: "Show Timeline",
     storyboardHint: "Drag pictures here to create a slide show.",
+    storyboardHintTouch: "Tap “1. Capture” to import pictures and add them here.",
+    editing: "Editing",
+    taskbar: "Movie steps",
   },
   collections: {
     media: "My Pictures",
@@ -41,6 +45,7 @@ export const en = {
   },
   menu: {
     bar: "Menu bar",
+    sheet: "Menu",
     file: {
       label: "File",
       newProject: "New Project",
@@ -100,12 +105,14 @@ export const en = {
   tasks: {
     capture: {
       title: "1. Capture Video",
+      short: "1. Capture",
       importVideo: "Import video",
       importPictures: "Import pictures",
       importAudio: "Import audio or music",
     },
     edit: {
       title: "2. Edit Movie",
+      short: "2. Edit",
       showCollections: "View collections",
       showEffects: "View video effects",
       showTransitions: "View video transitions",
@@ -113,6 +120,7 @@ export const en = {
     },
     finish: {
       title: "3. Finish Movie",
+      short: "3. Finish",
       saveToComputer: "Save to my computer",
       publishWeb: "Publish to the web",
     },
@@ -171,6 +179,24 @@ export const en = {
     videoMenu: "Video “{name}”",
     deleteVideoTitle: "Delete Video",
     deleteVideoQuestion: "Are you sure you want to delete “{name}”?",
+    properties: "Properties",
+    propertiesTitle: "Properties of “{name}”",
+    fileName: "File name",
+    kind: "Kind",
+    kindImage: "Picture",
+    kindAudio: "Audio",
+    kindVideo: "Video",
+    size: "Dimensions",
+    sizeValue: "{width} × {height} pixels",
+    duration: "Duration",
+    picked: "selected",
+  },
+  collectionSheet: {
+    title: "Collections",
+    tabs: "Choose collection",
+    import: "Import",
+    addPictures: "Add to storyboard ({count})",
+    addMusic: "Add to music track ({count})",
   },
   upload: {
     progress: "Importing {current} of {total} …",
@@ -199,6 +225,8 @@ export const en = {
     slideDuration: "Picture duration (seconds):",
     transitionDuration: "Transition duration (seconds):",
     transition: "Transition:",
+    smaller: "Smaller",
+    larger: "Larger",
   },
   dnd: {
     audio: "Audio “{name}”",
@@ -221,6 +249,7 @@ export const en = {
     label: "Audio/Music",
     list: "Music track",
     emptyHint: "Drag music from “My Music” here.",
+    emptyHintTouch: "Add music via “2. Edit” → “View collections”.",
     sortable: "sortable music clip",
     clip: "Music clip {number}: {name}, {duration}",
     clipMenu: "Music clip {number} of the music track",
@@ -245,6 +274,32 @@ export const en = {
     trimRange:
       "Allowed are start and end from {min} to {max}; the start must lie before the end and the length must be at least {length} s.",
   },
+  stepper: {
+    decrease: "Decrease {label}",
+    increase: "Increase {label}",
+  },
+  transitionSheet: {
+    title: "Transition",
+    none: "No transition",
+    list: "Transitions to choose from",
+    duration: "Transition duration",
+    done: "Done",
+  },
+  actions: {
+    bar: "Actions",
+    duration: "Duration…",
+    moveLeft: "Move left",
+    moveRight: "Move right",
+    transitionBefore: "Transition before…",
+    remove: "Remove",
+    volume: "Volume…",
+    trim: "Trim…",
+    fadeIn: "Fade in",
+    fadeOut: "Fade out",
+    more: "More actions",
+    slideMore: "Actions for picture {number}",
+    clipMore: "Actions for music clip {number}",
+  },
   transitions: {
     unavailable: "The transition catalog is not available.",
     list: "Transitions",
@@ -257,6 +312,8 @@ export const en = {
     stop: "Stop",
     previous: "Previous picture",
     next: "Next picture",
+    fullscreen: "Full screen",
+    exitFullscreen: "Exit full screen",
     time: "Time",
     canvas: "Preview picture",
     sample: "Sample: {name}",
