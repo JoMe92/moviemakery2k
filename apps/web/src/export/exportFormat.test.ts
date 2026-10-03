@@ -47,12 +47,19 @@ describe("checkFileName", () => {
 
 describe("size estimate", () => {
   it("computes from duration and profile and formats in German", () => {
-    // 45 s · 0.6 Mbit/s = 3.375 MB; 45 s · 0.32 Mbit/s = 1.8 MB
+    // 45 s · 0.6 Mbit/s = 3.375 MB; 45 s · 0.32 Mbit/s = 1.8 MB; 45 s · 0.11 Mbit/s = 618.75 KB
     expect(formatSize(estimateBytes(45, "high"), "de")).toBe("ca. 3,4 MB");
     expect(formatSize(estimateBytes(45, "small"), "de")).toBe("ca. 1,8 MB");
+    expect(formatSize(estimateBytes(45, "email_web"), "de")).toBe("ca. 619 KB");
     expect(formatSize(estimateBytes(5, "small"), "de")).toBe("ca. 200 KB");
     expect(formatSize(estimateBytes(0, "high"), "de")).toBe("ca. 1 KB");
     expect(formatSize(estimateBytes(600, "high"), "de")).toBe("ca. 45,0 MB");
+  });
+
+  it("estimates the email_web profile smaller than both other profiles for the same duration", () => {
+    const duration = 45;
+    expect(estimateBytes(duration, "email_web")).toBeLessThan(estimateBytes(duration, "small"));
+    expect(estimateBytes(duration, "email_web")).toBeLessThan(estimateBytes(duration, "high"));
   });
 });
 

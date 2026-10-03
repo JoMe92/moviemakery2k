@@ -212,6 +212,7 @@ function Wizard({
                 size: formatSize(estimateBytes(duration, option.value), locale),
               })}
             </span>
+            <span className={styles.recommendation}>{t(`export.profileHints.${option.value}`)}</span>
           </label>
         ))}
       </fieldset>

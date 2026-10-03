@@ -80,6 +80,12 @@
   color: var(--y2k-text-muted);
 }
 
+.recommendation {
+  grid-column: 2;
+  color: var(--y2k-text-muted);
+  font-size: 0.9em;
+}
+
 /* Segmented Y2K progress bar (as in the import). */
 .bar {
   height: 18px;
