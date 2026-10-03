@@ -87,7 +87,10 @@ def open_wizard(page: Page, file_name: str, profile_label: str) -> Locator:
     wizard.get_by_label("Dateiname:").fill(file_name)
     wizard.get_by_role("button", name="Weiter").click()
     expect(wizard.get_by_role("heading", name="Qualität")).to_be_visible()
-    wizard.get_by_role("radio", name=re.compile(re.escape(profile_label))).check()
+    # A plain string does a literal (if case-insensitive) substring match; a regex built
+    # from `profile_label` would need its "/" escaped for Playwright's own selector engine
+    # (as in "Für E-Mail/Web"), not just for Python's `re`.
+    wizard.get_by_role("radio", name=profile_label).check()
     wizard.get_by_role("button", name="Weiter").click()
     return wizard
 
@@ -128,6 +131,39 @@ def test_export_small_file_and_download(
     tolerance = FRAME + 0.005
     assert float(v["duration"]) == pytest.approx(expected, abs=tolerance)
     assert float(probe["format"]["duration"]) == pytest.approx(expected, abs=tolerance)
+
+    wizard.get_by_role("button", name="Fertig stellen").click()
+    expect(wizard).to_be_hidden()
+
+
+def test_export_email_web_file_and_download(
+    page: Page, server: str, images: dict[str, Path], tmp_path: Path
+) -> None:
+    build_project(page, server, images)
+    expected = total_seconds(page.get_by_label("Zeit"))
+    assert expected == pytest.approx(13.75)
+
+    wizard = open_wizard(page, "Für E-Mail", "Für E-Mail/Web (320×240)")  # noqa: RUF001
+    expect(wizard.get_by_role("heading", name="Fertig")).to_be_visible(timeout=EXPORT_TIMEOUT_MS)
+    expect(wizard.get_by_text("Der Film „Für E-Mail.mp4“ wurde gespeichert.")).to_be_visible()
+
+    with page.expect_download() as info:
+        wizard.get_by_role("button", name="Film herunterladen").click()
+    download = info.value
+    assert download.failure() is None
+    target = tmp_path / "download" / download.suggested_filename
+    download.save_as(target)
+    assert target.stat().st_size > 0
+
+    probe = ffprobe(target)
+    video = [s for s in probe["streams"] if s["codec_type"] == "video"]
+    assert len(video) == 1, probe["streams"]
+    v = video[0]
+    assert v["codec_name"] == "h264"
+    assert (v["width"], v["height"]) == (320, 240)
+    assert v["r_frame_rate"] == "30/1"
+    tolerance = FRAME + 0.005
+    assert float(v["duration"]) == pytest.approx(expected, abs=tolerance)
 
     wizard.get_by_role("button", name="Fertig stellen").click()
     expect(wizard).to_be_hidden()

@@ -151,9 +151,10 @@ def popen_spy(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[subprocess.Popen
 
 
 def test_profiles() -> None:
-    assert [p.value for p in ExportProfile] == ["high", "small"]
+    assert [p.value for p in ExportProfile] == ["high", "small", "email_web"]
     assert ExportProfile("high").spec == ProfileSpec(960, 720, 30)
     assert ExportProfile.SMALL.spec == ProfileSpec(640, 480, 30)
+    assert ExportProfile.EMAIL_WEB.spec == ProfileSpec(320, 240, 30)
     assert encode.DEFAULT_PROFILE is ExportProfile.HIGH
 
 
@@ -287,6 +288,24 @@ def test_high_profile_resolution(tmp_path: Path) -> None:
     assert (video["codec_name"], video["profile"]) == ("h264", "High")
     assert_bt709_tags(video)
     assert abs(float(info["format"]["duration"]) - 0.5) <= 1 / 30
+
+
+@requires_gl
+@slow
+def test_email_web_profile_resolution_and_file_size(tmp_path: Path) -> None:
+    timeline = small_timeline()
+    email_web = tmp_path / "email_web.mp4"
+    small = tmp_path / "small.mp4"
+    export_movie(timeline, CATALOG, ExportProfile.EMAIL_WEB, email_web, load)
+    export_movie(timeline, CATALOG, ExportProfile.SMALL, small, load)
+
+    info = ffprobe(email_web)
+    video = next(s for s in info["streams"] if s["codec_type"] == "video")
+    assert (video["width"], video["height"], video["r_frame_rate"]) == (320, 240, "30/1")
+    assert (video["codec_name"], video["profile"]) == ("h264", "High")
+    assert_bt709_tags(video)
+
+    assert email_web.stat().st_size < small.stat().st_size
 
 
 @requires_gl

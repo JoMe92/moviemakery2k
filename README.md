@@ -58,8 +58,9 @@ What works today:
 - **Autosave** — the project is saved in the backend and restored after a
   reload.
 - **Save movie** — a Movie Maker-style wizard exports the storyboard as an MP4
-  (H.264 + AAC) in two quality profiles; transitions are rendered by the very
-  same shader files as the preview. See [Exporting a movie](#exporting-a-movie).
+  (H.264 + AAC) in three quality profiles, each with a short recommendation;
+  transitions are rendered by the very same shader files as the preview. See
+  [Exporting a movie](#exporting-a-movie).
 - **German and English UI** — the language follows the browser and can be
   switched at any time under *Tools → Options…*; numbers, durations and the
   time display follow the chosen language, and backend errors are shown
@@ -133,8 +134,9 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 
 1. **File name** — defaults to *My Movie* (*Mein Film* in German); the
    characters `/\:*?"<>|` are rejected and `.mp4` is appended.
-2. **Quality** — choose a profile; the wizard estimates the file size from
-   the movie length.
+2. **Quality** — choose a profile, largest to smallest; the wizard estimates
+   the file size from the movie length and shows a short recommendation for
+   each (e.g. *Für E-Mail/Web* — smallest file, for sending or uploading).
 3. **Saving the movie** — progress in percent and an estimate of the
    remaining time; *Cancel* cancels the export after a confirmation.
 4. **Finished** — *Download Movie* downloads the MP4.
@@ -143,6 +145,7 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 |---|---|---|---|
 | `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p BT.709, faststart) | AAC, 48 kHz stereo, 128 kbit/s: the music track, or silence without music |
 | `small` | 640×480, 30 fps | same | same |
+| `email_web` | 320×240, 30 fps | same | same |
 
 Pictures are letterboxed onto black exactly like in the preview monitor, and
 the export uses the same timing model, so the movie matches what you saw.

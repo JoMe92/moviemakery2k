@@ -276,6 +276,12 @@ export const de = {
     profiles: {
       high: "Hohe Qualität (960×720)",
       small: "Kleine Datei (640×480)",
+      email_web: "Für E-Mail/Web (320×240)",
+    },
+    profileHints: {
+      high: "Zum Ansehen auf einem großen Bildschirm.",
+      small: "Zum Weitergeben, etwa per USB-Stick.",
+      email_web: "Kleinste Datei, zum Versenden oder Hochladen.",
     },
     estimatedSize: "Geschätzte Größe: {size}",
     saving: "„{file}“ wird gespeichert …",

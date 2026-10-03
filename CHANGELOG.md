@@ -105,12 +105,14 @@ and undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`).
 
 - **Save movie** wizard in the Y2K style (task pane *Auf dem Computer
   speichern* and *Datei → Film speichern…*, disabled for an empty
-  storyboard): file name, quality with estimated file size, progress with
-  remaining time and confirmed cancel, download; errors in a dialog with
-  retry.
-- MP4 export with two profiles, `high` 960×720 (default) and `small`
-  640×480, both 30 fps, H.264 (`libx264`, CRF 20, faststart) with an AAC
-  track (48 kHz stereo; the music track, or silence without music).
+  storyboard): file name, quality with estimated file size and a short
+  recommendation per profile, progress with remaining time and confirmed
+  cancel, download; errors in a dialog with retry.
+- MP4 export with three profiles, `high` 960×720 (default), `small`
+  640×480 and `email_web` 320×240 (*Für E-Mail/Web*, the smallest, for
+  sending or uploading), all 30 fps, H.264 (`libx264`, CRF 20, faststart)
+  with an AAC track (48 kHz stereo; the music track, or silence without
+  music).
 - Export renderer in the backend: headless OpenGL 3.3 through EGL and Mesa
   llvmpipe (moderngl) running the **same transition shaders** as the preview
   (only the `#version` line is swapped), pictures letterboxed like in the
