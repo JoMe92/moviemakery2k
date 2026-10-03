@@ -73,6 +73,138 @@
         "ref": "DXT CheckerBoard {B3EE7802-8224-4787-A1EA-F0DE16DEABD3} \"Checkerboard, Across\", nameID 62815; Direction right",
         "estimated": ["defaultDuration", "squaresX", "squaresY"]
       }
+    },
+    {
+      "id": "wipe-wide-right",
+      "names": { "de": "Wischen, breit rechts", "en": "Wipe, wide right" },
+      "shader": "wipe-wide-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 0, "gradientSize": 0.6 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} \"Wipe, Wide right\" (same DXT filter as wipe-right); GradientSize 0.6 per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "wipe-narrow-right",
+      "names": { "de": "Wischen, schmal rechts", "en": "Wipe, narrow right" },
+      "shader": "wipe-narrow-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 0, "gradientSize": 0.2 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} \"Wipe, Narrow right\" (same DXT filter as wipe-right); GradientSize 0.2 per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "wipe-down",
+      "names": { "de": "Wischen, unten", "en": "Wipe, down" },
+      "shader": "wipe-down.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 270, "gradientSize": 0.5 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} \"Wipe, Normal down\" (same DXT filter as wipe-right); GradientSize 0.5 per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "wipe-wide-down",
+      "names": { "de": "Wischen, breit unten", "en": "Wipe, wide down" },
+      "shader": "wipe-wide-down.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 270, "gradientSize": 0.6 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} \"Wipe, Wide down\" (same DXT filter as wipe-right); GradientSize 0.6 per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "wipe-narrow-down",
+      "names": { "de": "Wischen, schmal unten", "en": "Wipe, narrow down" },
+      "shader": "wipe-narrow-down.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 270, "gradientSize": 0.2 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "Wipe {AF279B30-86EB-11D1-81BF-0000F87557DB} \"Wipe, Narrow down\" (same DXT filter as wipe-right); GradientSize 0.2 per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration"]
+      }
+    },
+    {
+      "id": "diagonal-down-right",
+      "names": { "de": "Diagonal, unten rechts", "en": "Diagonal, down right" },
+      "shader": "diagonal-down-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "angleDeg": 315, "gradientSize": 0.3 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 41 \"Diagonal, Down Right\" (DxtJpeg MaskNum 41) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "split-vertical",
+      "names": { "de": "Teilen, vertikal", "en": "Split, vertical" },
+      "shader": "split-vertical.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 0, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 21 \"Split, Vertical\" (DxtJpeg MaskNum 21) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "split-horizontal",
+      "names": { "de": "Teilen, horizontal", "en": "Split, horizontal" },
+      "shader": "split-horizontal.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 1, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 22 \"Split, Horizontal\" (DxtJpeg MaskNum 22) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "rectangle",
+      "names": { "de": "Rechteck", "en": "Rectangle" },
+      "shader": "rectangle.glsl",
+      "defaultDuration": 1.25,
+      "params": { "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 101 \"Rectangle\" (DxtJpeg MaskNum 101) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "diamond",
+      "names": { "de": "Raute", "en": "Diamond" },
+      "shader": "diamond.glsl",
+      "defaultDuration": 1.25,
+      "params": { "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 102 \"Diamond\" (DxtJpeg MaskNum 102) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "bars",
+      "names": { "de": "Balken", "en": "Bars" },
+      "shader": "bars.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 0, "barCount": 8, "gradientSize": 0.08 },
+      "source": {
+        "kind": "wmm2x-xml",
+        "ref": "DXT Bars transition, Basic catalog per movie-maker-reference.md §3 (GUID not identified in research)",
+        "estimated": ["defaultDuration", "barCount", "gradientSize"]
+      }
     }
   ]
 }

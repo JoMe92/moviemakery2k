@@ -22,10 +22,13 @@ def test_catalog_matches_schema() -> None:
     assert errors == []
 
 
-def test_catalog_contains_exactly_the_mvp_transitions() -> None:
+def test_catalog_still_contains_the_mvp_transitions() -> None:
+    # add-transition-catalog grows the catalog well past the six MVP entries
+    # (TASK-CAT-005 checks the final count); this only guards the MVP's own
+    # requirement that they stay, unchanged and without duplicates.
     ids = [t["id"] for t in _load("transitions.json")["transitions"]]
     assert len(ids) == len(set(ids))
-    assert set(ids) == MVP_IDS
+    assert set(ids) >= MVP_IDS
 
 
 def test_every_transition_has_a_german_and_an_english_name() -> None:
