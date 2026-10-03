@@ -14,6 +14,18 @@
     "orchestrator": {
       "name": "Claude",
       "email": "noreply@anthropic.com"
+    },
+    "planner": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
+    },
+    "lead": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
+    },
+    "sync": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
     }
   }
 }
