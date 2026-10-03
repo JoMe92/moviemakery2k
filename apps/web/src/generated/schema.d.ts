@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/catalog/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Titles */
+        get: operations["list_titles_api_catalog_titles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/transitions": {
         parameters: {
             query?: never;
@@ -209,6 +226,28 @@ export interface paths {
          *     404 for images as well as unknown IDs.
          */
         get: operations["get_peaks_api_media__media_id__peaks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/poster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Poster
+         * @description Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.
+         *
+         *     404 for images, audio and unknown IDs (add-video-import D3).
+         */
+        get: operations["get_poster_api_media__media_id__poster_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -441,7 +480,7 @@ export interface components {
         Body_upload_media_api_media_post: {
             /**
              * Files
-             * @description Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
+             * @description Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
              */
             files: string[];
         };
@@ -452,7 +491,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -502,7 +541,7 @@ export interface components {
          * @description Output profile of the export; the value is the name in the API contract.
          * @enum {string}
          */
-        ExportProfile: "high" | "small";
+        ExportProfile: "high" | "small" | "email_web";
         /** ExportRequest */
         ExportRequest: {
             /**
@@ -512,7 +551,7 @@ export interface components {
              */
             fileName: string;
             /**
-             * @description `high` = 960x720 (default), `small` = 640x480; both 30 fps
+             * @description `high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps
              * @default high
              */
             profile: components["schemas"]["ExportProfile"];
@@ -522,6 +561,14 @@ export interface components {
          * @enum {string}
          */
         ExportStatus: "queued" | "running" | "done" | "failed" | "cancelled";
+        /** FadePhase */
+        FadePhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "fade";
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -579,7 +626,7 @@ export interface components {
         MediaDeleteResponse: {
             project: components["schemas"]["Project"];
         };
-        MediaItem: components["schemas"]["ImageItem"] | components["schemas"]["AudioItem"];
+        MediaItem: components["schemas"]["ImageItem"] | components["schemas"]["AudioItem"] | components["schemas"]["VideoItem"];
         /** MediaListResponse */
         MediaListResponse: {
             /**
@@ -590,7 +637,7 @@ export interface components {
         };
         /** MediaUploadFailure */
         MediaUploadFailure: {
-            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable */
+            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.videoTooLong, media.noVideoStream, media.probeUnavailable */
             errorCode: components["schemas"]["ErrorCode"];
             /**
              * Errorparams
@@ -670,6 +717,25 @@ export interface components {
              */
             volume: number;
         };
+        /** Phases */
+        Phases: {
+            /** Entrance */
+            entrance: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+            /** Exit */
+            exit: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+            /** Main */
+            main: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+        };
+        /** PositionPhase */
+        PositionPhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "position";
+            end: components["schemas"]["Transform"];
+            start: components["schemas"]["Transform"];
+        };
         /** Project */
         Project: {
             /** Music */
@@ -728,6 +794,77 @@ export interface components {
             mediaId: string;
             /** @description Incoming transition from the previous element; always null for the first */
             transitionIn: components["schemas"]["TransitionRef"] | null;
+        };
+        /** StaticPhase */
+        StaticPhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "static";
+        };
+        /** Title */
+        Title: {
+            anchor: components["schemas"]["Transform"];
+            /** Fontscale */
+            fontScale: number;
+            /** Id */
+            id: string;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "one-line" | "two-line" | "credits";
+            names: components["schemas"]["TitleNames"];
+            phases: components["schemas"]["Phases"];
+            source: components["schemas"]["TitleSource"];
+        };
+        /** TitleCatalog */
+        TitleCatalog: {
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: 1;
+            /** Titles */
+            titles: components["schemas"]["Title"][];
+        };
+        /**
+         * TitleNames
+         * @description Display name per UI language; both languages are required.
+         */
+        TitleNames: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
+        };
+        /** TitleSource */
+        TitleSource: {
+            /**
+             * Estimated
+             * @description Fields whose value is not documented but estimated [E]
+             */
+            estimated?: string[] | null;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "wmm2x-xml";
+            /** Ref */
+            ref: string;
+        };
+        /**
+         * Transform
+         * @description Position/zoom in title-vertex.glsl's clip-space convention (design.md D3).
+         */
+        Transform: {
+            /** Scale */
+            scale: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
         };
         /** Transition */
         Transition: {
@@ -814,6 +951,54 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * VideoItem
+         * @description An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1.
+         */
+        VideoItem: {
+            /**
+             * Codec
+             * @description FFmpeg codec name of the original, e.g. `h264`, `hevc`
+             */
+            codec: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Duration
+             * @description Decoded duration in seconds
+             */
+            duration: number;
+            /**
+             * Filename
+             * @description Original file name, for display only
+             */
+            filename: string;
+            /**
+             * Height
+             * @description Height after rotation
+             */
+            height: number;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "video";
+            /**
+             * Posterurl
+             * @description Poster frame (JPEG), add-video-import D3
+             */
+            posterUrl: string;
+            /**
+             * Width
+             * @description Width after rotation
+             */
+            width: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -823,6 +1008,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_titles_api_catalog_titles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleCatalog"];
+                };
+            };
+        };
+    };
     list_transitions_api_catalog_transitions_get: {
         parameters: {
             query?: never;
@@ -1221,6 +1426,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AudioPeaks"];
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_poster_api_media__media_id__poster_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JPEG image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
                 };
             };
             /** @description Unknown or invalid media id (`media.notFound`) */

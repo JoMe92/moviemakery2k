@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, type ExportApi, type ExportJob } from "../lib/apiClient";
+import { ApiError, type ExportApi, type ExportJob, type ExportProfile } from "../lib/apiClient";
 import { createAppStore } from "../store/appStore";
 import { exportJob, mockApi } from "../store/testApi";
 import { AppStoreContext } from "../store/useAppStore";
@@ -21,7 +21,7 @@ const GL_ERROR =
 function exportApi(overrides: Partial<ExportApi> = {}) {
   const api = {
     startExport: vi.fn(
-      async ({ profile, fileName }: { profile: "high" | "small"; fileName: string }) =>
+      async ({ profile, fileName }: { profile: ExportProfile; fileName: string }) =>
         exportJob({ profile, fileName }),
     ),
     getExport: vi.fn(async (id: string) => exportJob({ id, status: "running", progress: 0.1 })),
@@ -115,10 +115,17 @@ describe("“Save Movie” wizard", () => {
     const high = screen.getByRole("radio", { name: /Hohe Qualität \(960×720\)/ });
     expect(high).toBeChecked();
     expect(high).toHaveFocus();
-    expect(high.closest("label")).toHaveTextContent("Geschätzte Größe: ca. 3,4 MB");
+    expect(high.closest("label")).toHaveTextContent(
+      "Geschätzte Größe: ca. 3,4 MBZum Ansehen auf einem großen Bildschirm.",
+    );
     expect(
       screen.getByRole("radio", { name: /Kleine Datei \(640×480\)/ }).closest("label"),
-    ).toHaveTextContent("Geschätzte Größe: ca. 1,8 MB");
+    ).toHaveTextContent("Geschätzte Größe: ca. 1,8 MBZum Weitergeben, etwa per USB-Stick.");
+    expect(
+      screen.getByRole("radio", { name: /Für E-Mail\/Web \(320×240\)/ }).closest("label"),
+    ).toHaveTextContent(
+      "Geschätzte Größe: ca. 619 KBKleinste Datei, zum Versenden oder Hochladen.",
+    );
     expect(api.startExport).not.toHaveBeenCalled();
 
     click("Weiter");
@@ -364,10 +371,15 @@ describe("wizard in English and error codes", () => {
     click("Next");
     expect(screen.getByRole("heading", { name: "Quality" })).toBeInTheDocument();
     const high = screen.getByRole("radio", { name: /High quality \(960×720\)/ });
-    expect(high.closest("label")).toHaveTextContent("Estimated size: approx. 3.4 MB");
+    expect(high.closest("label")).toHaveTextContent(
+      "Estimated size: approx. 3.4 MBFor watching on a large screen.",
+    );
     expect(
       screen.getByRole("radio", { name: /Small file \(640×480\)/ }).closest("label"),
-    ).toHaveTextContent("Estimated size: approx. 1.8 MB");
+    ).toHaveTextContent("Estimated size: approx. 1.8 MBFor sharing, e.g. via a USB stick.");
+    expect(
+      screen.getByRole("radio", { name: /For email\/web \(320×240\)/ }).closest("label"),
+    ).toHaveTextContent("Estimated size: approx. 619 KBSmallest file, for sending or uploading.");
 
     click("Next");
     await tick(0);

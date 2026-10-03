@@ -1,6 +1,8 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import catalog from "../../../../packages/catalog/transitions.json";
+import type { Transition } from "../lib/apiClient";
 import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
@@ -177,5 +179,70 @@ describe("'Video Transitions' collection", () => {
     expect(screen.getByRole("dialog", { name: "Transition before picture 2" })).toHaveTextContent(
       "Transition: Circle",
     );
+  });
+});
+
+describe("'Video Transitions' collection with many entries (TASK-WEB-064, design.md D3)", () => {
+  // The real, full catalog (47+ entries after add-transition-catalog) rather
+  // than the 2-entry test fixture: the generic `catalog.map(...)` iteration in
+  // TransitionCollection.tsx needs no code change for more tiles, but this
+  // proves it, and that the shared Pane scrolling and drag & drop still work
+  // for every tile, including ones past the visible area.
+  async function setupWithFullCatalog() {
+    const api = mockApi({
+      catalog: vi.fn(async () => catalog.transitions as Transition[]),
+      getProject: vi.fn(async () => ({
+        schemaVersion: 2 as const,
+        music: [],
+        slides: [
+          { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+          { id: "s2", mediaId: "b", duration: 5, transitionIn: null },
+        ],
+      })),
+    });
+    const view = renderApp(api);
+    await act(() => view.ready);
+    act(() => view.store.getState().setCollection("transitions"));
+    const collection = screen.getByRole("region", { name: "Sammlung: Videoübergänge" });
+    return { ...view, collection };
+  }
+
+  it("shows one tile per catalog entry, not just the first few", async () => {
+    const { collection } = await setupWithFullCatalog();
+    const list = within(collection).getByRole("list", { name: "Übergänge" });
+    const tiles = within(list).getAllByRole("button");
+    expect(tiles).toHaveLength(catalog.transitions.length);
+    expect(tiles.length).toBeGreaterThan(40);
+    expect(new Set(tiles.map((tile) => tile.getAttribute("aria-label"))).size).toBe(tiles.length);
+  });
+
+  it("the collection body uses the shared, scrollable Pane wrapper (design.md D3: no per-collection CSS)", async () => {
+    // jsdom doesn't apply real stylesheet layout, so this checks the
+    // structural contract instead: the list sits inside Pane.module.css's
+    // `.body` (flex: 1; min-height: 0; overflow: auto - unchanged by this
+    // task), the same wrapper every collection (media, audio, transitions)
+    // already scrolls through when its tiles overflow the visible area.
+    const { collection } = await setupWithFullCatalog();
+    const list = within(collection).getByRole("list", { name: "Übergänge" });
+    const body = list.parentElement as HTMLElement;
+    expect(body.className.split(" ")).toContain("body");
+  });
+
+  it("drag & drop and selection still work for a tile past the visible area", async () => {
+    const user = userEvent.setup();
+    const { collection, store } = await setupWithFullCatalog();
+    const list = within(collection).getByRole("list", { name: "Übergänge" });
+    const tiles = within(list).getAllByRole("button");
+    const last = tiles[tiles.length - 1] as HTMLElement;
+    const lastEntry = catalog.transitions[catalog.transitions.length - 1] as Transition;
+
+    // Still wired for dnd-kit (the same attribute every earlier tile carries).
+    expect(last).toHaveAttribute("aria-roledescription");
+    expect(within(collection).getAllByRole("button")[0]).toHaveAttribute("aria-roledescription");
+
+    // Still selectable/clickable, like any other tile.
+    await user.click(last);
+    expect(store.getState().previewTransitionId).toBe(lastEntry.id);
+    expect(last).toHaveAttribute("aria-pressed", "true");
   });
 });

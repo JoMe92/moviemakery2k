@@ -114,8 +114,10 @@ def test_text_file_named_jpg_is_unsupported_but_others_import(settings: Settings
         "ok": False,
         "errorCode": "media.unsupportedType",
         "errorParams": {},
-        "message": "Not a supported image or audio file "
-        "(allowed are JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG and FLAC).",
+        "message": "Not a supported image, video or audio file "
+        "(allowed are JPEG, PNG, WebP, "
+        "MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), "
+        "MP3, WAV, M4A/AAC, OGG and FLAC).",
     }
     assert len([p for p in (settings.data_dir / "media").iterdir()]) == 2
 

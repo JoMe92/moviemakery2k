@@ -286,7 +286,7 @@
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
-            "description": "Images (JPEG, PNG, WebP) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
+            "description": "Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
             "items": {
               "contentMediaType": "application/octet-stream",
               "type": "string"
@@ -313,6 +313,8 @@
           "media.inUseByExport",
           "media.audioTooLong",
           "media.noAudioStream",
+          "media.videoTooLong",
+          "media.noVideoStream",
           "media.probeUnavailable",
           "project.slideDuration.outOfRange",
           "project.slideDuration.offGrid",
@@ -467,7 +469,8 @@
         "description": "Output profile of the export; the value is the name in the API contract.",
         "enum": [
           "high",
-          "small"
+          "small",
+          "email_web"
         ],
         "title": "ExportProfile",
         "type": "string"
@@ -486,7 +489,7 @@
           "profile": {
             "$ref": "#/components/schemas/ExportProfile",
             "default": "high",
-            "description": "`high` = 960x720 (default), `small` = 640x480; both 30 fps"
+            "description": "`high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps"
           }
         },
         "required": [
@@ -505,6 +508,21 @@
         ],
         "title": "ExportStatus",
         "type": "string"
+      },
+      "FadePhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "fade",
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "FadePhase",
+        "type": "object"
       },
       "HTTPValidationError": {
         "properties": {
@@ -618,7 +636,8 @@
         "discriminator": {
           "mapping": {
             "audio": "#/components/schemas/AudioItem",
-            "image": "#/components/schemas/ImageItem"
+            "image": "#/components/schemas/ImageItem",
+            "video": "#/components/schemas/VideoItem"
           },
           "propertyName": "kind"
         },
@@ -628,6 +647,9 @@
           },
           {
             "$ref": "#/components/schemas/AudioItem"
+          },
+          {
+            "$ref": "#/components/schemas/VideoItem"
           }
         ]
       },
@@ -654,7 +676,7 @@
         "properties": {
           "errorCode": {
             "$ref": "#/components/schemas/ErrorCode",
-            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.probeUnavailable"
+            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.videoTooLong, media.noVideoStream, media.probeUnavailable"
           },
           "errorParams": {
             "additionalProperties": {
@@ -811,6 +833,107 @@
         "title": "MusicClip",
         "type": "object"
       },
+      "Phases": {
+        "additionalProperties": false,
+        "properties": {
+          "entrance": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Entrance"
+          },
+          "exit": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Exit"
+          },
+          "main": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Main"
+          }
+        },
+        "required": [
+          "entrance",
+          "main",
+          "exit"
+        ],
+        "title": "Phases",
+        "type": "object"
+      },
+      "PositionPhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "position",
+            "title": "Effect",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/components/schemas/Transform"
+          },
+          "start": {
+            "$ref": "#/components/schemas/Transform"
+          }
+        },
+        "required": [
+          "effect",
+          "start",
+          "end"
+        ],
+        "title": "PositionPhase",
+        "type": "object"
+      },
       "Project": {
         "additionalProperties": false,
         "properties": {
@@ -958,6 +1081,177 @@
           "transitionIn"
         ],
         "title": "Slide",
+        "type": "object"
+      },
+      "StaticPhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "static",
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "StaticPhase",
+        "type": "object"
+      },
+      "Title": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/Transform"
+          },
+          "fontScale": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Fontscale",
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "layout": {
+            "enum": [
+              "one-line",
+              "two-line",
+              "credits"
+            ],
+            "title": "Layout",
+            "type": "string"
+          },
+          "names": {
+            "$ref": "#/components/schemas/TitleNames"
+          },
+          "phases": {
+            "$ref": "#/components/schemas/Phases"
+          },
+          "source": {
+            "$ref": "#/components/schemas/TitleSource"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "layout",
+          "anchor",
+          "fontScale",
+          "phases",
+          "source"
+        ],
+        "title": "Title",
+        "type": "object"
+      },
+      "TitleCatalog": {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "titles": {
+            "items": {
+              "$ref": "#/components/schemas/Title"
+            },
+            "minItems": 1,
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "titles"
+        ],
+        "title": "TitleCatalog",
+        "type": "object"
+      },
+      "TitleNames": {
+        "additionalProperties": false,
+        "description": "Display name per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "TitleNames",
+        "type": "object"
+      },
+      "TitleSource": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fields whose value is not documented but estimated [E]",
+            "title": "Estimated"
+          },
+          "kind": {
+            "const": "wmm2x-xml",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "title": "TitleSource",
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "description": "Position/zoom in title-vertex.glsl's clip-space convention (design.md D3).",
+        "properties": {
+          "scale": {
+            "exclusiveMinimum": 0.0,
+            "title": "Scale",
+            "type": "number"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "scale"
+        ],
+        "title": "Transform",
         "type": "object"
       },
       "Transition": {
@@ -1158,6 +1452,73 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VideoItem": {
+        "additionalProperties": false,
+        "description": "An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1.",
+        "properties": {
+          "codec": {
+            "description": "FFmpeg codec name of the original, e.g. `h264`, `hevc`",
+            "title": "Codec",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Decoded duration in seconds",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "height": {
+            "description": "Height after rotation",
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "posterUrl": {
+            "description": "Poster frame (JPEG), add-video-import D3",
+            "title": "Posterurl",
+            "type": "string"
+          },
+          "width": {
+            "description": "Width after rotation",
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "duration",
+          "width",
+          "height",
+          "codec",
+          "createdAt",
+          "posterUrl"
+        ],
+        "title": "VideoItem",
+        "type": "object"
       }
     }
   },
@@ -1167,6 +1528,27 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/catalog/titles": {
+      "get": {
+        "operationId": "list_titles_api_catalog_titles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Titles",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/catalog/transitions": {
       "get": {
         "operationId": "list_transitions_api_catalog_transitions_get",
@@ -1668,6 +2050,55 @@
           }
         },
         "summary": "Get Peaks",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/poster": {
+      "get": {
+        "description": "Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.\n\n404 for images, audio and unknown IDs (add-video-import D3).",
+        "operationId": "get_poster_api_media__media_id__poster_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "JPEG image"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Poster",
         "tags": [
           "media"
         ]

@@ -81,7 +81,8 @@
   line-height: 1.2;
   text-align: left;
   cursor: grab;
-  touch-action: none;
+  /* Swiping scrolls; a long press starts the drag (add-mobile-layout D8). */
+  touch-action: pan-x pan-y;
   user-select: none;
 }
 
@@ -190,4 +191,28 @@
 .cut {
   margin: 0;
   color: var(--y2k-text-muted);
+}
+
+/* "⋯" after a music clip with touch operation (add-mobile-layout design.md D6). */
+.more {
+  flex: none;
+  width: var(--y2k-touch-target);
+  height: var(--y2k-touch-target);
+  margin-left: 2px;
+  padding: 0;
+  border: 1px solid var(--y2k-button-border);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-button-top), var(--y2k-button-bottom));
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Touch reordering (add-mobile-layout design.md D8). */
+.lane {
+  overscroll-behavior: contain;
+}
+
+.slot[data-dragging="true"] .block {
+  touch-action: none;
 }

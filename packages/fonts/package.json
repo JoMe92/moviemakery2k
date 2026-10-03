@@ -1,0 +1,10 @@
+{
+  "name": "@mmy/fonts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Bundled title font (Liberation Sans, SIL OFL) shared by preview and export",
+  "license": "SIL-OFL-1.1",
+  "exports": {
+    "./*": "./*"
+  }
+}

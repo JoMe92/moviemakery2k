@@ -46,3 +46,21 @@ export function bufferSize(
   const unit = Math.max(1, Math.floor(limit / 4));
   return { width: unit * 4, height: unit * 3 };
 }
+
+/** Preview limits on phones and everywhere (add-mobile-layout design.md D14). */
+export const PREVIEW_MAX_DPR = 2;
+export const PREVIEW_MAX_WIDTH = 1920;
+
+/**
+ * Drawing buffer of the preview monitor: CSS size × min(devicePixelRatio, 2),
+ * at most 1920 px wide (and at most `maxSize`, the GPU limit).
+ */
+export function previewBufferSize(
+  cssWidth: number,
+  cssHeight: number,
+  dpr: number,
+  maxSize = Number.POSITIVE_INFINITY,
+): { width: number; height: number } {
+  const ratio = dpr > 0 && Number.isFinite(dpr) ? Math.min(dpr, PREVIEW_MAX_DPR) : 1;
+  return bufferSize(cssWidth, cssHeight, ratio, Math.min(maxSize, PREVIEW_MAX_WIDTH));
+}

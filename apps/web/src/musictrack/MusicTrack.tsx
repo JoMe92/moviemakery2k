@@ -1,11 +1,12 @@
 import { useDroppable } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { formatClipDuration } from "../i18n/format";
 import type { Translate } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
+import { useLayoutMode } from "../shell/layoutMode";
 import { audioDurations } from "../store/musicOps";
 import { useAppStore } from "../store/useAppStore";
 import {
@@ -91,6 +92,8 @@ export function MusicTrack() {
   const removeMusicClip = useAppStore((s) => s.removeMusicClip);
   const updateMusicClip = useAppStore((s) => s.updateMusicClip);
   const insertIndex = useMusicInsertIndex();
+  // Phones add music via the collection sheet instead of dragging.
+  const compact = useLayoutMode().mode === "compact";
   const { notice } = useDropNotice();
   const { setNodeRef, isOver } = useDroppable({
     id: MUSIC_DROPPABLE_ID,
@@ -99,6 +102,26 @@ export function MusicTrack() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const tiles = useRef(new Map<string, HTMLButtonElement>());
+
+  // Action bar and "⋯" (touch operation) open the same dialogs and menus.
+  const editRequest = useAppStore((s) => s.editRequest);
+  const seenEdit = useRef(editRequest?.seq ?? 0);
+  useEffect(() => {
+    if (!editRequest || editRequest.seq === seenEdit.current) return;
+    seenEdit.current = editRequest.seq;
+    if (!("clipId" in editRequest)) return;
+    const { clipId } = editRequest;
+    if (editRequest.kind === "volume") setDialog({ kind: "volume", clipId });
+    else if (editRequest.kind === "trim") setDialog({ kind: "trim", clipId });
+    else {
+      const rect = tiles.current.get(clipId)?.getBoundingClientRect();
+      setMenu({
+        clipId,
+        x: rect ? rect.left + rect.width / 2 : 0,
+        y: rect ? rect.top + rect.height / 2 : 0,
+      });
+    }
+  }, [editRequest]);
 
   const durations = useMemo(() => audioDurations(media), [media]);
   const total = musicDuration(music, durations);
@@ -138,7 +161,9 @@ export function MusicTrack() {
         data-over={(isOver && insertIndex !== null) || undefined}
       >
         {empty ? (
-          <p className={styles.hint}>{t("musicTrack.emptyHint")}</p>
+          <p className={styles.hint}>
+            {t(compact ? "musicTrack.emptyHintTouch" : "musicTrack.emptyHint")}
+          </p>
         ) : (
           <SortableContext
             items={music.map((c) => musicClipSortableId(c.id))}
@@ -220,6 +245,8 @@ export function MusicTrack() {
           number={dialogNumber}
           clip={dialogClip}
           fileDuration={dialogAudio.duration}
+          peaksUrl={dialogAudio.peaksUrl}
+          audioUrl={dialogAudio.audioUrl}
           onConfirm={(trimStart, trimEnd) => updateMusicClip(dialogClip.id, { trimStart, trimEnd })}
           onClose={() => setDialog(null)}
         />

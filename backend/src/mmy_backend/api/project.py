@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from mmy_backend.catalog import TransitionCatalog
 from mmy_backend.errors import ProjectValidationResponse
-from mmy_backend.media import MediaStore
+from mmy_backend.media import MediaStore, VideoItem
 from mmy_backend.project import Project, ProjectStore, ProjectValidationError
 
 router = APIRouter(prefix="/project", tags=["project"])
@@ -52,7 +52,8 @@ async def put_project(
     try:
         return await store.save(
             project,
-            media=media.list(),
+            # Video can never be a project element (add-video-import, non-goal).
+            media=[item for item in media.list() if not isinstance(item, VideoItem)],
             transition_ids={t.id for t in catalog.transitions},
         )
     except ProjectValidationError as exc:

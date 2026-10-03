@@ -212,6 +212,9 @@ function Wizard({
                 size: formatSize(estimateBytes(duration, option.value), locale),
               })}
             </span>
+            <span className={styles.recommendation}>
+              {t(`export.profileHints.${option.value}`)}
+            </span>
           </label>
         ))}
       </fieldset>
@@ -291,7 +294,13 @@ function Wizard({
 
   return (
     <>
-      <Dialog open title={t("export.title")} onClose={requestClose} footer={footer}>
+      <Dialog
+        open
+        title={t("export.title")}
+        onClose={requestClose}
+        footer={footer}
+        sheetHeight="full"
+      >
         <section ref={stepRef} className={styles.step} aria-labelledby={`${nameId}-step`}>
           <h3 id={`${nameId}-step`} className={styles.stepTitle}>
             {t(STEP_TITLES[view])}

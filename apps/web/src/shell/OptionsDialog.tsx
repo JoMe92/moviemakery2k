@@ -4,6 +4,7 @@ import { useT } from "../i18n/useT";
 import { useAppStore } from "../store/useAppStore";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
+import { canVibrate, setVibrationEnabled, vibrationEnabled } from "../ui/haptics";
 import styles from "./OptionsDialog.module.css";
 
 /**
@@ -21,9 +22,13 @@ function OptionsForm({ onClose }: { onClose: () => void }) {
   const setLocale = useAppStore((s) => s.setLocale);
   const [choice, setChoice] = useState<Locale>(locale);
   const radioName = useId();
+  // "Vibration" only where the device can vibrate (add-mobile-layout D13).
+  const vibration = canVibrate();
+  const [vibrate, setVibrate] = useState(vibrationEnabled);
 
   const apply = () => {
     if (choice !== locale) setLocale(choice);
+    if (vibration) setVibrationEnabled(vibrate);
     onClose();
   };
 
@@ -55,6 +60,16 @@ function OptionsForm({ onClose }: { onClose: () => void }) {
           </label>
         ))}
       </fieldset>
+      {vibration ? (
+        <label className={styles.option}>
+          <input
+            type="checkbox"
+            checked={vibrate}
+            onChange={(event) => setVibrate(event.target.checked)}
+          />
+          {t("options.vibration")}
+        </label>
+      ) : null}
     </Dialog>
   );
 }

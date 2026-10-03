@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from mmy_backend.ffmpeg import ffmpeg_binary
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,3 +96,31 @@ def images(tmp_path: Path) -> dict[str, Path]:
         Image.new("RGB", size, color).save(path)
         out[name] = path
     return out
+
+
+VIDEO_SECONDS = 105.0
+"""Matches the spec's own example (media-library "Video importieren"): 1:45."""
+
+
+@pytest.fixture
+def video(tmp_path: Path) -> Path:
+    """A tiny but valid H.264/MP4 clip with a known duration (1:45, add-video-import)."""
+    binary = ffmpeg_binary()
+    if binary is None:
+        pytest.fail("ffmpeg not found (Pixi environment or MMY_FFMPEG)")
+    folder = tmp_path / "video"
+    folder.mkdir()
+    path = folder / "urlaub.mp4"
+    subprocess.run(
+        [
+            binary,
+            *("-v", "error", "-y", "-f", "lavfi"),
+            "-i",
+            f"color=c=orange:size=640x480:rate=1:duration={VIDEO_SECONDS}",
+            *("-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"),
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return path

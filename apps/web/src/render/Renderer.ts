@@ -9,10 +9,13 @@
  *   and cached. A compile/link error is logged and falls back to Fade.
  * - A lost context silently stops drawing.
  */
-import { bufferSize, containRect } from "./geometry";
+import { bufferSize, containRect, previewBufferSize } from "./geometry";
 import { FALLBACK_TRANSITION_ID, fragmentSourceFor, VERTEX_SOURCE } from "./shaderSource";
+import type { Transform as TitleTransform } from "./titlePhase";
+import { TITLE_FRAGMENT_SOURCE, TITLE_VERTEX_SOURCE } from "./titleShaderSource";
 
 export type ImageSource = ImageBitmap | HTMLImageElement | HTMLCanvasElement;
+export type { TitleTransform };
 
 export class WebGL2UnsupportedError extends Error {
   constructor() {
@@ -33,6 +36,23 @@ interface ProgramInfo {
   from: WebGLUniformLocation | null;
   to: WebGLUniformLocation | null;
   params: Map<string, WebGLUniformLocation | null>;
+}
+
+interface TitleProgramInfo {
+  program: WebGLProgram;
+  translate: WebGLUniformLocation | null;
+  scale: WebGLUniformLocation | null;
+  title: WebGLUniformLocation | null;
+}
+
+/** How a title texture is drawn: see `Renderer.drawTitle`. */
+export interface DrawTitleOptions {
+  /**
+   * `false` for a freestanding title element (already a fully opaque
+   * image, design.md D1) — no blending. `true` for an overlay title: alpha
+   * blends over the already-drawn frame (design.md D2).
+   */
+  blend: boolean;
 }
 
 /** Natural pixel size of an image source. */
@@ -65,6 +85,8 @@ export class Renderer {
   private vertexShader: WebGLShader | null = null;
   /** Result per transition ID; a broken shader points to the Fade program. */
   private readonly programs = new Map<string, ProgramInfo | null>();
+  /** Lazily compiled; `undefined` = not yet attempted, `null` = compile/link failed. */
+  private titleProgram: TitleProgramInfo | null | undefined;
   private readonly frames = new Set<FrameTexture>();
   private letterboxCanvas: Canvas2D | null = null;
   private lost = false;
@@ -106,8 +128,9 @@ export class Renderer {
   }
 
   /** Set the buffer to the largest integer 4:3 area of the CSS box (times DPR). */
-  resize(cssWidth: number, cssHeight: number, dpr: number): void {
-    const { width, height } = bufferSize(cssWidth, cssHeight, dpr, this.maxSize);
+  resize(cssWidth: number, cssHeight: number, dpr: number, preview = false): void {
+    const size = preview ? previewBufferSize : bufferSize;
+    const { width, height } = size(cssWidth, cssHeight, dpr, this.maxSize);
     if (this.canvas.width !== width) this.canvas.width = width;
     if (this.canvas.height !== height) this.canvas.height = height;
   }
@@ -137,6 +160,32 @@ export class Renderer {
     frame.disposed = true;
     this.frames.delete(frame);
     if (!this.isContextLost) this.gl.deleteTexture(frame.texture);
+  }
+
+  /**
+   * A title/credits texture (Canvas2D-rasterised, design.md D1): uploaded at
+   * its own natural size, never letterboxed/fitted — `drawTitle`'s vertex
+   * transform positions and scales it instead.
+   */
+  createTitleFrame(source: ImageSource): FrameTexture {
+    const { gl } = this;
+    const texture = gl.createTexture();
+    if (!texture) throw new Error("Textur konnte nicht angelegt werden.");
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    const frame = new FrameTexture(source, texture);
+    const { width, height } = sourceSize(source);
+    frame.width = width;
+    frame.height = height;
+    this.frames.add(frame);
+    return frame;
   }
 
   drawEmpty(): void {
@@ -197,6 +246,41 @@ export class Renderer {
     gl.bindVertexArray(null);
   }
 
+  /**
+   * Draws a title/credits texture at `transform` (design.md D3), either
+   * opaque — a freestanding title element, already fully covering the
+   * black background it was rasterised onto (design.md D1) — or alpha-
+   * blended over whatever was drawn before it, for an overlay title
+   * (design.md D2). `gl.BLEND` is always left disabled afterwards.
+   */
+  drawTitle(frame: FrameTexture, transform: TitleTransform, options: DrawTitleOptions): void {
+    if (!this.canDraw()) return;
+    const info = this.titleProgramInfo();
+    if (!info) return;
+    const { gl } = this;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    // biome-ignore lint/correctness/useHookAtTopLevel: WebGL call, not a React hook.
+    gl.useProgram(info.program);
+    gl.bindVertexArray(this.vao);
+
+    if (options.blend) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    }
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, frame.texture);
+    gl.uniform1i(info.title, 0);
+    gl.uniform2f(info.translate, transform.translate.x, transform.translate.y);
+    gl.uniform2f(info.scale, transform.scale, transform.scale);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindVertexArray(null);
+    if (options.blend) gl.disable(gl.BLEND);
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -212,6 +296,8 @@ export class Renderer {
       }
     }
     this.programs.clear();
+    if (this.titleProgram) gl.deleteProgram(this.titleProgram.program);
+    this.titleProgram = undefined;
     if (this.vertexShader) gl.deleteShader(this.vertexShader);
     if (this.vao) gl.deleteVertexArray(this.vao);
     // Deliberately do not release the context via WEBGL_lose_context: under React
@@ -321,6 +407,36 @@ export class Renderer {
       this.vertexShader = this.shader(this.gl.VERTEX_SHADER, VERTEX_SOURCE, "vertex");
     }
     return this.vertexShader;
+  }
+
+  /** Compiles and links the title program once (own vertex shader, not `vertex()`'s). */
+  private titleProgramInfo(): TitleProgramInfo | null {
+    if (this.titleProgram !== undefined) return this.titleProgram;
+    const { gl } = this;
+    const vs = this.shader(gl.VERTEX_SHADER, TITLE_VERTEX_SOURCE, "title-vertex");
+    const fs = vs ? this.shader(gl.FRAGMENT_SHADER, TITLE_FRAGMENT_SOURCE, "title-fragment") : null;
+    let info: TitleProgramInfo | null = null;
+    if (vs && fs) {
+      const program = gl.createProgram();
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      if (gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        info = {
+          program,
+          translate: gl.getUniformLocation(program, "uTranslate"),
+          scale: gl.getUniformLocation(program, "uScale"),
+          title: gl.getUniformLocation(program, "uTitle"),
+        };
+      } else {
+        console.error("Titel-Shader lässt sich nicht linken:", gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+      }
+    }
+    if (vs) gl.deleteShader(vs);
+    if (fs) gl.deleteShader(fs);
+    this.titleProgram = info;
+    return info;
   }
 
   private shader(type: GLenum, source: string, id: string): WebGLShader | null {

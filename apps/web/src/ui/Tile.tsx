@@ -28,7 +28,11 @@ export function Tile({
       {...rest}
     >
       <span className={styles.thumb}>
-        {src ? <img src={src} alt="" draggable={false} /> : thumbnail}
+        {src ? (
+          <img src={src} alt="" loading="lazy" decoding="async" draggable={false} />
+        ) : (
+          thumbnail
+        )}
       </span>
       <span className={styles.caption}>{caption}</span>
     </button>

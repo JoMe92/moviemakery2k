@@ -22,6 +22,10 @@ export interface ProfileOption {
 export const PROFILES: readonly ProfileOption[] = [
   { value: "high", bitrate: 600_000 },
   { value: "small", bitrate: 320_000 },
+  // Not yet measured via `pixi run bench-export` (320x240 needs re-benchmarking);
+  // estimated from the measured `high`/`small` rates via the power law observed
+  // between them (bitrate shrinks slower than the pixel area as resolution drops).
+  { value: "email_web", bitrate: 110_000 },
 ];
 
 /** On failure, `error` carries the same code and params the backend would report. */

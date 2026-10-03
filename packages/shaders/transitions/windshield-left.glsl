@@ -1,0 +1,9 @@
+// Windshield, left (SMPTE 262): a wiper-like blade sweeps from a pivot at
+// the bottom-left corner (packages/shaders/prelude.glsl fanT()/wipeReveal()).
+uniform float pivotX;
+uniform float gradientSize;
+
+vec4 transition(vec2 uv) {
+  float w = wipeReveal(fanT(uv, pivotX), gradientSize);
+  return mix(getFromColor(uv), getToColor(uv), w);
+}

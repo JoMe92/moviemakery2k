@@ -9,10 +9,74 @@ All notable changes to this project are documented here. The format follows
 MP4 export of the slideshow (OpenSpec change `add-movie-export`), a
 German/English user interface (OpenSpec change `add-ui-localisation`), a
 hardening pass over export, errors and UI (OpenSpec change
-`harden-export-and-ui`) and a music track (OpenSpec change
-`add-music-track`).
+`harden-export-and-ui`), a music track (OpenSpec change `add-music-track`),
+undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`),
+video import (OpenSpec change `add-video-import`) and a phone and tablet
+layout with full touch operation (OpenSpec change `add-mobile-layout`).
 
 ### Added
+
+- **Video import**: MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1) through
+  the same import as pictures and audio (dialog, drag & drop, and the now
+  enabled task *Import video*), mixed with the other kinds in one import. The
+  backend detects the kind by content (Pillow, then ffprobe for a video
+  stream, then the existing audio check), so a video wins over an audio
+  track in the same file; it allows 500 MB and 10 minutes per video and
+  extracts one poster frame (JPEG, quality 90, at 1 s or half the duration
+  under 2 s, rotation-aware) in a single FFmpeg run. New endpoint
+  `GET /api/media/{id}/poster` (`Cache-Control: immutable`) and error codes
+  `media.videoTooLong` and `media.noVideoStream`.
+- **My Videos** (*Meine Videos*) collection with the poster image, name and
+  duration per file; a video cannot (yet) be added to the storyboard, played
+  or exported, so deleting one always just asks for confirmation (never
+  blocked by a running export, unlike a picture or audio file still in use).
+  The next OpenSpec change brings a real track view and playback.
+- **Undo/Redo**: every storyboard and music-track change can be undone and
+  redone via *Edit → Undo/Redo* or Ctrl+Z/Ctrl+Y (Ctrl+Shift+Z also works),
+  at least 50 steps deep; a new change made after an undo discards the redo
+  history. The history lives only in the browser tab and starts empty again
+  after a reload.
+- **Cut/Copy/Paste** for the selected picture or music clip via *Edit →
+  Cut/Copy/Paste* or Ctrl+X/C/V: an internal, single-element clipboard
+  (replaced wholesale by the next cut or copy, of either kind) keeps a
+  picture's duration or a music clip's trim, volume and fades; a pasted
+  picture has no incoming transition (hard cut), and the new element is
+  selected. A global keyboard handler ignores these shortcuts while typing
+  in a field or dragging.
+- **Phone and tablet layouts**: below 1280 px the window switches to a
+  *medium* layout (600–1279 px: collection and monitor side by side,
+  storyboard below, taskbar) or a *compact* phone layout (title bar with
+  *☰*, monitor at most 45 % high, storyboard and music track, action bar,
+  taskbar; monitor on the left in landscape). The desktop layout is
+  unchanged. Safe areas (`viewport-fit=cover`), `100dvh`, no pull-to-refresh
+  and no zoom jump on inputs (16 px).
+- **Taskbar** with *1. Capture*, *2. Edit* and *3. Finish*, each opening a
+  sheet with the entries of the task pane group (shared `tasks.ts`); the menus
+  live in a *Menu* sheet behind *☰* on phones.
+- **Y2K bottom sheets** (`ui/Sheet`): grip, swipe down, backdrop and Escape
+  to close, focus trap, reduced motion. Every dialog is a sheet on phones; the
+  *Save Movie* wizard fills the screen. Status changes appear as short
+  notices; a failed save shows a lasting warning symbol in the title bar.
+- **Touch operation** with a coarse pointer or on phones: 44 × 44 px targets,
+  tap to select, an **action bar** for the selected picture or music clip,
+  **action sheets** by long press (400 ms) or *⋯* with the same entries as the
+  desktop context menus, a **collection sheet** with tabs, *Import* and
+  picking in order (*Add to storyboard (n)*, *Add to music track (n)*),
+  reordering by long press and drag (a swipe scrolls), a **transition sheet**
+  that sets and plays a transition at once, steppers and sliders in the
+  duration, volume and trim dialogs, and trim handles on the waveform with a
+  two-second preview.
+- **Gestures with button alternatives**: swipe in the monitor for the
+  previous/next picture, double-tap or *Full screen* for the full-screen
+  preview (Fullscreen API or an overlay on the iPhone), pinch or
+  *Smaller*/*Larger* for three remembered tile sizes.
+- **Haptics**: short vibrations on long press, drop and refused drop, with a
+  *Vibration* switch in *Tools → Options…* where the device supports it.
+- Preview limits on phones: drawing buffer at most ×2 and 1920 px wide; a
+  hidden tab pauses playback and stops the render clock.
+- E2E tests on the device profiles iPhone 13, Pixel 7 and iPad (gen 7) with
+  touch: no horizontal scroll, 44 px targets and the full flow by tapping in
+  portrait and landscape.
 
 - **Audio import**: MP3, WAV, M4A/AAC, OGG (Vorbis/Opus) and FLAC through the
   same import as pictures (dialog, drag & drop, and the now enabled task
@@ -93,12 +157,14 @@ hardening pass over export, errors and UI (OpenSpec change
 
 - **Save movie** wizard in the Y2K style (task pane *Auf dem Computer
   speichern* and *Datei → Film speichern…*, disabled for an empty
-  storyboard): file name, quality with estimated file size, progress with
-  remaining time and confirmed cancel, download; errors in a dialog with
-  retry.
-- MP4 export with two profiles, `high` 960×720 (default) and `small`
-  640×480, both 30 fps, H.264 (`libx264`, CRF 20, faststart) with an AAC
-  track (48 kHz stereo; the music track, or silence without music).
+  storyboard): file name, quality with estimated file size and a short
+  recommendation per profile, progress with remaining time and confirmed
+  cancel, download; errors in a dialog with retry.
+- MP4 export with three profiles, `high` 960×720 (default), `small`
+  640×480 and `email_web` 320×240 (*Für E-Mail/Web*, the smallest, for
+  sending or uploading), all 30 fps, H.264 (`libx264`, CRF 20, faststart)
+  with an AAC track (48 kHz stereo; the music track, or silence without
+  music).
 - Export renderer in the backend: headless OpenGL 3.3 through EGL and Mesa
   llvmpipe (moderngl) running the **same transition shaders** as the preview
   (only the `#version` line is swapped), pictures letterboxed like in the
@@ -120,6 +186,22 @@ hardening pass over export, errors and UI (OpenSpec change
   environment during the build, and a CI job (`docker`,
   `scripts/docker_export_smoke.sh`) exports a movie from the running
   container and checks it with ffprobe.
+- **Transition catalog grown from 6 to 47 entries** (OpenSpec change
+  `add-transition-catalog`): all Basic and SMPTE wipes from
+  `docs/research/movie-maker-reference.md` §3 that a 2D wipe shader can
+  express, each with a default duration, parameters and its exact source
+  (SMPTE `MaskNum` or Movie-Maker-XML GUID). Two new, parametrized shaders
+  (direction/angle, soft edge, optional repetition) generalize
+  `wipe-right.glsl` and `circle.glsl` instead of one file per transition:
+  a linear/polygon family (the remaining Wipe directions, Diagonal,
+  Reveal, Split, Bow Tie, Diagonal Cross, Box Out, Filled V, Zig Zag,
+  Rectangle, Diamond, Bars, Inset, Fan In, Swinging Door, Windshield) and
+  a radial/curve family (Iris, Circles/Stars with Replicate, Wheel, Star,
+  Heart, Key Hole, Eye, Sweep). The "Videoübergänge" collection scrolls
+  once its tiles exceed the visible area, like the picture/audio
+  collections. The 13 WMTFX 3D/particle transitions (Flip, Slide Up,
+  Slide Up Center, Roll, Spin Out, Page Curl, Shatter, Whirlwind, Shrink)
+  remain out of scope, pending a dedicated rendering technique.
 
 ### Changed
 

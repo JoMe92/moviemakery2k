@@ -60,14 +60,63 @@ export type BackendState =
   | { kind: "ok"; health: Health }
   | { kind: "offline" };
 export type SaveState = "idle" | "saving" | "saved" | "error";
-/** `media` is "My Pictures" (images only), `music` is "My Music" (audio only). */
-export type CollectionId = "media" | "music" | "transitions";
 /**
- * File dialog requested: `any` (File menu: pictures and audio), `pictures`
- * ("Import pictures") or `audio` ("Import audio or music").
+ * `media` is "My Pictures" (images only), `music` is "My Music" (audio only),
+ * `video` is "My Videos" (video only, add-video-import D4).
  */
-export type ImportKind = "any" | "pictures" | "audio";
+export type CollectionId = "media" | "music" | "video" | "transitions";
+/**
+ * File dialog requested: `any` (File menu: pictures, video and audio),
+ * `pictures` ("Import pictures"), `audio` ("Import audio or music") or
+ * `video` ("Import video", add-video-import D4).
+ */
+export type ImportKind = "any" | "pictures" | "audio" | "video";
 export type Selection = { kind: "slide"; slideId: string } | null;
+
+/** Snapshot of the undoable project state (design.md D1): `slides` and `music`. */
+export interface HistoryEntry {
+  slides: Slide[];
+  music: MusicClip[];
+}
+
+/** Undo history keeps at most this many steps (spec edit-commands, design.md D1). */
+export const UNDO_LIMIT = 50;
+
+/**
+ * Internal clipboard (spec edit-commands, design.md D4): at most one element,
+ * holding only its content (never an incoming transition, which belongs to
+ * the storyboard slot, not the picture). Copying or cutting either kind
+ * replaces the previous content regardless of its kind.
+ */
+export type ClipboardEntry =
+  | { kind: "slide"; mediaId: string; duration: number }
+  | {
+      kind: "musicClip";
+      mediaId: string;
+      trimStart: number;
+      trimEnd: number | null;
+      volume: number;
+      fadeIn: boolean;
+      fadeOut: boolean;
+    }
+  | null;
+
+/**
+ * Request to open an editing dialog or the action menu of an element
+ * (add-mobile-layout design.md D6): the action bar and the "⋯" buttons ask,
+ * the storyboard strip and the music track open their own dialogs, so both
+ * operating models share one editing logic. `seq` makes repeats distinct.
+ */
+export type EditRequest =
+  | { kind: "slideDuration" | "transition" | "slideMenu"; slideId: string; seq: number }
+  | { kind: "volume" | "trim" | "musicMenu"; clipId: string; seq: number };
+
+/** An edit request before the store numbers it. */
+export type EditRequestInput = EditRequest extends infer R
+  ? R extends EditRequest
+    ? Omit<R, "seq">
+    : never
+  : never;
 
 export interface UploadEntry {
   key: string;
@@ -92,6 +141,12 @@ export interface AppState {
   selection: Selection;
   /** Selected clip on the music track (exclusive with `selection`). */
   musicSelection: string | null;
+  /** Undo history (design.md D1), most recent step last; tab-only, not persisted. */
+  undoStack: HistoryEntry[];
+  /** Redo history; cleared by any new change after an undo. */
+  redoStack: HistoryEntry[];
+  /** Internal single-element clipboard (design.md D4); replaced wholesale by cut/copy. */
+  clipboard: ClipboardEntry;
   /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
   uploads: UploadEntry[];
@@ -103,6 +158,10 @@ export interface AppState {
   importRequest: number;
   /** Kind of the last requested file dialog (file types it offers). */
   importKind: ImportKind;
+  /** Collection sheet of the compact layout open (add-mobile-layout design.md D7). */
+  collectionSheetOpen: boolean;
+  /** Last requested editing dialog or action menu (touch operation), or null. */
+  editRequest: EditRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -131,6 +190,10 @@ export interface AppState {
 
   /** Request the import file dialog (opened by the collection); default `any`. */
   requestImport(kind?: ImportKind): void;
+  /** Open or close the collection sheet (compact layout). */
+  setCollectionSheetOpen(open: boolean): void;
+  /** Ask the storyboard or music track to open a dialog or action menu. */
+  requestEdit(request: EditRequestInput): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -144,7 +207,25 @@ export interface AppState {
   setSlideDuration(slideId: string, duration: number): boolean;
   setTransition(slideId: string, transitionId: string): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
+  /**
+   * Play the transition before this picture once in the monitor, with a
+   * short lead-in and lead-out (transition sheet, add-mobile-layout D9).
+   */
+  playTransitionOnce(slideId: string): void;
   removeTransition(slideId: string): void;
+
+  /**
+   * Edit → Cut/Copy/Paste for the selected picture or music clip (spec
+   * edit-commands, design.md D4/D5). No effect without a selection (cut,
+   * copy) or an empty clipboard (paste). Paste inserts into the row
+   * matching the clipboard's kind — after a selection of that same kind, or
+   * at the end — and selects the new element; a pasted picture is a hard
+   * cut (no incoming transition). Cut is one undo step for the whole
+   * operation.
+   */
+  cut(): void;
+  copy(): void;
+  paste(): void;
 
   /** Select a clip on the music track (null clears); ends a picture selection. */
   selectMusicClip(clipId: string | null): void;
@@ -170,11 +251,19 @@ export interface AppState {
   fitToMusic(): FitToMusicResult;
   newProject(): void;
 
+  /** Undo the last storyboard/music change (spec edit-commands); no effect if there is none. */
+  undo(): void;
+  /** Redo the last undone change; no effect if there is none. */
+  redo(): void;
+
   /** Run the autosave immediately (tests, page change). */
   flushSave(): Promise<void>;
 }
 
 export type AppStore = StoreApi<AppState>;
+
+/** Lead-in and lead-out (s) around a transition played once. */
+export const TRANSITION_LEAD = 0.5;
 
 export interface AppStoreOptions {
   /** Initial UI language; defaults to stored setting → browser → `en`. */
@@ -248,8 +337,20 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       return { playing: playback.playing, time: clampTime(playback.time, duration) };
     }
 
+    /**
+     * Snapshot the state before a project-changing action (design.md D1): push
+     * it on the undo stack (dropping the oldest beyond UNDO_LIMIT) and discard
+     * the redo stack.
+     */
+    function pushHistory(previous: HistoryEntry): void {
+      const next = [...get().undoStack, previous];
+      if (next.length > UNDO_LIMIT) next.shift();
+      set({ undoStack: next, redoStack: [] });
+    }
+
     function commit(slides: Slide[]): void {
-      const { selection } = get();
+      const { selection, music, slides: prevSlides } = get();
+      pushHistory({ slides: prevSlides, music });
       const stillThere = selection && slides.some((s) => s.id === selection.slideId);
       set({ slides, selection: stillThere ? selection : null, playback: playbackFor(slides) });
       scheduleSave();
@@ -257,14 +358,44 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
     /** Store a changed music track; keeps the music selection if the clip is still there. */
     function commitMusic(music: MusicClip[]): void {
-      const { musicSelection } = get();
+      const { musicSelection, slides, music: prevMusic } = get();
+      pushHistory({ slides, music: prevMusic });
       const stillThere = musicSelection !== null && music.some((c) => c.id === musicSelection);
       set({ music, musicSelection: stillThere ? musicSelection : null });
       scheduleSave();
     }
 
+    /** Jump to a history entry (undo/redo): restores selections if still valid. */
+    function restore(entry: HistoryEntry): void {
+      const { selection, musicSelection } = get();
+      const stillSlide = selection && entry.slides.some((s) => s.id === selection.slideId);
+      const stillMusic =
+        musicSelection !== null && entry.music.some((c) => c.id === musicSelection);
+      set({
+        slides: entry.slides,
+        music: entry.music,
+        selection: stillSlide ? selection : null,
+        musicSelection: stillMusic ? musicSelection : null,
+        playback: playbackFor(entry.slides),
+      });
+      scheduleSave();
+    }
+
     const duration = () => timelineOf(get().slides).duration;
     const noDemo = { previewTransitionId: null, demo: null } as const;
+
+    /** Clipboard content copied from a music clip (design.md D4): never its id. */
+    function clipboardOf(clip: MusicClip): ClipboardEntry {
+      return {
+        kind: "musicClip",
+        mediaId: clip.mediaId,
+        trimStart: clip.trimStart,
+        trimEnd: clip.trimEnd,
+        volume: clip.volume,
+        fadeIn: clip.fadeIn,
+        fadeOut: clip.fadeOut,
+      };
+    }
 
     function defaultTransitionDuration(transitionId: string): number {
       return get().catalog.find((t) => t.id === transitionId)?.defaultDuration ?? 1.25;
@@ -281,12 +412,17 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       collection: "media",
       selection: null,
       musicSelection: null,
+      undoStack: [],
+      redoStack: [],
+      clipboard: null,
       previewTransitionId: null,
       playback: STOPPED,
       demo: null,
       uploads: [],
       importRequest: 0,
       importKind: "any",
+      editRequest: null,
+      collectionSheetOpen: false,
       exportWizardOpen: false,
       locale,
       setLocale(next) {
@@ -403,6 +539,13 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       requestImport(kind = "any") {
         set({ importRequest: get().importRequest + 1, importKind: kind });
       },
+      setCollectionSheetOpen(open) {
+        set({ collectionSheetOpen: open });
+      },
+      requestEdit(request) {
+        const seq = (get().editRequest?.seq ?? 0) + 1;
+        set({ editRequest: { ...request, seq } as EditRequest });
+      },
 
       async importFiles(files) {
         const entries: UploadEntry[] = files.map((f, i) => ({
@@ -501,6 +644,18 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           })),
         );
       },
+      playTransitionOnce(slideId) {
+        const { slides } = get();
+        const timeline = timelineOf(slides);
+        const placed = timeline.slides.find((p) => p.slide.id === slideId);
+        if (!placed || placed.transitionIn <= 0) return;
+        const from = Math.max(0, placed.start - TRANSITION_LEAD);
+        const until = Math.min(
+          timeline.duration,
+          placed.start + placed.transitionIn + TRANSITION_LEAD,
+        );
+        set({ ...noDemo, playback: { playing: true, time: from, until } });
+      },
       setTransitionDuration(slideId, duration) {
         if (!isValidTransitionDuration(duration)) return false;
         commit(
@@ -512,6 +667,69 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       removeTransition(slideId) {
         commit(updateSlide(get().slides, slideId, (s) => ({ ...s, transitionIn: null })));
+      },
+
+      cut() {
+        const { selection, musicSelection, slides, music } = get();
+        if (selection) {
+          const slide = slides.find((s) => s.id === selection.slideId);
+          if (!slide) return;
+          set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+          commit(removeSlide(slides, slide.id));
+        } else if (musicSelection !== null) {
+          const clip = music.find((c) => c.id === musicSelection);
+          if (!clip) return;
+          set({ clipboard: clipboardOf(clip) });
+          commitMusic(removeMusicClipOp(music, clip.id));
+        }
+      },
+      copy() {
+        const { selection, musicSelection, slides, music } = get();
+        if (selection) {
+          const slide = slides.find((s) => s.id === selection.slideId);
+          if (!slide) return;
+          set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+        } else if (musicSelection !== null) {
+          const clip = music.find((c) => c.id === musicSelection);
+          if (!clip) return;
+          set({ clipboard: clipboardOf(clip) });
+        }
+      },
+      paste() {
+        const { clipboard } = get();
+        if (!clipboard) return;
+        if (clipboard.kind === "slide") {
+          const { selection, slides } = get();
+          const newSlide: Slide = {
+            id: newSlideId(),
+            mediaId: clipboard.mediaId,
+            duration: clipboard.duration,
+            transitionIn: null,
+          };
+          const at = selection
+            ? slides.findIndex((s) => s.id === selection.slideId) + 1
+            : slides.length;
+          commit(insertSlide(slides, newSlide, at));
+          get().select({ kind: "slide", slideId: newSlide.id });
+        } else {
+          const { musicSelection, music } = get();
+          if (music.length >= MUSIC_TRACK_MAX) return;
+          const newClip: MusicClip = {
+            id: newSlideId(),
+            mediaId: clipboard.mediaId,
+            trimStart: clipboard.trimStart,
+            trimEnd: clipboard.trimEnd,
+            volume: clipboard.volume,
+            fadeIn: clipboard.fadeIn,
+            fadeOut: clipboard.fadeOut,
+          };
+          const at =
+            musicSelection !== null
+              ? music.findIndex((c) => c.id === musicSelection) + 1
+              : music.length;
+          commitMusic(insertMusicClip(music, newClip, at));
+          get().selectMusicClip(newClip.id);
+        }
       },
 
       selectMusicClip(clipId) {
@@ -557,8 +775,31 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         return result;
       },
       newProject() {
-        set({ music: [], musicSelection: null });
-        commit([]);
+        const { slides, music } = get();
+        pushHistory({ slides, music });
+        set({ music: [], musicSelection: null, slides: [], selection: null, playback: STOPPED });
+        scheduleSave();
+      },
+
+      undo() {
+        const { undoStack, slides, music } = get();
+        const top = undoStack[undoStack.length - 1];
+        if (!top) return;
+        set({
+          undoStack: undoStack.slice(0, -1),
+          redoStack: [...get().redoStack, { slides, music }],
+        });
+        restore(top);
+      },
+      redo() {
+        const { redoStack, slides, music } = get();
+        const top = redoStack[redoStack.length - 1];
+        if (!top) return;
+        set({
+          redoStack: redoStack.slice(0, -1),
+          undoStack: [...get().undoStack, { slides, music }],
+        });
+        restore(top);
       },
 
       async flushSave() {

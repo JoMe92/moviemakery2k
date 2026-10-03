@@ -43,3 +43,65 @@
   color: var(--y2k-text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* "My Videos" tile: poster image with the duration badge in the corner. */
+.video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.video img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.videoDuration {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 3px;
+  background: rgb(0 0 0 / 70%);
+  color: #fff;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collection sheet: picked tiles carry a check mark (add-mobile-layout design.md D7). */
+.pickable {
+  position: relative;
+}
+
+.pickable[aria-pressed="true"]::after {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--y2k-edge-light);
+  border-radius: 50%;
+  background: var(--y2k-select);
+  color: var(--y2k-select-text);
+  content: "✓";
+  font-weight: bold;
+}
+
+.properties {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.properties dt {
+  font-weight: bold;
+}
+
+.properties dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

@@ -207,3 +207,13 @@ export function AudioIcon(props: IconProps) {
     </Svg>
   );
 }
+
+/** Warning: yellow triangle with an exclamation mark (own drawing). */
+export function WarningIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 1.5l6.5 12h-13z" style={tok("icon-yellow")} stroke="var(--y2k-icon-ink)" />
+      <path d="M8 5.5v4.5M8 11.5v1.5" fill="none" stroke="var(--y2k-icon-ink)" strokeWidth="1.5" />
+    </Svg>
+  );
+}

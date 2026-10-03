@@ -31,6 +31,9 @@ What works today:
 - **Picture import** — JPEG, PNG and WebP via dialog or drag & drop from the
   desktop. The backend validates the files and creates thumbnails and preview
   images.
+- **Video import** — MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1) land in
+  *My Videos* with a poster frame, name and duration; a video cannot (yet) be
+  added to the storyboard, played or exported — see [Roadmap](#roadmap).
 - **Music** — import MP3, WAV, M4A/AAC, OGG and FLAC into *My Music*, put
   pieces on the *Audio/Music* track below the storyboard, trim them, set
   their volume and fades, and fit the movie to the music. The preview plays
@@ -38,10 +41,18 @@ What works today:
   contains the mix. See [Music](#music).
 - **Storyboard** — drag pictures into the storyboard, reorder them, remove
   them and set a duration per picture (0.5–60 s).
-- **Six classic transitions** — Fade, Dissolve, Wipe, Circle, Pixelate and
-  Checkerboard. Drag one onto the slot between two pictures (or double-click
-  it to put it in front of the selected picture) and set its duration
-  (0.25–5 s). Transitions overlap neighbouring pictures, just like
+- **Undo/Redo and Cut/Copy/Paste** — every storyboard and music-track change
+  can be undone and redone (*Edit → Undo/Redo* or Ctrl+Z/Ctrl+Y), at least
+  50 steps deep; a selected picture or music clip can be cut, copied and
+  pasted elsewhere (*Edit → Cut/Copy/Paste* or Ctrl+X/C/V). Both live only in
+  the browser tab and reset on a reload.
+- **47 transitions** — Fade, Dissolve, Pixelate and Checkerboard, plus every
+  Basic and SMPTE wipe from the original that a 2D shader can express (Wipe,
+  Reveal, Split, Bow Tie, Diagonal, Rectangle, Diamond, Bars, Inset, Iris,
+  Circle(s), Wheel, Star(s), Heart, Key Hole, Eye, Sweep, Fan In, Swinging
+  Door, Windshield …). Drag one onto the slot between two pictures (or
+  double-click it to put it in front of the selected picture) and set its
+  duration (0.25–5 s). Transitions overlap neighbouring pictures, just like
   in the original.
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
@@ -53,21 +64,30 @@ What works today:
 - **Autosave** — the project is saved in the backend and restored after a
   reload.
 - **Save movie** — a Movie Maker-style wizard exports the storyboard as an MP4
-  (H.264 + AAC) in two quality profiles; transitions are rendered by the very
-  same shader files as the preview. See [Exporting a movie](#exporting-a-movie).
+  (H.264 + AAC) in three quality profiles, each with a short recommendation;
+  transitions are rendered by the very same shader files as the preview. See
+  [Exporting a movie](#exporting-a-movie).
 - **German and English UI** — the language follows the browser and can be
   switched at any time under *Tools → Options…*; numbers, durations and the
   time display follow the chosen language, and backend errors are shown
   translated. See [Languages](#languages).
+- **Phones and tablets** — below 1280 px the window switches to a compact
+  phone layout or a tablet layout with a taskbar of the three Movie Maker
+  steps, Y2K bottom sheets and full touch operation: tap to select, long press
+  or *⋯* for actions, picking instead of dragging, gestures with button
+  alternatives. See [On phones and tablets](#on-phones-and-tablets).
 
 ## Roadmap
 
-- More of the original 60 transitions (SMPTE wipes, bars, iris, wheel, 3D and
-  particle transitions such as Page Curl and Shatter)
+- The remaining 13 original transitions that need a 3D or particle renderer
+  (Flip, Slide Up, Slide Up Center, Roll, Spin Out, Page Curl, Shatter,
+  Whirlwind, Shrink) — a different rendering technique than the 2D wipe
+  shaders used so far
 - Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
 - Titles and credits with the Entrance → Main → Exit animation model
-- Video clips, narration and audio levels (clip sound ↔ music)
-- Timeline view with trimming and splitting
+- Video clips on the storyboard (playback, trimming and splitting, clip
+  sound ↔ music), narration recording
+- Timeline view
 
 ## Screenshots
 
@@ -76,8 +96,8 @@ What works today:
 | ![The "Videoübergänge" (video transitions) collection with the six transitions; the monitor previews the selected Circle transition](docs/images/transitions-collection.png) | ![Transition properties dialog with the duration field](docs/images/transition-dialog.png) |
 | **Video transitions collection.** Select a transition to preview it; drag it onto a storyboard slot to use it. | **Properties dialog.** Double-click a transition or picture in the storyboard to set its duration. |
 
-**The six transitions at roughly 45 % progress**, captured from the preview
-monitor:
+**The original six transitions at roughly 45 % progress** (screenshots not
+yet updated for the other 41), captured from the preview monitor:
 
 ![Fade, Dissolve, Wipe, Circle, Pixelate and Checkerboard, each frozen mid-transition](docs/images/transitions-grid.png)
 
@@ -128,8 +148,9 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 
 1. **File name** — defaults to *My Movie* (*Mein Film* in German); the
    characters `/\:*?"<>|` are rejected and `.mp4` is appended.
-2. **Quality** — choose a profile; the wizard estimates the file size from
-   the movie length.
+2. **Quality** — choose a profile, largest to smallest; the wizard estimates
+   the file size from the movie length and shows a short recommendation for
+   each (e.g. *Für E-Mail/Web* — smallest file, for sending or uploading).
 3. **Saving the movie** — progress in percent and an estimate of the
    remaining time; *Cancel* cancels the export after a confirmation.
 4. **Finished** — *Download Movie* downloads the MP4.
@@ -138,6 +159,7 @@ storyboard is empty. The wizard has four steps with *Back* / *Next* /
 |---|---|---|---|
 | `high` (default) | 960×720, 30 fps | H.264 (High profile, CRF 20, yuv420p BT.709, faststart) | AAC, 48 kHz stereo, 128 kbit/s: the music track, or silence without music |
 | `small` | 640×480, 30 fps | same | same |
+| `email_web` | 320×240, 30 fps | same | same |
 
 Pictures are letterboxed onto black exactly like in the preview monitor, and
 the export uses the same timing model, so the movie matches what you saw.
@@ -280,6 +302,70 @@ Code comments, docstrings, Pixi task descriptions and CI step names are in
 English; German text belongs only in `de.ts`, in tests of the German UI and
 in the OpenSpec artefacts.
 
+## On phones and tablets
+
+The same app adapts to the window size; nothing changes on the desktop.
+
+| Mode | Window | Layout |
+|---|---|---|
+| **Wide** | 1280 px and wider | The Movie Maker window described above |
+| **Medium** | 600–1279 px (tablet, phone in landscape above 500 px height) | Menu bar, collection and monitor side by side, storyboard below, taskbar at the bottom |
+| **Compact** | narrower than 600 px, or landscape below 500 px height | Title bar with *☰*, monitor (at most 45 % of the height) with its control bar, storyboard and music track, action bar, taskbar; in landscape the monitor sits on the left |
+
+| Phone, portrait | Picking pictures | Tablet |
+|---|---|---|
+| ![Compact layout on a phone in portrait: monitor, storyboard with transitions, music track, action bar of the selected picture and the taskbar with 1. Capture, 2. Edit, 3. Finish](docs/images/mobile-portrait.png) | ![Collection sheet with My Pictures, My Music and Video Transitions tabs; five picked pictures with check marks and "Add to storyboard (5)"](docs/images/mobile-collection.png) | ![Medium layout on a tablet: collection and monitor side by side, storyboard and taskbar below](docs/images/tablet.png) |
+
+![Compact layout on a phone in landscape: monitor on the left, storyboard, music track, action bar and taskbar on the right](docs/images/mobile-landscape.png)
+
+**Taskbar and sheets.** The taskbar at the bottom carries the three steps
+*1. Capture*, *2. Edit* and *3. Finish*; each opens a sheet with the entries of
+the task pane group of the same name (disabled entries stay visible). On a
+phone *☰* opens the *Menu* sheet with all seven menus, and every dialog
+appears as a bottom sheet in the Y2K window style. A sheet closes with its
+close button, Escape, a tap on the backdrop or a swipe down at the grip.
+
+**Touch operation** applies on phones and whenever the pointer is coarse
+(touch screen); every interactive element is then at least 44 × 44 px.
+
+- **Tap** selects a picture or music clip; the **action bar** above the
+  taskbar offers its actions (*Duration…*, *Move left/right*, *Transition
+  before…*, *Remove*; for music *Volume…*, *Trim…*, *Fade in/out*, *Move*,
+  *Remove*). A **long press** (400 ms) or the *⋯* button opens the same menu
+  as a right click on the desktop, as an action sheet.
+- **Adding** works by picking instead of dragging: *2. Edit → View
+  collections* opens the collection sheet; tap pictures (or music) in the
+  order you want them, then *Add to storyboard (n)* / *Add to music track
+  (n)*. Pictures go after the selected picture or to the end.
+- **Reordering**: long press a tile or clip and drag it, or use *Move
+  left/right*. A quick swipe scrolls the strip instead. On a tablet you can
+  also drag pictures from the collection into the storyboard.
+- **Transitions**: tap the slot between two pictures to open the
+  *Transition* sheet; choosing one sets it at once and plays it once in the
+  monitor, the duration has a stepper (0.25–5 s).
+- **Numbers**: duration, volume and trim dialogs add steppers and sliders
+  (0.5 s, 0.25 s, 5 %, 0.1 s); *Trim…* also shows the waveform with two
+  handles that play two seconds from the mark when released. The *Save
+  Movie* wizard fills the screen.
+- **Gestures**, each with a button: swipe in the monitor for the previous or
+  next picture, double-tap (or *Full screen*) for the full-screen preview,
+  pinch the storyboard (or *Smaller*/*Larger*) for three tile sizes, which
+  are remembered.
+- **Haptics**: a short vibration on a long press, a drop and a refused drop,
+  switchable under *Tools → Options… → Vibration*.
+
+**iOS and iPadOS.** Safari has no Vibration API, so there is no haptic
+feedback and the *Vibration* switch is not shown. The ring/silent switch
+mutes Web Audio, so the preview music is silent while the phone is in silent
+mode (the exported movie is not affected). Safari on the iPhone does not
+offer full screen for page elements; the preview then covers the whole
+viewport instead. iOS converts HEIC photos to JPEG when you pick them, so
+they import like any other picture.
+
+Opening the app from a phone or tablet in your home network, a secure
+connection and installing it as an app are the topic of the next change
+(`add-mobile-delivery`).
+
 ## Docker
 
 The backend image is built from the Pixi environment `prod` (Python, FFmpeg
@@ -315,7 +401,7 @@ instead.
 | Path | Contents |
 |---|---|
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
-| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
+| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
 | [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition shaders, shared by preview and export |
 | [`packages/catalog/`](packages/catalog) | Transition catalog with the documented parameters (single source of truth) |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |

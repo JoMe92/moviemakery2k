@@ -15,6 +15,7 @@ export const de = {
   options: {
     title: "Optionen",
     language: "Sprache der Benutzeroberfläche:",
+    vibration: "Vibration",
   },
   shell: {
     windowTitle: "{app} – Unbenanntes Projekt",
@@ -27,14 +28,20 @@ export const de = {
     storyboard: "Storyboard",
     showTimeline: "Zeitachse anzeigen",
     storyboardHint: "Ziehen Sie Bilder hierher, um eine Diashow zu erstellen.",
+    storyboardHintTouch:
+      "Tippen Sie auf „1. Aufnehmen“, um Bilder zu importieren und hier hinzuzufügen.",
+    editing: "Bearbeitung",
+    taskbar: "Filmschritte",
   },
   collections: {
     media: "Meine Bilder",
     music: "Meine Musik",
+    video: "Meine Videos",
     transitions: "Videoübergänge",
   },
   menu: {
     bar: "Menüleiste",
+    sheet: "Menü",
     file: {
       label: "Datei",
       newProject: "Neues Projekt",
@@ -84,17 +91,24 @@ export const de = {
     keys: {
       delete: "Entf",
       space: "Leertaste",
+      undo: "Strg+Z",
+      redo: "Strg+Y",
+      cut: "Strg+X",
+      copy: "Strg+C",
+      paste: "Strg+V",
     },
   },
   tasks: {
     capture: {
       title: "1. Aufnehmen",
+      short: "1. Aufnehmen",
       importVideo: "Video importieren",
       importPictures: "Bilder importieren",
       importAudio: "Audio oder Musik importieren",
     },
     edit: {
       title: "2. Film bearbeiten",
+      short: "2. Bearbeiten",
       showCollections: "Sammlungen anzeigen",
       showEffects: "Videoeffekte anzeigen",
       showTransitions: "Videoübergänge anzeigen",
@@ -102,6 +116,7 @@ export const de = {
     },
     finish: {
       title: "3. Film fertig stellen",
+      short: "3. Fertig stellen",
       saveToComputer: "Auf dem Computer speichern",
       publishWeb: "Im Web veröffentlichen",
     },
@@ -155,6 +170,31 @@ export const de = {
       "Möchten Sie „{name}“ wirklich löschen? Es wird auch aus der Musikleiste entfernt.",
     audioDraggable: "ziehbares Audio",
     addToMusicTrack: "Zur Musikleiste hinzufügen",
+    videoEmptyHint:
+      "Diese Sammlung ist leer. Wählen Sie „Video importieren“ oder ziehen Sie Videodateien hierher.",
+    videoList: "Videos",
+    videoTile: "{name}, {duration}",
+    videoMenu: "Video „{name}“",
+    deleteVideoTitle: "Video löschen",
+    deleteVideoQuestion: "Möchten Sie „{name}“ wirklich löschen?",
+    properties: "Eigenschaften",
+    propertiesTitle: "Eigenschaften von „{name}“",
+    fileName: "Dateiname",
+    kind: "Art",
+    kindImage: "Bild",
+    kindAudio: "Audio",
+    kindVideo: "Video",
+    size: "Abmessungen",
+    sizeValue: "{width} × {height} Pixel",
+    duration: "Dauer",
+    picked: "ausgewählt",
+  },
+  collectionSheet: {
+    title: "Sammlungen",
+    tabs: "Sammlung wählen",
+    import: "Importieren",
+    addPictures: "Zum Bildstreifen hinzufügen ({count})",
+    addMusic: "Zur Musikleiste hinzufügen ({count})",
   },
   upload: {
     progress: "Importiere {current} von {total} …",
@@ -183,6 +223,8 @@ export const de = {
     slideDuration: "Bilddauer (Sekunden):",
     transitionDuration: "Übergangsdauer (Sekunden):",
     transition: "Übergang:",
+    smaller: "Kleiner",
+    larger: "Größer",
   },
   dnd: {
     audio: "Audio „{name}“",
@@ -206,6 +248,7 @@ export const de = {
     label: "Audio/Musik",
     list: "Musikleiste",
     emptyHint: "Ziehen Sie Musik aus „Meine Musik“ hierher.",
+    emptyHintTouch: "Musik fügen Sie über „2. Bearbeiten“ → „Sammlungen anzeigen“ hinzu.",
     sortable: "verschiebbares Musikstück",
     clip: "Musikstück {number}: {name}, {duration}",
     clipMenu: "Musikstück {number} der Musikleiste",
@@ -231,6 +274,32 @@ export const de = {
     trimRange:
       "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen, die Länge mindestens {length} s betragen.",
   },
+  stepper: {
+    decrease: "{label} verringern",
+    increase: "{label} erhöhen",
+  },
+  transitionSheet: {
+    title: "Übergang",
+    none: "Kein Übergang",
+    list: "Übergänge zur Auswahl",
+    duration: "Übergangsdauer",
+    done: "Fertig",
+  },
+  actions: {
+    bar: "Aktionen",
+    duration: "Dauer…",
+    moveLeft: "Nach links",
+    moveRight: "Nach rechts",
+    transitionBefore: "Übergang davor…",
+    remove: "Entfernen",
+    volume: "Lautstärke…",
+    trim: "Kürzen…",
+    fadeIn: "Einblenden",
+    fadeOut: "Ausblenden",
+    more: "Weitere Aktionen",
+    slideMore: "Aktionen für Bild {number}",
+    clipMore: "Aktionen für Musikstück {number}",
+  },
   transitions: {
     unavailable: "Der Übergangskatalog ist nicht verfügbar.",
     list: "Übergänge",
@@ -243,6 +312,8 @@ export const de = {
     stop: "Stopp",
     previous: "Vorheriges Bild",
     next: "Nächstes Bild",
+    fullscreen: "Vollbild",
+    exitFullscreen: "Vollbild beenden",
     time: "Zeit",
     canvas: "Vorschaubild",
     sample: "Beispiel: {name}",
@@ -271,6 +342,12 @@ export const de = {
     profiles: {
       high: "Hohe Qualität (960×720)",
       small: "Kleine Datei (640×480)",
+      email_web: "Für E-Mail/Web (320×240)",
+    },
+    profileHints: {
+      high: "Zum Ansehen auf einem großen Bildschirm.",
+      small: "Zum Weitergeben, etwa per USB-Stick.",
+      email_web: "Kleinste Datei, zum Versenden oder Hochladen.",
     },
     estimatedSize: "Geschätzte Größe: {size}",
     saving: "„{file}“ wird gespeichert …",
@@ -312,11 +389,13 @@ export const de = {
       notFound: "Das Medium wurde nicht gefunden.",
       tooManyFiles: "Zu viele Dateien: höchstens {max} je Import ({count} gesendet).",
       unsupportedType:
-        "Keine unterstützte Bild- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG und FLAC).",
+        "Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG und FLAC).",
       tooLarge: "Die Datei ist zu groß (höchstens {maxMegabytes} MB).",
       tooManyPixels: "Das Bild hat zu viele Pixel (höchstens {maxMegapixels} Megapixel).",
       audioTooLong: "Die Audiodatei ist zu lang (höchstens {maxMinutes} Minuten).",
       noAudioStream: "Die Datei enthält keine Tonspur.",
+      videoTooLong: "Die Videodatei ist zu lang (höchstens {maxMinutes} Minuten).",
+      noVideoStream: "Die Datei enthält keine dekodierbare Videospur in einem unterstützten Codec.",
       probeUnavailable:
         "Audiodateien können nicht geprüft werden: ffprobe wurde nicht gefunden oder ließ sich nicht starten.",
       inUseByExport:

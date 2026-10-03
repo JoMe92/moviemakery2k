@@ -14,6 +14,8 @@ export interface Playback {
   playing: boolean;
   /** Seconds from the start of the slideshow (or the transition demo). */
   time: number;
+  /** Pause here instead of at the end (one-off preview of a transition). */
+  until?: number;
 }
 
 export const STOPPED: Playback = { playing: false, time: 0 };
@@ -45,8 +47,11 @@ export function clampTime(time: number, duration: number): number {
 export function advance(p: Playback, dt: number, duration: number): Playback {
   if (!p.playing) return p;
   const time = p.time + Math.min(Math.max(dt, 0), MAX_STEP);
+  if (p.until !== undefined && time >= p.until && p.until < duration) {
+    return { playing: false, time: p.until };
+  }
   if (time >= duration) return { playing: false, time: Math.max(duration, 0) };
-  return { playing: true, time };
+  return { ...p, playing: true, time };
 }
 
 /** Start playback; at the end it restarts from the beginning. Does nothing without content. */

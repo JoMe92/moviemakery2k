@@ -1,16 +1,25 @@
-import { useMemo, useState } from "react";
+import { useDndMonitor } from "@dnd-kit/core";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { projectMusicDuration } from "../store/appStore";
-import { useAppStore } from "../store/useAppStore";
+import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { canFitToMusic } from "../timeline/fitToMusic";
 import { AboutDialog, ConfirmDialog } from "./AppDialogs";
 import { FitToMusicDialog, type FitToMusicNotice } from "./FitToMusicDialog";
+import { matchShortcut } from "./globalShortcuts";
 import { MenuBar } from "./MenuBar";
+import { MenuSheet } from "./MenuSheet";
 import { buildMenus, type MenuHandlers } from "./menus";
 import { OptionsDialog } from "./OptionsDialog";
 
-/** Menu bar together with the dialogs it opens (About, Options, New Project). */
-export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
+export interface AppMenusProps {
+  extra?: MenuHandlers;
+  /** `bar`: desktop menu bar; `sheet`: "☰" button with the menu sheet (compact layout). */
+  variant?: "bar" | "sheet";
+}
+
+/** Menu bar (or menu sheet) together with the dialogs it opens (About, Options, New Project). */
+export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const [about, setAbout] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [options, setOptions] = useState(false);
@@ -26,6 +35,14 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
   const fitToMusic = useAppStore((s) => s.fitToMusic);
   const musicLength = useAppStore((s) => projectMusicDuration(s.music, s.media));
   const canFit = useAppStore((s) => canFitToMusic(s.slides.length, musicLength));
+  const canUndo = useAppStore((s) => s.undoStack.length > 0);
+  const canRedo = useAppStore((s) => s.redoStack.length > 0);
+  const undo = useAppStore((s) => s.undo);
+  const redo = useAppStore((s) => s.redo);
+  const canPaste = useAppStore((s) => s.clipboard !== null);
+  const cut = useAppStore((s) => s.cut);
+  const copy = useAppStore((s) => s.copy);
+  const paste = useAppStore((s) => s.paste);
   const { t } = useT();
 
   const menus = useMemo(
@@ -44,6 +61,12 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
             : musicSelection !== null
               ? () => removeMusicClip(musicSelection)
               : undefined,
+          undo: canUndo ? undo : undefined,
+          redo: canRedo ? redo : undefined,
+          // Cut/copy the current selection, whichever row it is in (design.md D6).
+          cut: selection || musicSelection !== null ? cut : undefined,
+          copy: selection || musicSelection !== null ? copy : undefined,
+          paste: canPaste ? paste : undefined,
           fitToMusic: canFit
             ? () => {
                 const result = fitToMusic();
@@ -68,13 +91,47 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
       canFit,
       fitToMusic,
       musicLength,
+      canUndo,
+      canRedo,
+      undo,
+      redo,
+      canPaste,
+      cut,
+      copy,
+      paste,
       t,
     ],
   );
 
+  // Global shortcuts (design.md D3): Strg+Z/Y/Umschalt+Z and Strg+X/C/V, not
+  // while typing or dragging. Menu items stay the equally usable alternative.
+  const storeApi = useAppStoreApi();
+  const draggingRef = useRef(false);
+  useDndMonitor({
+    onDragStart: () => {
+      draggingRef.current = true;
+    },
+    onDragEnd: () => {
+      draggingRef.current = false;
+    },
+    onDragCancel: () => {
+      draggingRef.current = false;
+    },
+  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const action = matchShortcut(event, { dragging: draggingRef.current });
+      if (!action) return;
+      event.preventDefault();
+      storeApi.getState()[action]();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [storeApi]);
+
   return (
     <>
-      <MenuBar menus={menus} />
+      {variant === "sheet" ? <MenuSheet menus={menus} /> : <MenuBar menus={menus} />}
       <AboutDialog open={about} onClose={() => setAbout(false)} />
       <OptionsDialog open={options} onClose={() => setOptions(false)} />
       <FitToMusicDialog notice={fitNotice} onClose={() => setFitNotice(null)} />

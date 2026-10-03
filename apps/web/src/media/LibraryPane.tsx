@@ -1,9 +1,9 @@
-import { type DragEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { CollectionPane } from "../shell/CollectionPane";
-import { useAppStore } from "../store/useAppStore";
+import { ImportInput } from "./ImportInput";
 import styles from "./LibraryPane.module.css";
 import { UploadPanel } from "./UploadPanel";
-import { IMPORT_ACCEPT, useImport } from "./useImport";
+import { useImport } from "./useImport";
 
 export interface LibraryPaneProps {
   name: string;
@@ -21,19 +21,9 @@ function isFileDrag(event: DragEvent): boolean {
  * files (pictures and audio) and progress/errors below.
  */
 export function LibraryPane({ name, children }: LibraryPaneProps) {
-  const importRequest = useAppStore((s) => s.importRequest);
-  const importKind = useAppStore((s) => s.importKind);
   const startImport = useImport();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const seenRequest = useRef(importRequest);
   const depth = useRef(0);
   const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    if (importRequest === seenRequest.current) return;
-    seenRequest.current = importRequest;
-    inputRef.current?.click();
-  }, [importRequest]);
 
   const onDragEnter = (event: DragEvent<HTMLElement>) => {
     if (!isFileDrag(event)) return;
@@ -70,22 +60,7 @@ export function LibraryPane({ name, children }: LibraryPaneProps) {
       footer={<UploadPanel />}
     >
       {children}
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        accept={IMPORT_ACCEPT[importKind]}
-        className={styles.input}
-        tabIndex={-1}
-        aria-hidden="true"
-        data-testid="media-import-input"
-        onChange={(event) => {
-          const files = Array.from(event.currentTarget.files ?? []);
-          // Reset so the same files can be chosen again.
-          event.currentTarget.value = "";
-          startImport(files, importKind);
-        }}
-      />
+      <ImportInput />
     </CollectionPane>
   );
 }

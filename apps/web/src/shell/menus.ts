@@ -21,6 +21,15 @@ export interface MenuHandlers {
   /** "Save Movie" wizard; absent when the storyboard is empty (item disabled). */
   saveMovie?: () => void;
   deleteSelection?: () => void;
+  /** Bearbeiten → "Rückgängig"; absent while the undo history is empty. */
+  undo?: () => void;
+  /** Bearbeiten → "Wiederholen"; absent while the redo history is empty. */
+  redo?: () => void;
+  /** Bearbeiten → "Ausschneiden"/"Kopieren"; absent without a selection. */
+  cut?: () => void;
+  copy?: () => void;
+  /** Bearbeiten → "Einfügen"; absent while the clipboard is empty. */
+  paste?: () => void;
   togglePlay?: () => void;
   stop?: () => void;
   about?: () => void;
@@ -60,12 +69,12 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
       id: "edit",
       label: t("menu.edit.label"),
       entries: [
-        item("undo", t("menu.edit.undo")),
-        item("redo", t("menu.edit.redo")),
+        item("undo", t("menu.edit.undo"), h.undo, t("menu.keys.undo")),
+        item("redo", t("menu.edit.redo"), h.redo, t("menu.keys.redo")),
         separator,
-        item("cut", t("menu.edit.cut")),
-        item("copy", t("menu.edit.copy")),
-        item("paste", t("menu.edit.paste")),
+        item("cut", t("menu.edit.cut"), h.cut, t("menu.keys.cut")),
+        item("copy", t("menu.edit.copy"), h.copy, t("menu.keys.copy")),
+        item("paste", t("menu.edit.paste"), h.paste, t("menu.keys.paste")),
         item("delete", t("menu.edit.delete"), h.deleteSelection, t("menu.keys.delete")),
         separator,
         item("select-all", t("menu.edit.selectAll")),

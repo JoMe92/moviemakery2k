@@ -18,6 +18,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { getEventCoordinates } from "@dnd-kit/utilities";
 import {
   createContext,
   type ReactNode,
@@ -34,6 +35,7 @@ import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
 import { catalogName } from "../transitions/transitionName";
+import { vibrate } from "../ui/haptics";
 import { AudioIcon } from "../ui/icons";
 import {
   type DragItem,
@@ -45,7 +47,7 @@ import {
   resolveDrop,
   STRIP_DROPPABLE_ID,
 } from "./dropLogic";
-import { StoryboardPointerSensor } from "./pointerSensor";
+import { StoryboardPointerSensor, StoryboardTouchSensor, TOUCH_ACTIVATION } from "./pointerSensor";
 import styles from "./StoryboardStrip.module.css";
 
 /** Insertion marker for pictures from the collection (0…n) or null. */
@@ -55,6 +57,9 @@ export const useInsertIndex = () => useContext(InsertIndexContext);
 /** Insertion marker for audio on the music track (0…n) or null. */
 const MusicInsertIndexContext = createContext<number | null>(null);
 export const useMusicInsertIndex = () => useContext(MusicInsertIndexContext);
+
+/** Edge auto-scroll while dragging (add-mobile-layout design.md D8): horizontal strips. */
+export const AUTO_SCROLL = { enabled: true } as const;
 
 /** How long the hint about a refused drop stays visible. */
 export const DROP_NOTICE_MS = 6000;
@@ -276,12 +281,13 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   }
   const activator = event.activatorEvent;
   const translated = event.active.rect.current.translated;
-  const x =
-    activator && "clientX" in activator
-      ? (activator as PointerEvent).clientX + event.delta.x
-      : translated
-        ? center(translated).x
-        : center(over.rect).x;
+  // Pointer and touch start points alike (a TouchEvent has no clientX).
+  const start = activator ? getEventCoordinates(activator) : null;
+  const x = start
+    ? start.x + event.delta.x
+    : translated
+      ? center(translated).x
+      : center(over.rect).x;
   const after = x > center(over.rect).x;
   return data.type === "music"
     ? { type: "musicClip", clipId: data.clipId, after }
@@ -341,6 +347,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     // Small threshold keeps click and double-click working; the own sensor lets
     // the first click right after a drop through (mmy-fa5).
     useSensor(StoryboardPointerSensor, { activationConstraint: { distance: 5 } }),
+    // Touch: long press first, so a swipe scrolls the strip (add-mobile-layout D8).
+    useSensor(StoryboardTouchSensor, { activationConstraint: TOUCH_ACTIVATION }),
     useSensor(KeyboardSensor, { coordinateGetter }),
   );
 
@@ -372,6 +380,10 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   };
 
   const onDragStart = (event: DragStartEvent) => {
+    // A touch drag starts after the long press: vibrate (design.md D13).
+    if (typeof TouchEvent !== "undefined" && event.activatorEvent instanceof TouchEvent) {
+      vibrate("activate");
+    }
     setNotice(null);
     setActive(dragItem(event.active));
     setTarget(null);
@@ -390,6 +402,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     );
     setActive(null);
     setTarget(null);
+    if (action.kind === "reject") vibrate("reject");
+    else if (action.kind !== "none") vibrate("drop");
     if (action.kind === "reject") setNotice(action.reason);
     else if (action.kind === "insertMusic") state.addMusicClip(action.mediaId, action.index);
     else if (action.kind === "moveMusic") state.moveMusicClip(action.from, action.to);
@@ -415,6 +429,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     <DndContext
       sensors={sensors}
       collisionDetection={collisionDetection}
+      // Scroll the storyboard strip and music track at their edges while dragging.
+      autoScroll={AUTO_SCROLL}
       accessibility={{
         announcements,
         screenReaderInstructions: {
