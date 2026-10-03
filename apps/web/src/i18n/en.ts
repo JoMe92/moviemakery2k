@@ -89,6 +89,11 @@ export const en = {
     keys: {
       delete: "Del",
       space: "Space",
+      undo: "Ctrl+Z",
+      redo: "Ctrl+Y",
+      cut: "Ctrl+X",
+      copy: "Ctrl+C",
+      paste: "Ctrl+V",
     },
   },
   tasks: {

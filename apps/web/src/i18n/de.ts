@@ -84,6 +84,11 @@ export const de = {
     keys: {
       delete: "Entf",
       space: "Leertaste",
+      undo: "Strg+Z",
+      redo: "Strg+Y",
+      cut: "Strg+X",
+      copy: "Strg+C",
+      paste: "Strg+V",
     },
   },
   tasks: {

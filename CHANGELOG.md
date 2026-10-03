@@ -9,11 +9,23 @@ All notable changes to this project are documented here. The format follows
 MP4 export of the slideshow (OpenSpec change `add-movie-export`), a
 German/English user interface (OpenSpec change `add-ui-localisation`), a
 hardening pass over export, errors and UI (OpenSpec change
-`harden-export-and-ui`) and a music track (OpenSpec change
-`add-music-track`).
+`harden-export-and-ui`), a music track (OpenSpec change `add-music-track`)
+and undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`).
 
 ### Added
 
+- **Undo/Redo**: every storyboard and music-track change can be undone and
+  redone via *Edit → Undo/Redo* or Ctrl+Z/Ctrl+Y (Ctrl+Shift+Z also works),
+  at least 50 steps deep; a new change made after an undo discards the redo
+  history. The history lives only in the browser tab and starts empty again
+  after a reload.
+- **Cut/Copy/Paste** for the selected picture or music clip via *Edit →
+  Cut/Copy/Paste* or Ctrl+X/C/V: an internal, single-element clipboard
+  (replaced wholesale by the next cut or copy, of either kind) keeps a
+  picture's duration or a music clip's trim, volume and fades; a pasted
+  picture has no incoming transition (hard cut), and the new element is
+  selected. A global keyboard handler ignores these shortcuts while typing
+  in a field or dragging.
 - **Audio import**: MP3, WAV, M4A/AAC, OGG (Vorbis/Opus) and FLAC through the
   same import as pictures (dialog, drag & drop, and the now enabled task
   *Import audio or music*). The backend detects the kind by content (Pillow,

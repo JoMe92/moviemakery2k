@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/apiClient";
 import { AUTOSAVE_DELAY_MS, createAppStore } from "./appStore";
-import { mediaItem, mockApi } from "./testApi";
+import { audioItem, mediaItem, mockApi } from "./testApi";
 
 describe("appStore", () => {
   beforeEach(() => {
@@ -256,6 +256,288 @@ describe("appStore", () => {
 
     st().removeTransition(second);
     expect(tIn()).toBeNull();
+  });
+
+  describe("history (undo/redo, spec edit-commands)", () => {
+    it("undoes and redoes add, reorder, duration and transition changes", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+
+      st().addSlide("a");
+      st().addSlide("b");
+      const [first, second] = st().slides.map((s) => s.id) as [string, string];
+      st().moveSlide(0, 1);
+      expect(st().slides.map((s) => s.id)).toEqual([second, first]);
+      st().setSlideDuration(first, 2.5);
+      st().setTransition(first, "fade");
+      st().removeTransition(first);
+
+      // Six steps: add, add, move, duration, set transition, remove transition.
+      expect(st().undoStack).toHaveLength(6);
+      expect(st().redoStack).toEqual([]);
+
+      st().undo(); // undoes removeTransition
+      expect(st().slides.find((s) => s.id === first)?.transitionIn).toEqual({
+        transitionId: "fade",
+        duration: 1.25,
+      });
+      st().undo(); // undoes setTransition
+      expect(st().slides.find((s) => s.id === first)?.transitionIn).toBeNull();
+      st().undo(); // undoes setSlideDuration
+      expect(st().slides.find((s) => s.id === first)?.duration).toBe(5);
+      st().undo(); // undoes moveSlide
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+      st().undo(); // undoes addSlide("b")
+      expect(st().slides.map((s) => s.id)).toEqual([first]);
+      st().undo(); // undoes addSlide("a")
+      expect(st().slides).toEqual([]);
+      expect(st().undoStack).toEqual([]);
+
+      st().redo();
+      expect(st().slides.map((s) => s.id)).toEqual([first]);
+      for (let i = 0; i < 5; i++) st().redo();
+      expect(st().slides.map((s) => s.id)).toEqual([second, first]);
+      expect(st().slides.find((s) => s.id === first)?.duration).toBe(2.5);
+      expect(st().slides.find((s) => s.id === first)?.transitionIn).toBeNull();
+      expect(st().redoStack).toEqual([]);
+    });
+
+    it("keeps at most 50 undo steps", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      for (let i = 0; i < 55; i++) store.getState().addSlide("a");
+      expect(store.getState().undoStack).toHaveLength(50);
+      expect(store.getState().slides).toHaveLength(55);
+      for (let i = 0; i < 50; i++) store.getState().undo();
+      expect(store.getState().slides).toHaveLength(5);
+      expect(store.getState().undoStack).toEqual([]);
+    });
+
+    it("a new change after undo discards the redo history", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addSlide("b");
+      st().undo();
+      expect(st().redoStack).toHaveLength(1);
+      st().addSlide("b", 0);
+      expect(st().redoStack).toEqual([]);
+      expect(st().slides.map((s) => s.mediaId)).toEqual(["b", "a"]);
+    });
+
+    it("Rückgängig/Wiederholen are disabled (empty stacks) until there is history", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      expect(store.getState().undoStack).toEqual([]);
+      expect(store.getState().redoStack).toEqual([]);
+      store.getState().addSlide("a");
+      expect(store.getState().undoStack).toHaveLength(1);
+      store.getState().undo();
+      expect(store.getState().undoStack).toEqual([]);
+      expect(store.getState().redoStack).toHaveLength(1);
+      store.getState().redo();
+      expect(store.getState().redoStack).toEqual([]);
+    });
+
+    it("undo/redo beyond the history does nothing", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      store.getState().undo();
+      store.getState().redo();
+      expect(store.getState().slides).toEqual([]);
+    });
+
+    it("music track changes are undoable and redoable (spec edit-commands)", async () => {
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addMusicClip("song");
+      const clipId = st().music[0]?.id ?? "";
+      st().updateMusicClip(clipId, { volume: 0.5 });
+      expect(st().music[0]?.volume).toBe(0.5);
+      st().undo();
+      expect(st().music[0]?.volume).toBe(1);
+      st().undo();
+      expect(st().music).toEqual([]);
+      st().redo();
+      expect(st().music).toHaveLength(1);
+      st().redo();
+      expect(st().music[0]?.volume).toBe(0.5);
+    });
+  });
+
+  describe("clipboard (cut/copy/paste a picture or a music clip, spec edit-commands)", () => {
+    it("copies, then pastes a duplicate right after the original without a transition, selected", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addSlide("b");
+      const [first, second] = st().slides.map((s) => s.id) as [string, string];
+      st().setTransition(second, "fade");
+      st().select({ kind: "slide", slideId: first });
+
+      st().copy();
+      expect(st().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+      // The original is still there and still selected.
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+      expect(st().selection).toEqual({ kind: "slide", slideId: first });
+
+      st().paste();
+      const ids = st().slides.map((s) => s.id);
+      expect(ids).toHaveLength(3);
+      expect(ids[0]).toBe(first);
+      expect(ids[2]).toBe(second);
+      const pastedId = ids[1] as string;
+      expect(st().slides[1]).toMatchObject({ mediaId: "a", duration: 5, transitionIn: null });
+      expect(st().selection).toEqual({ kind: "slide", slideId: pastedId });
+      // Copy itself did not touch the project; paste is its own, single undo step.
+      st().undo();
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+    });
+
+    it("cuts and pastes a picture: removal and insertion are separate undo steps, cut is one step", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addSlide("b");
+      const [first, second] = st().slides.map((s) => s.id) as [string, string];
+      const stepsBeforeCut = st().undoStack.length;
+
+      st().select({ kind: "slide", slideId: first });
+      st().cut();
+      expect(st().slides.map((s) => s.id)).toEqual([second]);
+      expect(st().selection).toBeNull();
+      expect(st().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+      // Exactly one more undo step for the whole cut (not two for copy+remove).
+      expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
+
+      st().select({ kind: "slide", slideId: second });
+      st().paste();
+      expect(st().slides.map((s) => s.mediaId)).toEqual(["b", "a"]);
+
+      st().undo(); // undoes the paste only
+      expect(st().slides.map((s) => s.id)).toEqual([second]);
+      st().undo(); // undoes the cut's removal; the original is back
+      expect(st().slides.map((s) => s.id)).toEqual([first, second]);
+    });
+
+    it("pastes at the end when nothing is selected", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().select({ kind: "slide", slideId: st().slides[0]?.id ?? "" });
+      st().copy();
+      st().select(null);
+      st().addSlide("b");
+      st().paste();
+      expect(st().slides.map((s) => s.mediaId)).toEqual(["a", "b", "a"]);
+    });
+
+    it("copies, then pastes a music clip, keeping trim, volume and fades, selected", async () => {
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addMusicClip("song");
+      const first = st().music[0]?.id ?? "";
+      st().updateMusicClip(first, { volume: 0.5, fadeIn: true, trimStart: 1, trimEnd: 8 });
+      st().selectMusicClip(first);
+
+      st().copy();
+      expect(st().clipboard).toEqual({
+        kind: "musicClip",
+        mediaId: "song",
+        trimStart: 1,
+        trimEnd: 8,
+        volume: 0.5,
+        fadeIn: true,
+        fadeOut: false,
+      });
+      expect(st().music).toHaveLength(1);
+
+      st().paste();
+      expect(st().music).toHaveLength(2);
+      expect(st().music[1]).toMatchObject({
+        mediaId: "song",
+        trimStart: 1,
+        trimEnd: 8,
+        volume: 0.5,
+        fadeIn: true,
+        fadeOut: false,
+      });
+      expect(st().musicSelection).toBe(st().music[1]?.id);
+    });
+
+    it("cuts a music clip: one undo step for the whole operation, then pastes it back", async () => {
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addMusicClip("song");
+      const clipId = st().music[0]?.id ?? "";
+      const stepsBeforeCut = st().undoStack.length;
+
+      st().selectMusicClip(clipId);
+      st().cut();
+      expect(st().music).toEqual([]);
+      expect(st().musicSelection).toBeNull();
+      expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
+
+      st().paste();
+      expect(st().music).toHaveLength(1);
+      st().undo();
+      expect(st().music).toEqual([]);
+      st().undo();
+      expect(st().music).toHaveLength(1);
+    });
+
+    it("copying a music clip after copying a picture replaces the clipboard and retargets paste", async () => {
+      const api = mockApi({
+        listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]),
+      });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addMusicClip("song");
+      st().select({ kind: "slide", slideId: st().slides[0]?.id ?? "" });
+      st().copy();
+      expect(st().clipboard?.kind).toBe("slide");
+
+      st().selectMusicClip(st().music[0]?.id ?? "");
+      st().copy();
+      expect(st().clipboard?.kind).toBe("musicClip");
+
+      st().paste();
+      expect(st().slides).toHaveLength(1); // unchanged: paste targeted the music track
+      expect(st().music).toHaveLength(2);
+    });
+
+    it("paste does nothing while the clipboard is empty; cut/copy do nothing without a selection", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      const before = st().slides;
+      st().paste();
+      expect(st().slides).toBe(before);
+      st().cut();
+      st().copy();
+      expect(st().slides).toBe(before);
+      expect(st().clipboard).toBeNull();
+    });
   });
 
   describe("playback", () => {

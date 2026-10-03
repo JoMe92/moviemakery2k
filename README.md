@@ -38,6 +38,11 @@ What works today:
   contains the mix. See [Music](#music).
 - **Storyboard** — drag pictures into the storyboard, reorder them, remove
   them and set a duration per picture (0.5–60 s).
+- **Undo/Redo and Cut/Copy/Paste** — every storyboard and music-track change
+  can be undone and redone (*Edit → Undo/Redo* or Ctrl+Z/Ctrl+Y), at least
+  50 steps deep; a selected picture or music clip can be cut, copied and
+  pasted elsewhere (*Edit → Cut/Copy/Paste* or Ctrl+X/C/V). Both live only in
+  the browser tab and reset on a reload.
 - **Six classic transitions** — Fade, Dissolve, Wipe, Circle, Pixelate and
   Checkerboard. Drag one onto the slot between two pictures (or double-click
   it to put it in front of the selected picture) and set its duration
