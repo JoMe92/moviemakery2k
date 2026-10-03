@@ -7,6 +7,8 @@ export function describeBackend(backend: BackendState, t: Translate): string {
       return t("status.connecting");
     case "offline":
       return t("status.offline");
+    case "unauthorized":
+      return t("status.noAccess");
     case "ok":
       return backend.health.ffmpeg
         ? t("status.ready", { version: backend.health.ffmpeg })

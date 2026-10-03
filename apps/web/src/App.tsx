@@ -8,13 +8,14 @@ import { MediaCollection } from "./media/MediaCollection";
 import { UploadPanel } from "./media/UploadPanel";
 import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
+import { AccessDialog } from "./shell/AccessDialog";
 import { ActionBar } from "./shell/ActionBar";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
 import { CompactWindow } from "./shell/CompactWindow";
 import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
 import { StatusBar } from "./shell/StatusBar";
-import { SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
+import { NoAccessIndicator, SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
 import { Taskbar } from "./shell/Taskbar";
 import { TaskPane } from "./shell/TaskPane";
@@ -67,7 +68,12 @@ export function App() {
         <CompactWindow
           title={title}
           orientation={layout.orientation}
-          indicators={<SaveFailedIndicator />}
+          indicators={
+            <>
+              <NoAccessIndicator />
+              <SaveFailedIndicator />
+            </>
+          }
           menuButton={<AppMenus variant="sheet" extra={playerMenu} />}
           monitor={<Player />}
           editing={
@@ -83,6 +89,7 @@ export function App() {
         <ImportInput />
         <CollectionSheet />
         <SaveMovieWizardFromStore />
+        <AccessDialog />
       </StoryboardDnd>
     );
   }
@@ -125,12 +132,20 @@ export function App() {
             />
           )
         }
-        indicators={medium ? <SaveFailedIndicator /> : undefined}
+        indicators={
+          medium ? (
+            <>
+              <NoAccessIndicator />
+              <SaveFailedIndicator />
+            </>
+          ) : undefined
+        }
         taskbar={medium ? <Taskbar /> : undefined}
         actionBar={<ActionBar />}
         notices={medium ? <StatusNotices /> : undefined}
       />
       <SaveMovieWizardFromStore />
+      <AccessDialog />
     </StoryboardDnd>
   );
 }

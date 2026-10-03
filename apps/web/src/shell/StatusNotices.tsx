@@ -50,3 +50,15 @@ export function SaveFailedIndicator() {
     </span>
   );
 }
+
+/** Lasting "No access" in the title bar while the LAN mode refuses this device. */
+export function NoAccessIndicator() {
+  const { t } = useT();
+  const unauthorized = useAppStore((s) => s.backend.kind === "unauthorized");
+  if (!unauthorized) return null;
+  return (
+    <span className={styles.noAccess} role="status">
+      {t("status.noAccess")}
+    </span>
+  );
+}

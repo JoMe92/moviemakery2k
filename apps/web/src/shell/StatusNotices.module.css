@@ -38,3 +38,14 @@
   min-width: var(--y2k-touch-target);
   min-height: var(--y2k-touch-target);
 }
+
+.noAccess {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--y2k-touch-target);
+  padding: 0 6px;
+  color: var(--y2k-title-text);
+  font-weight: bold;
+  text-shadow: 1px 1px 0 var(--y2k-title-shadow);
+  white-space: nowrap;
+}

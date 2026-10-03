@@ -133,6 +133,7 @@ export const en = {
     saving: "Saving…",
     saved: "Saved",
     saveFailed: "Saving failed",
+    noAccess: "No access",
   },
   about: {
     title: "About {app}",
@@ -369,6 +370,10 @@ export const en = {
     offline: "The backend is not reachable. Please try again.",
     failed: "The movie could not be saved.",
     cancelled: "The export was cancelled.",
+  },
+  access: {
+    title: "Access required",
+    body: "This device has no access to moviemakerY2K. Open the link or scan the QR code that “pixi run serve-lan” shows in the terminal again.",
   },
   pwa: {
     updateAvailable: "New version available.",

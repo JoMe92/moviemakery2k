@@ -159,6 +159,14 @@ export function parseErrorBody(body: unknown): ApiErrorInfo | null {
   return null;
 }
 
+/**
+ * The LAN mode refused the request: no or an outdated access token
+ * (add-mobile-delivery design.md D1, D4).
+ */
+export function isAuthRequired(error: unknown): boolean {
+  return error instanceof ApiError && error.info?.code === "auth.required";
+}
+
 /** Readable (English) backend message of an error body, or null. */
 export function errorDetail(body: unknown): string | null {
   return parseErrorBody(body)?.message || null;

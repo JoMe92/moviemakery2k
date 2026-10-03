@@ -129,6 +129,7 @@ export const de = {
     saving: "Wird gespeichert…",
     saved: "Gespeichert",
     saveFailed: "Speichern fehlgeschlagen",
+    noAccess: "Kein Zugang",
   },
   about: {
     title: "Info über {app}",
@@ -369,6 +370,10 @@ export const de = {
     offline: "Das Backend ist nicht erreichbar. Bitte versuchen Sie es erneut.",
     failed: "Der Film konnte nicht gespeichert werden.",
     cancelled: "Der Export wurde abgebrochen.",
+  },
+  access: {
+    title: "Zugang erforderlich",
+    body: "Dieses Gerät hat keinen Zugang zu moviemakerY2K. Öffnen Sie den Link oder scannen Sie den QR-Code erneut, den „pixi run serve-lan“ im Terminal anzeigt.",
   },
   pwa: {
     updateAvailable: "Neue Version verfügbar.",
