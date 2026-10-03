@@ -35,6 +35,7 @@ import type { AppState } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
 import { catalogName } from "../transitions/transitionName";
+import { vibrate } from "../ui/haptics";
 import { AudioIcon } from "../ui/icons";
 import {
   type DragItem,
@@ -383,6 +384,10 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   };
 
   const onDragStart = (event: DragStartEvent) => {
+    // A touch drag starts after the long press: vibrate (design.md D13).
+    if (typeof TouchEvent !== "undefined" && event.activatorEvent instanceof TouchEvent) {
+      vibrate("activate");
+    }
     setNotice(null);
     setActive(dragItem(event.active));
     setTarget(null);
@@ -401,6 +406,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     );
     setActive(null);
     setTarget(null);
+    if (action.kind === "reject") vibrate("reject");
+    else if (action.kind !== "none") vibrate("drop");
     if (action.kind === "reject") setNotice(action.reason);
     else if (action.kind === "insertMusic") state.addMusicClip(action.mediaId, action.index);
     else if (action.kind === "moveMusic") state.moveMusicClip(action.from, action.to);

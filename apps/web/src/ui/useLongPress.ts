@@ -1,4 +1,5 @@
 import { type PointerEvent, useEffect, useRef } from "react";
+import { vibrate } from "./haptics";
 
 /** Long press (add-mobile-layout design.md D6): 400 ms without moving more than 8 px. */
 export const LONG_PRESS_MS = 400;
@@ -20,12 +21,21 @@ export interface LongPressHandlers {
  */
 export function useLongPress(
   onLongPress: () => void,
-  { enabled = true, onArmed }: { enabled?: boolean; onArmed?: () => void } = {},
+  {
+    enabled = true,
+    onArmed,
+    haptic = true,
+  }: {
+    enabled?: boolean;
+    onArmed?: () => void;
+    /** Vibrate when armed; off where the touch drag start vibrates already. */
+    haptic?: boolean;
+  } = {},
 ): LongPressHandlers {
   const state = useRef<{ x: number; y: number; id: number; armed: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const callbacks = useRef({ onLongPress, onArmed });
-  callbacks.current = { onLongPress, onArmed };
+  const callbacks = useRef({ onLongPress, onArmed, haptic });
+  callbacks.current = { onLongPress, onArmed, haptic };
 
   const clear = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -41,6 +51,7 @@ export function useLongPress(
       timer.current = setTimeout(() => {
         if (!state.current) return;
         state.current.armed = true;
+        if (callbacks.current.haptic) vibrate("activate");
         callbacks.current.onArmed?.();
       }, LONG_PRESS_MS);
     },

@@ -66,6 +66,8 @@ export function MusicClipBlock({
   // Long press opens the action sheet (add-mobile-layout design.md D6).
   const longPress = useLongPress(() => blockEl.current && openMenuAt(blockEl.current), {
     enabled: touch,
+    // The touch sensor activates at the same moment and vibrates (design.md D13).
+    haptic: false,
   });
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {

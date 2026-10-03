@@ -15,6 +15,7 @@ export const de = {
   options: {
     title: "Optionen",
     language: "Sprache der Benutzeroberfläche:",
+    vibration: "Vibration",
   },
   shell: {
     windowTitle: "{app} – Unbenanntes Projekt",
@@ -221,9 +222,9 @@ export const de = {
     slideDuration: "Bilddauer (Sekunden):",
     transitionDuration: "Übergangsdauer (Sekunden):",
     transition: "Übergang:",
-  },
     smaller: "Kleiner",
     larger: "Größer",
+  },
   dnd: {
     audio: "Audio „{name}“",
     musicClip: "Musikstück {number}",

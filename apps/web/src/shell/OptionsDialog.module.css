@@ -18,3 +18,10 @@
   align-items: center;
   cursor: pointer;
 }
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}

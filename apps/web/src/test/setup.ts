@@ -2,6 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 import { applyDocumentLocale, LOCALE_STORAGE_KEY } from "../i18n/locale";
+import { resetTileSize, TILE_SIZE_STORAGE_KEY } from "../storyboard/tileSize";
+import { VIBRATION_STORAGE_KEY } from "../ui/haptics";
 import { restoreLayout } from "./mockLayout";
 
 // Tests run with the German UI (localization design.md D6): every store
@@ -29,4 +31,7 @@ Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
 // tests opt into a mobile layout with mockLayout().
 afterEach(() => {
   restoreLayout();
+  localStorage.removeItem(TILE_SIZE_STORAGE_KEY);
+  localStorage.removeItem(VIBRATION_STORAGE_KEY);
+  resetTileSize();
 });

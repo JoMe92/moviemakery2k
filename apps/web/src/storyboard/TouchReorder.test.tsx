@@ -122,6 +122,18 @@ describe("touch reordering (add-mobile-layout design.md D8)", () => {
     expect(api.saved.at(-1)?.slides.map((s) => s.id)).toEqual(["s3", "s1", "s2"]);
   });
 
+  it("vibrates on the long press and on the drop", async () => {
+    const vibrate = vi.fn(() => true);
+    Object.defineProperty(navigator, "vibrate", { configurable: true, value: vibrate });
+    try {
+      await setup();
+      await longPressDrag(tile(3), [392, 570], 40);
+      expect(vibrate.mock.calls).toEqual([[10], [15]]);
+    } finally {
+      Reflect.deleteProperty(navigator, "vibrate");
+    }
+  });
+
   it("scrolls instead of dragging a music clip when the finger moves at once", async () => {
     const { store } = await setup();
     await swipe(block(3), [395, 725], 40);
