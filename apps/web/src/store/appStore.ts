@@ -81,9 +81,21 @@ export const UNDO_LIMIT = 50;
 /**
  * Internal clipboard (spec edit-commands, design.md D4): at most one element,
  * holding only its content (never an incoming transition, which belongs to
- * the storyboard slot, not the picture).
+ * the storyboard slot, not the picture). Copying or cutting either kind
+ * replaces the previous content regardless of its kind.
  */
-export type ClipboardEntry = { kind: "slide"; mediaId: string; duration: number } | null;
+export type ClipboardEntry =
+  | { kind: "slide"; mediaId: string; duration: number }
+  | {
+      kind: "musicClip";
+      mediaId: string;
+      trimStart: number;
+      trimEnd: number | null;
+      volume: number;
+      fadeIn: boolean;
+      fadeOut: boolean;
+    }
+  | null;
 
 export interface UploadEntry {
   key: string;
@@ -169,11 +181,13 @@ export interface AppState {
   removeTransition(slideId: string): void;
 
   /**
-   * Edit → Cut/Copy/Paste for the selected storyboard picture (spec
+   * Edit → Cut/Copy/Paste for the selected picture or music clip (spec
    * edit-commands, design.md D4/D5). No effect without a selection (cut,
-   * copy) or an empty clipboard (paste). Paste inserts a hard cut (no
-   * incoming transition) after the selected picture, or at the end, and
-   * selects it; cut is one undo step for the whole operation.
+   * copy) or an empty clipboard (paste). Paste inserts into the row
+   * matching the clipboard's kind — after a selection of that same kind, or
+   * at the end — and selects the new element; a pasted picture is a hard
+   * cut (no incoming transition). Cut is one undo step for the whole
+   * operation.
    */
   cut(): void;
   copy(): void;
@@ -331,6 +345,19 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
     const duration = () => timelineOf(get().slides).duration;
     const noDemo = { previewTransitionId: null, demo: null } as const;
+
+    /** Clipboard content copied from a music clip (design.md D4): never its id. */
+    function clipboardOf(clip: MusicClip): ClipboardEntry {
+      return {
+        kind: "musicClip",
+        mediaId: clip.mediaId,
+        trimStart: clip.trimStart,
+        trimEnd: clip.trimEnd,
+        volume: clip.volume,
+        fadeIn: clip.fadeIn,
+        fadeOut: clip.fadeOut,
+      };
+    }
 
     function defaultTransitionDuration(transitionId: string): number {
       return get().catalog.find((t) => t.id === transitionId)?.defaultDuration ?? 1.25;
@@ -584,30 +611,66 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       cut() {
-        const { selection, slides } = get();
-        const slide = selection && slides.find((s) => s.id === selection.slideId);
-        if (!slide) return;
-        set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
-        commit(removeSlide(slides, slide.id));
+        const { selection, musicSelection, slides, music } = get();
+        if (selection) {
+          const slide = slides.find((s) => s.id === selection.slideId);
+          if (!slide) return;
+          set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+          commit(removeSlide(slides, slide.id));
+        } else if (musicSelection !== null) {
+          const clip = music.find((c) => c.id === musicSelection);
+          if (!clip) return;
+          set({ clipboard: clipboardOf(clip) });
+          commitMusic(removeMusicClipOp(music, clip.id));
+        }
       },
       copy() {
-        const { selection, slides } = get();
-        const slide = selection && slides.find((s) => s.id === selection.slideId);
-        if (!slide) return;
-        set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+        const { selection, musicSelection, slides, music } = get();
+        if (selection) {
+          const slide = slides.find((s) => s.id === selection.slideId);
+          if (!slide) return;
+          set({ clipboard: { kind: "slide", mediaId: slide.mediaId, duration: slide.duration } });
+        } else if (musicSelection !== null) {
+          const clip = music.find((c) => c.id === musicSelection);
+          if (!clip) return;
+          set({ clipboard: clipboardOf(clip) });
+        }
       },
       paste() {
-        const { clipboard, selection, slides } = get();
+        const { clipboard } = get();
         if (!clipboard) return;
-        const newSlide: Slide = {
-          id: newSlideId(),
-          mediaId: clipboard.mediaId,
-          duration: clipboard.duration,
-          transitionIn: null,
-        };
-        const at = selection ? slides.findIndex((s) => s.id === selection.slideId) + 1 : slides.length;
-        commit(insertSlide(slides, newSlide, at));
-        get().select({ kind: "slide", slideId: newSlide.id });
+        if (clipboard.kind === "slide") {
+          const { selection, slides } = get();
+          const newSlide: Slide = {
+            id: newSlideId(),
+            mediaId: clipboard.mediaId,
+            duration: clipboard.duration,
+            transitionIn: null,
+          };
+          const at = selection
+            ? slides.findIndex((s) => s.id === selection.slideId) + 1
+            : slides.length;
+          commit(insertSlide(slides, newSlide, at));
+          get().select({ kind: "slide", slideId: newSlide.id });
+        } else {
+          const { musicSelection, music } = get();
+          if (music.length >= MUSIC_TRACK_MAX) return;
+          const newClip: MusicClip = {
+            id: newSlideId(),
+            mediaId: clipboard.mediaId,
+            trimStart: clipboard.trimStart,
+            trimEnd: clipboard.trimEnd,
+            volume: clipboard.volume,
+            fadeIn: clipboard.fadeIn,
+            fadeOut: clipboard.fadeOut,
+          };
+          const at =
+            musicSelection !== null
+              ? music.findIndex((c) => c.id === musicSelection) + 1
+              : music.length;
+          commitMusic(insertMusicClip(music, newClip, at));
+          get().selectMusicClip(newClip.id);
+        }
       },
 
       selectMusicClip(clipId) {

@@ -371,7 +371,7 @@ describe("appStore", () => {
     });
   });
 
-  describe("clipboard (cut/copy/paste a storyboard picture, spec edit-commands)", () => {
+  describe("clipboard (cut/copy/paste a picture or a music clip, spec edit-commands)", () => {
     it("copies, then pastes a duplicate right after the original without a transition, selected", async () => {
       const store = createAppStore(mockApi());
       await store.getState().init();
@@ -439,6 +439,84 @@ describe("appStore", () => {
       st().addSlide("b");
       st().paste();
       expect(st().slides.map((s) => s.mediaId)).toEqual(["a", "b", "a"]);
+    });
+
+    it("copies, then pastes a music clip, keeping trim, volume and fades, selected", async () => {
+      const api = mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]) });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addMusicClip("song");
+      const first = st().music[0]?.id ?? "";
+      st().updateMusicClip(first, { volume: 0.5, fadeIn: true, trimStart: 1, trimEnd: 8 });
+      st().selectMusicClip(first);
+
+      st().copy();
+      expect(st().clipboard).toEqual({
+        kind: "musicClip",
+        mediaId: "song",
+        trimStart: 1,
+        trimEnd: 8,
+        volume: 0.5,
+        fadeIn: true,
+        fadeOut: false,
+      });
+      expect(st().music).toHaveLength(1);
+
+      st().paste();
+      expect(st().music).toHaveLength(2);
+      expect(st().music[1]).toMatchObject({
+        mediaId: "song",
+        trimStart: 1,
+        trimEnd: 8,
+        volume: 0.5,
+        fadeIn: true,
+        fadeOut: false,
+      });
+      expect(st().musicSelection).toBe(st().music[1]?.id);
+    });
+
+    it("cuts a music clip: one undo step for the whole operation, then pastes it back", async () => {
+      const api = mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]) });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addMusicClip("song");
+      const clipId = st().music[0]?.id ?? "";
+      const stepsBeforeCut = st().undoStack.length;
+
+      st().selectMusicClip(clipId);
+      st().cut();
+      expect(st().music).toEqual([]);
+      expect(st().musicSelection).toBeNull();
+      expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
+
+      st().paste();
+      expect(st().music).toHaveLength(1);
+      st().undo();
+      expect(st().music).toEqual([]);
+      st().undo();
+      expect(st().music).toHaveLength(1);
+    });
+
+    it("copying a music clip after copying a picture replaces the clipboard and retargets paste", async () => {
+      const api = mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song", 10)]) });
+      const store = createAppStore(api);
+      await store.getState().init();
+      const st = () => store.getState();
+      st().addSlide("a");
+      st().addMusicClip("song");
+      st().select({ kind: "slide", slideId: st().slides[0]?.id ?? "" });
+      st().copy();
+      expect(st().clipboard?.kind).toBe("slide");
+
+      st().selectMusicClip(st().music[0]?.id ?? "");
+      st().copy();
+      expect(st().clipboard?.kind).toBe("musicClip");
+
+      st().paste();
+      expect(st().slides).toHaveLength(1); // unchanged: paste targeted the music track
+      expect(st().music).toHaveLength(2);
     });
 
     it("paste does nothing while the clipboard is empty; cut/copy do nothing without a selection", async () => {

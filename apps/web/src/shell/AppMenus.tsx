@@ -56,9 +56,9 @@ export function AppMenus({ extra = {} }: { extra?: MenuHandlers }) {
               : undefined,
           undo: canUndo ? undo : undefined,
           redo: canRedo ? redo : undefined,
-          // Cut/copy of the storyboard selection (music clips follow in TASK-WEB-054).
-          cut: selection ? cut : undefined,
-          copy: selection ? copy : undefined,
+          // Cut/copy the current selection, whichever row it is in (design.md D6).
+          cut: selection || musicSelection !== null ? cut : undefined,
+          copy: selection || musicSelection !== null ? copy : undefined,
           paste: canPaste ? paste : undefined,
           fitToMusic: canFit
             ? () => {

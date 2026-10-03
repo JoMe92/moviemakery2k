@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { audioItem, mediaItem, mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 describe("Menu bar", () => {
@@ -77,6 +78,27 @@ describe("Menu bar", () => {
     expect(store.getState().slides).toHaveLength(1);
     await user.keyboard("{Control>}v{/Control}");
     expect(store.getState().slides).toHaveLength(2);
+  });
+
+  it("Edit → Copy/Paste follow a music clip selection to the music track", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp(
+      mockApi({ listMedia: vi.fn(async () => [mediaItem("a"), audioItem("song")]) }),
+    );
+    await ready;
+    store.getState().addMusicClip("song");
+    const clipId = store.getState().music[0]?.id ?? "";
+    store.getState().selectMusicClip(clipId);
+
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    const copy = screen.getByRole("menuitem", { name: "Kopieren" });
+    expect(copy).not.toHaveAttribute("aria-disabled");
+    await user.click(copy);
+    expect(store.getState().clipboard?.kind).toBe("musicClip");
+
+    await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
+    await user.click(screen.getByRole("menuitem", { name: "Einfügen" }));
+    expect(store.getState().music).toHaveLength(2);
   });
 
   it("Ausschneiden/Kopieren/Einfügen are disabled without a selection or an empty clipboard", async () => {
