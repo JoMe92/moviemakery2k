@@ -3,6 +3,7 @@ import type { Translate } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { CollectionId, ImportKind } from "../store/appStore";
 import { useAppStore } from "../store/useAppStore";
+import { useLayoutMode } from "./layoutMode";
 import {
   AudioIcon,
   EffectsIcon,
@@ -46,6 +47,11 @@ export interface TaskContext {
   requestImport: (kind: ImportKind) => void;
   setCollection: (id: CollectionId) => void;
   openExportWizard: () => void;
+  /**
+   * Compact layout only: the collection sheet replaces the collection pane, so
+   * importing and showing a collection also open it (design.md D7).
+   */
+  openCollectionSheet?: () => void;
 }
 
 export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[] {
@@ -67,14 +73,26 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           label: t("tasks.capture.importPictures"),
           icon: ImportImageIcon,
           disabled: false,
-          run: () => ctx.requestImport("pictures"),
+          run: () => {
+            ctx.requestImport("pictures");
+            if (ctx.openCollectionSheet) {
+              ctx.setCollection("media");
+              ctx.openCollectionSheet();
+            }
+          },
         },
         {
           id: "importAudio",
           label: t("tasks.capture.importAudio"),
           icon: AudioIcon,
           disabled: false,
-          run: () => ctx.requestImport("audio"),
+          run: () => {
+            ctx.requestImport("audio");
+            if (ctx.openCollectionSheet) {
+              ctx.setCollection("music");
+              ctx.openCollectionSheet();
+            }
+          },
         },
       ],
     },
@@ -88,10 +106,12 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           label: t("tasks.edit.showCollections"),
           icon: FolderIcon,
           disabled: false,
-          run: () =>
+          run: () => {
             ctx.setCollection(
               ctx.collection === "music" || ctx.collection === "video" ? ctx.collection : "media",
-            ),
+            );
+            ctx.openCollectionSheet?.();
+          },
         },
         {
           id: "showEffects",
@@ -104,7 +124,10 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           label: t("tasks.edit.showTransitions"),
           icon: TransitionsIcon,
           disabled: false,
-          run: () => ctx.setCollection("transitions"),
+          run: () => {
+            ctx.setCollection("transitions");
+            ctx.openCollectionSheet?.();
+          },
         },
         {
           id: "makeTitles",
@@ -144,9 +167,18 @@ export function useTaskGroups(): TaskGroupData[] {
   const requestImport = useAppStore((s) => s.requestImport);
   const setCollection = useAppStore((s) => s.setCollection);
   const openExportWizard = useAppStore((s) => s.openExportWizard);
+  const setSheetOpen = useAppStore((s) => s.setCollectionSheetOpen);
+  const compact = useLayoutMode().mode === "compact";
   const { t } = useT();
   return buildTaskGroups(
-    { collection, hasSlides, requestImport, setCollection, openExportWizard },
+    {
+      collection,
+      hasSlides,
+      requestImport,
+      setCollection,
+      openExportWizard,
+      openCollectionSheet: compact ? () => setSheetOpen(true) : undefined,
+    },
     t,
   );
 }

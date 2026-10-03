@@ -57,7 +57,13 @@ describe("taskbar (add-mobile-layout design.md D4)", () => {
     await user.click(within(sheet).getByRole("button", { name: "Bilder importieren" }));
     expect(click).toHaveBeenCalledOnce();
     expect(input.accept).toBe("image/jpeg,image/png,image/webp");
-    expect(screen.queryByRole("dialog")).toBeNull();
+    // The step sheet gives way to the collection sheet showing "My Pictures".
+    expect(screen.queryByRole("dialog", { name: "1. Aufnehmen" })).toBeNull();
+    const collection = screen.getByRole("dialog", { name: "Sammlungen" });
+    expect(within(collection).getByRole("tab", { name: "Meine Bilder" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("imports pictures in English too", async () => {

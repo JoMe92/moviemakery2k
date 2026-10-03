@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { useT } from "./i18n/useT";
+import { CollectionSheet } from "./media/CollectionSheet";
 import { ImportInput } from "./media/ImportInput";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
@@ -80,6 +81,7 @@ export function App() {
           notices={<StatusNotices />}
         />
         <ImportInput />
+        <CollectionSheet />
         <SaveMovieWizardFromStore />
       </StoryboardDnd>
     );

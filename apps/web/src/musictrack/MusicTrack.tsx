@@ -7,6 +7,7 @@ import { useT } from "../i18n/useT";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
 import { audioDurations } from "../store/musicOps";
+import { useLayoutMode } from "../shell/layoutMode";
 import { useAppStore } from "../store/useAppStore";
 import {
   type DropRejection,
@@ -91,6 +92,8 @@ export function MusicTrack() {
   const removeMusicClip = useAppStore((s) => s.removeMusicClip);
   const updateMusicClip = useAppStore((s) => s.updateMusicClip);
   const insertIndex = useMusicInsertIndex();
+  // Phones add music via the collection sheet instead of dragging.
+  const compact = useLayoutMode().mode === "compact";
   const { notice } = useDropNotice();
   const { setNodeRef, isOver } = useDroppable({
     id: MUSIC_DROPPABLE_ID,
@@ -158,7 +161,9 @@ export function MusicTrack() {
         data-over={(isOver && insertIndex !== null) || undefined}
       >
         {empty ? (
-          <p className={styles.hint}>{t("musicTrack.emptyHint")}</p>
+          <p className={styles.hint}>
+            {t(compact ? "musicTrack.emptyHintTouch" : "musicTrack.emptyHint")}
+          </p>
         ) : (
           <SortableContext
             items={music.map((c) => musicClipSortableId(c.id))}

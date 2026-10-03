@@ -158,6 +158,8 @@ export interface AppState {
   importRequest: number;
   /** Kind of the last requested file dialog (file types it offers). */
   importKind: ImportKind;
+  /** Collection sheet of the compact layout open (add-mobile-layout design.md D7). */
+  collectionSheetOpen: boolean;
   /** Last requested editing dialog or action menu (touch operation), or null. */
   editRequest: EditRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
@@ -188,6 +190,8 @@ export interface AppState {
 
   /** Request the import file dialog (opened by the collection); default `any`. */
   requestImport(kind?: ImportKind): void;
+  /** Open or close the collection sheet (compact layout). */
+  setCollectionSheetOpen(open: boolean): void;
   /** Ask the storyboard or music track to open a dialog or action menu. */
   requestEdit(request: EditRequestInput): void;
   importFiles(files: readonly File[]): Promise<void>;
@@ -410,6 +414,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       importRequest: 0,
       importKind: "any",
       editRequest: null,
+      collectionSheetOpen: false,
       exportWizardOpen: false,
       locale,
       setLocale(next) {
@@ -525,6 +530,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       requestImport(kind = "any") {
         set({ importRequest: get().importRequest + 1, importKind: kind });
+      },
+      setCollectionSheetOpen(open) {
+        set({ collectionSheetOpen: open });
       },
       requestEdit(request) {
         const seq = (get().editRequest?.seq ?? 0) + 1;
