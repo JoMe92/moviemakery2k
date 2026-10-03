@@ -150,6 +150,22 @@ video import (OpenSpec change `add-video-import`).
   environment during the build, and a CI job (`docker`,
   `scripts/docker_export_smoke.sh`) exports a movie from the running
   container and checks it with ffprobe.
+- **Transition catalog grown from 6 to 47 entries** (OpenSpec change
+  `add-transition-catalog`): all Basic and SMPTE wipes from
+  `docs/research/movie-maker-reference.md` §3 that a 2D wipe shader can
+  express, each with a default duration, parameters and its exact source
+  (SMPTE `MaskNum` or Movie-Maker-XML GUID). Two new, parametrized shaders
+  (direction/angle, soft edge, optional repetition) generalize
+  `wipe-right.glsl` and `circle.glsl` instead of one file per transition:
+  a linear/polygon family (the remaining Wipe directions, Diagonal,
+  Reveal, Split, Bow Tie, Diagonal Cross, Box Out, Filled V, Zig Zag,
+  Rectangle, Diamond, Bars, Inset, Fan In, Swinging Door, Windshield) and
+  a radial/curve family (Iris, Circles/Stars with Replicate, Wheel, Star,
+  Heart, Key Hole, Eye, Sweep). The "Videoübergänge" collection scrolls
+  once its tiles exceed the visible area, like the picture/audio
+  collections. The 13 WMTFX 3D/particle transitions (Flip, Slide Up,
+  Slide Up Center, Roll, Spin Out, Page Curl, Shatter, Whirlwind, Shrink)
+  remain out of scope, pending a dedicated rendering technique.
 
 ### Changed
 

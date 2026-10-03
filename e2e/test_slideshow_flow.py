@@ -65,7 +65,9 @@ def test_build_and_play_a_slideshow(
 
     # Transition "Kreis" (circle) before picture 2: open the catalog, double-click the tile
     page.get_by_role("button", name="Videoübergänge anzeigen").click()
-    page.get_by_role("list", name="Übergänge").get_by_role("button", name="Kreis").dblclick()
+    page.get_by_role("list", name="Übergänge").get_by_role(
+        "button", name="Kreis", exact=True
+    ).dblclick()
     expect(page.get_by_role("button", name="Übergang vor Bild 2: Kreis, 1,25 s")).to_be_visible()
     expect(page.get_by_text("Gespeichert", exact=True)).to_be_visible()
     # The click starts the demo, labelled as a sample (design.md D7).

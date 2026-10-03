@@ -61,9 +61,9 @@ describe("transitionSources", () => {
   const sources = transitionSources();
   const ids = catalog.transitions.map((t) => t.id);
 
-  it("contains exactly the six catalog transitions, including the Fade fallback", () => {
+  it("contains every catalog transition, including the Fade fallback", () => {
     expect(Object.keys(sources).sort()).toEqual([...ids].sort());
-    expect(ids).toHaveLength(6);
+    expect(ids.length).toBeGreaterThan(6);
     expect(sources[FALLBACK_TRANSITION_ID]).toBeDefined();
   });
 

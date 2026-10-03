@@ -46,10 +46,13 @@ What works today:
   50 steps deep; a selected picture or music clip can be cut, copied and
   pasted elsewhere (*Edit → Cut/Copy/Paste* or Ctrl+X/C/V). Both live only in
   the browser tab and reset on a reload.
-- **Six classic transitions** — Fade, Dissolve, Wipe, Circle, Pixelate and
-  Checkerboard. Drag one onto the slot between two pictures (or double-click
-  it to put it in front of the selected picture) and set its duration
-  (0.25–5 s). Transitions overlap neighbouring pictures, just like
+- **47 transitions** — Fade, Dissolve, Pixelate and Checkerboard, plus every
+  Basic and SMPTE wipe from the original that a 2D shader can express (Wipe,
+  Reveal, Split, Bow Tie, Diagonal, Rectangle, Diamond, Bars, Inset, Iris,
+  Circle(s), Wheel, Star(s), Heart, Key Hole, Eye, Sweep, Fan In, Swinging
+  Door, Windshield …). Drag one onto the slot between two pictures (or
+  double-click it to put it in front of the selected picture) and set its
+  duration (0.25–5 s). Transitions overlap neighbouring pictures, just like
   in the original.
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
@@ -71,8 +74,10 @@ What works today:
 
 ## Roadmap
 
-- More of the original 60 transitions (SMPTE wipes, bars, iris, wheel, 3D and
-  particle transitions such as Page Curl and Shatter)
+- The remaining 13 original transitions that need a 3D or particle renderer
+  (Flip, Slide Up, Slide Up Center, Roll, Spin Out, Page Curl, Shatter,
+  Whirlwind, Shrink) — a different rendering technique than the 2D wipe
+  shaders used so far
 - Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
 - Titles and credits with the Entrance → Main → Exit animation model
 - Video clips on the storyboard (playback, trimming and splitting, clip
@@ -86,8 +91,8 @@ What works today:
 | ![The "Videoübergänge" (video transitions) collection with the six transitions; the monitor previews the selected Circle transition](docs/images/transitions-collection.png) | ![Transition properties dialog with the duration field](docs/images/transition-dialog.png) |
 | **Video transitions collection.** Select a transition to preview it; drag it onto a storyboard slot to use it. | **Properties dialog.** Double-click a transition or picture in the storyboard to set its duration. |
 
-**The six transitions at roughly 45 % progress**, captured from the preview
-monitor:
+**The original six transitions at roughly 45 % progress** (screenshots not
+yet updated for the other 41), captured from the preview monitor:
 
 ![Fade, Dissolve, Wipe, Circle, Pixelate and Checkerboard, each frozen mid-transition](docs/images/transitions-grid.png)
 

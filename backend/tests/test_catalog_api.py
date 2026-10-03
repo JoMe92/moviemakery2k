@@ -25,17 +25,20 @@ def _broken_catalog(tmp_path: Path, mutate: Any) -> Settings:
     return Settings(data_dir=tmp_path / "data", catalog_dir=catalog_dir, web_dist=tmp_path / "d")
 
 
-def test_catalog_endpoint_returns_six_entries_in_camel_case(settings: Settings) -> None:
+def test_catalog_endpoint_returns_mvp_entries_first_in_camel_case(settings: Settings) -> None:
     with TestClient(create_app(settings)) as client:
         res = client.get("/api/catalog/transitions")
     assert res.status_code == 200
     body = res.json()
     assert body["schemaVersion"] == 1
-    assert [t["id"] for t in body["transitions"]] == MVP_IDS
+    ids = [t["id"] for t in body["transitions"]]
+    # add-transition-catalog appends new entries after the six MVP ones.
+    assert ids[: len(MVP_IDS)] == MVP_IDS
+    assert len(ids) > len(MVP_IDS)
     for entry in body["transitions"]:
         assert set(entry) == {"id", "names", "shader", "defaultDuration", "params", "source"}
         assert entry["source"]["kind"] in {"wmm2x-xml", "smpte"}
-    checker = body["transitions"][-1]
+    checker = body["transitions"][len(MVP_IDS) - 1]
     assert checker["names"] == {"de": "Schachbrett", "en": "Checkerboard"}
     assert checker["defaultDuration"] == 1.25
     assert checker["params"] == {"squaresX": 12, "squaresY": 10}
