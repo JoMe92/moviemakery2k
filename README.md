@@ -362,9 +362,25 @@ offer full screen for page elements; the preview then covers the whole
 viewport instead. iOS converts HEIC photos to JPEG when you pick them, so
 they import like any other picture.
 
-Opening the app from a phone or tablet in your home network, a secure
-connection and installing it as an app are the topic of the next change
-(`add-mobile-delivery`).
+### Using it on your phone
+
+`pixi run serve-lan` serves the app and the API in your home network with an
+access token: the terminal shows the addresses with the token and a QR code.
+Scan it with the phone and the app opens; the phone stays signed in for 30
+days, and devices without the token only see *Access required*.
+
+```bash
+pixi run serve-lan                                    # HTTP, port 8080
+pixi run serve-lan --cert lan.pem --key lan-key.pem   # HTTPS, port 8443
+pixi run serve-lan --rotate-token                     # invalidate old links
+```
+
+Over HTTPS the app can be installed (*Tools → Install as app…*), starts from
+its own icon without the browser bar, and the *Save Movie* wizard offers
+*Share…* for the finished MP4 (up to 200 MB). [docs/mobile.md](docs/mobile.md)
+explains HTTPS with Tailscale or mkcert, iOS and Android certificate trust,
+and the security limits (the token is in the link, plain HTTP is not
+encrypted, there are no user accounts).
 
 ## Docker
 

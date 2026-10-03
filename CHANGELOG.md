@@ -11,11 +11,33 @@ German/English user interface (OpenSpec change `add-ui-localisation`), a
 hardening pass over export, errors and UI (OpenSpec change
 `harden-export-and-ui`), a music track (OpenSpec change `add-music-track`),
 undo/redo plus cut/copy/paste (OpenSpec change `add-project-management`),
-video import (OpenSpec change `add-video-import`) and a phone and tablet
-layout with full touch operation (OpenSpec change `add-mobile-layout`).
+video import (OpenSpec change `add-video-import`), a phone and tablet
+layout with full touch operation (OpenSpec change `add-mobile-layout`) and
+use from a phone in the home network, installable and with sharing (OpenSpec
+change `add-mobile-delivery`).
 
 ### Added
 
+- **LAN mode** `pixi run serve-lan`: the built app and the API on every
+  network interface, HTTP on port 8080 or HTTPS with `--cert`/`--key` on
+  8443, `--behind-proxy` for `tailscale serve`. Startup prints every address
+  with the access token and a QR code (`segno`). See `docs/mobile.md`.
+- **Access token**: with `MMY_ACCESS_TOKEN` (set by `serve-lan` from
+  `<data>/lan-token`, mode 0600, `--rotate-token`) every request under
+  `/api/` needs the cookie `mmy_access` or `Authorization: Bearer`; otherwise
+  401 with the new error code `auth.required`. Opening `?token=…` sets the
+  cookie (HttpOnly, SameSite=Strict, 30 days, Secure over HTTPS) and
+  redirects to the address without the token. The app shows *Access
+  required* and *No access* in the status or title bar. Without the variable
+  nothing changes.
+- **Installable app**: web app manifest and an own icon set (`pixi run
+  gen-icons`), a service worker for the app shell (`vite-plugin-pwa`, never
+  caching `/api/`, only in the build and in a secure context) with *New
+  version available*, and *Install as app…* in *Tools* and *3. Finish Movie*
+  (browser dialog, or *Share → Add to Home Screen* instructions on iOS).
+- **Share…** in the last step of the *Save Movie* wizard: preloads the MP4 and
+  opens the device's share sheet (secure context, Web Share API with files,
+  up to 200 MB); *Download* stays.
 - **Video import**: MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1) through
   the same import as pictures and audio (dialog, drag & drop, and the now
   enabled task *Import video*), mixed with the other kinds in one import. The
