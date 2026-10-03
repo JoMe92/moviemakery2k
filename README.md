@@ -31,6 +31,9 @@ What works today:
 - **Picture import** — JPEG, PNG and WebP via dialog or drag & drop from the
   desktop. The backend validates the files and creates thumbnails and preview
   images.
+- **Video import** — MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1) land in
+  *My Videos* with a poster frame, name and duration; a video cannot (yet) be
+  added to the storyboard, played or exported — see [Roadmap](#roadmap).
 - **Music** — import MP3, WAV, M4A/AAC, OGG and FLAC into *My Music*, put
   pieces on the *Audio/Music* track below the storyboard, trim them, set
   their volume and fades, and fit the movie to the music. The preview plays
@@ -72,8 +75,9 @@ What works today:
   particle transitions such as Page Curl and Shatter)
 - Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
 - Titles and credits with the Entrance → Main → Exit animation model
-- Video clips, narration and audio levels (clip sound ↔ music)
-- Timeline view with trimming and splitting
+- Video clips on the storyboard (playback, trimming and splitting, clip
+  sound ↔ music), narration recording
+- Timeline view
 
 ## Screenshots
 
@@ -323,7 +327,7 @@ instead.
 | Path | Contents |
 |---|---|
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
-| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
+| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
 | [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition shaders, shared by preview and export |
 | [`packages/catalog/`](packages/catalog) | Transition catalog with the documented parameters (single source of truth) |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |
