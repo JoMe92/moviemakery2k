@@ -257,12 +257,12 @@ describe("“My Videos” collection", () => {
     await user.click(within(dialog).getByRole("button", { name: l.yes }));
 
     await waitFor(() => expect(api.deleteMedia).toHaveBeenCalledWith("clip"));
-    await waitFor(() =>
-      expect(tileLabels(l.video, l.videoList)).toEqual(["other.mp4, 1:00"]),
-    );
+    await waitFor(() => expect(tileLabels(l.video, l.videoList)).toEqual(["other.mp4, 1:00"]));
     expect(store.getState().media.map((m) => m.id)).toEqual(["other"]);
     // Focus moves to the neighbouring video tile.
-    await waitFor(() => expect(screen.getByRole("button", { name: "other.mp4, 1:00" })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "other.mp4, 1:00" })).toHaveFocus(),
+    );
   });
 
   it("deletes a video tile with the Delete key", async () => {

@@ -322,7 +322,9 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
       ) : null}
       <Dialog
         open={pendingDelete !== null}
-        title={t(pendingDelete ? COLLECTION_TEXT[pendingDelete.kind].deleteTitle : text.deleteTitle)}
+        title={t(
+          pendingDelete ? COLLECTION_TEXT[pendingDelete.kind].deleteTitle : text.deleteTitle,
+        )}
         onClose={() => {
           if (!deleting) setPendingDelete(null);
         }}
@@ -339,7 +341,9 @@ export function MediaCollection({ kind = "image" }: MediaCollectionProps) {
       >
         {pendingDelete ? (
           <p className={styles.question}>
-            {t(COLLECTION_TEXT[pendingDelete.kind].deleteQuestion, { name: pendingDelete.filename })}
+            {t(COLLECTION_TEXT[pendingDelete.kind].deleteQuestion, {
+              name: pendingDelete.filename,
+            })}
           </p>
         ) : null}
       </Dialog>
