@@ -166,7 +166,9 @@ class _ExportModel(BaseModel):
 class ExportRequest(_ExportModel):
     profile: ExportProfile = Field(
         default=DEFAULT_PROFILE,
-        description="`high` = 960x720 (default), `small` = 640x480; both 30 fps",
+        description=(
+            "`high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps"
+        ),
     )
     file_name: FileName
 

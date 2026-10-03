@@ -63,6 +63,7 @@ class ExportProfile(StrEnum):
 
     HIGH = "high"
     SMALL = "small"
+    EMAIL_WEB = "email_web"
 
     @property
     def spec(self) -> "ProfileSpec":
@@ -79,6 +80,7 @@ class ProfileSpec:
 PROFILES: dict[ExportProfile, ProfileSpec] = {
     ExportProfile.HIGH: ProfileSpec(width=960, height=720, fps=30),
     ExportProfile.SMALL: ProfileSpec(width=640, height=480, fps=30),
+    ExportProfile.EMAIL_WEB: ProfileSpec(width=320, height=240, fps=30),
 }
 DEFAULT_PROFILE = ExportProfile.HIGH
 

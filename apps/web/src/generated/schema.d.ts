@@ -502,7 +502,7 @@ export interface components {
          * @description Output profile of the export; the value is the name in the API contract.
          * @enum {string}
          */
-        ExportProfile: "high" | "small";
+        ExportProfile: "high" | "small" | "email_web";
         /** ExportRequest */
         ExportRequest: {
             /**
@@ -512,7 +512,7 @@ export interface components {
              */
             fileName: string;
             /**
-             * @description `high` = 960x720 (default), `small` = 640x480; both 30 fps
+             * @description `high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps
              * @default high
              */
             profile: components["schemas"]["ExportProfile"];

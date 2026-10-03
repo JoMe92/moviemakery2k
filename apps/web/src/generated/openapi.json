@@ -466,7 +466,8 @@
         "description": "Output profile of the export; the value is the name in the API contract.",
         "enum": [
           "high",
-          "small"
+          "small",
+          "email_web"
         ],
         "title": "ExportProfile",
         "type": "string"
@@ -485,7 +486,7 @@
           "profile": {
             "$ref": "#/components/schemas/ExportProfile",
             "default": "high",
-            "description": "`high` = 960x720 (default), `small` = 640x480; both 30 fps"
+            "description": "`high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps"
           }
         },
         "required": [
