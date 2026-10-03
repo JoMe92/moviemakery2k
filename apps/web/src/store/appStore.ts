@@ -149,6 +149,10 @@ export interface AppState {
   music: MusicClip[];
   saveState: SaveState;
   collection: CollectionId;
+  /** Storyboard pane shows the timeline view instead of the filmstrip (design.md
+   * D7); tab-only, not persisted. Switching it never touches `selection` or
+   * `playback` - both views read the same store fields. */
+  timelineView: boolean;
   selection: Selection;
   /** Selected clip on the music track (exclusive with `selection`). */
   musicSelection: string | null;
@@ -184,6 +188,8 @@ export interface AppState {
   /** Switches the UI language at once, persists it and updates `<html lang>`. */
   setLocale(locale: Locale): void;
   setCollection(collection: CollectionId): void;
+  /** View -> "Zeitachse" / the storyboard pane's toggle button (design.md D7). */
+  toggleTimelineView(): void;
   select(selection: Selection): void;
   /** Select a tile in the catalog: starts the transition demo in the monitor (null ends it). */
   setPreviewTransition(id: string | null): void;
@@ -440,6 +446,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       music: [],
       saveState: "idle",
       collection: "media",
+      timelineView: false,
       selection: null,
       musicSelection: null,
       undoStack: [],
@@ -496,6 +503,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         // Opening (or leaving) a collection never preselects a tile: the
         // monitor keeps showing the project (spec transitions "Übergänge in der Sammlung", design.md D7).
         set({ collection, ...noDemo });
+      },
+      toggleTimelineView() {
+        set({ timelineView: !get().timelineView });
       },
       select(selection) {
         // While playback is stopped, the monitor shows the selected picture.

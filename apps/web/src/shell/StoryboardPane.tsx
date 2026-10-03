@@ -1,5 +1,6 @@
 import { type ReactNode, useId } from "react";
 import { useT } from "../i18n/useT";
+import { useAppStore } from "../store/useAppStore";
 import { stepTileSize, TILE_SIZES, useTileSize } from "../storyboard/tileSize";
 import { Button } from "../ui/Button";
 import { TimelineIcon } from "../ui/icons";
@@ -14,12 +15,20 @@ export interface StoryboardPaneProps {
   musicTrack?: ReactNode;
 }
 
-/** Full-width storyboard with the music track below it. The timeline is disabled in the MVP. */
+/**
+ * Full-width storyboard with the music track below it. The toggle button
+ * switches the body between the filmstrip and the timeline view (design.md
+ * D7) - both read the same store fields, so neither selection nor the
+ * playhead position change when switching.
+ */
 export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
   const { t } = useT();
   const headingId = useId();
+  const timelineView = useAppStore((s) => s.timelineView);
+  const toggleTimelineView = useAppStore((s) => s.toggleTimelineView);
   const isEmpty = children === undefined || children === null || children === false;
-  // The disabled timeline toggle is left out on phones (design.md D3).
+  // The timeline toggle is left out on phones (add-mobile-layout design.md D3);
+  // View -> "Zeitachse" in the menu sheet still switches the view there.
   const layout = useLayoutMode();
   const compact = layout.mode === "compact";
   const touch = isTouchLayout(layout);
@@ -31,8 +40,8 @@ export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
           <Button
             variant="toolbar"
             icon={<TimelineIcon />}
-            aria-pressed={false}
-            disabled
+            aria-pressed={timelineView}
+            onClick={toggleTimelineView}
             className={styles.toggle}
           >
             {t("shell.showTimeline")}

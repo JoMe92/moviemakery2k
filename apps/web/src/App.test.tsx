@@ -44,7 +44,9 @@ describe("App shell", () => {
     expect(
       within(storyboard).getByText("Ziehen Sie Bilder hierher, um eine Diashow zu erstellen."),
     ).toBeInTheDocument();
-    expect(within(storyboard).getByRole("button", { name: "Zeitachse anzeigen" })).toBeDisabled();
+    const timelineToggle = within(storyboard).getByRole("button", { name: "Zeitachse anzeigen" });
+    expect(timelineToggle).not.toBeDisabled();
+    expect(timelineToggle).toHaveAttribute("aria-pressed", "false");
 
     const statusbar = screen.getByRole("contentinfo");
     expect(await within(statusbar).findByText("Backend bereit · FFmpeg 9.0")).toBeInTheDocument();

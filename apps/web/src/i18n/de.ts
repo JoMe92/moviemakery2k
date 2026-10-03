@@ -240,6 +240,14 @@ export const de = {
     videoPreviewStart: "Bild am neuen Anfang",
     videoPreviewEnd: "Bild am neuen Ende",
   },
+  timelineView: {
+    list: "Zeitachsenspur",
+    zoom: "Zoom",
+    clip: "Clip {number}: {name}, {duration}",
+    trimStart: "Anfang von Clip {number} kürzen",
+    trimEnd: "Ende von Clip {number} kürzen",
+    transition: "Übergang: {name}",
+  },
   dnd: {
     audio: "Audio „{name}“",
     musicClip: "Musikstück {number}",

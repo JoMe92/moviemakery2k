@@ -38,6 +38,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const musicLength = useAppStore((s) => projectMusicDuration(s.music, s.media));
   const canFit = useAppStore((s) => canFitToMusic(s.slides.length, musicLength));
   const splitSlide = useAppStore((s) => s.splitSlide);
+  const toggleTimelineView = useAppStore((s) => s.toggleTimelineView);
   const canSplit = useAppStore((s) =>
     s.selection ? videoSplitPoint(s.slides, s.selection.slideId, s.playback.time) !== null : false,
   );
@@ -85,6 +86,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
               }
             : undefined,
           split: canSplit ? () => splitSlide() : undefined,
+          toggleTimeline: toggleTimelineView,
         },
         t,
       ),
@@ -102,6 +104,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
       musicLength,
       canSplit,
       splitSlide,
+      toggleTimelineView,
       canUndo,
       canRedo,
       undo,

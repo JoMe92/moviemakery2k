@@ -242,6 +242,14 @@ export const en = {
     videoPreviewStart: "Frame at the new start",
     videoPreviewEnd: "Frame at the new end",
   },
+  timelineView: {
+    list: "Timeline track",
+    zoom: "Zoom",
+    clip: "Clip {number}: {name}, {duration}",
+    trimStart: "Trim start of clip {number}",
+    trimEnd: "Trim end of clip {number}",
+    transition: "Transition: {name}",
+  },
   dnd: {
     audio: "Audio “{name}”",
     musicClip: "Music clip {number}",
