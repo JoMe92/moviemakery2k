@@ -128,3 +128,21 @@ export function useLayoutAttributes(layout: Layout): void {
     root.dataset.pointer = layout.coarse ? "coarse" : "fine";
   }, [layout]);
 }
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const list = window.matchMedia(REDUCED_MOTION_QUERY);
+  list.addEventListener("change", onChange);
+  return () => list.removeEventListener("change", onChange);
+}
+
+/** True when the user asks for reduced motion (WCAG 2.3.3). */
+export function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => matches(REDUCED_MOTION_QUERY),
+    () => false,
+  );
+}
