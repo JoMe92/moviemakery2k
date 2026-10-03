@@ -296,6 +296,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media/{media_id}/video": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Video
+         * @description Original video file (its own container/codec) with `Cache-Control: immutable`.
+         *
+         *     For the preview player's `<video>` element (add-timeline-editing design.md D5); export
+         *     reads the same file directly from disk. 404 for images, audio and unknown IDs. Range
+         *     requests are supported (needed for the browser to seek).
+         */
+        get: operations["get_video_api_media__media_id__video_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/project": {
         parameters: {
             query?: never;
@@ -1000,6 +1024,11 @@ export interface components {
              */
             posterUrl: string;
             /**
+             * Videourl
+             * @description Original video file, for the preview player (add-timeline-editing D5)
+             */
+            videoUrl: string;
+            /**
              * Width
              * @description Width after rotation
              */
@@ -1586,6 +1615,47 @@ export interface operations {
                 };
                 content: {
                     "image/jpeg": unknown;
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_video_api_media__media_id__video_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original video file, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": unknown;
+                    "video/x-matroska": unknown;
                 };
             };
             /** @description Unknown or invalid media id (`media.notFound`) */

@@ -48,6 +48,7 @@ export function videoItem(id: string, duration = 105.0, filename = `${id}.mp4`):
     codec: "h264",
     createdAt: "2026-10-02T00:00:00Z",
     posterUrl: `/api/media/${id}/poster`,
+    videoUrl: `/api/media/${id}/video`,
   };
 }
 

@@ -135,6 +135,52 @@ describe("Renderer", () => {
     expect(calls.filter((c) => c.name === "clear")).toHaveLength(0);
   });
 
+  describe("video texture (add-timeline-editing design.md D5)", () => {
+    /** Stubs the 2D context the letterbox step needs (jsdom's own is stubbed to null). */
+    function stub2d() {
+      const drawImage = vi.fn();
+      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(((type: string) =>
+        type === "2d"
+          ? { fillStyle: "", fillRect: vi.fn(), imageSmoothingEnabled: false, drawImage }
+          : null) as HTMLCanvasElement["getContext"]);
+      return drawImage;
+    }
+
+    it("re-letterboxes a video frame on every draw, even at an unchanged buffer size", () => {
+      stub2d();
+      const { gl, calls } = fakeGl();
+      const r = new Renderer(canvasWith(gl));
+      r.resize(640, 480, 1);
+      const video = document.createElement("video");
+      const frame = r.createFrame(video);
+
+      calls.length = 0;
+      r.drawStill(frame);
+      // drawStill -> drawTransition(frame, frame, ...) letterboxes the same
+      // video frame twice (from and to); neither is skipped by the cache.
+      expect(calls.filter((c) => c.name === "texImage2D")).toHaveLength(2);
+
+      calls.length = 0;
+      r.drawStill(frame);
+      expect(calls.filter((c) => c.name === "texImage2D")).toHaveLength(2);
+    });
+
+    it("still skips re-letterboxing a picture at an unchanged buffer size (the cache)", () => {
+      const drawImage = stub2d();
+      const { gl, calls } = fakeGl();
+      const r = new Renderer(canvasWith(gl));
+      r.resize(640, 480, 1);
+      const image = document.createElement("canvas");
+      const frame = r.createFrame(image); // first upload
+      drawImage.mockClear();
+
+      calls.length = 0;
+      r.drawStill(frame);
+      expect(calls.filter((c) => c.name === "texImage2D")).toHaveLength(0);
+      expect(drawImage).not.toHaveBeenCalled();
+    });
+  });
+
   it("sets uniforms and parameters for a transition", () => {
     const { gl, calls } = fakeGl();
     const canvas = canvasWith(gl);

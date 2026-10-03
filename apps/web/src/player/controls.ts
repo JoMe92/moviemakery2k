@@ -45,6 +45,23 @@ export function toTimelineSlides(slides: readonly Slide[]): TimelineSlide[] {
   return slides.map(toTimelineSlide);
 }
 
+/**
+ * `video.currentTime` for a video slide at the current playback `time`:
+ * `trimIn + (time - segmentStart)`, clamped to `[trimIn, trimOut]` so a
+ * moment just outside the slide's own segment (e.g. mid-transition, read
+ * from the overall clock rather than the transition's local progress) still
+ * shows a frame from within its trim (spec preview-player "Videoclips in der
+ * Wiedergabe", design.md D5).
+ */
+export function videoScrubTime(
+  trimIn: number,
+  trimOut: number,
+  segmentStart: number,
+  time: number,
+): number {
+  return Math.min(Math.max(time - segmentStart + trimIn, trimIn), trimOut);
+}
+
 const timelines = new WeakMap<readonly Slide[], Timeline>();
 
 /** Timeline for the (immutable) slides array, computed only once per array. */

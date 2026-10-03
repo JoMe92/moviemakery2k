@@ -1526,6 +1526,11 @@
             "title": "Posterurl",
             "type": "string"
           },
+          "videoUrl": {
+            "description": "Original video file, for the preview player (add-timeline-editing D5)",
+            "title": "Videourl",
+            "type": "string"
+          },
           "width": {
             "description": "Width after rotation",
             "exclusiveMinimum": 0.0,
@@ -1542,7 +1547,8 @@
           "height",
           "codec",
           "createdAt",
-          "posterUrl"
+          "posterUrl",
+          "videoUrl"
         ],
         "title": "VideoItem",
         "type": "object"
@@ -2279,6 +2285,56 @@
           }
         },
         "summary": "Get Thumbnail",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/video": {
+      "get": {
+        "description": "Original video file (its own container/codec) with `Cache-Control: immutable`.\n\nFor the preview player's `<video>` element (add-timeline-editing design.md D5); export\nreads the same file directly from disk. 404 for images, audio and unknown IDs. Range\nrequests are supported (needed for the browser to seek).",
+        "operationId": "get_video_api_media__media_id__video_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {},
+              "video/x-matroska": {}
+            },
+            "description": "Original video file, unchanged"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Video",
         "tags": [
           "media"
         ]

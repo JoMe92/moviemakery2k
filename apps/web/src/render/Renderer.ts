@@ -14,8 +14,12 @@ import { FALLBACK_TRANSITION_ID, fragmentSourceFor, VERTEX_SOURCE } from "./shad
 import type { Transform as TitleTransform } from "./titlePhase";
 import { TITLE_FRAGMENT_SOURCE, TITLE_VERTEX_SOURCE } from "./titleShaderSource";
 
-export type ImageSource = ImageBitmap | HTMLImageElement | HTMLCanvasElement;
+export type ImageSource = ImageBitmap | HTMLImageElement | HTMLCanvasElement | HTMLVideoElement;
 export type { TitleTransform };
+
+function isVideoSource(source: ImageSource): source is HTMLVideoElement {
+  return typeof HTMLVideoElement !== "undefined" && source instanceof HTMLVideoElement;
+}
 
 export class WebGL2UnsupportedError extends Error {
   constructor() {
@@ -59,6 +63,9 @@ export interface DrawTitleOptions {
 export function sourceSize(source: ImageSource): { width: number; height: number } {
   if (typeof HTMLImageElement !== "undefined" && source instanceof HTMLImageElement) {
     return { width: source.naturalWidth, height: source.naturalHeight };
+  }
+  if (isVideoSource(source)) {
+    return { width: source.videoWidth, height: source.videoHeight };
   }
   return { width: source.width, height: source.height };
 }
@@ -315,10 +322,16 @@ export class Renderer {
     return !this.disposed && !this.isContextLost;
   }
 
-  /** Fit an image into a black 4:3 area at buffer size and upload it. */
+  /**
+   * Fit an image into a black 4:3 area at buffer size and upload it. A video
+   * frame is always re-fitted: its pixel content changes every draw even at
+   * the same buffer size, so the "already fitted at this size" cache that
+   * skips still images does not apply to it (add-timeline-editing design.md D5).
+   */
   private ensureLetterboxed(frame: FrameTexture): void {
     const { width, height } = this.canvas;
-    if (frame.disposed || (frame.width === width && frame.height === height)) return;
+    const alreadyFitted = frame.width === width && frame.height === height;
+    if (frame.disposed || (alreadyFitted && !isVideoSource(frame.source))) return;
     const box = this.letterbox(frame.source, width, height);
     const { gl } = this;
     gl.bindTexture(gl.TEXTURE_2D, frame.texture);

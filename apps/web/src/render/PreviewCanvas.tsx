@@ -20,6 +20,10 @@ function isReady(source: ImageSource): boolean {
   if (typeof HTMLImageElement !== "undefined" && source instanceof HTMLImageElement) {
     return source.complete && source.naturalWidth > 0;
   }
+  if (typeof HTMLVideoElement !== "undefined" && source instanceof HTMLVideoElement) {
+    // HAVE_CURRENT_DATA (2): a frame is decoded at the current time.
+    return source.readyState >= 2 && source.videoWidth > 0;
+  }
   return source.width > 0 && source.height > 0;
 }
 

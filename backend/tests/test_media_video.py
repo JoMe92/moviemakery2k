@@ -255,6 +255,7 @@ def test_video_is_imported_with_metadata_and_original(
         "codec",
         "createdAt",
         "posterUrl",
+        "videoUrl",
     }
     assert item["kind"] == "video"
     assert item["filename"] == f"clip.{container_ext}"
@@ -262,6 +263,7 @@ def test_video_is_imported_with_metadata_and_original(
     assert (item["width"], item["height"]) == (64, 48)
     assert item["codec"] == codec
     assert item["posterUrl"] == f"/api/media/{media_id}/poster"
+    assert item["videoUrl"] == f"/api/media/{media_id}/video"
 
     # The original is stored unchanged under a name derived from its content.
     item_dir = settings.data_dir / "media" / media_id
@@ -497,6 +499,45 @@ def test_poster_endpoint_is_404_for_images_audio_and_unknown_ids(
         assert res.json()["detail"]["code"] == "media.notFound"
 
 
+def test_video_endpoint_serves_the_original_immutable(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    data = _test_pattern(tmp_path, "h264")
+    [result] = _upload(client, [("clip.mp4", data)])
+    item = result["item"]
+
+    res = client.get(item["videoUrl"])
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "video/mp4"
+    assert res.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert res.content == data
+
+
+def test_video_endpoint_serves_mkv_as_x_matroska(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    [result] = _upload(client, [("clip.webm", _test_pattern(tmp_path, "vp9"))])
+    item = result["item"]
+    res = client.get(item["videoUrl"])
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "video/x-matroska"
+
+
+def test_video_endpoint_is_404_for_images_audio_and_unknown_ids(
+    client: TestClient, tmp_path: Path
+) -> None:
+    image = io.BytesIO()
+    Image.new("RGB", (16, 12), (1, 2, 3)).save(image, "JPEG")
+    sine = _run_ffmpeg(
+        tmp_path, "tone.mp3", ["-f", "lavfi", "-i", "sine=duration=1", "-c:a", "libmp3lame"]
+    )
+    [as_image, as_audio] = _upload(client, [("a.jpg", image.getvalue()), ("tone.mp3", sine)])
+    for media_id in (as_image["item"]["id"], as_audio["item"]["id"], "f" * 32, "not-an-id"):
+        res = client.get(f"/api/media/{media_id}/video")
+        assert res.status_code == 404, media_id
+        assert res.json()["detail"]["code"] == "media.notFound"
+
+
 def test_missing_ffmpeg_rejects_video_without_leftovers(
     client: TestClient, settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -514,13 +555,16 @@ def test_openapi_video_item_is_part_of_the_media_union(client: TestClient) -> No
     poster = doc["paths"]["/api/media/{media_id}/poster"]["get"]["responses"]
     assert "image/jpeg" in poster["200"]["content"]
     assert "404" in poster
+    video = doc["paths"]["/api/media/{media_id}/video"]["get"]["responses"]
+    assert {"video/mp4", "video/x-matroska"} <= set(video["200"]["content"])
+    assert "404" in video
 
     schemas = doc["components"]["schemas"]
     assert schemas["MediaItem"]["discriminator"]["mapping"]["video"] == (
         "#/components/schemas/VideoItem"
     )
     assert schemas["VideoItem"]["properties"]["kind"]["const"] == "video"
-    assert {"kind", "duration", "width", "height", "codec", "posterUrl"} <= set(
+    assert {"kind", "duration", "width", "height", "codec", "posterUrl", "videoUrl"} <= set(
         schemas["VideoItem"]["required"]
     )
     codes = schemas["MediaUploadFailure"]["properties"]["errorCode"]["description"]

@@ -171,6 +171,9 @@ class VideoItem(_MediaModel):
     codec: str = Field(description="FFmpeg codec name of the original, e.g. `h264`, `hevc`")
     created_at: datetime
     poster_url: str = Field(description="Poster frame (JPEG), add-video-import D3")
+    video_url: str = Field(
+        description="Original video file, for the preview player (add-timeline-editing D5)"
+    )
 
 
 class AudioPeaks(_MediaModel):
@@ -862,6 +865,8 @@ class MediaStore:
                 created_at=datetime.now(UTC),
                 # Served by GET /api/media/{id}/poster (add-video-import D3).
                 poster_url=f"/api/media/{prepared.id}/poster",
+                # Served by GET /api/media/{id}/video (add-timeline-editing D5).
+                video_url=f"/api/media/{prepared.id}/video",
             )
         else:
             audio_probe = prepared.probe
