@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { Translate } from "../i18n/t";
 import { useT } from "../i18n/useT";
+import { useInstallAction } from "../pwa/install";
 import type { CollectionId, ImportKind } from "../store/appStore";
 import { useAppStore } from "../store/useAppStore";
 import {
@@ -10,6 +11,7 @@ import {
   FolderIcon,
   type IconProps,
   ImportImageIcon,
+  InstallIcon,
   TitleIcon,
   TransitionsIcon,
 } from "../ui/icons";
@@ -52,6 +54,11 @@ export interface TaskContext {
    * importing and showing a collection also open it (design.md D7).
    */
   openCollectionSheet?: () => void;
+  /**
+   * "Install as app…" (add-mobile-delivery design.md D7); absent outside a
+   * secure context or when running installed, and so is the entry.
+   */
+  install?: () => void;
 }
 
 export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[] {
@@ -161,6 +168,17 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           icon: FilmIcon,
           disabled: true,
         },
+        ...(ctx.install
+          ? [
+              {
+                id: "installApp",
+                label: t("tasks.finish.installApp"),
+                icon: InstallIcon,
+                disabled: false,
+                run: ctx.install,
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -175,6 +193,7 @@ export function useTaskGroups(): TaskGroupData[] {
   const openExportWizard = useAppStore((s) => s.openExportWizard);
   const setSheetOpen = useAppStore((s) => s.setCollectionSheetOpen);
   const compact = useLayoutMode().mode === "compact";
+  const install = useInstallAction();
   const { t } = useT();
   return buildTaskGroups(
     {
@@ -184,6 +203,7 @@ export function useTaskGroups(): TaskGroupData[] {
       setCollection,
       openExportWizard,
       openCollectionSheet: compact ? () => setSheetOpen(true) : undefined,
+      install,
     },
     t,
   );

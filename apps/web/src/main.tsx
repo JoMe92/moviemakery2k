@@ -2,6 +2,7 @@ import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { createApi } from "./lib/apiClient";
+import { listenForInstall } from "./pwa/install";
 import { registerServiceWorker } from "./pwa/serviceWorker";
 import { UpdateNotice } from "./pwa/UpdateNotice";
 import { parseDebugProgress } from "./render/debugProgress";
@@ -22,6 +23,8 @@ if (!debug) void store.getState().init();
 window.addEventListener("pagehide", () => void store.getState().flushSave());
 // Service worker of the app shell: only in the build and in a secure context.
 if (!debug) void registerServiceWorker();
+// Keep the browser's install event for "Install as app…" (design.md D7).
+listenForInstall();
 
 createRoot(root).render(
   <StrictMode>

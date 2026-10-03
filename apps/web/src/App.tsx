@@ -8,6 +8,7 @@ import { MediaCollection } from "./media/MediaCollection";
 import { UploadPanel } from "./media/UploadPanel";
 import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
+import { InstallInstructionsDialog } from "./pwa/InstallInstructionsDialog";
 import { AccessDialog } from "./shell/AccessDialog";
 import { ActionBar } from "./shell/ActionBar";
 import { AppMenus } from "./shell/AppMenus";
@@ -90,6 +91,7 @@ export function App() {
         <CollectionSheet />
         <SaveMovieWizardFromStore />
         <AccessDialog />
+        <InstallInstructionsDialog />
       </StoryboardDnd>
     );
   }
@@ -146,6 +148,7 @@ export function App() {
       />
       <SaveMovieWizardFromStore />
       <AccessDialog />
+      <InstallInstructionsDialog />
     </StoryboardDnd>
   );
 }

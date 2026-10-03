@@ -76,6 +76,7 @@ export const en = {
       effects: "Video Effects",
       autoMovie: "AutoMovie…",
       options: "Options…",
+      install: "Install as app…",
     },
     clip: {
       label: "Clip",
@@ -123,6 +124,7 @@ export const en = {
       short: "3. Finish",
       saveToComputer: "Save to my computer",
       publishWeb: "Publish to the web",
+      installApp: "Install as app…",
     },
   },
   status: {
@@ -374,6 +376,12 @@ export const en = {
   access: {
     title: "Access required",
     body: "This device has no access to moviemakerY2K. Open the link or scan the QR code that “pixi run serve-lan” shows in the terminal again.",
+  },
+  install: {
+    title: "Install as app",
+    intro: "Your browser has no install dialog. Add moviemakerY2K to your home screen like this:",
+    stepShare: "Tap “Share” in the browser bar.",
+    stepHomeScreen: "Choose “Add to Home Screen”.",
   },
   pwa: {
     updateAvailable: "New version available.",

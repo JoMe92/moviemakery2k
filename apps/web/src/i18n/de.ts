@@ -72,6 +72,7 @@ export const de = {
       effects: "Videoeffekte",
       autoMovie: "AutoMovie…",
       options: "Optionen…",
+      install: "Als App installieren…",
     },
     clip: {
       label: "Clip",
@@ -119,6 +120,7 @@ export const de = {
       short: "3. Fertig stellen",
       saveToComputer: "Auf dem Computer speichern",
       publishWeb: "Im Web veröffentlichen",
+      installApp: "Als App installieren…",
     },
   },
   status: {
@@ -374,6 +376,12 @@ export const de = {
   access: {
     title: "Zugang erforderlich",
     body: "Dieses Gerät hat keinen Zugang zu moviemakerY2K. Öffnen Sie den Link oder scannen Sie den QR-Code erneut, den „pixi run serve-lan“ im Terminal anzeigt.",
+  },
+  install: {
+    title: "Als App installieren",
+    intro: "Ihr Browser bietet keinen Installationsdialog. So legen Sie moviemakerY2K auf den Home-Bildschirm:",
+    stepShare: "Tippen Sie in der Browserleiste auf „Teilen“.",
+    stepHomeScreen: "Wählen Sie „Zum Home-Bildschirm“.",
   },
   pwa: {
     updateAvailable: "Neue Version verfügbar.",
