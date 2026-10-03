@@ -18,6 +18,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { getEventCoordinates } from "@dnd-kit/utilities";
 import {
   createContext,
   type ReactNode,
@@ -45,7 +46,11 @@ import {
   resolveDrop,
   STRIP_DROPPABLE_ID,
 } from "./dropLogic";
-import { StoryboardPointerSensor } from "./pointerSensor";
+import {
+  StoryboardPointerSensor,
+  StoryboardTouchSensor,
+  TOUCH_ACTIVATION,
+} from "./pointerSensor";
 import styles from "./StoryboardStrip.module.css";
 
 /** Insertion marker for pictures from the collection (0…n) or null. */
@@ -276,10 +281,11 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   }
   const activator = event.activatorEvent;
   const translated = event.active.rect.current.translated;
-  const x =
-    activator && "clientX" in activator
-      ? (activator as PointerEvent).clientX + event.delta.x
-      : translated
+  // Pointer and touch start points alike (a TouchEvent has no clientX).
+  const start = activator ? getEventCoordinates(activator) : null;
+  const x = start
+    ? start.x + event.delta.x
+    : translated
         ? center(translated).x
         : center(over.rect).x;
   const after = x > center(over.rect).x;
@@ -341,6 +347,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     // Small threshold keeps click and double-click working; the own sensor lets
     // the first click right after a drop through (mmy-fa5).
     useSensor(StoryboardPointerSensor, { activationConstraint: { distance: 5 } }),
+    // Touch: long press first, so a swipe scrolls the strip (add-mobile-layout D8).
+    useSensor(StoryboardTouchSensor, { activationConstraint: TOUCH_ACTIVATION }),
     useSensor(KeyboardSensor, { coordinateGetter }),
   );
 
