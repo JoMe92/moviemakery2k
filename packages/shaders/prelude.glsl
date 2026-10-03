@@ -71,3 +71,88 @@ float barsT(vec2 uv, float axis, float count) {
   bool reverseDir = mod(index, 2.0) >= 1.0;
   return reverseDir ? alongPos : 1.0 - alongPos;
 }
+
+// TASK-FX-006 (design.md D1): the polygon-edged members of the same Linear-/
+// Winkel-Wipe family, built from the same soft-edged wipeReveal() plus the
+// straight-edge barWipeT() above. Exact source geometry for most of these
+// (movie-maker-reference.md §3's SMPTE MaskNums 43/44/47/48/61–64/73/74/
+// 231/253/262/263) is not independently available offline; each shape below
+// reproduces the named effect (pinch, cross, wedge, zigzag, corner, fan,
+// hinge) with a formula that still satisfies the hard contract (exactly
+// `from` at progress 0, exactly `to` at 1) - catalog entries mark the
+// geometry as estimated accordingly.
+
+// Split (splitT) with the edge pinched at the centre of the line and flared
+// at its ends, giving an hourglass/bow-tie taper instead of a straight edge.
+float bowTieT(vec2 uv, float axis) {
+  float p = axis < 0.5 ? abs(uv.x - 0.5) * 2.0 : abs(uv.y - 0.5) * 2.0;
+  float q = axis < 0.5 ? abs(uv.y - 0.5) * 2.0 : abs(uv.x - 0.5) * 2.0;
+  return clamp(p * (0.5 + 0.5 * q), 0.0, 1.0);
+}
+
+// Distance to the nearer of the two screen diagonals: 0 along the X formed by
+// them (revealed first), growing to 1 at the left/right (or top/bottom) edge
+// midpoints, farthest from both diagonals.
+float diagonalCrossT(vec2 uv) {
+  float a = abs((uv.x - 0.5) + (uv.y - 0.5));
+  float b = abs((uv.x - 0.5) - (uv.y - 0.5));
+  return clamp(min(a, b) * 2.0, 0.0, 1.0);
+}
+
+// Chebyshev distance to the nearest of the four corners: each corner reveals
+// its own expanding box inward, all four meeting last along the centre cross.
+float boxOutT(vec2 uv) {
+  float tl = max(abs(uv.x - 0.0), abs(uv.y - 1.0));
+  float tr = max(abs(uv.x - 1.0), abs(uv.y - 1.0));
+  float bl = max(abs(uv.x - 0.0), abs(uv.y - 0.0));
+  float br = max(abs(uv.x - 1.0), abs(uv.y - 0.0));
+  return clamp(min(min(tl, tr), min(bl, br)) * 2.0, 0.0, 1.0);
+}
+
+// A filled V/wedge whose point touches the picture edge in direction
+// `apexAngleDeg` and opens toward the opposite edge: the along-axis distance
+// from that edge (barWipeT) and the lateral distance from the axis's centre
+// line, both already 0..1, combined with max() so only the apex point itself
+// (where both are 0) reveals first and the wedge widens as either grows.
+float filledVT(vec2 uv, float apexAngleDeg) {
+  float along = barWipeT(uv, apexAngleDeg);
+  float lateral = abs(barWipeT(uv, apexAngleDeg + 90.0) - 0.5) * 2.0;
+  return clamp(max(along, lateral), 0.0, 1.0);
+}
+
+// A straight vertical (axis < 0.5) or horizontal (axis >= 0.5) sweep whose
+// edge is perturbed by a `count`-period triangle wave along the perpendicular
+// axis, giving it a sawtooth/zigzag outline instead of a straight line.
+float zigzagT(vec2 uv, float axis, float count) {
+  float crossPos = axis < 0.5 ? uv.x : uv.y;
+  float alongPos = axis < 0.5 ? uv.y : uv.x;
+  float n = max(count, 1.0);
+  float wave = abs(fract(alongPos * n) - 0.5) * 2.0;
+  return clamp(crossPos + 0.1 * (wave - 0.5), 0.0, 1.0);
+}
+
+// Chebyshev distance from the picture corner (cornerX, cornerY) in {0, 1}²:
+// a box grows outward from that single corner to fill the screen.
+float insetT(vec2 uv, float cornerX, float cornerY) {
+  vec2 d = abs(uv - vec2(cornerX, cornerY));
+  return clamp(max(d.x, d.y), 0.0, 1.0);
+}
+
+// Angular sweep (a fan blade) pivoting at (pivotX, 0): 0 directly above the
+// pivot, 1 level with it - used both for a centred "fan in" (pivotX = 0.5)
+// and for a wiper-like sweep hinged at a bottom corner (pivotX = 0 or 1).
+float fanT(vec2 uv, float pivotX) {
+  vec2 p = uv - vec2(pivotX, 0.0);
+  float angle = abs(atan(p.x, max(p.y, 1e-4)));
+  return clamp(angle / (0.5 * 3.14159265), 0.0, 1.0);
+}
+
+// Split (splitT) biased so the opening is widest at the vertical centre
+// (the door's hinge height) and narrowest at the top/bottom, approximating a
+// pair of hinged panels swinging open (true hinge perspective needs a 3D
+// renderer, out of scope per proposal.md "Nicht-Ziele").
+float swingingDoorT(vec2 uv) {
+  float p = abs(uv.x - 0.5) * 2.0;
+  float bulge = 1.0 - abs(uv.y - 0.5) * 2.0;
+  return clamp(p - 0.15 * bulge + 0.15, 0.0, 1.0);
+}

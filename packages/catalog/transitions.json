@@ -205,6 +205,222 @@
         "ref": "DXT Bars transition, Basic catalog per movie-maker-reference.md §3 (GUID not identified in research)",
         "estimated": ["defaultDuration", "barCount", "gradientSize"]
       }
+    },
+    {
+      "id": "bow-tie-vertical",
+      "names": { "de": "Fliege, vertikal", "en": "Bow tie, vertical" },
+      "shader": "bow-tie-vertical.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 0, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 43 \"Bow Tie, Vertical\" (DxtJpeg MaskNum 43) per movie-maker-reference.md §3; exact taper shape estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "bow-tie-horizontal",
+      "names": { "de": "Fliege, horizontal", "en": "Bow tie, horizontal" },
+      "shader": "bow-tie-horizontal.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 1, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 44 \"Bow Tie, Horizontal\" (DxtJpeg MaskNum 44) per movie-maker-reference.md §3; exact taper shape estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "diagonal-cross",
+      "names": { "de": "Diagonal, Kreuz", "en": "Diagonal cross" },
+      "shader": "diagonal-cross.glsl",
+      "defaultDuration": 1.25,
+      "params": { "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 47 \"Diagonal Cross\" (DxtJpeg MaskNum 47) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "box-out",
+      "names": { "de": "Kasten, auswärts", "en": "Box out" },
+      "shader": "box-out.glsl",
+      "defaultDuration": 1.25,
+      "params": { "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 48 \"Box Out\" (DxtJpeg MaskNum 48) per movie-maker-reference.md §3",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "filled-v-up",
+      "names": { "de": "V gefüllt, aufwärts", "en": "Filled V, up" },
+      "shader": "filled-v-up.glsl",
+      "defaultDuration": 1.25,
+      "params": { "apexAngleDeg": 90, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Filled V\" family (DxtJpeg MaskNum 61-64) per movie-maker-reference.md §3; MaskNum-to-direction mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "filled-v-down",
+      "names": { "de": "V gefüllt, abwärts", "en": "Filled V, down" },
+      "shader": "filled-v-down.glsl",
+      "defaultDuration": 1.25,
+      "params": { "apexAngleDeg": 270, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Filled V\" family (DxtJpeg MaskNum 61-64) per movie-maker-reference.md §3; MaskNum-to-direction mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "filled-v-left",
+      "names": { "de": "V gefüllt, links", "en": "Filled V, left" },
+      "shader": "filled-v-left.glsl",
+      "defaultDuration": 1.25,
+      "params": { "apexAngleDeg": 180, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Filled V\" family (DxtJpeg MaskNum 61-64) per movie-maker-reference.md §3; MaskNum-to-direction mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "filled-v-right",
+      "names": { "de": "V gefüllt, rechts", "en": "Filled V, right" },
+      "shader": "filled-v-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "apexAngleDeg": 0, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Filled V\" family (DxtJpeg MaskNum 61-64) per movie-maker-reference.md §3; MaskNum-to-direction mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "zigzag-vertical",
+      "names": { "de": "Zickzack, vertikal", "en": "Zig zag, vertical" },
+      "shader": "zigzag-vertical.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 0, "count": 6, "gradientSize": 0.08 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 73 \"Zig Zag, Vertical\" (DxtJpeg MaskNum 73) per movie-maker-reference.md §3; tooth count estimated",
+        "estimated": ["defaultDuration", "count", "gradientSize"]
+      }
+    },
+    {
+      "id": "zigzag-horizontal",
+      "names": { "de": "Zickzack, horizontal", "en": "Zig zag, horizontal" },
+      "shader": "zigzag-horizontal.glsl",
+      "defaultDuration": 1.25,
+      "params": { "axis": 1, "count": 6, "gradientSize": 0.08 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 74 \"Zig Zag, Horizontal\" (DxtJpeg MaskNum 74) per movie-maker-reference.md §3; tooth count estimated",
+        "estimated": ["defaultDuration", "count", "gradientSize"]
+      }
+    },
+    {
+      "id": "inset-bottom-left",
+      "names": { "de": "Einschub, unten links", "en": "Inset, bottom left" },
+      "shader": "inset-bottom-left.glsl",
+      "defaultDuration": 1.25,
+      "params": { "cornerX": 0, "cornerY": 0, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Inset\" family (DxtJpeg MaskNum 3-6) per movie-maker-reference.md §3; MaskNum-to-corner mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "inset-bottom-right",
+      "names": { "de": "Einschub, unten rechts", "en": "Inset, bottom right" },
+      "shader": "inset-bottom-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "cornerX": 1, "cornerY": 0, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Inset\" family (DxtJpeg MaskNum 3-6) per movie-maker-reference.md §3; MaskNum-to-corner mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "inset-top-left",
+      "names": { "de": "Einschub, oben links", "en": "Inset, top left" },
+      "shader": "inset-top-left.glsl",
+      "defaultDuration": 1.25,
+      "params": { "cornerX": 0, "cornerY": 1, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Inset\" family (DxtJpeg MaskNum 3-6) per movie-maker-reference.md §3; MaskNum-to-corner mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "inset-top-right",
+      "names": { "de": "Einschub, oben rechts", "en": "Inset, top right" },
+      "shader": "inset-top-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "cornerX": 1, "cornerY": 1, "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE \"Inset\" family (DxtJpeg MaskNum 3-6) per movie-maker-reference.md §3; MaskNum-to-corner mapping estimated",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "fan-in",
+      "names": { "de": "Fächer, einwärts", "en": "Fan in" },
+      "shader": "fan-in.glsl",
+      "defaultDuration": 1.25,
+      "params": { "pivotX": 0.5, "gradientSize": 0.08 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 231 \"Fan In\" (DxtJpeg MaskNum 231) per movie-maker-reference.md §3; approximated as a single angular sweep",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "swinging-door",
+      "names": { "de": "Schwingtür", "en": "Swinging door" },
+      "shader": "swinging-door.glsl",
+      "defaultDuration": 1.25,
+      "params": { "gradientSize": 0.1 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 253 \"Swinging Door\" (DxtJpeg MaskNum 253) per movie-maker-reference.md §3; true hinge perspective out of scope (2D wipe approximation, proposal.md Nicht-Ziele)",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "windshield-left",
+      "names": { "de": "Scheibenwischer, links", "en": "Windshield, left" },
+      "shader": "windshield-left.glsl",
+      "defaultDuration": 1.25,
+      "params": { "pivotX": 0, "gradientSize": 0.08 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 262 \"Windshield\" (DxtJpeg MaskNum 262) per movie-maker-reference.md §3; approximated as a single angular sweep",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
+    },
+    {
+      "id": "windshield-right",
+      "names": { "de": "Scheibenwischer, rechts", "en": "Windshield, right" },
+      "shader": "windshield-right.glsl",
+      "defaultDuration": 1.25,
+      "params": { "pivotX": 1, "gradientSize": 0.08 },
+      "source": {
+        "kind": "smpte",
+        "ref": "SMPTE 263 \"Windshield\" (DxtJpeg MaskNum 263) per movie-maker-reference.md §3; approximated as a single angular sweep",
+        "estimated": ["defaultDuration", "gradientSize"]
+      }
     }
   ]
 }
