@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  identityTransform,
-  staticPhases,
-  titleTransformAt,
-  type TitlePhases,
-} from "./titlePhase";
+import { identityTransform, staticPhases, type TitlePhases, titleTransformAt } from "./titlePhase";
 
 describe("titleTransformAt", () => {
   const durations = { entranceSeconds: 1, exitSeconds: 1, totalSeconds: 5 };

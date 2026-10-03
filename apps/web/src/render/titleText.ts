@@ -26,11 +26,9 @@ export function loadTitleFont(): Promise<void> {
     fontPromise =
       typeof FontFace === "undefined" || typeof document === "undefined"
         ? Promise.resolve()
-        : new FontFace(TITLE_FONT_FAMILY, `url(${fontUrl})`)
-            .load()
-            .then((face) => {
-              document.fonts.add(face);
-            });
+        : new FontFace(TITLE_FONT_FAMILY, `url(${fontUrl})`).load().then((face) => {
+            document.fonts.add(face);
+          });
   }
   return fontPromise;
 }
