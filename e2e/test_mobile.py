@@ -149,6 +149,9 @@ def test_layout_has_no_horizontal_scroll(
     page = open_device(name, landscape)
     assert layout(page) == expected
     expect(page.get_by_role("navigation", name="Filmschritte")).to_be_visible()
+    # The monitor keeps a real picture area (4:3) in every layout.
+    screen = page.locator("canvas").first.bounding_box()
+    assert screen is not None and screen["height"] >= 100, screen
     no_horizontal_scroll(page)
 
 
