@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/catalog/effects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Effects */
+        get: operations["list_effects_api_catalog_effects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/titles": {
         parameters: {
             query?: never;
@@ -507,6 +524,50 @@ export interface components {
              * @description Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
              */
             files: string[];
+        };
+        /** Effect */
+        Effect: {
+            /** Id */
+            id: string;
+            names: components["schemas"]["TransitionNames"];
+            /**
+             * Params
+             * @description Becomes `uniform float <name>` in the shader, 1:1
+             */
+            params: {
+                [key: string]: number;
+            };
+            /**
+             * Shader
+             * @description File name in packages/shaders/effects/
+             */
+            shader: string;
+            source: components["schemas"]["EffectSource"];
+        };
+        /** EffectCatalog */
+        EffectCatalog: {
+            /** Effects */
+            effects: components["schemas"]["Effect"][];
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: 1;
+        };
+        /** EffectSource */
+        EffectSource: {
+            /**
+             * Estimated
+             * @description Parameters whose value is not documented but estimated [E]
+             */
+            estimated?: string[] | null;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "wmm2x-xml";
+            /** Ref */
+            ref: string;
         };
         /**
          * ErrorCode
@@ -1077,6 +1138,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_effects_api_catalog_effects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectCatalog"];
+                };
+            };
+        };
+    };
     list_titles_api_catalog_titles_get: {
         parameters: {
             query?: never;

@@ -301,6 +301,107 @@
         "title": "Body_upload_media_api_media_post",
         "type": "object"
       },
+      "Effect": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "names": {
+            "$ref": "#/components/schemas/TransitionNames"
+          },
+          "params": {
+            "description": "Becomes `uniform float <name>` in the shader, 1:1",
+            "patternProperties": {
+              "^[a-z][A-Za-z0-9]*$": {
+                "type": "number"
+              }
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "shader": {
+            "description": "File name in packages/shaders/effects/",
+            "pattern": "^[a-z0-9-]+\\.glsl$",
+            "title": "Shader",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/EffectSource"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "shader",
+          "params",
+          "source"
+        ],
+        "title": "Effect",
+        "type": "object"
+      },
+      "EffectCatalog": {
+        "additionalProperties": false,
+        "properties": {
+          "effects": {
+            "items": {
+              "$ref": "#/components/schemas/Effect"
+            },
+            "minItems": 1,
+            "title": "Effects",
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "effects"
+        ],
+        "title": "EffectCatalog",
+        "type": "object"
+      },
+      "EffectSource": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Parameters whose value is not documented but estimated [E]",
+            "title": "Estimated"
+          },
+          "kind": {
+            "const": "wmm2x-xml",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "title": "EffectSource",
+        "type": "object"
+      },
       "ErrorCode": {
         "description": "All stable error codes; part of the API contract as an OpenAPI enum (design.md D4).\n\nNever rename a code, add a new one instead.",
         "enum": [
@@ -1616,6 +1717,27 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/catalog/effects": {
+      "get": {
+        "operationId": "list_effects_api_catalog_effects_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Effects",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/catalog/titles": {
       "get": {
         "operationId": "list_titles_api_catalog_titles_get",

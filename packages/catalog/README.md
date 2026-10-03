@@ -15,9 +15,9 @@ The **single source of truth** for transitions, effects (later also titles).
   [the research notes](../../docs/research/movie-maker-reference.md)).
   `estimated` lists values that cannot be verified against the original
   (**[E]**, estimated). They can be re-tuned here without any code change.
-- The backend loads and validates the catalog at startup and serves it at
-  `GET /api/catalog/transitions`. The reference XML files themselves are never
-  served or shipped.
+- The backend loads and validates both catalogs at startup and serves them at
+  `GET /api/catalog/transitions` and `GET /api/catalog/effects`. The reference
+  XML files themselves are never served or shipped.
 - `names` holds the display name per UI language; both `de` and `en` are
   required (e.g. `{ "de": "Überblenden", "en": "Fade" }`). A missing name stops
   the backend at startup.
