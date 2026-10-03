@@ -332,7 +332,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
     function restore(entry: HistoryEntry): void {
       const { selection, musicSelection } = get();
       const stillSlide = selection && entry.slides.some((s) => s.id === selection.slideId);
-      const stillMusic = musicSelection !== null && entry.music.some((c) => c.id === musicSelection);
+      const stillMusic =
+        musicSelection !== null && entry.music.some((c) => c.id === musicSelection);
       set({
         slides: entry.slides,
         music: entry.music,
@@ -726,14 +727,20 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         const { undoStack, slides, music } = get();
         const top = undoStack[undoStack.length - 1];
         if (!top) return;
-        set({ undoStack: undoStack.slice(0, -1), redoStack: [...get().redoStack, { slides, music }] });
+        set({
+          undoStack: undoStack.slice(0, -1),
+          redoStack: [...get().redoStack, { slides, music }],
+        });
         restore(top);
       },
       redo() {
         const { redoStack, slides, music } = get();
         const top = redoStack[redoStack.length - 1];
         if (!top) return;
-        set({ redoStack: redoStack.slice(0, -1), undoStack: [...get().undoStack, { slides, music }] });
+        set({
+          redoStack: redoStack.slice(0, -1),
+          undoStack: [...get().undoStack, { slides, music }],
+        });
         restore(top);
       },
 
