@@ -1,11 +1,13 @@
-"""Prüft die geteilten Shader (Aufruf: `pixi run check-shaders`).
+"""Checks the shared shaders (invocation: `pixi run check-shaders`).
 
-1. Jedes Übergangsprogramm (prelude + transitions/<id>.glsl + epilogue) und der
-   Vertex-Shader kompilieren mit glslangValidator als GLSL ES 3.00.
-2. Katalog und Shader passen zusammen: jede Shader-Datei existiert, jeder
-   Katalog-Parameter ist als `uniform float <name>;` deklariert und umgekehrt.
+1. Every transition program (prelude + transitions/<id>.glsl + epilogue), the
+   vertex shader and the title-vertex/title-fragment program (for titles and
+   credits, independent of the transition contract) compile with
+   glslangValidator as GLSL ES 3.00.
+2. Catalog and shaders match: every shader file exists, every catalog
+   parameter is declared as `uniform float <name>;` and vice versa.
 
-Exit-Code != 0 bei jedem Fehler.
+Exit code != 0 on any error.
 """
 
 import json
@@ -44,30 +46,42 @@ def main() -> int:
         problems += validate(
             (SHADERS / "vertex.glsl").read_text(encoding="utf-8"), "vert", "vertex", tmp
         )
+        problems += validate(
+            (SHADERS / "title-vertex.glsl").read_text(encoding="utf-8"),
+            "vert",
+            "title-vertex",
+            tmp,
+        )
+        problems += validate(
+            (SHADERS / "title-fragment.glsl").read_text(encoding="utf-8"),
+            "frag",
+            "title-fragment",
+            tmp,
+        )
         for entry in catalog:
             shader = SHADERS / "transitions" / entry["shader"]
             referenced.add(shader.name)
             if not shader.is_file():
-                problems.append(f"{entry['id']}: Shader fehlt: {shader.relative_to(ROOT)}")
+                problems.append(f"{entry['id']}: shader missing: {shader.relative_to(ROOT)}")
                 continue
             body = shader.read_text(encoding="utf-8")
             declared = set(UNIFORM_RE.findall(body))
             expected = set(entry["params"])
             if declared != expected:
                 problems.append(
-                    f"{entry['id']}: Uniforms {sorted(declared)} passen nicht zu "
-                    f"Katalog-Parametern {sorted(expected)}"
+                    f"{entry['id']}: uniforms {sorted(declared)} do not match "
+                    f"catalog parameters {sorted(expected)}"
                 )
             problems += validate(prelude + "\n" + body + "\n" + epilogue, "frag", entry["id"], tmp)
 
     for orphan in sorted(p.name for p in (SHADERS / "transitions").glob("*.glsl")):
         if orphan not in referenced:
-            problems.append(f"{orphan}: Shader ohne Katalogeintrag")
+            problems.append(f"{orphan}: shader without catalog entry")
 
     for problem in problems:
-        print(f"FEHLER {problem}", file=sys.stderr)
+        print(f"ERROR {problem}", file=sys.stderr)
     if not problems:
-        print(f"OK  {len(catalog)} Übergänge + Vertex-Shader")
+        print(f"OK  {len(catalog)} transitions + vertex shader")
     return 1 if problems else 0
 
 

@@ -37,8 +37,29 @@ Rules:
   (DV/NTSC width).
 - Add new parameters to `packages/catalog/transitions.json` first.
 
+## Title shaders
+
+`title-vertex.glsl` + `title-fragment.glsl` (design.md D1–D3 of
+`add-titles-and-credits`): a second, self-contained program for Canvas2D-
+rasterised title/credits textures (`@mmy/fonts`). Not a transition, so not
+part of the `transitions/<id>.glsl` contract above:
+
+| Uniform | Meaning |
+|---|---|
+| `uTranslate` (`vec2`) | Clip-space offset of the quad's centre; 0 = centred, ±1 = one half-frame |
+| `uScale` (`vec2`) | 1.0 = natural (frame-filling) size |
+| `uTitle` (`sampler2D`) | The rasterised title texture |
+
+Position and zoom per phase (Entrance/Main/Exit, each a start→end pair) are
+computed by the renderer and fed in as `uTranslate`/`uScale` per draw — see
+`apps/web/src/render/titlePhase.ts`. Whether the draw is opaque (a
+freestanding title element) or alpha-blended over the already-drawn frame
+(an overlay title) is controlled by `gl.BLEND` state at draw time, not by
+this shader (design.md D2).
+
 ## Checks
 
-`pixi run check-shaders` assembles every program, validates it with
-`glslangValidator` (ES 3.00) and cross-checks the parameters against the
-catalog. The task is part of `pixi run check`.
+`pixi run check-shaders` assembles every transition program, validates it
+with `glslangValidator` (ES 3.00) and cross-checks the parameters against
+the catalog; it also compiles the title vertex/fragment shaders on their
+own. The task is part of `pixi run check`.

@@ -6,14 +6,26 @@ import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 const SLIDES: Slide[] = [
-  { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
-  { id: "s2", mediaId: "b", duration: 5, transitionIn: { transitionId: "fade", duration: 1.25 } },
-  { id: "s3", mediaId: "a", duration: 5, transitionIn: { transitionId: "fade", duration: 1.25 } },
+  { kind: "image", id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+  {
+    kind: "image",
+    id: "s2",
+    mediaId: "b",
+    duration: 5,
+    transitionIn: { transitionId: "fade", duration: 1.25 },
+  },
+  {
+    kind: "image",
+    id: "s3",
+    mediaId: "a",
+    duration: 5,
+    transitionIn: { transitionId: "fade", duration: 1.25 },
+  },
 ];
 
 async function setup(slides: Slide[] = SLIDES) {
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 1 as const, slides })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   const monitor = screen.getByRole("region", { name: "Vorschau" });
@@ -23,7 +35,7 @@ async function setup(slides: Slide[] = SLIDES) {
 const time = (monitor: HTMLElement) => within(monitor).getByRole("status", { name: "Zeit" });
 
 describe("Player", () => {
-  it("deaktiviert die Steuerung bei leerem Bildstreifen", async () => {
+  it("disables the controls for an empty filmstrip", async () => {
     const { monitor } = await setup([]);
     for (const name of ["Wiedergabe", "Stopp", "Vorheriges Bild", "Nächstes Bild"]) {
       expect(within(monitor).getByRole("button", { name })).toBeDisabled();
@@ -32,7 +44,7 @@ describe("Player", () => {
     expect(time(monitor)).toHaveTextContent("0:00:00,00 / 0:00:00,00");
   });
 
-  it("Spec: zeigt die Gesamtdauer 0:00:12,50 und schaltet Wiedergabe/Pause um", async () => {
+  it("Spec: shows the total duration 0:00:12,50 and toggles play/pause", async () => {
     const user = userEvent.setup();
     const { monitor, store } = await setup();
     expect(time(monitor)).toHaveTextContent("0:00:00,00 / 0:00:12,50");
@@ -42,7 +54,7 @@ describe("Player", () => {
     expect(store.getState().playback.playing).toBe(false);
   });
 
-  it("Nächstes Bild, Stopp und Suchleiste bewegen die Zeitanzeige", async () => {
+  it("next image, stop and the seek bar move the time display", async () => {
     const user = userEvent.setup();
     const { monitor } = await setup();
     await user.click(within(monitor).getByRole("button", { name: "Nächstes Bild" }));
@@ -55,7 +67,7 @@ describe("Player", () => {
     expect(time(monitor)).toHaveTextContent("0:00:00,00 / 0:00:12,50");
   });
 
-  it("Leertaste schaltet um – auch auf einer Schaltfläche nur einmal –, aber nicht im Eingabefeld", async () => {
+  it("space bar toggles (only once, even on a button) but not in an input field", async () => {
     const user = userEvent.setup();
     const { monitor, store } = await setup();
     await user.keyboard(" ");
@@ -65,17 +77,17 @@ describe("Player", () => {
     within(monitor).getByRole("button", { name: "Nächstes Bild" }).focus();
     await user.keyboard(" ");
     expect(store.getState().playback.playing).toBe(true);
-    expect(store.getState().playback.time).toBeLessThan(1); // kein „Klick“ auf Nächstes Bild
+    expect(store.getState().playback.time).toBeLessThan(1); // no "click" on next image
     act(() => store.getState().pause());
 
-    // Eingabefeld im Dauer-Dialog: Leertaste bleibt beim Feld.
+    // Input field in the duration dialog: the space bar stays with the field.
     await user.dblClick(screen.getByRole("button", { name: /^Bild 2:/ }));
     const input = screen.getByRole("textbox", { name: "Bilddauer (Sekunden):" });
     await user.type(input, " ");
     expect(store.getState().playback.playing).toBe(false);
   });
 
-  it("Spec: Auswahl im Storyboard bei gestoppter Wiedergabe zeigt das Bild an seiner Startzeit", async () => {
+  it("Spec: selecting in the storyboard while stopped shows the image at its start time", async () => {
     const user = userEvent.setup();
     const { monitor } = await setup();
     await user.click(screen.getByRole("button", { name: /^Bild 3:/ }));
@@ -83,7 +95,7 @@ describe("Player", () => {
     expect(within(monitor).getByRole("slider", { name: "Suchleiste" })).toHaveValue("8.75");
   });
 
-  it("hebt während der Wiedergabe das sichtbare Bild im Storyboard hervor", async () => {
+  it("highlights the visible image in the storyboard during playback", async () => {
     const { store } = await setup();
     const tile2 = screen.getByRole("button", { name: /^Bild 2:/ });
     expect(tile2).not.toHaveAttribute("aria-current");
@@ -96,7 +108,7 @@ describe("Player", () => {
     expect(tile2).not.toHaveAttribute("aria-current");
   });
 
-  it("Übergangsdemo startet beim Auswählen einer Katalogkachel und endet mit Wiedergabe", async () => {
+  it("transition demo starts when a catalog tile is selected and ends on playback", async () => {
     const user = userEvent.setup();
     const { store, monitor } = await setup();
     act(() => store.getState().setCollection("transitions"));
@@ -105,5 +117,34 @@ describe("Player", () => {
     await user.click(within(monitor).getByRole("button", { name: "Wiedergabe" }));
     expect(store.getState().demo).toBeNull();
     expect(store.getState().playback.playing).toBe(true);
+  });
+
+  it("Spec: shows the time in English as 0:00:12.50", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const view = renderApp(
+      mockApi({
+        getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides: SLIDES, music: [] })),
+      }),
+    );
+    await act(() => view.ready);
+    const monitor = screen.getByRole("region", { name: "Preview" });
+    const display = within(monitor).getByRole("status", { name: "Time" });
+    expect(display).toHaveTextContent("0:00:00.00 / 0:00:12.50");
+    for (const name of ["Play", "Stop", "Previous picture", "Next picture"]) {
+      expect(within(monitor).getByRole("button", { name })).toBeEnabled();
+    }
+    fireEvent.change(within(monitor).getByRole("slider", { name: "Seek bar" }), {
+      target: { value: "4.38" },
+    });
+    expect(display).toHaveTextContent("0:00:04.38 / 0:00:12.50");
+  });
+
+  it("switches the time display language without reloading", async () => {
+    const { monitor, store } = await setup();
+    expect(time(monitor)).toHaveTextContent("0:00:00,00 / 0:00:12,50");
+    act(() => store.getState().setLocale("en"));
+    expect(within(monitor).getByRole("status", { name: "Time" })).toHaveTextContent(
+      "0:00:00.00 / 0:00:12.50",
+    );
   });
 });

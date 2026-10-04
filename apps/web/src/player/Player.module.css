@@ -22,3 +22,71 @@
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
+
+/* "Sample: <name>" label over the monitor during a transition demo (design.md D7). */
+.sample {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  max-width: calc(100% - 12px);
+  margin: 0;
+  padding: 1px 6px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-face);
+  color: var(--y2k-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/*
+ * Monitor container (add-mobile-layout design.md D12): without layout of its
+ * own in the window; in full screen it covers the viewport (Fullscreen API or
+ * the overlay fallback).
+ */
+.root {
+  display: contents;
+}
+
+.root:fullscreen,
+.root[data-fullscreen="native"],
+.root[data-fullscreen="overlay"] {
+  display: flex;
+  flex-direction: column;
+  background: var(--y2k-monitor-screen);
+}
+
+.root[data-fullscreen="overlay"] {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  padding: var(--y2k-safe-top) var(--y2k-safe-right) var(--y2k-safe-bottom) var(--y2k-safe-left);
+}
+
+.root[data-fullscreen="native"] > *,
+.root[data-fullscreen="overlay"] > * {
+  flex: 1;
+}
+
+.root [data-monitor-controls] {
+  transition: opacity 200ms;
+}
+
+.root[data-controls="hidden"] [data-monitor-controls] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root [data-monitor-controls] {
+    transition: none;
+  }
+}
+
+/* Swipe and double tap on the picture; vertical panning stays with the page. */
+.gestures {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y;
+}

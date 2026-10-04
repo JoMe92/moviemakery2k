@@ -1,0 +1,9 @@
+[Unit]
+Description=Nogging mechanical Beads to OpenSpec sync (moviemakery2k)
+After=default.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/jome/src/moviemakery2k
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/jome/src/moviemakery2k/scripts/nogg sync

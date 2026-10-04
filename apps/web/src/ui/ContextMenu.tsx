@@ -1,35 +1,90 @@
 import { type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import styles from "./ContextMenu.module.css";
+import { Sheet } from "./Sheet";
 
 export interface ContextMenuItem {
   label: string;
   onSelect: () => void;
   disabled?: boolean;
+  /** Toggle item with a check mark (`menuitemcheckbox`); undefined = plain item. */
+  checked?: boolean;
 }
 
+const ITEM_SELECTOR =
+  '[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]:not([aria-disabled="true"])';
+
 export interface ContextMenuProps {
-  /** Zugänglicher Name des Menüs. */
+  /** Accessible name of the menu. */
   label: string;
-  /** Ankerpunkt in Viewport-Koordinaten (z. B. clientX/clientY des Rechtsklicks). */
+  /** Anchor point in viewport coordinates (e.g. clientX/clientY of the right-click). */
   x: number;
   y: number;
   items: readonly ContextMenuItem[];
-  /** Escape, Tab, Klick daneben oder nach Auswahl; der Aufrufer blendet das Menü aus. */
+  /** Escape, Tab, click outside or after a selection; the caller hides the menu. */
   onClose: () => void;
 }
 
 /**
- * Kleines Y2K-Kontextmenü. Fokus springt beim Öffnen auf den ersten Eintrag,
- * Pfeiltasten/Pos1/Ende bewegen ihn, Escape schließt; danach kehrt der Fokus
- * zum auslösenden Element zurück.
+ * Context menu of an element. With touch operation (coarse pointer or compact
+ * layout) it appears as an action sheet with the same entries and logic
+ * (add-mobile-layout design.md D6), otherwise as a small popup at the pointer.
  */
-export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
+export function ContextMenu(props: ContextMenuProps) {
+  const touch = isTouchLayout(useLayoutMode());
+  return touch ? <ActionSheet {...props} /> : <PopupMenu {...props} />;
+}
+
+function ActionSheet({ label, items, onClose }: ContextMenuProps) {
+  return (
+    <Sheet open title={label} onClose={onClose}>
+      <div role="menu" aria-label={label} className={styles.sheetMenu}>
+        {items.map((item) => {
+          const common = {
+            type: "button",
+            className: styles.sheetItem,
+            "aria-disabled": item.disabled || undefined,
+            onClick: () => {
+              if (item.disabled) return;
+              onClose();
+              item.onSelect();
+            },
+          } as const;
+          return item.checked === undefined ? (
+            <button key={item.label} role="menuitem" {...common}>
+              {item.label}
+            </button>
+          ) : (
+            <button
+              key={item.label}
+              role="menuitemcheckbox"
+              aria-checked={item.checked}
+              {...common}
+            >
+              <span aria-hidden="true" className={styles.check}>
+                {item.checked ? "✓" : ""}
+              </span>
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * Small Y2K context menu. Focus jumps to the first item on open,
+ * arrow keys/Home/End move it, Escape closes; afterwards focus returns
+ * to the triggering element.
+ */
+function PopupMenu({ label, x, y, items, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const [pos, setPos] = useState({ left: x, top: y });
 
-  // Im Viewport halten.
+  // Keep inside the viewport.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -41,9 +96,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
 
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    ref.current
-      ?.querySelector<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])')
-      ?.focus();
+    ref.current?.querySelector<HTMLElement>(ITEM_SELECTOR)?.focus();
 
     const onPointerDown = (event: PointerEvent | MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) onCloseRef.current();
@@ -56,7 +109,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
       document.removeEventListener("mousedown", onPointerDown, true);
       window.removeEventListener("blur", onBlurWindow);
       window.removeEventListener("resize", onBlurWindow);
-      // Fokus nur zurückgeben, wenn er noch im Menü steht (nicht, wenn z. B. ein Dialog ihn übernommen hat).
+      // Return focus only if it is still in the menu (not if, e.g., a dialog has taken it).
       const active = document.activeElement;
       if (
         opener?.isConnected &&
@@ -68,10 +121,7 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
   }, []);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const menuItems = Array.from(
-      ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])') ??
-        [],
-    );
+    const menuItems = Array.from(ref.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []);
     const index = menuItems.indexOf(document.activeElement as HTMLElement);
     const focusAt = (i: number) => menuItems[(i + menuItems.length) % menuItems.length]?.focus();
     switch (event.key) {
@@ -110,23 +160,28 @@ export function ContextMenu({ label, x, y, items, onClose }: ContextMenuProps) {
       onKeyDown={onKeyDown}
       onContextMenu={(event) => event.preventDefault()}
     >
-      {items.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          role="menuitem"
-          tabIndex={-1}
-          className={styles.item}
-          aria-disabled={item.disabled || undefined}
-          onClick={() => {
+      {items.map((item) => {
+        const common = {
+          type: "button",
+          tabIndex: -1,
+          className: styles.item,
+          "aria-disabled": item.disabled || undefined,
+          onClick: () => {
             if (item.disabled) return;
             onClose();
             item.onSelect();
-          }}
-        >
-          {item.label}
-        </button>
-      ))}
+          },
+        } as const;
+        return item.checked === undefined ? (
+          <button key={item.label} role="menuitem" {...common}>
+            {item.label}
+          </button>
+        ) : (
+          <button key={item.label} role="menuitemcheckbox" aria-checked={item.checked} {...common}>
+            {item.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

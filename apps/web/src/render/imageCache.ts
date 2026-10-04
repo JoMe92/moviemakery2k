@@ -1,7 +1,7 @@
 /**
- * Bilder für die Vorschau laden (gleiche Herkunft, kein crossOrigin nötig).
- * Ein Promise je URL, damit Storyboard und Player dasselbe Bild nur einmal
- * dekodieren. Fehlgeschlagene Ladevorgänge werden nicht gecacht.
+ * Load images for the preview (same origin, no crossOrigin needed).
+ * One promise per URL so the storyboard and player decode the same image
+ * only once. Failed loads are not cached.
  */
 import { useEffect, useState } from "react";
 import type { ImageSource } from "./Renderer";
@@ -14,7 +14,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.decoding = "async";
     img.src = url;
-    // decode() fehlt in manchen Umgebungen (jsdom): dann auf load/error warten.
+    // decode() is missing in some environments (jsdom): wait for load/error instead.
     const decoded =
       typeof img.decode === "function"
         ? img.decode()
@@ -34,12 +34,12 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   return pending;
 }
 
-/** Nur für Tests/Aufräumen. */
+/** Tests/cleanup only. */
 export function clearImageCache(): void {
   cache.clear();
 }
 
-/** Lädt `url` und liefert das dekodierte Bild, solange es nicht da ist `undefined`. */
+/** Loads `url` and returns the decoded image; `undefined` until it is available. */
 export function useImage(url: string | null | undefined): ImageSource | undefined {
   const [loaded, setLoaded] = useState<{ url: string; image: ImageSource } | null>(null);
   useEffect(() => {
@@ -50,7 +50,7 @@ export function useImage(url: string | null | undefined): ImageSource | undefine
         if (active) setLoaded({ url, image });
       },
       () => {
-        // Kein Bild: der Monitor bleibt an dieser Stelle schwarz.
+        // No image: the monitor stays black at this point.
       },
     );
     return () => {

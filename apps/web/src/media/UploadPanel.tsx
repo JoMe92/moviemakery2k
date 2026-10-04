@@ -1,13 +1,16 @@
 import { useEffect } from "react";
+import { translateError } from "../i18n/errors";
+import { useT } from "../i18n/useT";
 import { useAppStore } from "../store/useAppStore";
 import { Button } from "../ui/Button";
 import styles from "./UploadPanel.module.css";
 
 /**
- * Fortschritt und Fehler des laufenden Imports unten in der Sammlung.
- * Fehler bleiben bis „Schließen“ stehen; ein fehlerfreier Import räumt sich selbst ab.
+ * Progress and errors of the running import at the bottom of the collection.
+ * Errors stay until "Close"; an error-free import clears itself.
  */
 export function UploadPanel() {
+  const { t, locale } = useT();
   const uploads = useAppStore((s) => s.uploads);
   const clearUploads = useAppStore((s) => s.clearUploads);
 
@@ -28,13 +31,11 @@ export function UploadPanel() {
     <div className={styles.panel}>
       {active ? (
         <div className={styles.progress}>
-          <span aria-live="polite">
-            Importiere {current} von {total} …
-          </span>
+          <span aria-live="polite">{t("upload.progress", { current, total })}</span>
           <div
             className={styles.bar}
             role="progressbar"
-            aria-label="Importfortschritt"
+            aria-label={t("upload.progressLabel")}
             aria-valuemin={0}
             aria-valuemax={total}
             aria-valuenow={finished}
@@ -46,17 +47,18 @@ export function UploadPanel() {
       {errors.length > 0 ? (
         <div className={styles.errors} role="alert">
           <div className={styles.errorHead}>
-            <strong>
-              {errors.length === 1
-                ? "1 Datei wurde nicht importiert:"
-                : `${errors.length} Dateien wurden nicht importiert:`}
-            </strong>
-            {active ? null : <Button onClick={clearUploads}>Schließen</Button>}
+            <strong>{t("upload.failed", { count: errors.length })}</strong>
+            {active ? null : <Button onClick={clearUploads}>{t("common.close")}</Button>}
           </div>
           <ul className={styles.list}>
             {errors.map((u) => (
               <li key={u.key}>
-                <span className={styles.filename}>{u.filename}</span>: {u.message ?? "Fehler"}
+                <span className={styles.filename}>{u.filename}</span>:{" "}
+                {u.offline
+                  ? t("upload.offline")
+                  : u.failure
+                    ? translateError(u.failure, locale)
+                    : t("upload.unknownError")}
               </li>
             ))}
           </ul>

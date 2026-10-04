@@ -1,7 +1,7 @@
-"""E2E-Infrastruktur: echtes Backend + gebaute Web-App, Chromium über Playwright.
+"""E2E infrastructure: real backend + built web app, Chromium via Playwright.
 
-Aufruf über `pixi run test-e2e` (baut die Web-App vorher). Jeder Test bekommt ein
-eigenes Datenverzeichnis und einen eigenen Port.
+Run through `pixi run test-e2e` (builds the web app first). Every test gets its
+own data directory and its own port.
 """
 
 import os
@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from mmy_backend.ffmpeg import ffmpeg_binary
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,17 +30,27 @@ def _free_port() -> int:
 
 @pytest.fixture(scope="session")
 def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
-    # WebGL2 ohne GPU: SwiftShader (design.md Risiken).
+    # WebGL2 without a GPU: SwiftShader (design.md, risks).
     return {
         **browser_type_launch_args,
-        "args": ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
+        "args": [
+            "--use-angle=swiftshader",
+            "--enable-unsafe-swiftshader",
+            "--ignore-gpu-blocklist",
+        ],
     }
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
+    # The UI follows the browser language; the flows assert the German UI.
+    return {**browser_context_args, "locale": "de-DE"}
 
 
 @pytest.fixture
 def server(tmp_path: Path) -> Iterator[str]:
     if not (WEB_DIST / "index.html").is_file():
-        pytest.fail("apps/web/dist fehlt – bitte über `pixi run test-e2e` starten (baut vorher).")
+        pytest.fail("apps/web/dist is missing - run via `pixi run test-e2e` (builds it first).")
     port = _free_port()
     env = {
         **os.environ,
@@ -61,7 +72,7 @@ def server(tmp_path: Path) -> Iterator[str]:
             except OSError:
                 time.sleep(0.1)
         else:
-            pytest.fail("Backend ist nicht gestartet")
+            pytest.fail("Backend did not start")
         yield base
     finally:
         proc.terminate()
@@ -70,7 +81,7 @@ def server(tmp_path: Path) -> Iterator[str]:
 
 @pytest.fixture
 def images(tmp_path: Path) -> dict[str, Path]:
-    """Einfarbige Testbilder (eins hochkant)."""
+    """Single-colour test images (one in portrait orientation)."""
     specs = {
         "rot.png": ((640, 480), (255, 0, 0)),
         "gruen.png": ((640, 480), (0, 255, 0)),
@@ -85,3 +96,31 @@ def images(tmp_path: Path) -> dict[str, Path]:
         Image.new("RGB", size, color).save(path)
         out[name] = path
     return out
+
+
+VIDEO_SECONDS = 105.0
+"""Matches the spec's own example (media-library "Video importieren"): 1:45."""
+
+
+@pytest.fixture
+def video(tmp_path: Path) -> Path:
+    """A tiny but valid H.264/MP4 clip with a known duration (1:45, add-video-import)."""
+    binary = ffmpeg_binary()
+    if binary is None:
+        pytest.fail("ffmpeg not found (Pixi environment or MMY_FFMPEG)")
+    folder = tmp_path / "video"
+    folder.mkdir()
+    path = folder / "urlaub.mp4"
+    subprocess.run(
+        [
+            binary,
+            *("-v", "error", "-y", "-f", "lavfi"),
+            "-i",
+            f"color=c=orange:size=640x480:rate=1:duration={VIDEO_SECONDS}",
+            *("-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"),
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return path

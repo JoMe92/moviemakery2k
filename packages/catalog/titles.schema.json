@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JoMe92/moviemakery2k/packages/catalog/titles.schema.json",
+  "title": "moviemakerY2K – title and credits catalog",
+  "type": "object",
+  "required": ["schemaVersion", "titles"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "titles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/title" }
+    }
+  },
+  "$defs": {
+    "transform": {
+      "description": "Position/zoom in title-vertex.glsl's clip-space convention (design.md D3): x/y 0 = centred, ±1 = one half-frame; scale 1.0 = natural size.",
+      "type": "object",
+      "required": ["x", "y", "scale"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "scale": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "phase": {
+      "description": "One Entrance/Main/Exit phase (design.md D3-D4): a fade (alpha 0↔1), a static hold, or a position/zoom move between two transforms.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["effect"],
+          "additionalProperties": false,
+          "properties": { "effect": { "const": "fade" } }
+        },
+        {
+          "type": "object",
+          "required": ["effect"],
+          "additionalProperties": false,
+          "properties": { "effect": { "const": "static" } }
+        },
+        {
+          "type": "object",
+          "required": ["effect", "start", "end"],
+          "additionalProperties": false,
+          "properties": {
+            "effect": { "const": "position" },
+            "start": { "$ref": "#/$defs/transform" },
+            "end": { "$ref": "#/$defs/transform" }
+          }
+        }
+      ]
+    },
+    "title": {
+      "type": "object",
+      "required": ["id", "names", "layout", "anchor", "fontScale", "phases", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "names": {
+          "description": "Display name per UI language; both are required",
+          "type": "object",
+          "required": ["de", "en"],
+          "additionalProperties": false,
+          "properties": {
+            "de": { "type": "string", "minLength": 1 },
+            "en": { "type": "string", "minLength": 1 }
+          }
+        },
+        "layout": {
+          "description": "One line, two lines, or a credits list of entries (design.md D4/D5)",
+          "enum": ["one-line", "two-line", "credits"]
+        },
+        "anchor": {
+          "description": "Resting transform while a phase does not move it itself (e.g. Subtitle's bottom placement)",
+          "$ref": "#/$defs/transform"
+        },
+        "fontScale": {
+          "description": "Relative to the style's base text size; 1.0 = normal, smaller for e.g. Subtitle",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "phases": {
+          "type": "object",
+          "required": ["entrance", "main", "exit"],
+          "additionalProperties": false,
+          "properties": {
+            "entrance": { "$ref": "#/$defs/phase" },
+            "main": { "$ref": "#/$defs/phase" },
+            "exit": { "$ref": "#/$defs/phase" }
+          }
+        },
+        "source": {
+          "type": "object",
+          "required": ["kind", "ref"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["wmm2x-xml"] },
+            "ref": { "type": "string", "minLength": 1 },
+            "estimated": {
+              "description": "Fields whose value is not documented but estimated [E]",
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

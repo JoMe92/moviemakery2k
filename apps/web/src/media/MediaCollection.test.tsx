@@ -1,13 +1,13 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../lib/apiClient";
 import { mediaItem, mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
-import { deleteQuestion, MEDIA_EMPTY_HINT } from "./MediaCollection";
 
 const file = (name: string, type = "image/jpeg") => new File(["x"], name, { type });
 
-/** Upload-Mock, der den Dateinamen als Anzeigenamen übernimmt. */
+/** Upload mock that uses the file name as the display name. */
 const uploaded = (f: File) => ({
   ok: true as const,
   filename: f.name,
@@ -34,8 +34,8 @@ function tileNames(): string[] {
     .map((b) => b.getAttribute("aria-label") ?? "");
 }
 
-describe("Mediensammlung", () => {
-  it("zeigt geladene Medien als Kacheln in Importreihenfolge mit Vorschaubild", async () => {
+describe("media collection", () => {
+  it("shows loaded media as tiles in import order with a thumbnail", async () => {
     const { ready } = renderApp();
     await act(() => ready);
     expect(tileNames()).toEqual(["a.jpg", "b.jpg"]);
@@ -44,13 +44,17 @@ describe("Mediensammlung", () => {
     expect(img).toHaveAttribute("loading", "lazy");
   });
 
-  it("zeigt einen Hinweis bei leerer Sammlung", async () => {
+  it("shows a hint for an empty collection", async () => {
     const { ready } = renderApp(importApi());
     await act(() => ready);
-    expect(within(collection()).getByText(MEDIA_EMPTY_HINT)).toBeInTheDocument();
+    expect(
+      within(collection()).getByText(
+        "Diese Sammlung ist leer. Wählen Sie „Bilder importieren“ oder ziehen Sie Bilder hierher.",
+      ),
+    ).toBeInTheDocument();
   });
 
-  it("importiert per Dateidialog über „Bilder importieren“ und zeigt neue Kacheln", async () => {
+  it("imports via the file dialog from “Import pictures” and shows new tiles", async () => {
     const user = userEvent.setup();
     const { ready, store, api } = renderApp(importApi());
     await act(() => ready);
@@ -65,12 +69,12 @@ describe("Mediensammlung", () => {
     await waitFor(() => expect(tileNames()).toEqual(["eins.jpg", "zwei.jpg", "drei.jpg"]));
     expect(store.getState().collection).toBe("media");
     expect(api.uploadMedia).toHaveBeenCalledTimes(3);
-    // Fehlerfreier Import räumt den Fortschritt ab.
+    // An error-free import clears the progress.
     await waitFor(() => expect(screen.queryByRole("progressbar")).not.toBeInTheDocument());
     expect(store.getState().uploads).toEqual([]);
   });
 
-  it("öffnet den Dateidialog auch über requestImport() (Datei-Menü)", async () => {
+  it("also opens the file dialog via requestImport() (File menu)", async () => {
     const { ready, store } = renderApp();
     await act(() => ready);
     const clicked = vi.spyOn(screen.getByTestId("media-import-input"), "click");
@@ -78,7 +82,7 @@ describe("Mediensammlung", () => {
     expect(clicked).toHaveBeenCalledTimes(1);
   });
 
-  it("zeigt den Fortschritt während des Uploads", async () => {
+  it("shows the progress during the upload", async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => {
       release = r;
@@ -102,13 +106,15 @@ describe("Mediensammlung", () => {
     await waitFor(() => expect(tileNames()).toEqual(["1.jpg", "2.jpg"]));
   });
 
-  it("meldet Teilfehler je Datei und importiert die übrigen", async () => {
+  it("reports partial failures per file and imports the rest", async () => {
     const api = importApi({
       uploadMedia: vi.fn(async (f: File) =>
         f.name === "kaputt.jpg"
           ? {
               ok: false as const,
-              error: "unsupported" as const,
+              // A code outside the contract: the message is shown as-is.
+              errorCode: "unsupported" as never,
+              errorParams: {},
               filename: f.name,
               message: "Kein unterstütztes Bild.",
             }
@@ -136,7 +142,7 @@ describe("Mediensammlung", () => {
     expect(store.getState().uploads).toEqual([]);
   });
 
-  it("importiert per Drop von Dateien und hebt den Bereich beim Ziehen hervor", async () => {
+  it("imports by dropping files and highlights the area while dragging", async () => {
     const { ready, api } = renderApp(importApi());
     await act(() => ready);
     const pane = collection();
@@ -153,7 +159,7 @@ describe("Mediensammlung", () => {
     expect(api.uploadMedia).toHaveBeenCalledTimes(2);
   });
 
-  it("ignoriert Drags ohne Dateien (z. B. innerhalb der App)", async () => {
+  it("ignores drags without files (e.g. within the app)", async () => {
     const { ready, api } = renderApp();
     await act(() => ready);
     const pane = collection();
@@ -164,7 +170,7 @@ describe("Mediensammlung", () => {
     expect(api.uploadMedia).not.toHaveBeenCalled();
   });
 
-  it("löscht nach Bestätigung über die Entf-Taste", async () => {
+  it("deletes after confirmation via the Delete key", async () => {
     const user = userEvent.setup();
     const { ready, api } = renderApp();
     await act(() => ready);
@@ -173,7 +179,9 @@ describe("Mediensammlung", () => {
     await user.keyboard("{Delete}");
 
     const dialog = screen.getByRole("dialog", { name: "Bild löschen" });
-    expect(dialog).toHaveTextContent(deleteQuestion("a.jpg"));
+    expect(dialog).toHaveTextContent(
+      "Möchten Sie „a.jpg“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Ja" }));
 
     await waitFor(() => expect(tileNames()).toEqual(["b.jpg"]));
@@ -181,7 +189,7 @@ describe("Mediensammlung", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("behält das Bild, wenn die Rückfrage verneint wird", async () => {
+  it("keeps the picture when the confirmation is declined", async () => {
     const user = userEvent.setup();
     const { ready, api } = renderApp();
     await act(() => ready);
@@ -193,12 +201,15 @@ describe("Mediensammlung", () => {
     expect(tileNames()).toEqual(["a.jpg", "b.jpg"]);
   });
 
-  it("entfernt beim Löschen auch die Storyboard-Elemente (Kaskade aus dem Backend)", async () => {
+  it("also removes the storyboard items on delete (cascade from the backend)", async () => {
     const user = userEvent.setup();
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 1 as const,
-        slides: [{ id: "s3", mediaId: "b", duration: 4, transitionIn: null }],
+        schemaVersion: 3 as const,
+        music: [],
+        slides: [
+          { kind: "image" as const, id: "s3", mediaId: "b", duration: 4, transitionIn: null },
+        ],
       })),
     });
     const { ready, store } = renderApp(api);
@@ -214,7 +225,99 @@ describe("Mediensammlung", () => {
     await waitFor(() => expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["b"]));
   });
 
-  it("löscht über das Kontextmenü und fügt darüber zum Storyboard hinzu", async () => {
+  it.each([
+    [
+      "de",
+      { collection: "Sammlung: Meine Bilder", pictures: "Bilder", strip: "Bildstreifen" },
+      { title: "Bild löschen", yes: "Ja", ok: "OK" },
+      "„a.jpg“ konnte nicht gelöscht werden.",
+      "Das Medium kann nicht gelöscht werden, solange es exportiert wird. Bitte warten, bis der Export fertig ist, oder ihn zuerst abbrechen.",
+    ],
+    [
+      "en",
+      { collection: "Collection: My Pictures", pictures: "Pictures", strip: "Storyboard strip" },
+      { title: "Delete Picture", yes: "Yes", ok: "OK" },
+      "“a.jpg” could not be deleted.",
+      "The medium cannot be deleted while it is being exported. Wait for the export to finish or cancel it first.",
+    ],
+  ])(
+    "keeps the picture in collection and storyboard when a running export uses it (%s)",
+    async (locale, regions, labels, failed, reason) => {
+      localStorage.setItem("mmy.locale", locale);
+      const user = userEvent.setup();
+      const api = mockApi({
+        getProject: vi.fn(async () => ({
+          schemaVersion: 3 as const,
+          music: [],
+          slides: [
+            { kind: "image" as const, id: "s1", mediaId: "a", duration: 4, transitionIn: null },
+            { kind: "image" as const, id: "s2", mediaId: "b", duration: 4, transitionIn: null },
+          ],
+        })),
+        deleteMedia: vi.fn(async () => {
+          throw new ApiError("Medium is used by a running export", 409, {
+            code: "media.inUseByExport",
+            params: { mediaId: "a", exportId: "job-1" },
+            message: "Medium is used by a running export",
+          });
+        }),
+      });
+      const { ready, store } = renderApp(api);
+      await act(() => ready);
+      const pane = screen.getByRole("region", { name: regions.collection });
+      const names = () =>
+        within(within(pane).getByRole("list", { name: regions.pictures }))
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label"));
+      const stripLabels = () =>
+        within(screen.getByRole("list", { name: regions.strip }))
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label"));
+      const slidesBefore = store.getState().slides;
+      const stripBefore = stripLabels();
+      expect(stripBefore.length).toBeGreaterThan(0);
+
+      within(pane).getByRole("button", { name: "a.jpg" }).focus();
+      await user.keyboard("{Delete}");
+      const confirm = screen.getByRole("dialog", { name: labels.title });
+      await user.click(within(confirm).getByRole("button", { name: labels.yes }));
+
+      const error = await screen.findByRole("dialog", { name: labels.title });
+      const alert = within(error).getByRole("alert");
+      expect(alert).toHaveTextContent(failed);
+      expect(alert).toHaveTextContent(reason);
+      expect(api.deleteMedia).toHaveBeenCalledWith("a");
+
+      // Nothing was removed: collection, storyboard state and strip are unchanged.
+      expect(names()).toEqual(["a.jpg", "b.jpg"]);
+      expect(store.getState().media.map((m) => m.id)).toEqual(["a", "b"]);
+      expect(store.getState().slides).toEqual(slidesBefore);
+      expect(stripLabels()).toEqual(stripBefore);
+
+      await user.click(within(error).getByRole("button", { name: labels.ok }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(names()).toEqual(["a.jpg", "b.jpg"]);
+    },
+  );
+
+  it("shows a generic message when deleting fails without a structured error", async () => {
+    const user = userEvent.setup();
+    const api = mockApi({
+      deleteMedia: vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    });
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    within(collection()).getByRole("button", { name: "b.jpg" }).focus();
+    await user.keyboard("{Delete}");
+    await user.click(screen.getByRole("button", { name: "Ja" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/^„b\.jpg“ konnte nicht gelöscht werden\.$/);
+    expect(tileNames()).toEqual(["a.jpg", "b.jpg"]);
+  });
+
+  it("deletes via the context menu and adds to the storyboard through it", async () => {
     const user = userEvent.setup();
     const { ready, api, store } = renderApp();
     await act(() => ready);
@@ -240,12 +343,83 @@ describe("Mediensammlung", () => {
     expect(api.deleteMedia).toHaveBeenCalledWith("b");
   });
 
-  it("hängt das Bild per Doppelklick ans Storyboard an", async () => {
+  it("appends the picture to the storyboard by double-click", async () => {
     const user = userEvent.setup();
     const { ready, store } = renderApp();
     await act(() => ready);
     await user.dblClick(within(collection()).getByRole("button", { name: "a.jpg" }));
     expect(store.getState().slides).toHaveLength(1);
     expect(store.getState().slides[0]?.mediaId).toBe("a");
+  });
+
+  it("shows import texts and the offline error in English", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const api = importApi({
+      uploadMedia: vi.fn(async () => {
+        throw new TypeError("offline");
+      }),
+    });
+    const user = userEvent.setup();
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    const pane = screen.getByRole("region", { name: "Collection: My Pictures" });
+    expect(pane).toHaveTextContent(
+      "This collection is empty. Choose “Import pictures” or drag pictures here.",
+    );
+    await user.upload(screen.getByTestId("media-import-input"), [file("a.jpg"), file("b.jpg")]);
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("2 files were not imported:");
+    expect(within(alert).getAllByRole("listitem")[0]).toHaveTextContent(
+      "a.jpg: Backend not reachable.",
+    );
+    expect(within(alert).getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "de",
+      "kaputt.gif: Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG und FLAC).",
+    ],
+    [
+      "en",
+      "kaputt.gif: Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG and FLAC).",
+    ],
+  ])("translates the code media.unsupportedType per file (%s)", async (locale, text) => {
+    localStorage.setItem("mmy.locale", locale);
+    const api = importApi({
+      uploadMedia: vi.fn(async (f: File) => ({
+        ok: false as const,
+        errorCode: "media.unsupportedType" as const,
+        errorParams: {},
+        filename: f.name,
+        message:
+          "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG and FLAC).",
+      })),
+    });
+    const user = userEvent.setup();
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    await user.upload(screen.getByTestId("media-import-input"), [file("kaputt.gif")]);
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByRole("listitem")).toHaveTextContent(text);
+  });
+
+  it("shows the translated code for 413 (too many files)", async () => {
+    const api = importApi({
+      uploadMedia: vi.fn(async () => {
+        throw new ApiError("Too many files", 413, {
+          code: "media.tooManyFiles",
+          params: { max: 50, count: 51 },
+          message: "Too many files: at most 50 per import (51 sent).",
+        });
+      }),
+    });
+    const user = userEvent.setup();
+    const { ready } = renderApp(api);
+    await act(() => ready);
+    await user.upload(screen.getByTestId("media-import-input"), [file("a.jpg")]);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "a.jpg: Zu viele Dateien: höchstens 50 je Import (51 gesendet).",
+    );
   });
 });

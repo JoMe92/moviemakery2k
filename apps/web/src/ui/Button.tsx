@@ -5,16 +5,16 @@ export type ButtonVariant = "default" | "toolbar";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
-  /** Symbol vor dem Text. */
+  /** Icon before the text. */
   icon?: ReactNode;
   /**
-   * Zugänglicher Name und Tooltip. Pflicht für reine Symbol-Schaltflächen
-   * (ohne children), damit Hilfstechnologien einen Namen haben.
+   * Accessible name and tooltip. Required for icon-only buttons
+   * (without children) so assistive technologies get a name.
    */
   label?: string;
 }
 
-/** Plastische Y2K-Schaltfläche (Standard) oder flache Symbolleisten-Schaltfläche. */
+/** Raised Y2K button (default) or flat toolbar button. */
 export function Button({
   variant = "default",
   icon,

@@ -1,41 +1,174 @@
 import { useDraggable } from "@dnd-kit/core";
-import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
-import type { MediaItem } from "../lib/apiClient";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { translateError } from "../i18n/errors";
+import { formatClipDuration } from "../i18n/format";
+import type { MessageKey } from "../i18n/types";
+import { useT } from "../i18n/useT";
+import {
+  ApiError,
+  type AudioItem,
+  type ImageItem,
+  type MediaItem,
+  type VideoItem,
+} from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
-import { type DragItem, mediaDraggableId } from "../storyboard/dropLogic";
+import {
+  audioDraggableId,
+  type DragItem,
+  mediaDraggableId,
+  videoDraggableId,
+} from "../storyboard/dropLogic";
 import { Button } from "../ui/Button";
 import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
+import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
+import { chain, HOLD_MS, useLongPress } from "../ui/useLongPress";
 import styles from "./MediaCollection.module.css";
+import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
 
-export const MEDIA_EMPTY_HINT =
-  "Diese Sammlung ist leer. Wählen Sie „Bilder importieren“ oder ziehen Sie Bilder hierher.";
+/** Per-kind collection text: empty hint, tile list label, context menu and delete dialog. */
+const COLLECTION_TEXT: Record<
+  MediaItem["kind"],
+  {
+    emptyHint: MessageKey;
+    list: MessageKey;
+    menu: MessageKey;
+    deleteTitle: MessageKey;
+    deleteQuestion: MessageKey;
+  }
+> = {
+  image: {
+    emptyHint: "media.emptyHint",
+    list: "media.list",
+    menu: "media.menu",
+    deleteTitle: "media.deleteTitle",
+    deleteQuestion: "media.deleteQuestion",
+  },
+  audio: {
+    emptyHint: "media.musicEmptyHint",
+    list: "media.musicList",
+    menu: "media.audioMenu",
+    deleteTitle: "media.deleteAudioTitle",
+    deleteQuestion: "media.deleteAudioQuestion",
+  },
+  video: {
+    emptyHint: "media.videoEmptyHint",
+    list: "media.videoList",
+    menu: "media.videoMenu",
+    deleteTitle: "media.deleteVideoTitle",
+    deleteQuestion: "media.deleteVideoQuestion",
+  },
+};
 
-export function deleteQuestion(filename: string): string {
-  return `Möchten Sie „${filename}“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.`;
-}
-
-interface MediaTileProps {
-  item: MediaItem;
+interface TileHandlers {
   selected: boolean;
   tileRef: (el: HTMLButtonElement | null) => void;
   onClick: () => void;
   onDoubleClick: () => void;
   onContextMenu: (event: MouseEvent<HTMLButtonElement>) => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  /** Picking in the collection sheet: no dragging, long press opens the menu. */
+  picking: boolean;
+  onLongPress: () => void;
+  /** A plain tap while picking (real touch, bypassing the racy native click). */
+  onTap: () => void;
 }
 
-/** Kachel der Sammlung, per dnd-kit ins Storyboard ziehbar (Zeiger und Tastatur). */
-function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTileProps) {
+/**
+ * dnd-kit attributes for a tile without role and aria-pressed. When picking,
+ * the tile is no draggable at all: dnd-kit would mark the disabled draggable
+ * aria-disabled and describe it as draggable.
+ */
+function tileAttributes(
+  attributes: ReturnType<typeof useDraggable>["attributes"],
+  picking: boolean,
+): Record<string, unknown> {
+  const { "aria-pressed": _pressed, role: _role, ...rest } = attributes;
+  if (!picking) return rest;
+  const {
+    "aria-disabled": _disabled,
+    "aria-roledescription": _description,
+    "aria-describedby": _describedBy,
+    ...plain
+  } = rest;
+  return plain;
+}
+
+type PointerHandler = ((event: PointerEvent<HTMLElement>) => void) | undefined;
+
+/**
+ * Long press (picking mode) on top of the dnd-kit listeners. A tap picks the
+ * tile, so the press only becomes the action sheet after an unmistakable
+ * HOLD_MS hold (mmy-43e), and while it is armed the tile says so
+ * (`data-armed`) - the release is then no longer a coin toss between picking
+ * and a menu.
+ */
+function usePickingPointer(
+  picking: boolean,
+  onLongPress: () => void,
+  onTap: () => void,
+  listeners: Record<string, unknown> | undefined,
+  /**
+   * Hold the action sheet needs: HOLD_MS wherever a tap picks the tile, which
+   * is every kind since a video can be added to the storyboard too
+   * (add-timeline-editing D2).
+   */
+  delay: number = HOLD_MS,
+) {
+  const [armed, setArmed] = useState(false);
+  const longPress = useLongPress(onLongPress, {
+    enabled: picking,
+    delay,
+    onTap,
+    onArmed: () => setArmed(true),
+    onDisarmed: () => setArmed(false),
+  });
+  return {
+    armed,
+    pointer: {
+      onPointerDown: chain(listeners?.onPointerDown as PointerHandler, longPress.onPointerDown),
+      onPointerMove: longPress.onPointerMove,
+      onPointerUp: longPress.onPointerUp,
+      onPointerCancel: longPress.onPointerCancel,
+    },
+    guardClick: longPress.guardClick,
+  };
+}
+
+interface MediaTileProps extends TileHandlers {
+  item: ImageItem;
+}
+
+/** Collection tile, draggable into the storyboard via dnd-kit (pointer and keyboard). */
+function MediaTile({
+  item,
+  selected,
+  tileRef,
+  onKeyDown,
+  picking,
+  onLongPress,
+  onTap,
+  ...handlers
+}: MediaTileProps) {
+  const { t } = useT();
   const data: DragItem = { type: "media", mediaId: item.id };
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: mediaDraggableId(item.id),
     data,
-    attributes: { roleDescription: "ziehbares Bild" },
+    disabled: picking,
+    attributes: { roleDescription: t("media.draggable") },
   });
-  // aria-pressed bleibt die Auswahl der Kachel (nicht der Ziehzustand von dnd-kit).
-  const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
+  const { armed, pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
+  const dragAttributes = tileAttributes(attributes, picking);
   return (
     <Tile
       ref={(el: HTMLButtonElement | null) => {
@@ -44,14 +177,24 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
       }}
       {...dragAttributes}
       {...listeners}
+      {...pointer}
+      className={picking ? styles.pickable : undefined}
+      data-armed={armed || undefined}
       caption={item.filename}
       aria-label={item.filename}
       title={item.filename}
       thumbnail={
-        <img src={item.thumbnailUrl} alt={item.filename} loading="lazy" draggable={false} />
+        <img
+          src={item.thumbnailUrl}
+          alt={item.filename}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+        />
       }
       selected={selected}
       {...handlers}
+      onClick={() => guardClick(handlers.onClick)}
       onKeyDown={(event) => {
         onKeyDown(event);
         if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
@@ -60,30 +203,176 @@ function MediaTile({ item, selected, tileRef, onKeyDown, ...handlers }: MediaTil
   );
 }
 
+/**
+ * "My Music" tile: own audio icon, file name and duration. Draggable onto the
+ * music track via dnd-kit (pointer and keyboard); the filmstrip refuses it.
+ */
+function AudioTile({
+  item,
+  selected,
+  tileRef,
+  onKeyDown,
+  picking,
+  onLongPress,
+  onTap,
+  ...handlers
+}: TileHandlers & { item: AudioItem }) {
+  const { t, locale } = useT();
+  const duration = formatClipDuration(locale, item.duration);
+  const data: DragItem = { type: "audio", mediaId: item.id };
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: audioDraggableId(item.id),
+    data,
+    disabled: picking,
+    attributes: { roleDescription: t("media.audioDraggable") },
+  });
+  const { armed, pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
+  const dragAttributes = tileAttributes(attributes, picking);
+  return (
+    <Tile
+      ref={(el: HTMLButtonElement | null) => {
+        setNodeRef(el);
+        tileRef(el);
+      }}
+      {...dragAttributes}
+      {...listeners}
+      {...pointer}
+      className={picking ? styles.pickable : undefined}
+      data-armed={armed || undefined}
+      selected={selected}
+      caption={item.filename}
+      aria-label={t("media.audioTile", { name: item.filename, duration })}
+      title={item.filename}
+      thumbnail={
+        <span className={styles.audio}>
+          <AudioIcon size={36} className={styles.audioIcon} />
+          <span className={styles.duration}>{duration}</span>
+        </span>
+      }
+      {...handlers}
+      onClick={() => guardClick(handlers.onClick)}
+      onKeyDown={(event) => {
+        onKeyDown(event);
+        if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
+      }}
+    />
+  );
+}
+
+/**
+ * "My Videos" tile: poster image with the duration overlaid, file name below.
+ * Draggable into the storyboard like a picture (add-timeline-editing D2); with
+ * touch operation it is picked instead (add-mobile-layout D6).
+ */
+function VideoTile({
+  item,
+  selected,
+  tileRef,
+  onKeyDown,
+  picking,
+  onLongPress,
+  onTap,
+  ...handlers
+}: TileHandlers & { item: VideoItem }) {
+  const { t, locale } = useT();
+  const duration = formatClipDuration(locale, item.duration);
+  const data: DragItem = { type: "video", mediaId: item.id };
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: videoDraggableId(item.id),
+    data,
+    disabled: picking,
+    attributes: { roleDescription: t("media.videoDraggable") },
+  });
+  const { armed, pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
+  // aria-pressed stays the tile selection (not the dnd-kit drag state).
+  const dragAttributes = tileAttributes(attributes, picking);
+  return (
+    <Tile
+      ref={(el: HTMLButtonElement | null) => {
+        setNodeRef(el);
+        tileRef(el);
+      }}
+      {...dragAttributes}
+      {...listeners}
+      {...pointer}
+      className={picking ? styles.pickable : undefined}
+      data-armed={armed || undefined}
+      selected={selected}
+      caption={item.filename}
+      aria-label={t("media.videoTile", { name: item.filename, duration })}
+      title={item.filename}
+      thumbnail={
+        <span className={styles.video}>
+          <img
+            src={item.posterUrl}
+            alt={item.filename}
+            loading="lazy"
+            decoding="async"
+            draggable={false}
+          />
+          <span className={styles.videoDuration}>{duration}</span>
+        </span>
+      }
+      {...handlers}
+      onClick={() => guardClick(handlers.onClick)}
+      onKeyDown={(event) => {
+        onKeyDown(event);
+        if (!event.defaultPrevented) listeners?.onKeyDown?.(event);
+      }}
+    />
+  );
+}
+
+/** Rejected delete: the picture's name and, if the backend said why, the translated reason. */
+interface DeleteError {
+  name: string;
+  reason: string | null;
+}
+
 interface MenuState {
   item: MediaItem;
   x: number;
   y: number;
 }
 
+export interface MediaCollectionProps {
+  /** `image` shows "My Pictures", `audio` shows "My Music", `video` shows "My Videos". */
+  kind?: MediaItem["kind"];
+  /**
+   * Collection sheet (add-mobile-layout design.md D7): a tap toggles the item
+   * in `picked` (check mark, aria-pressed); a long press offers "Properties"
+   * and "Delete"; nothing is dragged.
+   */
+  picking?: { picked: readonly string[]; onToggle: (id: string) => void };
+}
+
 /**
- * Sammlung „Meine Bilder“: Kacheln in Importreihenfolge. Doppelklick hängt
- * das Bild ans Storyboard an; Entf oder Kontextmenü löscht nach Rückfrage.
+ * "My Pictures", "My Music" or "My Videos" collection: tiles of one media
+ * kind in import order. Double-click appends a picture or video to the
+ * storyboard and audio to the music track, never the other way round
+ * (add-timeline-editing D2); Delete or the context menu deletes after
+ * confirmation.
  */
-export function MediaCollection() {
-  const media = useAppStore((s) => s.media);
+export function MediaCollection({ kind = "image", picking }: MediaCollectionProps) {
+  const { t, locale } = useT();
+  const allMedia = useAppStore((s) => s.media);
+  const media = useMemo(() => allMedia.filter((m) => m.kind === kind), [allMedia, kind]);
+  const text = COLLECTION_TEXT[kind];
   const addSlide = useAppStore((s) => s.addSlide);
+  const addMusicClip = useAppStore((s) => s.addMusicClip);
   const deleteMedia = useAppStore((s) => s.deleteMedia);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [pendingDelete, setPendingDelete] = useState<MediaItem | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DeleteError | null>(null);
+  const [properties, setProperties] = useState<MediaItem | null>(null);
   const tiles = useRef(new Map<string, HTMLButtonElement>());
 
   const openMenu = (item: MediaItem, x: number, y: number) => {
-    setSelectedId(item.id);
+    if (!picking) setSelectedId(item.id);
     setMenu({ item, x, y });
   };
 
@@ -116,11 +405,15 @@ export function MediaCollection() {
       await deleteMedia(item.id);
       setSelectedId(neighbour?.id ?? null);
       setPendingDelete(null);
-      // Nach dem Schließen des Dialogs die Nachbarkachel fokussieren.
+      // After the dialog closes, focus the neighbouring tile.
       if (neighbour) setTimeout(() => tiles.current.get(neighbour.id)?.focus(), 0);
-    } catch {
+    } catch (err) {
+      // The store only drops the picture after the backend confirmed the
+      // delete, so a rejection (e.g. 409 media.inUseByExport) leaves the
+      // collection and the storyboard untouched.
       setPendingDelete(null);
-      setError(`„${item.filename}“ konnte nicht gelöscht werden.`);
+      const reason = err instanceof ApiError && err.info ? translateError(err.info, locale) : null;
+      setError({ name: item.filename, reason });
     } finally {
       setDeleting(false);
     }
@@ -128,64 +421,119 @@ export function MediaCollection() {
 
   return (
     <>
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
       {media.length === 0 ? (
-        <p className={styles.hint}>{MEDIA_EMPTY_HINT}</p>
+        <p className={styles.hint}>{t(text.emptyHint)}</p>
       ) : (
-        <ul className={styles.grid} aria-label="Bilder">
-          {media.map((item) => (
-            <li key={item.id}>
-              <MediaTile
-                item={item}
-                tileRef={(el) => {
-                  if (el) tiles.current.set(item.id, el);
-                  else tiles.current.delete(item.id);
-                }}
-                selected={selectedId === item.id}
-                onClick={() => setSelectedId(item.id)}
-                onDoubleClick={() => addSlide(item.id)}
-                onContextMenu={onContextMenu(item)}
-                onKeyDown={onKeyDown(item)}
-              />
-            </li>
-          ))}
+        <ul className={styles.grid} aria-label={t(text.list)}>
+          {media.map((item) => {
+            // A video is picked like a picture (add-timeline-editing D2).
+            const pickToggle = () => {
+              if (picking) picking.onToggle(item.id);
+            };
+            const handlers: TileHandlers = {
+              tileRef: (el) => {
+                if (el) tiles.current.set(item.id, el);
+                else tiles.current.delete(item.id);
+              },
+              selected: picking ? picking.picked.includes(item.id) : selectedId === item.id,
+              onClick: () => (picking ? pickToggle() : setSelectedId(item.id)),
+              // Real touch: a plain tap toggles here instead of racing the native
+              // click (mmy-edq). Mouse pointers never reach useLongPress's onTap,
+              // so they keep using onClick above.
+              onTap: pickToggle,
+              onDoubleClick: () => {
+                if (picking) return;
+                if (item.kind === "image" || item.kind === "video") addSlide(item.id);
+                else if (item.kind === "audio") addMusicClip(item.id);
+              },
+              picking: picking !== undefined,
+              onLongPress: () => {
+                const rect = tiles.current.get(item.id)?.getBoundingClientRect();
+                setMenu({
+                  item,
+                  x: rect ? rect.left + rect.width / 2 : 0,
+                  y: rect ? rect.top + rect.height / 2 : 0,
+                });
+              },
+              onContextMenu: onContextMenu(item),
+              onKeyDown: onKeyDown(item),
+            };
+            return (
+              <li key={item.id}>
+                {item.kind === "audio" ? (
+                  <AudioTile item={item} {...handlers} />
+                ) : item.kind === "video" ? (
+                  <VideoTile item={item} {...handlers} />
+                ) : (
+                  <MediaTile item={item} {...handlers} />
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
       {menu ? (
         <ContextMenu
-          label={`Bild „${menu.item.filename}“`}
+          label={t(COLLECTION_TEXT[menu.item.kind].menu, { name: menu.item.filename })}
           x={menu.x}
           y={menu.y}
           onClose={() => setMenu(null)}
           items={[
-            { label: "Zum Storyboard hinzufügen", onSelect: () => addSlide(menu.item.id) },
-            { label: "Löschen", onSelect: () => setPendingDelete(menu.item) },
+            ...(picking
+              ? [{ label: t("media.properties"), onSelect: () => setProperties(menu.item) }]
+              : menu.item.kind === "image" || menu.item.kind === "video"
+                ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
+                : menu.item.kind === "audio"
+                  ? [
+                      {
+                        label: t("media.addToMusicTrack"),
+                        onSelect: () => addMusicClip(menu.item.id),
+                      },
+                    ]
+                  : []),
+            { label: t("media.delete"), onSelect: () => setPendingDelete(menu.item) },
           ]}
         />
       ) : null}
       <Dialog
         open={pendingDelete !== null}
-        title="Bild löschen"
+        title={t(
+          pendingDelete ? COLLECTION_TEXT[pendingDelete.kind].deleteTitle : text.deleteTitle,
+        )}
         onClose={() => {
           if (!deleting) setPendingDelete(null);
         }}
         footer={
           <>
             <Button onClick={() => void confirmDelete()} disabled={deleting}>
-              Ja
+              {t("common.yes")}
             </Button>
             <Button onClick={() => setPendingDelete(null)} disabled={deleting}>
-              Nein
+              {t("common.no")}
             </Button>
           </>
         }
       >
         {pendingDelete ? (
-          <p className={styles.question}>{deleteQuestion(pendingDelete.filename)}</p>
+          <p className={styles.question}>
+            {t(COLLECTION_TEXT[pendingDelete.kind].deleteQuestion, {
+              name: pendingDelete.filename,
+            })}
+          </p>
+        ) : null}
+      </Dialog>
+      <MediaPropertiesDialog item={properties} onClose={() => setProperties(null)} />
+      <Dialog
+        open={error !== null}
+        title={t(text.deleteTitle)}
+        onClose={() => setError(null)}
+        footer={<Button onClick={() => setError(null)}>{t("common.ok")}</Button>}
+      >
+        {error ? (
+          <div role="alert">
+            <p className={styles.question}>{t("media.deleteFailed", { name: error.name })}</p>
+            {error.reason ? <p className={styles.reason}>{error.reason}</p> : null}
+          </div>
         ) : null}
       </Dialog>
     </>

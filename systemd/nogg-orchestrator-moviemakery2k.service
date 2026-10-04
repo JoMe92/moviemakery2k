@@ -1,0 +1,14 @@
+[Unit]
+Description=Nogging Orchestration Agent — always-on (moviemakery2k)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jome/src/moviemakery2k
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/jome/src/moviemakery2k/scripts/nogg orchestrator run
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

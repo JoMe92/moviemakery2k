@@ -30,7 +30,21 @@
   font-weight: bold;
 }
 
-/* Zusatzaktion links, OK/Abbrechen rechts. */
+/* Extra action on the left, OK/Cancel on the right. */
 .extra {
   margin-right: auto;
+}
+
+/* Stepper and slider with touch operation (add-mobile-layout design.md D10). */
+.touch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.slider {
+  width: 100%;
+  accent-color: var(--y2k-select);
 }

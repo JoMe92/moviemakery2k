@@ -1,85 +1,47 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from "react";
+import { type ReactNode, useId, useRef } from "react";
+import { useT } from "../i18n/useT";
+import { useLayoutMode } from "../shell/layoutMode";
 import styles from "./Dialog.module.css";
 import { CloseIcon } from "./icons";
+import { Sheet, type SheetHeight } from "./Sheet";
+import { useModal } from "./useModal";
 
 export interface DialogProps {
   open: boolean;
   title: string;
-  /** Wird bei Schließen-Knopf und Escape aufgerufen; der Aufrufer setzt `open` zurück. */
+  /** Called on the close button and Escape; the caller resets `open`. */
   onClose: () => void;
   children: ReactNode;
-  /** Schaltflächenzeile unten rechts (z. B. OK/Abbrechen). */
+  /** Button row at the bottom right (e.g. OK/Cancel). */
   footer?: ReactNode;
-}
-
-const FOCUSABLE =
-  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function focusables(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+  /** Height when shown as a sheet in the compact layout (default: auto). */
+  sheetHeight?: SheetHeight;
 }
 
 /**
- * Modaler Dialog im eigenen Y2K-Fensterstil auf Basis von <dialog>.
- * Fokus wird beim Öffnen hineingesetzt, Tab bleibt im Dialog, Escape schließt,
- * und beim Schließen kehrt der Fokus zum auslösenden Element zurück.
+ * Modal dialog in our own Y2K window style. In the compact layout it renders
+ * as a bottom sheet (add-mobile-layout design.md D5), so every dialog follows
+ * without changes of its own.
  */
-export function Dialog({ open, title, onClose, children, footer }: DialogProps) {
+export function Dialog({ sheetHeight = "auto", ...props }: DialogProps) {
+  const { t } = useT();
+  const { mode } = useLayoutMode();
+  if (mode === "compact") {
+    return <Sheet {...props} height={sheetHeight} closeLabel={t("common.closeDialog")} />;
+  }
+  return <WindowDialog {...props} />;
+}
+
+/**
+ * Centered dialog built on <dialog>. Focus moves inside on open, Tab stays
+ * within the dialog, Escape closes, and on close focus returns to the
+ * triggering element.
+ */
+function WindowDialog({ open, title, onClose, children, footer }: DialogProps) {
+  const { t } = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog || !open) return;
-
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (typeof dialog.showModal === "function") {
-      if (!dialog.open) dialog.showModal();
-    } else {
-      // Fallback für Umgebungen ohne showModal (z. B. jsdom).
-      dialog.setAttribute("open", "");
-    }
-    // Erstes Element im Inhalt bevorzugen, sonst den Schließen-Knopf.
-    const items = focusables(dialog);
-    (items[1] ?? items[0])?.focus();
-
-    // Native Escape-Behandlung: abfangen und über onClose steuern.
-    const onCancel = (event: Event) => {
-      event.preventDefault();
-      onCloseRef.current();
-    };
-    dialog.addEventListener("cancel", onCancel);
-
-    return () => {
-      dialog.removeEventListener("cancel", onCancel);
-      if (typeof dialog.close === "function" && dialog.open) dialog.close();
-      else dialog.removeAttribute("open");
-      if (opener?.isConnected) opener.focus();
-    };
-  }, [open]);
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDialogElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-    if (event.key !== "Tab" || !ref.current) return;
-    const items = focusables(ref.current);
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
+  const onKeyDown = useModal(ref, open, onClose);
 
   if (!open) return null;
 
@@ -95,7 +57,12 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         <h2 id={titleId} className={styles.title}>
           {title}
         </h2>
-        <button type="button" className={styles.close} aria-label="Schließen" onClick={onClose}>
+        <button
+          type="button"
+          className={styles.close}
+          aria-label={t("common.closeDialog")}
+          onClick={onClose}
+        >
           <CloseIcon size={12} />
         </button>
       </div>

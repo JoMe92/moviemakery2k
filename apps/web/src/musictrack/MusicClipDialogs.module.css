@@ -1,0 +1,96 @@
+.field {
+  display: grid;
+  grid-template-columns: 110px auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 96px;
+  padding: 2px 4px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+  text-align: right;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--y2k-icon-red);
+}
+
+.slider {
+  width: 200px;
+}
+
+.info {
+  margin: 0 0 8px;
+}
+
+.hint,
+.error {
+  margin: 8px 0 0;
+  max-width: 320px;
+}
+
+.hint {
+  color: var(--y2k-text-muted);
+}
+
+.error {
+  color: var(--y2k-icon-red);
+  font-weight: bold;
+}
+
+/* Touch controls (add-mobile-layout design.md D10). */
+.stepper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.wave {
+  position: relative;
+  height: 72px;
+  margin: 8px 22px 12px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+  touch-action: none;
+}
+
+.wave svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cutout {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--y2k-backdrop);
+  pointer-events: none;
+}
+
+.handle {
+  position: absolute;
+  top: 50%;
+  width: var(--y2k-touch-target);
+  height: var(--y2k-touch-target);
+  border: 2px solid var(--y2k-select);
+  border-radius: 50%;
+  background: var(--y2k-face-light);
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.handle::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 60%;
+  background: var(--y2k-select);
+  content: "";
+  transform: translate(-50%, -50%);
+}

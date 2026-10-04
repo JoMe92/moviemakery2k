@@ -1,4 +1,4 @@
-/* Ablagefläche über die ganze Breite und Höhe des Storyboards. */
+/* Drop area across the full width and height of the storyboard. */
 .strip {
   display: flex;
   flex: 1;
@@ -36,7 +36,7 @@
   align-items: center;
 }
 
-/* Kachel: Rahmen wie ein Filmbild, Nummer im Thumbnail, Dauer darunter. */
+/* Tile: frame like a film frame, number in the thumbnail, duration below. */
 .tile {
   display: flex;
   flex-direction: column;
@@ -48,7 +48,8 @@
   border-radius: var(--y2k-radius);
   background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-storyboard-slot));
   cursor: grab;
-  touch-action: none;
+  /* Swiping scrolls; a long press starts the drag (add-mobile-layout D8). */
+  touch-action: pan-x pan-y;
   user-select: none;
 }
 
@@ -58,7 +59,7 @@
   outline-offset: -1px;
 }
 
-/* Gerade wiedergegebenes Bild. */
+/* Picture currently being played. */
 .tile[data-playing="true"] {
   border-color: var(--y2k-focus);
   box-shadow:
@@ -117,7 +118,7 @@
   opacity: 0.4;
 }
 
-/* Deaktivierter Effekt-Platz (spätere Videoeffekte) oben rechts auf der Kachel. */
+/* Disabled effect slot (future video effects) at the top right of the tile. */
 .effect {
   position: absolute;
   top: 7px;
@@ -136,7 +137,7 @@
   filter: grayscale(1);
 }
 
-/* Übergangsplatz zwischen zwei Kacheln. */
+/* Transition slot between two tiles. */
 .transition {
   display: flex;
   flex-direction: column;
@@ -162,7 +163,7 @@
   color: var(--y2k-text);
 }
 
-/* Hervorhebung, solange ein Übergang über dem Platz liegt. */
+/* Highlight while a transition is dragged over the slot. */
 .transition[data-drop="true"] {
   border: 2px solid var(--y2k-select);
   background: var(--y2k-select-soft);
@@ -181,7 +182,7 @@
   white-space: nowrap;
 }
 
-/* Einfügemarke: senkrechter Balken, ohne das Layout zu verschieben. */
+/* Insertion marker: vertical bar that does not shift the layout. */
 .marker {
   position: absolute;
   top: 50%;
@@ -200,14 +201,14 @@
 }
 
 .markerGap {
-  left: 30px; /* Mitte des Übergangsplatzes (4 + 56/2 - 2) */
+  left: 30px; /* centre of the transition slot (4 + 56/2 - 2) */
 }
 
 .markerAfter {
   right: -6px;
 }
 
-/* Vorschau beim Ziehen (DragOverlay). */
+/* Preview while dragging (DragOverlay). */
 .overlay {
   width: 94px;
   height: 70px;
@@ -227,4 +228,77 @@
 
 .dialogInfo {
   margin: 0 0 10px;
+}
+
+/* Drag preview for audio and music clips. */
+.overlayAudio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--y2k-pane);
+  color: var(--y2k-border-strong);
+}
+
+/* Phones and tablets: the empty hint wraps inside the visible width. */
+:global(:root:not([data-layout="wide"])) .strip:has(> .hint) {
+  min-width: 0;
+}
+
+/* "⋯" on a tile with touch operation (add-mobile-layout design.md D6). */
+.more {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--y2k-touch-target);
+  height: var(--y2k-touch-target);
+  padding: 0;
+  border: 1px solid var(--y2k-button-border);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-button-top), var(--y2k-button-bottom));
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/*
+ * Touch reordering (add-mobile-layout design.md D8): the dragged tile takes
+ * every touch move itself, and scrolling the strip never chains to the page.
+ */
+.slot[data-dragging="true"] .tile {
+  touch-action: none;
+}
+
+:global(:root[data-pointer="coarse"]) .list,
+:global(:root[data-layout="compact"]) .list {
+  overscroll-behavior: contain;
+}
+
+/* Tile sizes (add-mobile-layout design.md D12); "medium" is the desktop size. */
+.strip[data-tile-size="small"] .tile {
+  width: 80px;
+}
+
+.strip[data-tile-size="small"] .thumb {
+  width: 70px;
+  height: 52px;
+}
+
+.strip[data-tile-size="large"] .tile {
+  width: 144px;
+}
+
+.strip[data-tile-size="large"] .thumb {
+  width: 134px;
+  height: 100px;
+}
+
+/* Pinch zooms the tiles, not the page. */
+:global(:root[data-pointer="coarse"]) .strip,
+:global(:root[data-layout="compact"]) .strip {
+  touch-action: pan-x pan-y;
 }

@@ -1,0 +1,148 @@
+/* Bottom sheet in the Y2K window style (add-mobile-layout design.md D5). */
+.sheet {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--y2k-text);
+}
+
+.sheet[open] {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sheet::backdrop {
+  background: var(--y2k-backdrop);
+}
+
+.backdrop {
+  flex: 1 1 auto;
+  min-height: 10%;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 90%;
+  margin: 0 var(--y2k-safe-right) 0 var(--y2k-safe-left);
+  overflow: hidden;
+  border: 1px solid var(--y2k-title-edge);
+  border-bottom: 0;
+  border-radius: var(--y2k-sheet-radius) var(--y2k-sheet-radius) 0 0;
+  background: var(--y2k-face);
+  box-shadow: 0 -4px 12px var(--y2k-shadow);
+  transition: transform 120ms ease-out;
+}
+
+.sheet[data-motion="full"] .panel {
+  animation: sheet-in 200ms ease-out;
+}
+
+.full {
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  border-radius: 0;
+  padding-top: var(--y2k-safe-top);
+}
+
+.sheet:has(.full) .backdrop {
+  display: none;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+    animation: none;
+  }
+}
+
+.grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  background: var(--y2k-title-top);
+  cursor: grab;
+  touch-action: none;
+}
+
+.gripBar {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--y2k-title-text);
+  opacity: 0.8;
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--y2k-touch-target);
+  padding: 0 4px 0 12px;
+  background: linear-gradient(to bottom, var(--y2k-title-mid), var(--y2k-title-bottom));
+  color: var(--y2k-title-text);
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  text-shadow: 1px 1px 0 var(--y2k-title-shadow);
+  white-space: nowrap;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--y2k-touch-target);
+  height: var(--y2k-touch-target);
+  padding: 0;
+  border: 1px solid var(--y2k-edge-light);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-icon-red), var(--y2k-title-shadow));
+  color: var(--y2k-title-text);
+  cursor: pointer;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--y2k-touch-gap);
+  padding: 8px 16px calc(12px + var(--y2k-safe-bottom));
+  border-top: 1px solid var(--y2k-separator);
+}
+
+.body:last-child {
+  padding-bottom: calc(12px + var(--y2k-safe-bottom));
+}

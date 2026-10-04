@@ -1,12 +1,12 @@
-"""Entwicklungsserver: Backend (uvicorn) und/oder Web-App (Vite).
+"""Development server: backend (uvicorn) and/or web app (Vite).
 
-    python scripts/dev.py            # beide, Strg+C beendet beide
-    python scripts/dev.py backend    # nur FastAPI
-    python scripts/dev.py web        # nur Vite
-    python scripts/dev.py demo       # gebaute Web-App + API auf einem Port
+    python scripts/dev.py            # both, Ctrl+C stops both
+    python scripts/dev.py backend    # FastAPI only
+    python scripts/dev.py web        # Vite only
+    python scripts/dev.py demo       # built web app + API on one port
 
-Der API-Port kommt aus MMY_API_PORT (Standard 8000); Vite leitet /api dorthin weiter.
-Aufruf über die Pixi-Tasks `dev`, `dev-backend`, `dev-web`.
+The API port comes from MMY_API_PORT (default 8000); Vite forwards /api there.
+Invoked via the Pixi tasks `dev`, `dev-backend`, `dev-web`.
 """
 
 import os
@@ -18,12 +18,19 @@ import time
 PORT = os.environ.get("MMY_API_PORT", "8000")
 COMMANDS = {
     "backend": [
-        sys.executable, "-m", "uvicorn", "mmy_backend.main:app",
-        "--reload", "--reload-dir", "backend/src", "--port", PORT,
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "mmy_backend.main:app",
+        "--reload",
+        "--reload-dir",
+        "backend/src",
+        "--port",
+        PORT,
     ],
     "web": ["pnpm", "--filter", "@mmy/web", "dev"],
 }
-# Nicht Teil von `dev`: gebaute Web-App + API aus einem Prozess (pixi run demo).
+# Not part of `dev`: built web app + API from a single process (pixi run demo).
 DEMO = [sys.executable, "-m", "uvicorn", "mmy_backend.main:app", "--port", PORT]
 
 
@@ -54,10 +61,10 @@ def main(targets: list[str]) -> int:
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["demo"]:
-        print(f"moviemakerY2K-Demo: http://127.0.0.1:{PORT}/", flush=True)
+        print(f"moviemakerY2K demo: http://127.0.0.1:{PORT}/", flush=True)
         sys.exit(subprocess.call(DEMO))
     args = sys.argv[1:] or list(COMMANDS)
     unknown = [a for a in args if a not in COMMANDS]
     if unknown:
-        sys.exit(f"unbekannt: {', '.join(unknown)} (erlaubt: {', '.join(COMMANDS)})")
+        sys.exit(f"unknown: {', '.join(unknown)} (allowed: {', '.join(COMMANDS)})")
     sys.exit(main(args))

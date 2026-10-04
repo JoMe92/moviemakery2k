@@ -6,13 +6,13 @@ export interface TaskLinkProps {
   icon?: ReactNode;
   onClick?: () => void;
   /**
-   * Deaktiviert: bleibt sichtbar und per Tastatur erreichbar, ist über
-   * aria-disabled ausgezeichnet und löst keine Aktion aus.
+   * Disabled: stays visible and keyboard-reachable, is marked via
+   * aria-disabled and triggers no action.
    */
   disabled?: boolean;
 }
 
-/** Eintrag einer Aufgabengruppe: eine echte Schaltfläche im Link-Stil. */
+/** Item of a task group: a real button styled as a link. */
 export function TaskLink({ children, icon, onClick, disabled = false }: TaskLinkProps) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (disabled) {

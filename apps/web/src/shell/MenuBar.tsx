@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import styles from "./MenuBar.module.css";
 import type { MenuDef, MenuEntry } from "./menus";
 
@@ -9,12 +10,13 @@ export interface MenuBarProps {
 type Item = Extract<MenuEntry, { kind: "item" }>;
 
 /**
- * Menüleiste mit aufklappbaren Menüs (WAI-ARIA Menubar-Muster).
- * Ein Tab-Stopp; ←/→, Pos1/Ende wechseln Hauptmenüs, ↓/Enter/Leertaste öffnet,
- * im Menü ↑/↓ wählen, Enter aktiviert, Escape schließt. Deaktivierte Einträge
- * sind fokussierbar, lösen aber nichts aus.
+ * Menu bar with drop-down menus (WAI-ARIA menubar pattern).
+ * One tab stop; ←/→, Home/End switch top-level menus, ↓/Enter/Space opens,
+ * inside a menu ↑/↓ select, Enter activates, Escape closes. Disabled items
+ * are focusable but trigger nothing.
  */
 export function MenuBar({ menus }: MenuBarProps) {
+  const { t } = useT();
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
   const topRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -43,7 +45,7 @@ export function MenuBar({ menus }: MenuBarProps) {
     if (refocus && was !== null) topRefs.current[was]?.focus();
   };
 
-  // Klick außerhalb schließt das Menü.
+  // A click outside closes the menu.
   useEffect(() => {
     if (open === null) return;
     const onDown = (event: MouseEvent) => {
@@ -105,7 +107,7 @@ export function MenuBar({ menus }: MenuBarProps) {
 
   let itemIndex = -1;
   return (
-    <div className={styles.menubar} role="menubar" aria-label="Menüleiste" ref={rootRef}>
+    <div className={styles.menubar} role="menubar" aria-label={t("menu.bar")} ref={rootRef}>
       {menus.map((menu, index) => (
         <div key={menu.id} className={styles.menu}>
           <button
@@ -137,7 +139,7 @@ export function MenuBar({ menus }: MenuBarProps) {
               })()}
               {menu.entries.map((entry, n) => {
                 if (entry.kind === "separator") {
-                  // biome-ignore lint/suspicious/noArrayIndexKey: Trenner haben keine ID
+                  // biome-ignore lint/suspicious/noArrayIndexKey: separators have no ID
                   return <hr key={`sep-${n}`} className={styles.separator} />;
                 }
                 itemIndex += 1;

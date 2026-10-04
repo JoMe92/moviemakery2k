@@ -1,4 +1,4 @@
-"""Zugriff auf die FFmpeg-Binaries. FFmpeg wird als Subprozess genutzt, nie gelinkt."""
+"""Access to the FFmpeg binaries. FFmpeg is used as a subprocess, never linked."""
 
 import os
 import re
@@ -10,8 +10,13 @@ _VERSION_RE = re.compile(r"ffmpeg version (?:n)?(\S+)")
 
 
 def ffmpeg_binary() -> str | None:
-    """Pfad zu ffmpeg; über MMY_FFMPEG überschreibbar."""
+    """Path to ffmpeg; can be overridden via MMY_FFMPEG."""
     return os.environ.get("MMY_FFMPEG") or shutil.which("ffmpeg")
+
+
+def ffprobe_binary() -> str | None:
+    """Path to ffprobe; can be overridden via MMY_FFPROBE."""
+    return os.environ.get("MMY_FFPROBE") or shutil.which("ffprobe")
 
 
 def parse_version(banner: str) -> str | None:

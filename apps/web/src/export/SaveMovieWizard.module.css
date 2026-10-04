@@ -1,0 +1,118 @@
+/* "Save Movie" wizard: fixed width so the steps do not jump. */
+.step {
+  width: 420px;
+  max-width: 100%;
+  min-height: 150px;
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: 13px;
+}
+
+.stepNumber {
+  margin: 2px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--y2k-separator);
+  color: var(--y2k-text-muted);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 2px 4px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--y2k-icon-red);
+}
+
+.hint,
+.error,
+.status {
+  margin: 8px 0 0;
+}
+
+.hint {
+  color: var(--y2k-text-muted);
+}
+
+.error {
+  color: var(--y2k-icon-red);
+  font-weight: bold;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.options legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.optionLabel {
+  font-weight: bold;
+}
+
+.size {
+  grid-column: 2;
+  color: var(--y2k-text-muted);
+}
+
+.recommendation {
+  grid-column: 2;
+  color: var(--y2k-text-muted);
+  font-size: 0.9em;
+}
+
+/* Segmented Y2K progress bar (as in the import). */
+.bar {
+  height: 18px;
+  margin-top: 10px;
+  padding: 1px;
+  border: 1px solid var(--y2k-edge-dark);
+  border-radius: var(--y2k-radius);
+  background: var(--y2k-pane);
+}
+
+.fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    to right,
+    var(--y2k-icon-green) 0 8px,
+    transparent 8px 10px
+  );
+  transition: width 0.2s;
+}
+
+.errorMessage {
+  margin: 0;
+  max-width: 420px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

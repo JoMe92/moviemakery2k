@@ -12,7 +12,7 @@ import {
 } from "./shaderSource";
 
 describe("buildFragmentSource", () => {
-  it("setzt Prelude, Übergang und Epilog in dieser Reihenfolge zusammen", () => {
+  it("assembles prelude, transition and epilogue in this order", () => {
     const src = buildFragmentSource(
       "#version 300 es\nprecision highp float;\n",
       "\n\nvec4 transition(vec2 uv) { return vec4(1.0); }\n",
@@ -29,12 +29,12 @@ describe("buildFragmentSource", () => {
     expect(src.endsWith("\n")).toBe(true);
   });
 
-  it("entfernt Leerraum vor #version, damit die Direktive erste Zeile bleibt", () => {
+  it("strips whitespace before #version so the directive stays the first line", () => {
     const src = buildFragmentSource("\n  #version 300 es\n", "x", "y");
     expect(src.startsWith("#version 300 es\n")).toBe(true);
   });
 
-  it("baut aus den echten Dateien ein vollständiges Programm", () => {
+  it("builds a complete program from the real files", () => {
     const src = fragmentSourceFor("circle") as string;
     expect(src.split("\n")[0]).toBe("#version 300 es");
     expect(src).toContain("uniform sampler2D uFrom;");
@@ -47,11 +47,11 @@ describe("buildFragmentSource", () => {
     expect(src).toContain(EPILOGUE_SOURCE.trim());
   });
 
-  it("liefert für unbekannte Übergänge nichts", () => {
+  it("returns nothing for unknown transitions", () => {
     expect(fragmentSourceFor("gibt-es-nicht")).toBeUndefined();
   });
 
-  it("lädt den Vertex-Shader (Fullscreen-Dreieck)", () => {
+  it("loads the vertex shader (fullscreen triangle)", () => {
     expect(VERTEX_SOURCE.trim().split("\n")[0]).toBe("#version 300 es");
     expect(VERTEX_SOURCE).toContain("gl_VertexID");
   });
@@ -61,9 +61,9 @@ describe("transitionSources", () => {
   const sources = transitionSources();
   const ids = catalog.transitions.map((t) => t.id);
 
-  it("enthält genau die sechs Katalog-Übergänge, inklusive Rückfall Fade", () => {
+  it("contains every catalog transition, including the Fade fallback", () => {
     expect(Object.keys(sources).sort()).toEqual([...ids].sort());
-    expect(ids).toHaveLength(6);
+    expect(ids.length).toBeGreaterThan(6);
     expect(sources[FALLBACK_TRANSITION_ID]).toBeDefined();
   });
 
@@ -81,7 +81,7 @@ describe("transitionSources", () => {
 });
 
 describe("declaredParams", () => {
-  it("liest nur float-Uniforms am Zeilenanfang", () => {
+  it("reads only float uniforms at the start of a line", () => {
     const body = "uniform float a;\n  uniform float b_2 ;\nuniform vec2 c;\n// uniform float d;\n";
     expect(declaredParams(body)).toEqual(["a", "b_2"]);
   });

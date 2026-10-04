@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/catalog/titles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Titles */
+        get: operations["list_titles_api_catalog_titles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/transitions": {
         parameters: {
             query?: never;
@@ -13,6 +30,85 @@ export interface paths {
         };
         /** List Transitions */
         get: operations["list_transitions_api_catalog_transitions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Exports
+         * @description All known exports (since the backend started), oldest first.
+         */
+        get: operations["list_exports_api_exports_get"];
+        put?: never;
+        /**
+         * Start Export
+         * @description Starts an export of the saved project as it is right now.
+         *
+         *     Later changes to the project do not affect this export.
+         *     At most one export runs at a time; a second start returns 409.
+         */
+        post: operations["start_export_api_exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Export
+         * @description Status (`queued`, `running`, `done`, `failed`, `cancelled`), progress and error.
+         */
+        get: operations["get_export_api_exports__export_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Export
+         * @description Cancels a running export or deletes a finished one.
+         *
+         *     - `queued`/`running`: the export is cancelled (FFmpeg stopped, partial file
+         *       deleted); the response comes only afterwards. The job stays queryable as
+         *       `cancelled`, without a file.
+         *     - `done`/`failed`/`cancelled`: file and job are deleted; 404 afterwards.
+         */
+        delete: operations["delete_export_api_exports__export_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/exports/{export_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Export File
+         * @description The finished MP4 as a download with the requested file name (`<fileName>.mp4`).
+         *
+         *     As long as the export is not `done`, the server answers 409 with the
+         *     status; an incomplete file is never served.
+         */
+        get: operations["get_export_file_api_exports__export_id__file_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -47,7 +143,7 @@ export interface paths {
         };
         /**
          * List Media
-         * @description Alle importierten Medien in Importreihenfolge.
+         * @description All imported media in import order.
          */
         get: operations["list_media_api_media_get"];
         put?: never;
@@ -71,19 +167,90 @@ export interface paths {
         post?: never;
         /**
          * Delete Media
-         * @description Löscht ein Medium samt Dateien und entfernt es aus dem Projekt (Kaskade).
+         * @description Deletes a medium with its files and removes it from the project (cascade).
          *
-         *     Alle Elemente des Bildstreifens mit diesem Medium entfallen samt ihrer
-         *     eingehenden Übergänge; das neue erste Element hat keinen Übergang.
+         *     All storyboard elements using this medium are dropped together with their
+         *     incoming transitions; the new first element has no transition. All music
+         *     clips using it are dropped as well (the following clips move up).
          *
-         *     Antwort ist 200 mit dem aktualisierten Projekt (statt 204), damit der
-         *     Client seinen Stand ohne erneutes GET /api/project übernehmen kann.
+         *     The response is 200 with the updated project (instead of 204) so that the
+         *     client can adopt its state without another GET /api/project.
          *
-         *     Reihenfolge: erst aus dem Medienspeicher, dann aus dem Projekt. Ein
-         *     gleichzeitiges PUT /api/project prüft gegen den Medienspeicher und kann
-         *     die ID danach nicht wieder einfügen.
+         *     Order: first from the media store, then from the project. A concurrent
+         *     PUT /api/project validates against the media store and therefore cannot
+         *     re-insert the ID afterwards.
+         *
+         *     While a `queued` or `running` export has the medium in its snapshot, the
+         *     response is 409 (`media.inUseByExport`); medium, project and export stay
+         *     unchanged (design.md D5).
          */
         delete: operations["delete_media_api_media__media_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Audio
+         * @description Audio preview version (AAC in M4A, 48 kHz, stereo) with `Cache-Control: immutable`.
+         *
+         *     404 for images as well as unknown IDs. Range requests are supported.
+         */
+        get: operations["get_audio_api_media__media_id__audio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/peaks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Peaks
+         * @description Waveform data (50 peaks per second, mono, 0..1) with `Cache-Control: immutable`.
+         *
+         *     404 for images as well as unknown IDs.
+         */
+        get: operations["get_peaks_api_media__media_id__peaks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/poster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Poster
+         * @description Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.
+         *
+         *     404 for images, audio and unknown IDs (add-video-import D3).
+         */
+        get: operations["get_poster_api_media__media_id__poster_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -98,7 +265,7 @@ export interface paths {
         };
         /**
          * Get Preview
-         * @description Vorschaubild (JPEG, längste Kante <= 1920) mit `Cache-Control: immutable`.
+         * @description Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`.
          */
         get: operations["get_preview_api_media__media_id__preview_get"];
         put?: never;
@@ -118,9 +285,33 @@ export interface paths {
         };
         /**
          * Get Thumbnail
-         * @description Thumbnail (JPEG, passt in 160x120) mit `Cache-Control: immutable`.
+         * @description Thumbnail (JPEG, fits into 160x120) with `Cache-Control: immutable`.
          */
         get: operations["get_thumbnail_api_media__media_id__thumbnail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{media_id}/video": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Video
+         * @description Original video file (its own container/codec) with `Cache-Control: immutable`.
+         *
+         *     For the preview player's `<video>` element (add-timeline-editing design.md D5); export
+         *     reads the same file directly from disk. 404 for images, audio and unknown IDs. Range
+         *     requests are supported (needed for the browser to seek).
+         */
+        get: operations["get_video_api_media__media_id__video_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -138,12 +329,12 @@ export interface paths {
         };
         /**
          * Get Project
-         * @description Das gespeicherte Projekt; ohne Datei das leere Projekt.
+         * @description The saved project; without a file, the empty project.
          */
         get: operations["get_project_api_project_get"];
         /**
          * Put Project
-         * @description Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert.
+         * @description Replaces the project. On 422 the saved state stays unchanged.
          */
         put: operations["put_project_api_project_put"];
         post?: never;
@@ -157,13 +348,250 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApiError
+         * @description An error of the backend: stable code, params and English message (design.md D5).
+         */
+        ApiError: {
+            /** @description Stable dotted error code, e.g. `export.emptyProject` */
+            code: components["schemas"]["ErrorCode"];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /**
+         * ApiErrorIssue
+         * @description One rule violation of a request body, with the position of the offending value.
+         */
+        ApiErrorIssue: {
+            /** @description Stable dotted error code, e.g. `export.emptyProject` */
+            code: components["schemas"]["ErrorCode"];
+            /**
+             * Loc
+             * @description Position in the body, e.g. ["body", "slides", 2]
+             */
+            loc: (string | number)[];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /** ApiErrorResponse */
+        ApiErrorResponse: {
+            detail: components["schemas"]["ApiError"];
+        };
+        /**
+         * ApiErrorWithIssues
+         * @description An error that collects several rule violations (`project.invalid`).
+         */
+        ApiErrorWithIssues: {
+            /** @description Stable dotted error code, e.g. `export.emptyProject` */
+            code: components["schemas"]["ErrorCode"];
+            /** Issues */
+            issues: components["schemas"]["ApiErrorIssue"][];
+            /**
+             * Message
+             * @description English message; shown when the code is unknown
+             */
+            message: string;
+            /**
+             * Params
+             * @description Values the message is built from
+             */
+            params: {
+                [key: string]: string | number;
+            };
+        };
+        /**
+         * ApiValidationResponse
+         * @description 422 body: an `ApiError` or FastAPI's native list.
+         */
+        ApiValidationResponse: {
+            /** Detail */
+            detail: components["schemas"]["ApiError"] | components["schemas"]["RequestValidationIssue"][];
+        };
+        /**
+         * AudioItem
+         * @description An imported audio file (MP3, WAV, M4A/AAC, OGG, FLAC), add-music-track D1.
+         */
+        AudioItem: {
+            /**
+             * Audiourl
+             * @description Preview version (AAC in M4A, 48 kHz, stereo)
+             */
+            audioUrl: string;
+            /**
+             * Channels
+             * @description Number of channels of the original
+             */
+            channels: number;
+            /**
+             * Codec
+             * @description FFmpeg codec name of the original, e.g. `mp3`, `pcm_s16le`
+             */
+            codec: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Duration
+             * @description Duration in seconds
+             */
+            duration: number;
+            /**
+             * Filename
+             * @description Original file name, for display only
+             */
+            filename: string;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "audio";
+            /**
+             * Peaksurl
+             * @description Waveform data (50 peaks per second)
+             */
+            peaksUrl: string;
+            /**
+             * Samplerate
+             * @description Sample rate of the original in Hz
+             */
+            sampleRate: number;
+        };
+        /**
+         * AudioPeaks
+         * @description Waveform data of an audio medium (`GET /api/media/{id}/peaks`, design.md D2).
+         *
+         *     Peak `i` is the largest absolute sample of the mono downmix in the time
+         *     window `[i / rate, (i + 1) / rate)` s, relative to full scale (0 = silence,
+         *     1 = full scale). The last window may be shorter.
+         */
+        AudioPeaks: {
+            /**
+             * Peaks
+             * @description One peak per window, relative to full scale (0..1)
+             */
+            peaks: number[];
+            /**
+             * Rate
+             * @description Peaks per second (always 50)
+             */
+            rate: number;
+        };
         /** Body_upload_media_api_media_post */
         Body_upload_media_api_media_post: {
             /**
              * Files
-             * @description Bilddateien (JPEG, PNG, WebP)
+             * @description Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)
              */
             files: string[];
+        };
+        /**
+         * ErrorCode
+         * @description All stable error codes; part of the API contract as an OpenAPI enum (design.md D4).
+         *
+         *     Never rename a code, add a new one instead.
+         * @enum {string}
+         */
+        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.slideTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.slide.notVideo" | "project.slide.trimOutBeyondFile" | "project.slide.trimInNotBeforeTrimOut" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
+        /** ExportJob */
+        ExportJob: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** @description Stable error code when `failed` (design.md D3), otherwise null */
+            errorCode: components["schemas"]["ErrorCode"] | null;
+            /**
+             * Errorparams
+             * @description Values of the error message; empty without error
+             */
+            errorParams: {
+                [key: string]: string | number;
+            };
+            /**
+             * Filename
+             * @description File name without extension
+             */
+            fileName: string;
+            /** Id */
+            id: string;
+            /**
+             * Message
+             * @description English error message when `failed`, otherwise null
+             */
+            message: string | null;
+            profile: components["schemas"]["ExportProfile"];
+            /**
+             * Progress
+             * @description Progress 0..1
+             */
+            progress: number;
+            status: components["schemas"]["ExportStatus"];
+        };
+        /** ExportListResponse */
+        ExportListResponse: {
+            /**
+             * Items
+             * @description All known exports, oldest first
+             */
+            items: components["schemas"]["ExportJob"][];
+        };
+        /**
+         * ExportProfile
+         * @description Output profile of the export; the value is the name in the API contract.
+         * @enum {string}
+         */
+        ExportProfile: "high" | "small" | "email_web";
+        /** ExportRequest */
+        ExportRequest: {
+            /**
+             * Filename
+             * @description Requested file name without extension; `.mp4` is appended on download. Not allowed: / \ : * ? " < > | and control characters.
+             * @example My Movie
+             */
+            fileName: string;
+            /**
+             * @description `high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps
+             * @default high
+             */
+            profile: components["schemas"]["ExportProfile"];
+        };
+        /**
+         * ExportStatus
+         * @enum {string}
+         */
+        ExportStatus: "queued" | "running" | "done" | "failed" | "cancelled";
+        /** FadePhase */
+        FadePhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "fade";
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -181,12 +609,11 @@ export interface components {
              */
             status: "ok";
         };
-        /** MediaDeleteResponse */
-        MediaDeleteResponse: {
-            project: components["schemas"]["Project"];
-        };
-        /** MediaItem */
-        MediaItem: {
+        /**
+         * ImageItem
+         * @description An imported picture (JPEG, PNG, WebP).
+         */
+        ImageItem: {
             /**
              * Createdat
              * Format: date-time
@@ -194,44 +621,86 @@ export interface components {
             createdAt: string;
             /**
              * Filename
-             * @description Original-Dateiname, nur zur Anzeige
+             * @description Original file name, for display only
              */
             filename: string;
             /**
              * Height
-             * @description Höhe nach EXIF-Ausrichtung
+             * @description Height after EXIF orientation
              */
             height: number;
             /** Id */
             id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image";
             /** Previewurl */
             previewUrl: string;
             /** Thumbnailurl */
             thumbnailUrl: string;
             /**
              * Width
-             * @description Breite nach EXIF-Ausrichtung
+             * @description Width after EXIF orientation
              */
             width: number;
         };
+        /** ImageSlide */
+        ImageSlide: {
+            /**
+             * Duration
+             * @description Display duration in seconds
+             */
+            duration: number;
+            /**
+             * Id
+             * @description Assigned by the client, unique within the project
+             */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image";
+            /**
+             * Mediaid
+             * @description ID of an image from /api/media
+             */
+            mediaId: string;
+            /** @description Incoming transition from the previous element; always null for the first */
+            transitionIn: components["schemas"]["TransitionRef"] | null;
+        };
+        /** MediaDeleteResponse */
+        MediaDeleteResponse: {
+            project: components["schemas"]["Project"];
+        };
+        MediaItem: components["schemas"]["ImageItem"] | components["schemas"]["AudioItem"] | components["schemas"]["VideoItem"];
         /** MediaListResponse */
         MediaListResponse: {
             /**
              * Items
-             * @description Alle Medien in Importreihenfolge
+             * @description All media in import order
              */
             items: components["schemas"]["MediaItem"][];
         };
         /** MediaUploadFailure */
         MediaUploadFailure: {
+            /** @description Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.videoTooLong, media.noVideoStream, media.probeUnavailable */
+            errorCode: components["schemas"]["ErrorCode"];
             /**
-             * Error
-             * @enum {string}
+             * Errorparams
+             * @description Values of the message
              */
-            error: "unsupported" | "too_large" | "too_many_pixels";
+            errorParams: {
+                [key: string]: string | number;
+            };
             /** Filename */
             filename: string;
-            /** Message */
+            /**
+             * Message
+             * @description English message
+             */
             message: string;
             /**
              * Ok
@@ -255,57 +724,198 @@ export interface components {
              */
             ok: true;
         };
+        /**
+         * MusicClip
+         * @description A piece of the music track (add-music-track design.md D3); no start time:
+         *     clips play one after the other from 0.
+         */
+        MusicClip: {
+            /**
+             * Fadein
+             * @description Fade in over 1 s (new clip: false)
+             */
+            fadeIn: boolean;
+            /**
+             * Fadeout
+             * @description Fade out over 1 s (new clip: false)
+             */
+            fadeOut: boolean;
+            /**
+             * Id
+             * @description Assigned by the client, unique within the music track
+             */
+            id: string;
+            /**
+             * Mediaid
+             * @description ID of an audio medium from /api/media
+             */
+            mediaId: string;
+            /**
+             * Trimend
+             * @description End within the file in seconds; null = end of the file (new clip: null)
+             */
+            trimEnd: number | null;
+            /**
+             * Trimstart
+             * @description Start within the file in seconds (new clip: 0)
+             */
+            trimStart: number;
+            /**
+             * Volume
+             * @description Volume as linear gain (1 = 100 %, new clip: 1)
+             */
+            volume: number;
+        };
+        /** Phases */
+        Phases: {
+            /** Entrance */
+            entrance: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+            /** Exit */
+            exit: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+            /** Main */
+            main: components["schemas"]["FadePhase"] | components["schemas"]["StaticPhase"] | components["schemas"]["PositionPhase"];
+        };
+        /** PositionPhase */
+        PositionPhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "position";
+            end: components["schemas"]["Transform"];
+            start: components["schemas"]["Transform"];
+        };
         /** Project */
         Project: {
+            /** Music */
+            music: components["schemas"]["MusicClip"][];
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: 3;
+            /** Slides */
+            slides: components["schemas"]["Slide"][];
+        };
+        /**
+         * ProjectValidationResponse
+         * @description 422 body of PUT /api/project: reference errors or FastAPI's native list.
+         */
+        ProjectValidationResponse: {
+            /** Detail */
+            detail: components["schemas"]["ApiErrorWithIssues"] | components["schemas"]["RequestValidationIssue"][];
+        };
+        /**
+         * RequestValidationIssue
+         * @description One entry of FastAPI's native 422 list. For rule violations of this API,
+         *     `type` is an error code from `ERRORS`, `ctx` its params and `msg` the message.
+         */
+        RequestValidationIssue: {
+            /** Ctx */
+            ctx?: {
+                [key: string]: unknown;
+            } | null;
+            /** Input */
+            input?: unknown;
+            /** Loc */
+            loc: (string | number)[];
+            /** Msg */
+            msg: string;
+            /** Type */
+            type: string;
+        };
+        Slide: components["schemas"]["ImageSlide"] | components["schemas"]["VideoSlide"];
+        /** StaticPhase */
+        StaticPhase: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            effect: "static";
+        };
+        /** Title */
+        Title: {
+            anchor: components["schemas"]["Transform"];
+            /** Fontscale */
+            fontScale: number;
+            /** Id */
+            id: string;
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "one-line" | "two-line" | "credits";
+            names: components["schemas"]["TitleNames"];
+            phases: components["schemas"]["Phases"];
+            source: components["schemas"]["TitleSource"];
+        };
+        /** TitleCatalog */
+        TitleCatalog: {
             /**
              * Schemaversion
              * @constant
              */
             schemaVersion: 1;
-            /** Slides */
-            slides: components["schemas"]["Slide"][];
+            /** Titles */
+            titles: components["schemas"]["Title"][];
         };
-        /** Slide */
-        Slide: {
+        /**
+         * TitleNames
+         * @description Display name per UI language; both languages are required.
+         */
+        TitleNames: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
+        };
+        /** TitleSource */
+        TitleSource: {
             /**
-             * Duration
-             * @description Anzeigedauer in Sekunden
+             * Estimated
+             * @description Fields whose value is not documented but estimated [E]
              */
-            duration: number;
+            estimated?: string[] | null;
             /**
-             * Id
-             * @description Vom Client vergeben, eindeutig im Projekt
+             * Kind
+             * @constant
              */
-            id: string;
-            /**
-             * Mediaid
-             * @description ID eines Mediums aus /api/media
-             */
-            mediaId: string;
-            /** @description Eingehender Übergang vom vorherigen Element; beim ersten immer null */
-            transitionIn: components["schemas"]["TransitionRef"] | null;
+            kind: "wmm2x-xml";
+            /** Ref */
+            ref: string;
+        };
+        /**
+         * Transform
+         * @description Position/zoom in title-vertex.glsl's clip-space convention (design.md D3).
+         */
+        Transform: {
+            /** Scale */
+            scale: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
         };
         /** Transition */
         Transition: {
             /**
              * Defaultduration
-             * @description Sekunden
+             * @description Seconds
              */
             defaultDuration: number;
             /** Id */
             id: string;
-            /** Name */
-            name: string;
+            names: components["schemas"]["TransitionNames"];
             /**
              * Params
-             * @description Wird 1:1 zu `uniform float <name>` im Shader
+             * @description Becomes `uniform float <name>` in the shader, 1:1
              */
             params: {
                 [key: string]: number;
             };
             /**
              * Shader
-             * @description Dateiname in packages/shaders/transitions/
+             * @description File name in packages/shaders/transitions/
              */
             shader: string;
             source: components["schemas"]["TransitionSource"];
@@ -320,16 +930,26 @@ export interface components {
             /** Transitions */
             transitions: components["schemas"]["Transition"][];
         };
+        /**
+         * TransitionNames
+         * @description Display name per UI language; both languages are required.
+         */
+        TransitionNames: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
+        };
         /** TransitionRef */
         TransitionRef: {
             /**
              * Duration
-             * @description Solldauer des Übergangs in Sekunden
+             * @description Target duration of the transition in seconds
              */
             duration: number;
             /**
              * Transitionid
-             * @description ID aus dem Übergangskatalog
+             * @description ID from the transition catalog
              */
             transitionId: string;
         };
@@ -337,7 +957,7 @@ export interface components {
         TransitionSource: {
             /**
              * Estimated
-             * @description Parameter, deren Wert nicht belegt, sondern geschätzt ist [E]
+             * @description Parameters whose value is not documented but estimated [E]
              */
             estimated?: string[] | null;
             /**
@@ -361,6 +981,93 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * VideoItem
+         * @description An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1.
+         */
+        VideoItem: {
+            /**
+             * Codec
+             * @description FFmpeg codec name of the original, e.g. `h264`, `hevc`
+             */
+            codec: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Duration
+             * @description Decoded duration in seconds
+             */
+            duration: number;
+            /**
+             * Filename
+             * @description Original file name, for display only
+             */
+            filename: string;
+            /**
+             * Height
+             * @description Height after rotation
+             */
+            height: number;
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "video";
+            /**
+             * Posterurl
+             * @description Poster frame (JPEG), add-video-import D3
+             */
+            posterUrl: string;
+            /**
+             * Videourl
+             * @description Original video file, for the preview player (add-timeline-editing D5)
+             */
+            videoUrl: string;
+            /**
+             * Width
+             * @description Width after rotation
+             */
+            width: number;
+        };
+        /**
+         * VideoSlide
+         * @description A video clip element (add-timeline-editing design.md D1); its length is
+         *     always `trimOut - trimIn`, there is no separate duration field.
+         */
+        VideoSlide: {
+            /**
+             * Id
+             * @description Assigned by the client, unique within the project
+             */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "video";
+            /**
+             * Mediaid
+             * @description ID of a video from /api/media
+             */
+            mediaId: string;
+            /** @description Incoming transition from the previous element; always null for the first */
+            transitionIn: components["schemas"]["TransitionRef"] | null;
+            /**
+             * Trimin
+             * @description Start within the video in seconds (new clip: 0)
+             */
+            trimIn: number;
+            /**
+             * Trimout
+             * @description End within the video in seconds (new clip: the video's full duration)
+             */
+            trimOut: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -370,6 +1077,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_titles_api_catalog_titles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TitleCatalog"];
+                };
+            };
+        };
+    };
     list_transitions_api_catalog_transitions_get: {
         parameters: {
             query?: never;
@@ -386,6 +1113,195 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransitionCatalog"];
+                };
+            };
+        };
+    };
+    list_exports_api_exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportListResponse"];
+                };
+            };
+        };
+    };
+    start_export_api_exports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description An export is already running (`export.busy`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiValidationResponse"];
+                };
+            };
+        };
+    };
+    get_export_api_exports__export_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            /** @description Unknown or deleted export (`export.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_export_api_exports__export_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unknown or deleted export (`export.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_export_file_api_exports__export_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Finished movie (MP4) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": unknown;
+                };
+            };
+            /** @description Unknown or deleted export (`export.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description The export is not done (`export.notReady`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -452,12 +1368,14 @@ export interface operations {
                     "application/json": components["schemas"]["MediaUploadResponse"];
                 };
             };
-            /** @description Mehr als 50 Dateien in einer Anfrage */
+            /** @description More than 50 files in one request (`media.tooManyFiles`) */
             413: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -490,12 +1408,143 @@ export interface operations {
                     "application/json": components["schemas"]["MediaDeleteResponse"];
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description A queued or running export uses the medium (`media.inUseByExport`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audio_api_media__media_id__audio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description AAC in M4A, 48 kHz, stereo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "audio/mp4": unknown;
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_peaks_api_media__media_id__peaks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioPeaks"];
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_poster_api_media__media_id__poster_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JPEG image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -519,7 +1568,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description JPEG-Bild */
+            /** @description JPEG image */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -528,12 +1577,14 @@ export interface operations {
                     "image/jpeg": unknown;
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -557,7 +1608,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description JPEG-Bild */
+            /** @description JPEG image */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -566,12 +1617,55 @@ export interface operations {
                     "image/jpeg": unknown;
                 };
             };
-            /** @description Unbekannte oder ungültige Medien-ID */
+            /** @description Unknown or invalid media id (`media.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_video_api_media__media_id__video_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original video file, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": unknown;
+                    "video/x-matroska": unknown;
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -626,13 +1720,13 @@ export interface operations {
                     "application/json": components["schemas"]["Project"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid project: `project.invalid` with one issue per broken reference, or FastAPI's native list (rule violations carry an error code as `type`) */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ProjectValidationResponse"];
                 };
             };
         };

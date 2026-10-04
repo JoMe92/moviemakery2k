@@ -17,7 +17,7 @@ Standards.
   Titel-Assistent, Export-Assistent.
 - **Referenzkatalog 2.x:** 60 Übergänge, ca. 28–30 Videoeffekte, 43
   Titel-/Abspann-Animationen (Phasen Entrance → Main → Exit). Details:
-  `docs/research/movie-maker-klon.md`.
+  `docs/research/movie-maker-reference.md`.
 - **Entschieden:** Name moviemakerY2K · Lizenz GPL-3.0-or-later · eigener
   Y2K-Look (an XP/Luna angelehnt, keine Original-Assets, keine pixelgenaue
   Kopie) · keine Referenzinstallation, die Treue richtet sich nach den
@@ -33,7 +33,7 @@ Abhängigkeiten und Befehle laufen über **Pixi** (`pixi.toml`, `pixi run …`);
 pnpm nur für npm-Pakete, die es nicht auf conda-forge gibt.
 
 
-Siehe `docs/adr/0001-architektur.md`.
+Siehe `docs/adr/0001-architecture.md`.
 
 - `apps/web`: Vite + React + TypeScript (strict). Die Vorschau läuft über
   WebGL2, das Y2K-Theme über CSS-Tokens.
@@ -53,9 +53,12 @@ Siehe `docs/adr/0001-architektur.md`.
 - OpenSpec is written only in planning sessions.
 - A task has one Bead mapping via namespaced labels.
 - Change lifecycle: `open`, `done`, `archived`.
-- Spezifikationen und Doku sind auf Deutsch, Code-Bezeichner auf Englisch.
+- Spezifikationen sind auf Deutsch; öffentliche Doku, Code-Bezeichner und
+  Code-Kommentare auf Englisch. Die Oberfläche ist zweisprachig (Deutsch,
+  Englisch; Change `add-ui-localisation`).
 - Jeder Effekt- oder Übergangs-Change nennt seine Quelle (XML-Parameter bzw.
   SMIL-Wipe-Nummer) und definiert einen Golden-Frame-Test.
-- Keine Microsoft-Assets ausliefern. Die Dateien in `docs/research/sources/`
-  sind nur Referenz.
+- Keine Microsoft-Assets ausliefern oder einchecken. Die Original-Definitionen
+  sind in `docs/research/sources/README.md` nur verlinkt; lokale Kopien sind
+  per `.gitignore` ausgeschlossen.
 - Quality-Gate: `pixi run check`.

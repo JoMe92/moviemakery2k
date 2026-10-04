@@ -1,41 +1,15 @@
-"""GET/PUT /api/project - das eine Projekt laden und speichern (TASK-API-004)."""
+"""GET/PUT /api/project - load and save the one project (TASK-API-004)."""
 
-from collections.abc import Callable, Coroutine
-from typing import Annotated, Any, cast
+from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from mmy_backend.catalog import TransitionCatalog
+from mmy_backend.errors import ProjectValidationResponse
 from mmy_backend.media import MediaStore
-from mmy_backend.project import (
-    Project,
-    ProjectStore,
-    ProjectValidationError,
-    translate_validation_errors,
-)
+from mmy_backend.project import Project, ProjectStore, ProjectValidationError
 
-
-class _GermanValidationRoute(APIRoute):
-    """Liefert Strukturfehler des Projekts als 422 mit deutschen Meldungen."""
-
-    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
-        handler = super().get_route_handler()
-
-        async def route_handler(request: Request) -> Response:
-            try:
-                return await handler(request)
-            except RequestValidationError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=translate_validation_errors(exc.errors(), exc.body),
-                ) from exc
-
-        return route_handler
-
-
-router = APIRouter(prefix="/project", tags=["project"], route_class=_GermanValidationRoute)
+router = APIRouter(prefix="/project", tags=["project"])
 
 
 def get_project_store(request: Request) -> ProjectStore:
@@ -52,25 +26,37 @@ def get_catalog(request: Request) -> TransitionCatalog:
 
 @router.get("")
 def get_project(store: Annotated[ProjectStore, Depends(get_project_store)]) -> Project:
-    """Das gespeicherte Projekt; ohne Datei das leere Projekt."""
+    """The saved project; without a file, the empty project."""
     return store.get()
 
 
-@router.put("")
+@router.put(
+    "",
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "model": ProjectValidationResponse,
+            "description": (
+                "Invalid project: `project.invalid` with one issue per broken reference, "
+                "or FastAPI's native list (rule violations carry an error code as `type`)"
+            ),
+        }
+    },
+)
 async def put_project(
     project: Project,
     store: Annotated[ProjectStore, Depends(get_project_store)],
     media: Annotated[MediaStore, Depends(get_media_store)],
     catalog: Annotated[TransitionCatalog, Depends(get_catalog)],
 ) -> Project:
-    """Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert."""
+    """Replaces the project. On 422 the saved state stays unchanged."""
     try:
         return await store.save(
             project,
-            media_ids={m.id for m in media.list()},
+            media=media.list(),
             transition_ids={t.id for t in catalog.transitions},
         )
     except ProjectValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.issues
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=exc.api_error().model_dump(),
         ) from exc

@@ -9,5 +9,23 @@
     "done",
     "archived"
   ],
-  "nogging_version": "2.0.2"
+  "nogging_version": "2.1.0",
+  "personas": {
+    "orchestrator": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
+    },
+    "planner": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
+    },
+    "lead": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
+    },
+    "sync": {
+      "name": "Claude",
+      "email": "noreply@anthropic.com"
+    }
+  }
 }

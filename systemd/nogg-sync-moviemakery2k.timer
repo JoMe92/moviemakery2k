@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Nogging sync every 30 seconds (moviemakery2k)
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=30s
+AccuracySec=5s
+Persistent=true
+Unit=nogg-sync-moviemakery2k.service
+
+[Install]
+WantedBy=timers.target

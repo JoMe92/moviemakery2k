@@ -1,9 +1,9 @@
 import type { CSSProperties, ReactNode, SVGProps } from "react";
 
 /*
- * Eigene, bewusst einfache geometrische Symbole (16×16-Raster). Keine
- * Nachzeichnungen von Windows- oder Movie-Maker-Icons. Farben kommen aus den
- * Theme-Tokens bzw. aus currentColor.
+ * Our own, deliberately simple geometric icons (16×16 grid). No tracings
+ * of Windows or Movie Maker icons. Colours come from the theme tokens or
+ * from currentColor.
  */
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
@@ -184,6 +184,47 @@ export function TimelineIcon(props: IconProps) {
     <Svg {...props}>
       <rect x="1.5" y="3.5" width="13" height="3" fill="none" stroke="currentColor" />
       <rect x="1.5" y="9.5" width="9" height="3" fill="none" stroke="currentColor" />
+    </Svg>
+  );
+}
+
+/** Audio file: a beamed pair of eighth notes on a sheet (own drawing). */
+export function AudioIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect
+        x="1.5"
+        y="1.5"
+        width="13"
+        height="13"
+        rx="1"
+        style={{ ...tok("pane"), stroke: "currentColor" }}
+      />
+      <path d="M6 11V4.5l6-1.5V9.5" style={{ ...strokeTok("icon-ink"), strokeWidth: 1.2 }} />
+      <path d="M6 5.6l6-1.5" style={{ ...strokeTok("icon-ink"), strokeWidth: 1.6 }} />
+      <ellipse cx="4.6" cy="11.2" rx="1.6" ry="1.2" style={tok("icon-blue")} />
+      <ellipse cx="10.6" cy="9.7" rx="1.6" ry="1.2" style={tok("icon-blue")} />
+    </Svg>
+  );
+}
+
+/** Warning: yellow triangle with an exclamation mark (own drawing). */
+/** Phone with an arrow into it: "Install as app" (add-mobile-delivery D7). */
+export function InstallIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="1.5" width="7" height="13" rx="1.2" style={tok("icon-ink")} />
+      <rect x="5.5" y="3" width="5" height="9" style={tok("pane")} />
+      <path d="M8 4v5M6 7l2 2.2L10 7" style={{ ...strokeTok("icon-blue"), strokeWidth: 1.4 }} />
+    </Svg>
+  );
+}
+
+export function WarningIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8 1.5l6.5 12h-13z" style={tok("icon-yellow")} stroke="var(--y2k-icon-ink)" />
+      <path d="M8 5.5v4.5M8 11.5v1.5" fill="none" stroke="var(--y2k-icon-ink)" strokeWidth="1.5" />
     </Svg>
   );
 }

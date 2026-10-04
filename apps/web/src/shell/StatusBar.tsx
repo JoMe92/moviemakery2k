@@ -2,17 +2,17 @@ import type { ReactNode } from "react";
 import styles from "./StatusBar.module.css";
 
 export interface StatusBarProps {
-  /** Felder der Statusleiste von links nach rechts. */
+  /** Status bar fields from left to right. */
   items: readonly ReactNode[];
 }
 
-/** Statusleiste am unteren Fensterrand; Änderungen werden höflich angesagt. */
+/** Status bar at the bottom of the window; changes are announced politely. */
 export function StatusBar({ items }: StatusBarProps) {
   return (
     <footer className={styles.statusbar}>
       {items.map((item, index) => (
-        // Felder sind positionsgebunden und ändern ihre Reihenfolge nicht.
-        // biome-ignore lint/suspicious/noArrayIndexKey: feste Feldpositionen
+        // Fields are bound to their position and never change order.
+        // biome-ignore lint/suspicious/noArrayIndexKey: fixed field positions
         <output key={index} className={styles.field} aria-live="polite">
           {item}
         </output>

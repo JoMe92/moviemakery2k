@@ -23,7 +23,7 @@ function Harness() {
 }
 
 describe("Dialog", () => {
-  it("öffnet modal, schließt mit Escape und gibt den Fokus zurück", async () => {
+  it("opens modally, closes with Escape and returns focus", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     const opener = screen.getByRole("button", { name: "Info" });
@@ -38,12 +38,12 @@ describe("Dialog", () => {
     expect(opener).toHaveFocus();
   });
 
-  it("hält den Tab-Fokus im Dialog", async () => {
+  it("keeps Tab focus inside the dialog", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Info" }));
     const ok = screen.getByRole("button", { name: "OK" });
-    const close = screen.getByRole("button", { name: "Schließen" });
+    const close = screen.getByRole("button", { name: "Dialog schließen" });
 
     expect(ok).toHaveFocus();
     await user.tab();
@@ -52,11 +52,20 @@ describe("Dialog", () => {
     expect(ok).toHaveFocus();
   });
 
-  it("schließt über den Schließen-Knopf", async () => {
+  it("closes via the close button", async () => {
     const user = userEvent.setup();
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Info" }));
-    await user.click(screen.getByRole("button", { name: "Schließen" }));
+    await user.click(screen.getByRole("button", { name: "Dialog schließen" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("names the title bar button “Close dialog” in English", async () => {
+    localStorage.setItem("mmy.locale", "en");
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Info" }));
+    expect(screen.getByRole("button", { name: "Close dialog" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
   });
 });

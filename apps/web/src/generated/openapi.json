@@ -1,10 +1,292 @@
 {
   "components": {
     "schemas": {
+      "ApiError": {
+        "additionalProperties": false,
+        "description": "An error of the backend: stable code, params and English message (design.md D5).",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable dotted error code, e.g. `export.emptyProject`"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "ApiErrorIssue": {
+        "additionalProperties": false,
+        "description": "One rule violation of a request body, with the position of the offending value.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable dotted error code, e.g. `export.emptyProject`"
+          },
+          "loc": {
+            "description": "Position in the body, e.g. [\"body\", \"slides\", 2]",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message",
+          "loc"
+        ],
+        "title": "ApiErrorIssue",
+        "type": "object"
+      },
+      "ApiErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "ApiErrorWithIssues": {
+        "additionalProperties": false,
+        "description": "An error that collects several rule violations (`project.invalid`).",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable dotted error code, e.g. `export.emptyProject`"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ApiErrorIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "message": {
+            "description": "English message; shown when the code is unknown",
+            "title": "Message",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values the message is built from",
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "message",
+          "issues"
+        ],
+        "title": "ApiErrorWithIssues",
+        "type": "object"
+      },
+      "ApiValidationResponse": {
+        "description": "422 body: an `ApiError` or FastAPI's native list.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RequestValidationIssue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiValidationResponse",
+        "type": "object"
+      },
+      "AudioItem": {
+        "additionalProperties": false,
+        "description": "An imported audio file (MP3, WAV, M4A/AAC, OGG, FLAC), add-music-track D1.",
+        "properties": {
+          "audioUrl": {
+            "description": "Preview version (AAC in M4A, 48 kHz, stereo)",
+            "title": "Audiourl",
+            "type": "string"
+          },
+          "channels": {
+            "description": "Number of channels of the original",
+            "exclusiveMinimum": 0.0,
+            "title": "Channels",
+            "type": "integer"
+          },
+          "codec": {
+            "description": "FFmpeg codec name of the original, e.g. `mp3`, `pcm_s16le`",
+            "title": "Codec",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Duration in seconds",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "audio",
+            "title": "Kind",
+            "type": "string"
+          },
+          "peaksUrl": {
+            "description": "Waveform data (50 peaks per second)",
+            "title": "Peaksurl",
+            "type": "string"
+          },
+          "sampleRate": {
+            "description": "Sample rate of the original in Hz",
+            "exclusiveMinimum": 0.0,
+            "title": "Samplerate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "duration",
+          "sampleRate",
+          "channels",
+          "codec",
+          "createdAt",
+          "audioUrl",
+          "peaksUrl"
+        ],
+        "title": "AudioItem",
+        "type": "object"
+      },
+      "AudioPeaks": {
+        "additionalProperties": false,
+        "description": "Waveform data of an audio medium (`GET /api/media/{id}/peaks`, design.md D2).\n\nPeak `i` is the largest absolute sample of the mono downmix in the time\nwindow `[i / rate, (i + 1) / rate)` s, relative to full scale (0 = silence,\n1 = full scale). The last window may be shorter.",
+        "properties": {
+          "peaks": {
+            "description": "One peak per window, relative to full scale (0..1)",
+            "items": {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            "title": "Peaks",
+            "type": "array"
+          },
+          "rate": {
+            "description": "Peaks per second (always 50)",
+            "exclusiveMinimum": 0.0,
+            "title": "Rate",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rate",
+          "peaks"
+        ],
+        "title": "AudioPeaks",
+        "type": "object"
+      },
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
-            "description": "Bilddateien (JPEG, PNG, WebP)",
+            "description": "Images (JPEG, PNG, WebP), video (MP4/MOV, MKV/WebM; H.264, HEVC, VP9, AV1) and audio (MP3, WAV, M4A/AAC, OGG, FLAC)",
             "items": {
               "contentMediaType": "application/octet-stream",
               "type": "string"
@@ -17,6 +299,233 @@
           "files"
         ],
         "title": "Body_upload_media_api_media_post",
+        "type": "object"
+      },
+      "ErrorCode": {
+        "description": "All stable error codes; part of the API contract as an OpenAPI enum (design.md D4).\n\nNever rename a code, add a new one instead.",
+        "enum": [
+          "auth.required",
+          "media.notFound",
+          "media.tooManyFiles",
+          "media.unsupportedType",
+          "media.tooLarge",
+          "media.tooManyPixels",
+          "media.inUseByExport",
+          "media.audioTooLong",
+          "media.noAudioStream",
+          "media.videoTooLong",
+          "media.noVideoStream",
+          "media.probeUnavailable",
+          "project.slideDuration.outOfRange",
+          "project.slideDuration.offGrid",
+          "project.transitionDuration.outOfRange",
+          "project.transitionDuration.offGrid",
+          "project.musicVolume.outOfRange",
+          "project.musicTrim.negative",
+          "project.slideTrim.negative",
+          "project.invalid",
+          "project.slide.duplicateId",
+          "project.slide.unknownMedia",
+          "project.slide.firstHasTransition",
+          "project.slide.unknownTransition",
+          "project.slide.notImage",
+          "project.slide.notVideo",
+          "project.slide.trimOutBeyondFile",
+          "project.slide.trimInNotBeforeTrimOut",
+          "project.music.duplicateId",
+          "project.music.unknownMedia",
+          "project.music.notAudio",
+          "project.music.trimEndBeyondFile",
+          "project.music.trimStartNotBeforeEnd",
+          "project.music.tooShort",
+          "export.notFound",
+          "export.emptyProject",
+          "export.missingMedia",
+          "export.missingMusicMedia",
+          "export.busy",
+          "export.notReady",
+          "export.fileName.empty",
+          "export.fileName.invalidChars",
+          "export.fileName.controlChars",
+          "export.fileName.invalid",
+          "export.fileName.tooLong",
+          "export.glUnavailable",
+          "export.noImages",
+          "export.ffmpegMissing",
+          "export.ffmpegStartFailed",
+          "export.ffmpegInputClosed",
+          "export.ffmpegInputClosedEarly",
+          "export.ffmpegFailed",
+          "export.renderFailed",
+          "export.audioFailed",
+          "export.saveFailed",
+          "export.unexpected"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
+      "ExportJob": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Stable error code when `failed` (design.md D3), otherwise null"
+          },
+          "errorParams": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values of the error message; empty without error",
+            "title": "Errorparams",
+            "type": "object"
+          },
+          "fileName": {
+            "description": "File name without extension",
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "English error message when `failed`, otherwise null",
+            "title": "Message"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ExportProfile"
+          },
+          "progress": {
+            "description": "Progress 0..1",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Progress",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExportStatus"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "progress",
+          "profile",
+          "fileName",
+          "errorCode",
+          "errorParams",
+          "message",
+          "createdAt"
+        ],
+        "title": "ExportJob",
+        "type": "object"
+      },
+      "ExportListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "description": "All known exports, oldest first",
+            "items": {
+              "$ref": "#/components/schemas/ExportJob"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ExportListResponse",
+        "type": "object"
+      },
+      "ExportProfile": {
+        "description": "Output profile of the export; the value is the name in the API contract.",
+        "enum": [
+          "high",
+          "small",
+          "email_web"
+        ],
+        "title": "ExportProfile",
+        "type": "string"
+      },
+      "ExportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "fileName": {
+            "description": "Requested file name without extension; `.mp4` is appended on download. Not allowed: / \\ : * ? \" < > | and control characters.",
+            "examples": [
+              "My Movie"
+            ],
+            "title": "Filename",
+            "type": "string"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ExportProfile",
+            "default": "high",
+            "description": "`high` = 960x720 (default), `small` = 640x480, `email_web` = 320x240; all 30 fps"
+          }
+        },
+        "required": [
+          "fileName"
+        ],
+        "title": "ExportRequest",
+        "type": "object"
+      },
+      "ExportStatus": {
+        "enum": [
+          "queued",
+          "running",
+          "done",
+          "failed",
+          "cancelled"
+        ],
+        "title": "ExportStatus",
+        "type": "string"
+      },
+      "FadePhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "fade",
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "FadePhase",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -58,6 +567,111 @@
         "title": "Health",
         "type": "object"
       },
+      "ImageItem": {
+        "additionalProperties": false,
+        "description": "An imported picture (JPEG, PNG, WebP).",
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "height": {
+            "description": "Height after EXIF orientation",
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "image",
+            "title": "Kind",
+            "type": "string"
+          },
+          "previewUrl": {
+            "title": "Previewurl",
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "title": "Thumbnailurl",
+            "type": "string"
+          },
+          "width": {
+            "description": "Width after EXIF orientation",
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "width",
+          "height",
+          "createdAt",
+          "thumbnailUrl",
+          "previewUrl"
+        ],
+        "title": "ImageItem",
+        "type": "object"
+      },
+      "ImageSlide": {
+        "additionalProperties": false,
+        "properties": {
+          "duration": {
+            "description": "Display duration in seconds",
+            "maximum": 60.0,
+            "minimum": 0.5,
+            "multipleOf": 0.25,
+            "title": "Duration",
+            "type": "number"
+          },
+          "id": {
+            "description": "Assigned by the client, unique within the project",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "image",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of an image from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "transitionIn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Incoming transition from the previous element; always null for the first"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "mediaId",
+          "duration",
+          "transitionIn"
+        ],
+        "title": "ImageSlide",
+        "type": "object"
+      },
       "MediaDeleteResponse": {
         "additionalProperties": false,
         "properties": {
@@ -72,59 +686,31 @@
         "type": "object"
       },
       "MediaItem": {
-        "additionalProperties": false,
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "title": "Createdat",
-            "type": "string"
+        "discriminator": {
+          "mapping": {
+            "audio": "#/components/schemas/AudioItem",
+            "image": "#/components/schemas/ImageItem",
+            "video": "#/components/schemas/VideoItem"
           },
-          "filename": {
-            "description": "Original-Dateiname, nur zur Anzeige",
-            "title": "Filename",
-            "type": "string"
-          },
-          "height": {
-            "description": "Höhe nach EXIF-Ausrichtung",
-            "title": "Height",
-            "type": "integer"
-          },
-          "id": {
-            "pattern": "^[0-9a-f]{32}$",
-            "title": "Id",
-            "type": "string"
-          },
-          "previewUrl": {
-            "title": "Previewurl",
-            "type": "string"
-          },
-          "thumbnailUrl": {
-            "title": "Thumbnailurl",
-            "type": "string"
-          },
-          "width": {
-            "description": "Breite nach EXIF-Ausrichtung",
-            "title": "Width",
-            "type": "integer"
-          }
+          "propertyName": "kind"
         },
-        "required": [
-          "id",
-          "filename",
-          "width",
-          "height",
-          "createdAt",
-          "thumbnailUrl",
-          "previewUrl"
-        ],
-        "title": "MediaItem",
-        "type": "object"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ImageItem"
+          },
+          {
+            "$ref": "#/components/schemas/AudioItem"
+          },
+          {
+            "$ref": "#/components/schemas/VideoItem"
+          }
+        ]
       },
       "MediaListResponse": {
         "additionalProperties": false,
         "properties": {
           "items": {
-            "description": "Alle Medien in Importreihenfolge",
+            "description": "All media in import order",
             "items": {
               "$ref": "#/components/schemas/MediaItem"
             },
@@ -141,20 +727,34 @@
       "MediaUploadFailure": {
         "additionalProperties": false,
         "properties": {
-          "error": {
-            "enum": [
-              "unsupported",
-              "too_large",
-              "too_many_pixels"
-            ],
-            "title": "Error",
-            "type": "string"
+          "errorCode": {
+            "$ref": "#/components/schemas/ErrorCode",
+            "description": "Stable error code (design.md D3, D4); one of media.unsupportedType, media.tooLarge, media.tooManyPixels, media.audioTooLong, media.noAudioStream, media.videoTooLong, media.noVideoStream, media.probeUnavailable"
+          },
+          "errorParams": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "description": "Values of the message",
+            "title": "Errorparams",
+            "type": "object"
           },
           "filename": {
             "title": "Filename",
             "type": "string"
           },
           "message": {
+            "description": "English message",
             "title": "Message",
             "type": "string"
           },
@@ -167,7 +767,8 @@
         "required": [
           "filename",
           "ok",
-          "error",
+          "errorCode",
+          "errorParams",
           "message"
         ],
         "title": "MediaUploadFailure",
@@ -221,11 +822,184 @@
         "title": "MediaUploadSuccess",
         "type": "object"
       },
+      "MusicClip": {
+        "additionalProperties": false,
+        "description": "A piece of the music track (add-music-track design.md D3); no start time:\nclips play one after the other from 0.",
+        "properties": {
+          "fadeIn": {
+            "description": "Fade in over 1 s (new clip: false)",
+            "title": "Fadein",
+            "type": "boolean"
+          },
+          "fadeOut": {
+            "description": "Fade out over 1 s (new clip: false)",
+            "title": "Fadeout",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Assigned by the client, unique within the music track",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of an audio medium from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "trimEnd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "End within the file in seconds; null = end of the file (new clip: null)",
+            "title": "Trimend"
+          },
+          "trimStart": {
+            "description": "Start within the file in seconds (new clip: 0)",
+            "minimum": 0.0,
+            "title": "Trimstart",
+            "type": "number"
+          },
+          "volume": {
+            "description": "Volume as linear gain (1 = 100 %, new clip: 1)",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Volume",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "mediaId",
+          "trimStart",
+          "trimEnd",
+          "volume",
+          "fadeIn",
+          "fadeOut"
+        ],
+        "title": "MusicClip",
+        "type": "object"
+      },
+      "Phases": {
+        "additionalProperties": false,
+        "properties": {
+          "entrance": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Entrance"
+          },
+          "exit": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Exit"
+          },
+          "main": {
+            "discriminator": {
+              "mapping": {
+                "fade": "#/components/schemas/FadePhase",
+                "position": "#/components/schemas/PositionPhase",
+                "static": "#/components/schemas/StaticPhase"
+              },
+              "propertyName": "effect"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FadePhase"
+              },
+              {
+                "$ref": "#/components/schemas/StaticPhase"
+              },
+              {
+                "$ref": "#/components/schemas/PositionPhase"
+              }
+            ],
+            "title": "Main"
+          }
+        },
+        "required": [
+          "entrance",
+          "main",
+          "exit"
+        ],
+        "title": "Phases",
+        "type": "object"
+      },
+      "PositionPhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "position",
+            "title": "Effect",
+            "type": "string"
+          },
+          "end": {
+            "$ref": "#/components/schemas/Transform"
+          },
+          "start": {
+            "$ref": "#/components/schemas/Transform"
+          }
+        },
+        "required": [
+          "effect",
+          "start",
+          "end"
+        ],
+        "title": "PositionPhase",
+        "type": "object"
+      },
       "Project": {
         "additionalProperties": false,
         "properties": {
+          "music": {
+            "items": {
+              "$ref": "#/components/schemas/MusicClip"
+            },
+            "maxItems": 100,
+            "title": "Music",
+            "type": "array"
+          },
           "schemaVersion": {
-            "const": 1,
+            "const": 3,
             "title": "Schemaversion",
             "type": "integer"
           },
@@ -240,59 +1014,278 @@
         },
         "required": [
           "schemaVersion",
-          "slides"
+          "slides",
+          "music"
         ],
         "title": "Project",
         "type": "object"
       },
-      "Slide": {
-        "additionalProperties": false,
+      "ProjectValidationResponse": {
+        "description": "422 body of PUT /api/project: reference errors or FastAPI's native list.",
         "properties": {
-          "duration": {
-            "description": "Anzeigedauer in Sekunden",
-            "maximum": 60.0,
-            "minimum": 0.5,
-            "multipleOf": 0.25,
-            "title": "Duration",
-            "type": "number"
-          },
-          "id": {
-            "description": "Vom Client vergeben, eindeutig im Projekt",
-            "pattern": "^[A-Za-z0-9_-]{1,64}$",
-            "title": "Id",
-            "type": "string"
-          },
-          "mediaId": {
-            "description": "ID eines Mediums aus /api/media",
-            "title": "Mediaid",
-            "type": "string"
-          },
-          "transitionIn": {
+          "detail": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TransitionRef"
+                "$ref": "#/components/schemas/ApiErrorWithIssues"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RequestValidationIssue"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ProjectValidationResponse",
+        "type": "object"
+      },
+      "RequestValidationIssue": {
+        "description": "One entry of FastAPI's native 422 list. For rule violations of this API,\n`type` is an error code from `ERRORS`, `ctx` its params and `msg` the message.",
+        "properties": {
+          "ctx": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Eingehender Übergang vom vorherigen Element; beim ersten immer null"
+            "title": "Ctx"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Loc",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Msg",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "RequestValidationIssue",
+        "type": "object"
+      },
+      "Slide": {
+        "discriminator": {
+          "mapping": {
+            "image": "#/components/schemas/ImageSlide",
+            "video": "#/components/schemas/VideoSlide"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ImageSlide"
+          },
+          {
+            "$ref": "#/components/schemas/VideoSlide"
+          }
+        ]
+      },
+      "StaticPhase": {
+        "additionalProperties": false,
+        "properties": {
+          "effect": {
+            "const": "static",
+            "title": "Effect",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect"
+        ],
+        "title": "StaticPhase",
+        "type": "object"
+      },
+      "Title": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/Transform"
+          },
+          "fontScale": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Fontscale",
+            "type": "number"
+          },
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "layout": {
+            "enum": [
+              "one-line",
+              "two-line",
+              "credits"
+            ],
+            "title": "Layout",
+            "type": "string"
+          },
+          "names": {
+            "$ref": "#/components/schemas/TitleNames"
+          },
+          "phases": {
+            "$ref": "#/components/schemas/Phases"
+          },
+          "source": {
+            "$ref": "#/components/schemas/TitleSource"
           }
         },
         "required": [
           "id",
-          "mediaId",
-          "duration",
-          "transitionIn"
+          "names",
+          "layout",
+          "anchor",
+          "fontScale",
+          "phases",
+          "source"
         ],
-        "title": "Slide",
+        "title": "Title",
+        "type": "object"
+      },
+      "TitleCatalog": {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "titles": {
+            "items": {
+              "$ref": "#/components/schemas/Title"
+            },
+            "minItems": 1,
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "titles"
+        ],
+        "title": "TitleCatalog",
+        "type": "object"
+      },
+      "TitleNames": {
+        "additionalProperties": false,
+        "description": "Display name per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "TitleNames",
+        "type": "object"
+      },
+      "TitleSource": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Fields whose value is not documented but estimated [E]",
+            "title": "Estimated"
+          },
+          "kind": {
+            "const": "wmm2x-xml",
+            "title": "Kind",
+            "type": "string"
+          },
+          "ref": {
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref"
+        ],
+        "title": "TitleSource",
+        "type": "object"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "description": "Position/zoom in title-vertex.glsl's clip-space convention (design.md D3).",
+        "properties": {
+          "scale": {
+            "exclusiveMinimum": 0.0,
+            "title": "Scale",
+            "type": "number"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "scale"
+        ],
+        "title": "Transform",
         "type": "object"
       },
       "Transition": {
         "additionalProperties": false,
         "properties": {
           "defaultDuration": {
-            "description": "Sekunden",
+            "description": "Seconds",
             "maximum": 5.0,
             "minimum": 0.25,
             "multipleOf": 0.25,
@@ -304,13 +1297,11 @@
             "title": "Id",
             "type": "string"
           },
-          "name": {
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
+          "names": {
+            "$ref": "#/components/schemas/TransitionNames"
           },
           "params": {
-            "description": "Wird 1:1 zu `uniform float <name>` im Shader",
+            "description": "Becomes `uniform float <name>` in the shader, 1:1",
             "patternProperties": {
               "^[a-z][A-Za-z0-9]*$": {
                 "type": "number"
@@ -320,7 +1311,7 @@
             "type": "object"
           },
           "shader": {
-            "description": "Dateiname in packages/shaders/transitions/",
+            "description": "File name in packages/shaders/transitions/",
             "pattern": "^[a-z0-9-]+\\.glsl$",
             "title": "Shader",
             "type": "string"
@@ -331,7 +1322,7 @@
         },
         "required": [
           "id",
-          "name",
+          "names",
           "shader",
           "defaultDuration",
           "params",
@@ -364,11 +1355,33 @@
         "title": "TransitionCatalog",
         "type": "object"
       },
+      "TransitionNames": {
+        "additionalProperties": false,
+        "description": "Display name per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "TransitionNames",
+        "type": "object"
+      },
       "TransitionRef": {
         "additionalProperties": false,
         "properties": {
           "duration": {
-            "description": "Solldauer des Übergangs in Sekunden",
+            "description": "Target duration of the transition in seconds",
             "maximum": 5.0,
             "minimum": 0.25,
             "multipleOf": 0.25,
@@ -376,7 +1389,7 @@
             "type": "number"
           },
           "transitionId": {
-            "description": "ID aus dem Übergangskatalog",
+            "description": "ID from the transition catalog",
             "title": "Transitionid",
             "type": "string"
           }
@@ -403,7 +1416,7 @@
                 "type": "null"
               }
             ],
-            "description": "Parameter, deren Wert nicht belegt, sondern geschätzt ist [E]",
+            "description": "Parameters whose value is not documented but estimated [E]",
             "title": "Estimated"
           },
           "kind": {
@@ -466,15 +1479,164 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VideoItem": {
+        "additionalProperties": false,
+        "description": "An imported video file (MP4/MOV, MKV/WebM; H.264, HEVC, VP9 or AV1), add-video-import D1.",
+        "properties": {
+          "codec": {
+            "description": "FFmpeg codec name of the original, e.g. `h264`, `hevc`",
+            "title": "Codec",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "duration": {
+            "description": "Decoded duration in seconds",
+            "exclusiveMinimum": 0.0,
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "Original file name, for display only",
+            "title": "Filename",
+            "type": "string"
+          },
+          "height": {
+            "description": "Height after rotation",
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "posterUrl": {
+            "description": "Poster frame (JPEG), add-video-import D3",
+            "title": "Posterurl",
+            "type": "string"
+          },
+          "videoUrl": {
+            "description": "Original video file, for the preview player (add-timeline-editing D5)",
+            "title": "Videourl",
+            "type": "string"
+          },
+          "width": {
+            "description": "Width after rotation",
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "filename",
+          "duration",
+          "width",
+          "height",
+          "codec",
+          "createdAt",
+          "posterUrl",
+          "videoUrl"
+        ],
+        "title": "VideoItem",
+        "type": "object"
+      },
+      "VideoSlide": {
+        "additionalProperties": false,
+        "description": "A video clip element (add-timeline-editing design.md D1); its length is\nalways `trimOut - trimIn`, there is no separate duration field.",
+        "properties": {
+          "id": {
+            "description": "Assigned by the client, unique within the project",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of a video from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "transitionIn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Incoming transition from the previous element; always null for the first"
+          },
+          "trimIn": {
+            "description": "Start within the video in seconds (new clip: 0)",
+            "minimum": 0.0,
+            "title": "Trimin",
+            "type": "number"
+          },
+          "trimOut": {
+            "description": "End within the video in seconds (new clip: the video's full duration)",
+            "minimum": 0.0,
+            "title": "Trimout",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "mediaId",
+          "trimIn",
+          "trimOut",
+          "transitionIn"
+        ],
+        "title": "VideoSlide",
+        "type": "object"
       }
     }
   },
   "info": {
     "title": "moviemakerY2K",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/catalog/titles": {
+      "get": {
+        "operationId": "list_titles_api_catalog_titles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TitleCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Titles",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/catalog/transitions": {
       "get": {
         "operationId": "list_transitions_api_catalog_transitions_get",
@@ -493,6 +1655,234 @@
         "summary": "List Transitions",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/exports": {
+      "get": {
+        "description": "All known exports (since the backend started), oldest first.",
+        "operationId": "list_exports_api_exports_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Exports",
+        "tags": [
+          "exports"
+        ]
+      },
+      "post": {
+        "description": "Starts an export of the saved project as it is right now.\n\nLater changes to the project do not affect this export.\nAt most one export runs at a time; a second start returns 409.",
+        "operationId": "start_export_api_exports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "An export is already running (`export.busy`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationResponse"
+                }
+              }
+            },
+            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
+          }
+        },
+        "summary": "Start Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/exports/{export_id}": {
+      "delete": {
+        "description": "Cancels a running export or deletes a finished one.\n\n- `queued`/`running`: the export is cancelled (FFmpeg stopped, partial file\n  deleted); the response comes only afterwards. The job stays queryable as\n  `cancelled`, without a file.\n- `done`/`failed`/`cancelled`: file and job are deleted; 404 afterwards.",
+        "operationId": "delete_export_api_exports__export_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Export",
+        "tags": [
+          "exports"
+        ]
+      },
+      "get": {
+        "description": "Status (`queued`, `running`, `done`, `failed`, `cancelled`), progress and error.",
+        "operationId": "get_export_api_exports__export_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/exports/{export_id}/file": {
+      "get": {
+        "description": "The finished MP4 as a download with the requested file name (`<fileName>.mp4`).\n\nAs long as the export is not `done`, the server answers 409 with the\nstatus; an incomplete file is never served.",
+        "operationId": "get_export_file_api_exports__export_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "export_id",
+            "required": true,
+            "schema": {
+              "title": "Export Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {}
+            },
+            "description": "Finished movie (MP4)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or deleted export (`export.notFound`)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "The export is not done (`export.notReady`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Export File",
+        "tags": [
+          "exports"
         ]
       }
     },
@@ -519,7 +1909,7 @@
     },
     "/api/media": {
       "get": {
-        "description": "Alle importierten Medien in Importreihenfolge.",
+        "description": "All imported media in import order.",
         "operationId": "list_media_api_media_get",
         "responses": {
           "200": {
@@ -562,7 +1952,14 @@
             "description": "Successful Response"
           },
           "413": {
-            "description": "Mehr als 50 Dateien in einer Anfrage"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "More than 50 files in one request (`media.tooManyFiles`)"
           },
           "422": {
             "content": {
@@ -583,7 +1980,7 @@
     },
     "/api/media/{media_id}": {
       "delete": {
-        "description": "Löscht ein Medium samt Dateien und entfernt es aus dem Projekt (Kaskade).\n\nAlle Elemente des Bildstreifens mit diesem Medium entfallen samt ihrer\neingehenden Übergänge; das neue erste Element hat keinen Übergang.\n\nAntwort ist 200 mit dem aktualisierten Projekt (statt 204), damit der\nClient seinen Stand ohne erneutes GET /api/project übernehmen kann.\n\nReihenfolge: erst aus dem Medienspeicher, dann aus dem Projekt. Ein\ngleichzeitiges PUT /api/project prüft gegen den Medienspeicher und kann\ndie ID danach nicht wieder einfügen.",
+        "description": "Deletes a medium with its files and removes it from the project (cascade).\n\nAll storyboard elements using this medium are dropped together with their\nincoming transitions; the new first element has no transition. All music\nclips using it are dropped as well (the following clips move up).\n\nThe response is 200 with the updated project (instead of 204) so that the\nclient can adopt its state without another GET /api/project.\n\nOrder: first from the media store, then from the project. A concurrent\nPUT /api/project validates against the media store and therefore cannot\nre-insert the ID afterwards.\n\nWhile a `queued` or `running` export has the medium in its snapshot, the\nresponse is 409 (`media.inUseByExport`); medium, project and export stay\nunchanged (design.md D5).",
         "operationId": "delete_media_api_media__media_id__delete",
         "parameters": [
           {
@@ -608,7 +2005,24 @@
             "description": "Successful Response"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "A queued or running export uses the medium (`media.inUseByExport`)"
           },
           "422": {
             "content": {
@@ -627,9 +2041,160 @@
         ]
       }
     },
+    "/api/media/{media_id}/audio": {
+      "get": {
+        "description": "Audio preview version (AAC in M4A, 48 kHz, stereo) with `Cache-Control: immutable`.\n\n404 for images as well as unknown IDs. Range requests are supported.",
+        "operationId": "get_audio_api_media__media_id__audio_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "audio/mp4": {}
+            },
+            "description": "AAC in M4A, 48 kHz, stereo"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Audio",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/peaks": {
+      "get": {
+        "description": "Waveform data (50 peaks per second, mono, 0..1) with `Cache-Control: immutable`.\n\n404 for images as well as unknown IDs.",
+        "operationId": "get_peaks_api_media__media_id__peaks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioPeaks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Peaks",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/media/{media_id}/poster": {
+      "get": {
+        "description": "Video poster frame (JPEG, quality 90) with `Cache-Control: immutable`.\n\n404 for images, audio and unknown IDs (add-video-import D3).",
+        "operationId": "get_poster_api_media__media_id__poster_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "JPEG image"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Poster",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/media/{media_id}/preview": {
       "get": {
-        "description": "Vorschaubild (JPEG, längste Kante <= 1920) mit `Cache-Control: immutable`.",
+        "description": "Preview image (JPEG, longest edge <= 1920) with `Cache-Control: immutable`.",
         "operationId": "get_preview_api_media__media_id__preview_get",
         "parameters": [
           {
@@ -647,10 +2212,17 @@
             "content": {
               "image/jpeg": {}
             },
-            "description": "JPEG-Bild"
+            "description": "JPEG image"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -671,7 +2243,7 @@
     },
     "/api/media/{media_id}/thumbnail": {
       "get": {
-        "description": "Thumbnail (JPEG, passt in 160x120) mit `Cache-Control: immutable`.",
+        "description": "Thumbnail (JPEG, fits into 160x120) with `Cache-Control: immutable`.",
         "operationId": "get_thumbnail_api_media__media_id__thumbnail_get",
         "parameters": [
           {
@@ -689,10 +2261,17 @@
             "content": {
               "image/jpeg": {}
             },
-            "description": "JPEG-Bild"
+            "description": "JPEG image"
           },
           "404": {
-            "description": "Unbekannte oder ungültige Medien-ID"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
           },
           "422": {
             "content": {
@@ -711,9 +2290,59 @@
         ]
       }
     },
+    "/api/media/{media_id}/video": {
+      "get": {
+        "description": "Original video file (its own container/codec) with `Cache-Control: immutable`.\n\nFor the preview player's `<video>` element (add-timeline-editing design.md D5); export\nreads the same file directly from disk. 404 for images, audio and unknown IDs. Range\nrequests are supported (needed for the browser to seek).",
+        "operationId": "get_video_api_media__media_id__video_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {},
+              "video/x-matroska": {}
+            },
+            "description": "Original video file, unchanged"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown or invalid media id (`media.notFound`)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Video",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/project": {
       "get": {
-        "description": "Das gespeicherte Projekt; ohne Datei das leere Projekt.",
+        "description": "The saved project; without a file, the empty project.",
         "operationId": "get_project_api_project_get",
         "responses": {
           "200": {
@@ -733,7 +2362,7 @@
         ]
       },
       "put": {
-        "description": "Ersetzt das Projekt. Bei 422 bleibt der gespeicherte Stand unverändert.",
+        "description": "Replaces the project. On 422 the saved state stays unchanged.",
         "operationId": "put_project_api_project_put",
         "requestBody": {
           "content": {
@@ -760,11 +2389,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ProjectValidationResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Invalid project: `project.invalid` with one issue per broken reference, or FastAPI's native list (rule violations carry an error code as `type`)"
           }
         },
         "summary": "Put Project",

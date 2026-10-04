@@ -1,0 +1,398 @@
+{
+  "version": 1,
+  "tolerance": 1e-9,
+  "cases": [
+    {
+      "name": "spec-total-duration-12.50",
+      "description": "Spec preview-player scenario 'Gesamtdauer' (total duration): three 5 s slides, two 1.25 s transitions -> 15 - 2.5 = 12.5 s.",
+      "slides": [
+        { "id": "a", "mediaId": "m-a", "duration": 5, "transitionIn": null },
+        {
+          "id": "b",
+          "mediaId": "m-b",
+          "duration": 5,
+          "transitionIn": { "transitionId": "fade", "duration": 1.25 }
+        },
+        {
+          "id": "c",
+          "mediaId": "m-c",
+          "duration": 5,
+          "transitionIn": { "transitionId": "circle", "duration": 1.25 }
+        }
+      ],
+      "expected": {
+        "totalDuration": 12.5,
+        "placed": [
+          { "index": 0, "start": 0, "end": 5, "transitionIn": 0 },
+          { "index": 1, "start": 3.75, "end": 8.75, "transitionIn": 1.25 },
+          { "index": 2, "start": 7.5, "end": 12.5, "transitionIn": 1.25 }
+        ],
+        "segments": [
+          { "kind": "still", "slideIndex": 0, "start": 0, "end": 3.75 },
+          {
+            "kind": "transition",
+            "fromIndex": 0,
+            "toIndex": 1,
+            "transitionId": "fade",
+            "start": 3.75,
+            "end": 5
+          },
+          { "kind": "still", "slideIndex": 1, "start": 5, "end": 7.5 },
+          {
+            "kind": "transition",
+            "fromIndex": 1,
+            "toIndex": 2,
+            "transitionId": "circle",
+            "start": 7.5,
+            "end": 8.75
+          },
+          { "kind": "still", "slideIndex": 2, "start": 8.75, "end": 12.5 }
+        ],
+        "samples": [
+          { "t": -1, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 0, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 2, "frame": { "kind": "still", "slideIndex": 0 } },
+          {
+            "t": 3.75,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "fade",
+              "progress": 0
+            }
+          },
+          {
+            "t": 4.375,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "fade",
+              "progress": 0.5
+            }
+          },
+          { "t": 5, "frame": { "kind": "still", "slideIndex": 1 } },
+          { "t": 6, "frame": { "kind": "still", "slideIndex": 1 } },
+          {
+            "t": 7.5,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 1,
+              "toIndex": 2,
+              "transitionId": "circle",
+              "progress": 0
+            }
+          },
+          {
+            "t": 8.4375,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 1,
+              "toIndex": 2,
+              "transitionId": "circle",
+              "progress": 0.75
+            }
+          },
+          { "t": 8.75, "frame": { "kind": "still", "slideIndex": 2 } },
+          { "t": 12.5, "frame": { "kind": "still", "slideIndex": 2 } },
+          { "t": 20, "frame": { "kind": "still", "slideIndex": 2 } }
+        ]
+      }
+    },
+    {
+      "name": "spec-transition-longer-than-allowed",
+      "description": "Spec preview-player scenario 'Übergang länger als erlaubt' (transition longer than allowed): 4 s transition between two 2 s slides is clamped to min(4, 2/2, 2/2) = 1 s.",
+      "slides": [
+        { "id": "a", "mediaId": "m-a", "duration": 2, "transitionIn": null },
+        {
+          "id": "b",
+          "mediaId": "m-b",
+          "duration": 2,
+          "transitionIn": { "transitionId": "fade", "duration": 4 }
+        }
+      ],
+      "expected": {
+        "totalDuration": 3,
+        "placed": [
+          { "index": 0, "start": 0, "end": 2, "transitionIn": 0 },
+          { "index": 1, "start": 1, "end": 3, "transitionIn": 1 }
+        ],
+        "segments": [
+          { "kind": "still", "slideIndex": 0, "start": 0, "end": 1 },
+          {
+            "kind": "transition",
+            "fromIndex": 0,
+            "toIndex": 1,
+            "transitionId": "fade",
+            "start": 1,
+            "end": 2
+          },
+          { "kind": "still", "slideIndex": 1, "start": 2, "end": 3 }
+        ],
+        "samples": [
+          { "t": 0.5, "frame": { "kind": "still", "slideIndex": 0 } },
+          {
+            "t": 1,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "fade",
+              "progress": 0
+            }
+          },
+          {
+            "t": 1.25,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "fade",
+              "progress": 0.25
+            }
+          },
+          {
+            "t": 1.5,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "fade",
+              "progress": 0.5
+            }
+          },
+          { "t": 2, "frame": { "kind": "still", "slideIndex": 1 } },
+          { "t": 3, "frame": { "kind": "still", "slideIndex": 1 } }
+        ]
+      }
+    },
+    {
+      "name": "single-slide",
+      "description": "One slide: the whole timeline is a single still; times are clamped to [0, total].",
+      "slides": [{ "id": "a", "mediaId": "m-a", "duration": 5, "transitionIn": null }],
+      "expected": {
+        "totalDuration": 5,
+        "placed": [{ "index": 0, "start": 0, "end": 5, "transitionIn": 0 }],
+        "segments": [{ "kind": "still", "slideIndex": 0, "start": 0, "end": 5 }],
+        "samples": [
+          { "t": -2, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 0, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 2.5, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 5, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 7, "frame": { "kind": "still", "slideIndex": 0 } }
+        ]
+      }
+    },
+    {
+      "name": "first-slide-transition-ignored",
+      "description": "A transitionIn on the first slide has no predecessor and is ignored (effective 0).",
+      "slides": [
+        {
+          "id": "a",
+          "mediaId": "m-a",
+          "duration": 5,
+          "transitionIn": { "transitionId": "fade", "duration": 1 }
+        }
+      ],
+      "expected": {
+        "totalDuration": 5,
+        "placed": [{ "index": 0, "start": 0, "end": 5, "transitionIn": 0 }],
+        "segments": [{ "kind": "still", "slideIndex": 0, "start": 0, "end": 5 }],
+        "samples": [
+          { "t": 0, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 0.5, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 5, "frame": { "kind": "still", "slideIndex": 0 } }
+        ]
+      }
+    },
+    {
+      "name": "hard-cuts-only",
+      "description": "Slides without transitions: durations add up; a boundary instant belongs to the following slide.",
+      "slides": [
+        { "id": "a", "mediaId": "m-a", "duration": 2, "transitionIn": null },
+        { "id": "b", "mediaId": "m-b", "duration": 3, "transitionIn": null },
+        { "id": "c", "mediaId": "m-c", "duration": 1.5, "transitionIn": null }
+      ],
+      "expected": {
+        "totalDuration": 6.5,
+        "placed": [
+          { "index": 0, "start": 0, "end": 2, "transitionIn": 0 },
+          { "index": 1, "start": 2, "end": 5, "transitionIn": 0 },
+          { "index": 2, "start": 5, "end": 6.5, "transitionIn": 0 }
+        ],
+        "segments": [
+          { "kind": "still", "slideIndex": 0, "start": 0, "end": 2 },
+          { "kind": "still", "slideIndex": 1, "start": 2, "end": 5 },
+          { "kind": "still", "slideIndex": 2, "start": 5, "end": 6.5 }
+        ],
+        "samples": [
+          { "t": 0, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 1.5, "frame": { "kind": "still", "slideIndex": 0 } },
+          { "t": 2, "frame": { "kind": "still", "slideIndex": 1 } },
+          { "t": 4.75, "frame": { "kind": "still", "slideIndex": 1 } },
+          { "t": 5, "frame": { "kind": "still", "slideIndex": 2 } },
+          { "t": 6.5, "frame": { "kind": "still", "slideIndex": 2 } },
+          { "t": 100, "frame": { "kind": "still", "slideIndex": 2 } }
+        ]
+      }
+    },
+    {
+      "name": "mixed-clamped-by-target-then-hard-cut",
+      "description": "2 s wipe into a 1 s slide is clamped to min(2, 4/2, 1/2) = 0.5 s; the next slide follows with a hard cut.",
+      "slides": [
+        { "id": "a", "mediaId": "m-a", "duration": 4, "transitionIn": null },
+        {
+          "id": "b",
+          "mediaId": "m-b",
+          "duration": 1,
+          "transitionIn": { "transitionId": "wipe-right", "duration": 2 }
+        },
+        { "id": "c", "mediaId": "m-c", "duration": 3, "transitionIn": null }
+      ],
+      "expected": {
+        "totalDuration": 7.5,
+        "placed": [
+          { "index": 0, "start": 0, "end": 4, "transitionIn": 0 },
+          { "index": 1, "start": 3.5, "end": 4.5, "transitionIn": 0.5 },
+          { "index": 2, "start": 4.5, "end": 7.5, "transitionIn": 0 }
+        ],
+        "segments": [
+          { "kind": "still", "slideIndex": 0, "start": 0, "end": 3.5 },
+          {
+            "kind": "transition",
+            "fromIndex": 0,
+            "toIndex": 1,
+            "transitionId": "wipe-right",
+            "start": 3.5,
+            "end": 4
+          },
+          { "kind": "still", "slideIndex": 1, "start": 4, "end": 4.5 },
+          { "kind": "still", "slideIndex": 2, "start": 4.5, "end": 7.5 }
+        ],
+        "samples": [
+          { "t": 3, "frame": { "kind": "still", "slideIndex": 0 } },
+          {
+            "t": 3.5,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "wipe-right",
+              "progress": 0
+            }
+          },
+          {
+            "t": 3.75,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "wipe-right",
+              "progress": 0.5
+            }
+          },
+          { "t": 4, "frame": { "kind": "still", "slideIndex": 1 } },
+          { "t": 4.25, "frame": { "kind": "still", "slideIndex": 1 } },
+          { "t": 4.5, "frame": { "kind": "still", "slideIndex": 2 } },
+          { "t": 7.5, "frame": { "kind": "still", "slideIndex": 2 } }
+        ]
+      }
+    },
+    {
+      "name": "back-to-back-transitions-no-still",
+      "description": "Middle slide (2 s) is fully consumed by its incoming and outgoing 1 s transitions (both clamped from 4 s): it has no still segment, and the instant between the two transitions belongs to the second one.",
+      "slides": [
+        { "id": "a", "mediaId": "m-a", "duration": 2, "transitionIn": null },
+        {
+          "id": "b",
+          "mediaId": "m-b",
+          "duration": 2,
+          "transitionIn": { "transitionId": "fade", "duration": 4 }
+        },
+        {
+          "id": "c",
+          "mediaId": "m-c",
+          "duration": 2,
+          "transitionIn": { "transitionId": "dissolve", "duration": 4 }
+        }
+      ],
+      "expected": {
+        "totalDuration": 4,
+        "placed": [
+          { "index": 0, "start": 0, "end": 2, "transitionIn": 0 },
+          { "index": 1, "start": 1, "end": 3, "transitionIn": 1 },
+          { "index": 2, "start": 2, "end": 4, "transitionIn": 1 }
+        ],
+        "segments": [
+          { "kind": "still", "slideIndex": 0, "start": 0, "end": 1 },
+          {
+            "kind": "transition",
+            "fromIndex": 0,
+            "toIndex": 1,
+            "transitionId": "fade",
+            "start": 1,
+            "end": 2
+          },
+          {
+            "kind": "transition",
+            "fromIndex": 1,
+            "toIndex": 2,
+            "transitionId": "dissolve",
+            "start": 2,
+            "end": 3
+          },
+          { "kind": "still", "slideIndex": 2, "start": 3, "end": 4 }
+        ],
+        "samples": [
+          {
+            "t": 1.5,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 0,
+              "toIndex": 1,
+              "transitionId": "fade",
+              "progress": 0.5
+            }
+          },
+          {
+            "t": 2,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 1,
+              "toIndex": 2,
+              "transitionId": "dissolve",
+              "progress": 0
+            }
+          },
+          {
+            "t": 2.5,
+            "frame": {
+              "kind": "transition",
+              "fromIndex": 1,
+              "toIndex": 2,
+              "transitionId": "dissolve",
+              "progress": 0.5
+            }
+          },
+          { "t": 3, "frame": { "kind": "still", "slideIndex": 2 } },
+          { "t": 4, "frame": { "kind": "still", "slideIndex": 2 } }
+        ]
+      }
+    },
+    {
+      "name": "empty-project",
+      "description": "No slides: total 0, no segments, every query yields the empty frame.",
+      "slides": [],
+      "expected": {
+        "totalDuration": 0,
+        "placed": [],
+        "segments": [],
+        "samples": [
+          { "t": 0, "frame": { "kind": "empty" } },
+          { "t": 1, "frame": { "kind": "empty" } }
+        ]
+      }
+    }
+  ]
+}

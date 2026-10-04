@@ -1,4 +1,4 @@
-"""GET /api/health - Lebenszeichen samt FFmpeg-Version."""
+"""GET /api/health - sign of life including the FFmpeg version."""
 
 from typing import Literal
 

@@ -6,8 +6,9 @@ As of 2026-10-02 (updated for the web app + FFmpeg direction).
 an assessment or an uncertain value that could not be checked against the
 original.
 
-Raw copies of the original definitions are in `docs/research/sources/` (see
-section 7 for their status).
+Raw copies of the original definitions are not kept in this repository;
+[`docs/research/sources/README.md`](sources/README.md) lists each former file
+and links to the original (see section 7 for their status).
 
 ## 1. Summary
 
@@ -96,6 +97,15 @@ installation (§8). [E]
   - Windshield ×2 (262, 263)
 - **3D/particles, WMTFX (13):** Flip, Slide Up, Slide Up Center, Roll, Spin
   Out, Page Curl ×2, Shatter ×4, Whirlwind, Shrink
+
+> **Status (2026-10-03, OpenSpec change `add-transition-catalog`):** all of
+> Basic (9) and SMPTE wipes (34) above are implemented as 41 catalog entries
+> (plus the 6 MVP transitions already in `add-slideshow-mvp`: Fade, Dissolve,
+> Pixelate, Checkerboard, and one preset each of Wipe and Circle) — see
+> `packages/catalog/transitions.json` for the exact entry per MaskNum/GUID.
+> The 13 WMTFX 3D/particle transitions remain open; they need a 3D-quad
+> renderer or a particle system, which this project does not have yet (no
+> open template for either, per the research above).
 
 ### Video effects: 30 in the XML, probably 28 in the UI [V]
 - Sepia, Negative*, Posterize, Threshold, Hue Cycle, Grayscale
@@ -227,9 +237,12 @@ Speed (`setpts`/`atempo`). Titles: `drawtext` (without the phase animations).
   Microsoft binaries.
 - **Uncritical:** workflow, interaction model and our own effect
   implementations based on the documented parameters. [E]
-- **The XML files in `sources/`** are Microsoft or community material and are
-  only a reference for development. **Do not ship them with the app.** Our
-  own catalog is derived from them and written from scratch.
+- **The original XML definitions** are Microsoft or community material and
+  only a reference for development. They are **not** in this repository or
+  its history; [`sources/README.md`](sources/README.md) links to the
+  originals, and local copies in `sources/` are git-ignored. **Never commit
+  or ship them.** Our own catalog is derived from the documented parameters
+  and written from scratch.
 - **FFmpeg:** LGPL only without `--enable-gpl`/`nonfree` and with dynamic
   linking. libx264 makes the app GPL. [V] Decide on the app's license: GPL
   (then x264 is fine) or proprietary (then openh264 or hardware encoders).

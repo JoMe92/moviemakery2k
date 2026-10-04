@@ -6,6 +6,11 @@
   flex: none;
 }
 
+:global([data-layout="compact"]) .storyboard {
+  flex: 1 0 auto;
+  margin: 0;
+}
+
 .body {
   display: flex;
   align-items: center;
@@ -20,4 +25,9 @@
   padding: 12px;
   color: var(--y2k-text-muted);
   text-align: center;
+}
+
+/* The horizontally scrolling strip never scrolls or reloads the page (design.md D8). */
+.body {
+  overscroll-behavior: contain;
 }

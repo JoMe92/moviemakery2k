@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Branch-Namenskonvention
+      - name: Branch naming convention
         if: github.event_name == 'pull_request'
         run: scripts/check-branch-name "${{ github.head_ref }}"
 
@@ -27,17 +27,41 @@ jobs:
           pixi-version: v0.81.0
           locked: true
           cache: true
-      - name: pnpm-Version passt zu packageManager
+      - name: pnpm version matches packageManager
         run: |
           want=$(node -p "require('./package.json').packageManager.split('@')[1]" 2>/dev/null || pixi run node -p "require('./package.json').packageManager.split('@')[1]")
           have=$(pixi run pnpm --version)
           echo "packageManager=$want pixi-pnpm=$have"
           test "$want" = "$have"
+      - name: Render environment (EGL/llvmpipe, FFmpeg encoders)
+        run: pixi run check-render-env
       - run: pixi run check
-      - name: Generierte API-Typen sind aktuell
+      - name: Generated API types are up to date
         run: |
           pixi run gen-api
           git diff --exit-code -- apps/web/src/generated
+
+  # linux-aarch64 (e.g. Raspberry Pi): headless EGL/llvmpipe from the Pixi
+  # environment plus the backend render/export tests (harden-export-and-ui D1).
+  # GitHub's ARM runners are free for public repositories only.
+  render-arm64:
+    # Hosted ARM runners are free only for public repositories; while the
+    # repo is private, aarch64 is verified on a Raspberry Pi instead
+    # (harden-export-and-ui design.md D1).
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: v0.81.0
+          locked: true
+          cache: true
+      - name: Render environment (EGL/llvmpipe, FFmpeg encoders)
+        run: pixi run check-render-env
+      - name: Render and export tests
+        working-directory: backend
+        run: pixi run pytest tests/test_render_*.py tests/test_exports_*.py
 
   e2e:
     runs-on: ubuntu-latest
@@ -48,13 +72,29 @@ jobs:
           pixi-version: v0.81.0
           locked: true
           cache: true
-      - name: Browser-Abhängigkeiten des Systems
+      - name: System browser dependencies
         run: sudo env "PATH=$PATH" pixi run playwright install-deps chromium
       - run: pixi run test-e2e
-      - name: Screenshots bei Fehlern
+      - name: Screenshots on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-test-results
           path: test-results/
+          if-no-files-found: ignore
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Smoke script (shellcheck)
+        run: shellcheck scripts/docker_export_smoke.sh
+      - name: Build image, export via the API, check MP4 with ffprobe
+        run: KEEP_OUTPUT=export-smoke scripts/docker_export_smoke.sh
+      - name: Exported movie
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-export-smoke
+          path: export-smoke/
           if-no-files-found: ignore

@@ -1,0 +1,16 @@
+.notice {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 10px;
+  border: 1px solid var(--y2k-border-strong);
+  border-radius: 6px;
+  background: var(--y2k-face-light);
+  color: var(--y2k-text);
+  box-shadow: 2px 2px 8px var(--y2k-shadow);
+}

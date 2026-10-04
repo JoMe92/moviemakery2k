@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Launch wrapper for a Nogging-supervised agent session. It is the process
+# `nogg session launch` starts inside tmux. It dispatches on `--agent`
+# (default `claude`, so an old caller is unchanged) to either Claude Code or
+# OpenAI Codex; everything around it — the tmux server, the record, the
+# pipe-pane log, the lifecycle — is agent-neutral and lives in the caller.
+#
+# Least authority, no credential leakage (both agents):
+#   - no shell trace (`set -x`): no command line carrying a secret is ever
+#     echoed into the pane, and therefore never into the pipe-pane log;
+#   - no token is accepted as an argument (arguments are visible in `ps` and
+#     are recorded in the session metadata `command`); any credential the
+#     child needs is read by the agent itself from the environment or from a
+#     file it opens (Claude: the environment; Codex: `CODEX_HOME/auth.json`);
+#   - the agent is scoped to the working directory and starts under the
+#     resolved authority level — Claude via the restricted/floored settings
+#     file, Codex via `--sandbox` / `--ask-for-approval`;
+#   - the tool-neutral launch prompt is passed as the leading instruction so
+#     the session does not select or claim a Bead as a consequence of being
+#     started (Claude: `--append-system-prompt`; Codex: the leading prompt).
+#
+# The Codex branch NEVER passes `--ignore-rules` (which would drop the
+# project execpolicy `.rules` floor) or `--dangerously-bypass-approvals-and-
+# sandbox`. The Nogging command floor for Codex is the repo's `.codex/rules/`
+# directory, which Codex loads from the working tree by default.
+#
+# Usage:
+#   session-launch [--agent claude] --settings <profile.json> --prompt <prompt.md> \
+#                  --cwd <dir> --bead <id> [--read-only]
+#   session-launch --agent codex --sandbox <mode> --approval <policy> \
+#                  --network <on|off> --prompt <prompt.md> --cwd <dir> --bead <id> \
+#                  [--read-only]
+#   session-launch --agent pi --provider <name> --model <pattern> \
+#                  --prompt <prompt.md> --cwd <dir> --bead <id>
+set -eu
+
+agent="claude"
+settings=""
+prompt=""
+cwd=""
+bead=""
+read_only=0
+sandbox=""
+approval=""
+network="on"
+readonly_root=""
+provider=""
+model=""
+resume=0
+resume_id=""
+session_id=""
+remote_control=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --agent)     agent=$2; shift 2 ;;
+    --settings)  settings=$2; shift 2 ;;
+    --prompt)    prompt=$2; shift 2 ;;
+    --cwd)       cwd=$2; shift 2 ;;
+    --bead)      bead=$2; shift 2 ;;
+    --sandbox)   sandbox=$2; shift 2 ;;
+    --approval)  approval=$2; shift 2 ;;
+    --network)   network=$2; shift 2 ;;
+    --readonly-root) readonly_root=$2; shift 2 ;;
+    --provider)  provider=$2; shift 2 ;;
+    --model)     model=$2; shift 2 ;;
+    --read-only) read_only=1; shift ;;
+    --session-id) session_id=$2; shift 2 ;;
+    --resume)    resume_id=$2; shift 2 ;;
+    --remote-control) remote_control=$2; shift 2 ;;
+    --continue)  resume=1; shift ;;
+    --)          shift; break ;;
+    *) echo "session-launch: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+[ -n "$cwd" ] && cd "$cwd"
+
+case "$agent" in
+  claude)
+    set --
+    [ -n "$settings" ] && set -- "$@" --settings "$settings"
+    # --resume <id> resumes a specific prior conversation (the orchestrator
+    # supervisor's restart path and any session relaunch that pins a prior
+    # claude_session_id); --continue is the older bare fallback. --session-id
+    # pins a fresh session's id up front so its record can name it before the
+    # first turn. The appended system prompt is still passed in either case —
+    # it is harmless on a resume (applied after the next compaction) and it
+    # carries the persona on a cold start.
+    if [ -n "$resume_id" ]; then
+      set -- "$@" --resume "$resume_id"
+    elif [ "$resume" -eq 1 ]; then
+      set -- "$@" --continue
+    fi
+    [ -n "$session_id" ] && set -- "$@" --session-id "$session_id"
+    [ -n "$remote_control" ] && set -- "$@" --remote-control "$remote_control"
+    if [ -n "$prompt" ] && [ -f "$prompt" ]; then
+      set -- "$@" --append-system-prompt "$(cat "$prompt")"
+    fi
+    [ "$read_only" -eq 1 ] && set -- "$@" --permission-mode plan
+    echo "nogg: starting Claude for ${bead:-<no bead>} in $(pwd) (read-only=${read_only} resume=${resume_id:-$resume})"
+    exec claude "$@"
+    ;;
+  codex)
+    [ "$read_only" -eq 1 ] && sandbox="read-only"
+    : "${sandbox:=workspace-write}"
+    : "${approval:=on-request}"
+    set -- --cd "$(pwd)" --sandbox "$sandbox" --ask-for-approval "$approval"
+    # Emit the network_access override explicitly in both directions rather than
+    # omitting it for `on` and leaning on the codex default: the trusted profile
+    # (network on) must be able to `git push` to complete an integration, the
+    # restricted profile (network off) must not.
+    case "$network" in
+      on)  set -- "$@" -c 'sandbox_workspace_write.network_access=true' ;;
+      off) set -- "$@" -c 'sandbox_workspace_write.network_access=false' ;;
+    esac
+    if [ -n "$readonly_root" ]; then
+      # Make $readonly_root (openspec/) a read-only path. codex exposes
+      # --sandbox-state-readable-root only on the `codex sandbox` subcommand in
+      # some builds; use it on the plain launch where this build advertises it,
+      # otherwise fall back to the .codex/rules/ execpolicy deny (ships with the
+      # codex-onboarding change) plus the pre-commit boundary hook.
+      if codex --help 2>/dev/null | grep -q -- '--sandbox-state-readable-root'; then
+        set -- "$@" --sandbox-state-readable-root "$readonly_root"
+      else
+        echo "nogg: this codex build has no plain-launch --sandbox-state-readable-root;" >&2
+        echo "nogg: openspec/ read-only for Codex relies on the .codex/rules/ execpolicy deny" >&2
+        echo "nogg: (codex-onboarding) and the pre-commit boundary hook for this session." >&2
+      fi
+    fi
+    echo "nogg: starting Codex for ${bead:-<no bead>} in $(pwd) (sandbox=${sandbox} approval=${approval} network=${network})"
+    if [ -n "$prompt" ] && [ -f "$prompt" ]; then
+      exec codex "$@" "$(cat "$prompt")"
+    fi
+    exec codex "$@"
+    ;;
+  pi)
+    set -- --approve
+    [ -n "$provider" ] && set -- "$@" --provider "$provider"
+    [ -n "$model" ]    && set -- "$@" --model "$model"
+    if [ -n "$prompt" ] && [ -f "$prompt" ]; then
+      set -- "$@" --append-system-prompt "$(cat "$prompt")"
+    fi
+    echo "nogg: starting Pi for ${bead:-<no bead>} in $(pwd)"
+    exec pi "$@"
+    ;;
+  *)
+    echo "session-launch: unknown agent: $agent" >&2
+    exit 2
+    ;;
+esac

@@ -1,0 +1,43 @@
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--y2k-touch-gap);
+  margin-bottom: 8px;
+}
+
+.tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.tab {
+  flex: none;
+  min-height: var(--y2k-touch-target);
+  padding: 0 10px;
+  border: 1px solid var(--y2k-border);
+  border-bottom-color: transparent;
+  border-radius: var(--y2k-radius) var(--y2k-radius) 0 0;
+  background: var(--y2k-face-dark);
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  background: var(--y2k-pane);
+  font-weight: bold;
+}
+
+.panel {
+  min-height: 0;
+  padding: 8px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+}
+
+.add {
+  flex: 1;
+  font-weight: bold;
+}

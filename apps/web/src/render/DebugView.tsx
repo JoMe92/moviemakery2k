@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import catalog from "../../../../packages/catalog/transitions.json";
 import type { DebugProgress } from "./debugProgress";
 import { Renderer } from "./Renderer";
+import { patternCanvas } from "./testPattern";
 
 const WIDTH = 640;
 const HEIGHT = 480;
@@ -18,7 +19,7 @@ function solid(color: string, width = WIDTH, height = HEIGHT): HTMLCanvasElement
   return c;
 }
 
-/** 300×600-Hochkant-Testbild: Verlauf, Rahmen und Diagonalen, um Einpassung zu prüfen. */
+/** 300×600 portrait test image: gradient, border and diagonals to check the fit. */
 function portraitPattern(): HTMLCanvasElement {
   const c = solid("#ffffff", 300, 600);
   const ctx = c.getContext("2d");
@@ -51,7 +52,7 @@ function catalogParams(id: string): Record<string, number> {
   return { ...((entry?.params ?? {}) as Record<string, number>) };
 }
 
-/** Nur für Tests: zeichnet genau einen Frame und meldet `body[data-debug-ready="1"]`. */
+/** Tests only: draws exactly one frame and signals `body[data-debug-ready="1"]`. */
 export default function DebugView({ spec }: { spec: DebugProgress }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -68,8 +69,14 @@ export default function DebugView({ spec }: { spec: DebugProgress }) {
       return;
     }
     renderer.resize(WIDTH, HEIGHT, 1);
-    const from = renderer.createFrame(spec.fromPortrait ? portraitPattern() : solid(spec.from));
-    const to = renderer.createFrame(solid(spec.to));
+    // Pattern mode (design.md D10): exact 640×480 test pattern on both sides, no scaling.
+    const fromSource = spec.pattern
+      ? patternCanvas("from")
+      : spec.fromPortrait
+        ? portraitPattern()
+        : solid(spec.from);
+    const from = renderer.createFrame(fromSource);
+    const to = renderer.createFrame(spec.pattern ? patternCanvas("to") : solid(spec.to));
     renderer.drawTransition(
       from,
       to,

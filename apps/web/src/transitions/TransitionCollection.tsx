@@ -1,10 +1,12 @@
 import { useDraggable } from "@dnd-kit/core";
+import { useT } from "../i18n/useT";
 import type { Transition } from "../lib/apiClient";
 import { useAppStore } from "../store/useAppStore";
 import { type DragItem, transitionDraggableId } from "../storyboard/dropLogic";
 import { Tile } from "../ui/Tile";
 import styles from "./TransitionCollection.module.css";
 import { TransitionIcon } from "./TransitionIcon";
+import { transitionName } from "./transitionName";
 
 interface TransitionTileProps {
   transition: Transition;
@@ -13,13 +15,15 @@ interface TransitionTileProps {
   onApply: () => void;
 }
 
-/** Katalogkachel, per dnd-kit auf einen Übergangsplatz ziehbar. */
+/** Catalog tile, draggable onto a transition slot via dnd-kit. */
 function TransitionTile({ transition, selected, onSelect, onApply }: TransitionTileProps) {
+  const { t, locale } = useT();
+  const name = transitionName(transition, locale);
   const data: DragItem = { type: "transition", transitionId: transition.id };
   const { attributes, listeners, setNodeRef } = useDraggable({
     id: transitionDraggableId(transition.id),
     data,
-    attributes: { roleDescription: "ziehbarer Übergang" },
+    attributes: { roleDescription: t("transitions.draggable") },
   });
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   return (
@@ -27,9 +31,9 @@ function TransitionTile({ transition, selected, onSelect, onApply }: TransitionT
       ref={setNodeRef}
       {...dragAttributes}
       {...listeners}
-      caption={transition.name}
-      aria-label={transition.name}
-      title={transition.name}
+      caption={name}
+      aria-label={name}
+      title={name}
       thumbnail={<TransitionIcon transitionId={transition.id} size={80} />}
       selected={selected}
       onClick={onSelect}
@@ -39,11 +43,12 @@ function TransitionTile({ transition, selected, onSelect, onApply }: TransitionT
 }
 
 /**
- * Sammlung „Videoübergänge“: alle Katalogeinträge als Kacheln. Auswahl zeigt
- * den Übergang im Monitor (previewTransitionId); Ziehen auf einen
- * Übergangsplatz setzt ihn; Doppelklick setzt ihn vor das ausgewählte Bild.
+ * "Video Transitions" collection: all catalog entries as tiles. Selecting one
+ * shows the transition in the monitor (previewTransitionId); dragging onto a
+ * transition slot sets it; double-click sets it before the selected image.
  */
 export function TransitionCollection() {
+  const { t } = useT();
   const catalog = useAppStore((s) => s.catalog);
   const previewId = useAppStore((s) => s.previewTransitionId);
   const setPreview = useAppStore((s) => s.setPreviewTransition);
@@ -51,19 +56,19 @@ export function TransitionCollection() {
   const setTransition = useAppStore((s) => s.setTransition);
 
   if (catalog.length === 0) {
-    return <p className={styles.hint}>Der Übergangskatalog ist nicht verfügbar.</p>;
+    return <p className={styles.hint}>{t("transitions.unavailable")}</p>;
   }
 
   return (
-    <ul className={styles.grid} aria-label="Übergänge">
-      {catalog.map((t) => (
-        <li key={t.id}>
+    <ul className={styles.grid} aria-label={t("transitions.list")}>
+      {catalog.map((entry) => (
+        <li key={entry.id}>
           <TransitionTile
-            transition={t}
-            selected={previewId === t.id}
-            onSelect={() => setPreview(t.id)}
+            transition={entry}
+            selected={previewId === entry.id}
+            onSelect={() => setPreview(entry.id)}
             onApply={() => {
-              if (selection) setTransition(selection.slideId, t.id);
+              if (selection) setTransition(selection.slideId, entry.id);
             }}
           />
         </li>

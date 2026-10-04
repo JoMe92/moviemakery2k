@@ -9,6 +9,7 @@ import {
 } from "./projectOps";
 
 const s = (id: string, t: string | null = null): Slide => ({
+  kind: "image",
   id,
   mediaId: `m${id}`,
   duration: 5,
@@ -17,18 +18,18 @@ const s = (id: string, t: string | null = null): Slide => ({
 const ids = (slides: Slide[]) => slides.map((x) => x.id);
 
 describe("projectOps", () => {
-  it("Spec: Einfügen zwischen zwei Bildern landet an Position 2", () => {
+  it("Spec: inserting between two pictures lands at position 2", () => {
     expect(ids(insertSlide([s("1"), s("2")], s("x"), 1))).toEqual(["1", "x", "2"]);
   });
 
-  it("Spec: Umsortieren – der eingehende Übergang wandert mit, an Position 1 entfällt er", () => {
+  it("Spec: reordering – the incoming transition moves along and is dropped at position 1", () => {
     const moved = moveSlide([s("1"), s("2", "fade"), s("3", "circle")], 2, 0);
     expect(ids(moved)).toEqual(["3", "1", "2"]);
     expect(moved[0]?.transitionIn).toBeNull();
     expect(moved[2]?.transitionIn?.transitionId).toBe("fade");
   });
 
-  it("Entfernen des ersten Elements macht den Nachfolger zum Übergangslosen", () => {
+  it("removing the first item leaves its successor without a transition", () => {
     const rest = removeSlide([s("1"), s("2", "fade")], "1");
     expect(rest).toEqual([s("2")]);
   });
@@ -41,7 +42,7 @@ describe("projectOps", () => {
     [60.25, false],
     [2.3, false],
     [Number.NaN, false],
-  ])("Bilddauer %s gültig: %s", (d, ok) => {
+  ])("picture duration %s valid: %s", (d, ok) => {
     expect(isValidSlideDuration(d)).toBe(ok);
   });
 
@@ -51,7 +52,7 @@ describe("projectOps", () => {
     [0, false],
     [5.25, false],
     [1.1, false],
-  ])("Übergangsdauer %s gültig: %s", (d, ok) => {
+  ])("transition duration %s valid: %s", (d, ok) => {
     expect(isValidTransitionDuration(d)).toBe(ok);
   });
 });

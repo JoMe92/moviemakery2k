@@ -1,122 +1,156 @@
 import { useMemo } from "react";
+import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
+import { useT } from "./i18n/useT";
+import { CollectionSheet } from "./media/CollectionSheet";
+import { ImportInput } from "./media/ImportInput";
 import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
+import { UploadPanel } from "./media/UploadPanel";
+import { MusicTrack } from "./musictrack/MusicTrack";
 import { Player } from "./player/Player";
+import { InstallInstructionsDialog } from "./pwa/InstallInstructionsDialog";
+import { AccessDialog } from "./shell/AccessDialog";
+import { ActionBar } from "./shell/ActionBar";
 import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
+import { CompactWindow } from "./shell/CompactWindow";
+import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
 import { StatusBar } from "./shell/StatusBar";
+import { NoAccessIndicator, SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
+import { Taskbar } from "./shell/Taskbar";
 import { TaskPane } from "./shell/TaskPane";
-import { type CollectionOption, Toolbar } from "./shell/Toolbar";
+import { Toolbar } from "./shell/Toolbar";
+import { useTaskGroups } from "./shell/tasks";
 import type { CollectionId } from "./store/appStore";
 import { describeBackend, describeSave } from "./store/status";
 import { useAppStore } from "./store/useAppStore";
 import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
+import { TimelineView } from "./storyboard/TimelineView";
 import { TransitionCollection } from "./transitions/TransitionCollection";
-import {
-  EffectsIcon,
-  FilmIcon,
-  FolderIcon,
-  ImportImageIcon,
-  TitleIcon,
-  TransitionsIcon,
-} from "./ui/icons";
-import { TaskGroup } from "./ui/TaskGroup";
-import { TaskLink } from "./ui/TaskLink";
 
-export const APP_TITLE = "moviemakerY2K – Unbenanntes Projekt";
-
-const COLLECTIONS: readonly (CollectionOption & { id: CollectionId })[] = [
-  { id: "media", label: "Meine Bilder" },
-  { id: "transitions", label: "Videoübergänge" },
-];
+const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
 
 /*
- * Komponiert das Hauptfenster. Der Zustand liegt im App-Store (store/appStore.ts),
- * der in main.tsx erzeugt und geladen wird.
+ * Composes the main window. State lives in the app store (store/appStore.ts),
+ * which is created and loaded in main.tsx.
  */
 export function App() {
   const collection = useAppStore((s) => s.collection);
   const setCollection = useAppStore((s) => s.setCollection);
-  const requestImport = useAppStore((s) => s.requestImport);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
+  const timelineView = useAppStore((s) => s.timelineView);
 
   const togglePlay = useAppStore((s) => s.togglePlay);
   const stop = useAppStore((s) => s.stop);
   const playerMenu = useMemo(() => ({ togglePlay, stop }), [togglePlay, stop]);
 
-  const collectionName = COLLECTIONS.find((c) => c.id === collection)?.label ?? "";
+  const layout = useLayoutMode();
+  useLayoutAttributes(layout);
 
+  const taskGroups = useTaskGroups();
+  const { t } = useT();
+  const collections = useMemo(
+    () => COLLECTION_IDS.map((id) => ({ id, label: t(`collections.${id}`) })),
+    [t],
+  );
+  const collectionName = t(`collections.${collection}`);
+
+  const title = t("shell.windowTitle", { app: t("app.name") });
+  const storyboard = (
+    <StoryboardPane musicTrack={<MusicTrack />}>
+      {timelineView ? <TimelineView /> : <StoryboardStrip />}
+    </StoryboardPane>
+  );
+
+  if (layout.mode === "compact") {
+    return (
+      <StoryboardDnd>
+        <CompactWindow
+          title={title}
+          orientation={layout.orientation}
+          indicators={
+            <>
+              <NoAccessIndicator />
+              <SaveFailedIndicator />
+            </>
+          }
+          menuButton={<AppMenus variant="sheet" extra={playerMenu} />}
+          monitor={<Player />}
+          editing={
+            <>
+              {storyboard}
+              <UploadPanel />
+            </>
+          }
+          actionBar={<ActionBar />}
+          taskbar={<Taskbar />}
+          notices={<StatusNotices />}
+        />
+        <ImportInput />
+        <CollectionSheet />
+        <SaveMovieWizardFromStore />
+        <AccessDialog />
+        <InstallInstructionsDialog />
+      </StoryboardDnd>
+    );
+  }
+
+  const medium = layout.mode === "medium";
   return (
     <StoryboardDnd>
       <AppWindow
-        title={APP_TITLE}
+        variant={medium ? "medium" : "wide"}
+        title={title}
         menuBar={<AppMenus extra={playerMenu} />}
         toolbar={
           <Toolbar
-            collections={COLLECTIONS}
+            collections={collections}
             collection={collection}
             onCollectionChange={(id) => setCollection(id as CollectionId)}
           />
         }
-        taskPane={
-          <TaskPane>
-            <TaskGroup title="1. Aufnehmen">
-              <TaskLink icon={<FilmIcon />} disabled>
-                Video importieren
-              </TaskLink>
-              <TaskLink icon={<ImportImageIcon />} onClick={requestImport}>
-                Bilder importieren
-              </TaskLink>
-              <TaskLink icon={<FolderIcon />} disabled>
-                Audio oder Musik importieren
-              </TaskLink>
-            </TaskGroup>
-            <TaskGroup title="2. Film bearbeiten">
-              <TaskLink icon={<FolderIcon />} onClick={() => setCollection("media")}>
-                Sammlungen anzeigen
-              </TaskLink>
-              <TaskLink icon={<EffectsIcon />} disabled>
-                Videoeffekte anzeigen
-              </TaskLink>
-              <TaskLink icon={<TransitionsIcon />} onClick={() => setCollection("transitions")}>
-                Videoübergänge anzeigen
-              </TaskLink>
-              <TaskLink icon={<TitleIcon />} disabled>
-                Titel oder Nachspann erstellen
-              </TaskLink>
-            </TaskGroup>
-            <TaskGroup title="3. Film fertig stellen">
-              <TaskLink icon={<FilmIcon />} disabled>
-                Auf dem Computer speichern
-              </TaskLink>
-              <TaskLink icon={<FilmIcon />} disabled>
-                Im Web veröffentlichen
-              </TaskLink>
-            </TaskGroup>
-          </TaskPane>
-        }
+        taskPane={medium ? undefined : <TaskPane groups={taskGroups} />}
         collection={
           <LibraryPane name={collectionName}>
-            {collection === "media" ? <MediaCollection /> : <TransitionCollection />}
+            {collection === "transitions" ? (
+              <TransitionCollection />
+            ) : (
+              <MediaCollection
+                key={collection}
+                kind={collection === "music" ? "audio" : collection === "video" ? "video" : "image"}
+              />
+            )}
           </LibraryPane>
         }
         monitor={<Player />}
-        storyboard={
-          <StoryboardPane>
-            <StoryboardStrip />
-          </StoryboardPane>
-        }
+        storyboard={storyboard}
         statusBar={
-          <StatusBar
-            items={[describeBackend(backend), describeSave(saveState)].filter(
-              (x): x is string => x !== null,
-            )}
-          />
+          medium ? undefined : (
+            <StatusBar
+              items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
+                (x): x is string => x !== null,
+              )}
+            />
+          )
         }
+        indicators={
+          medium ? (
+            <>
+              <NoAccessIndicator />
+              <SaveFailedIndicator />
+            </>
+          ) : undefined
+        }
+        taskbar={medium ? <Taskbar /> : undefined}
+        actionBar={<ActionBar />}
+        notices={medium ? <StatusNotices /> : undefined}
       />
+      <SaveMovieWizardFromStore />
+      <AccessDialog />
+      <InstallInstructionsDialog />
     </StoryboardDnd>
   );
 }

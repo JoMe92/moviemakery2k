@@ -1,0 +1,58 @@
+.field {
+  display: grid;
+  grid-template-columns: 60px auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.input {
+  width: 96px;
+  padding: 2px 4px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+  text-align: right;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--y2k-icon-red);
+}
+
+.info {
+  margin: 0 0 8px;
+}
+
+.hint,
+.error {
+  margin: 8px 0 0;
+  max-width: 320px;
+}
+
+.hint {
+  color: var(--y2k-text-muted);
+}
+
+.error {
+  color: var(--y2k-icon-red);
+  font-weight: bold;
+}
+
+.previews {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.preview canvas {
+  display: block;
+  border: 1px solid var(--y2k-border);
+  background: #000;
+}
+
+.hiddenVideo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
