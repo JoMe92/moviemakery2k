@@ -46,6 +46,7 @@ const COLLECTION_IDS: readonly CollectionId[] = [
 export function App() {
   const collection = useAppStore((s) => s.collection);
   const setCollection = useAppStore((s) => s.setCollection);
+  const collectionVisible = useAppStore((s) => s.collectionVisible);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
   const timelineView = useAppStore((s) => s.timelineView);
@@ -121,18 +122,22 @@ export function App() {
         }
         taskPane={medium ? undefined : <TaskPane groups={taskGroups} />}
         collection={
-          <LibraryPane name={collectionName}>
-            {collection === "transitions" ? (
-              <TransitionCollection />
-            ) : collection === "effects" ? (
-              <EffectCollection />
-            ) : (
-              <MediaCollection
-                key={collection}
-                kind={collection === "music" ? "audio" : collection === "video" ? "video" : "image"}
-              />
-            )}
-          </LibraryPane>
+          collectionVisible ? (
+            <LibraryPane name={collectionName}>
+              {collection === "transitions" ? (
+                <TransitionCollection />
+              ) : collection === "effects" ? (
+                <EffectCollection />
+              ) : (
+                <MediaCollection
+                  key={collection}
+                  kind={
+                    collection === "music" ? "audio" : collection === "video" ? "video" : "image"
+                  }
+                />
+              )}
+            </LibraryPane>
+          ) : undefined
         }
         monitor={<Player />}
         storyboard={storyboard}
@@ -157,6 +162,7 @@ export function App() {
         actionBar={<ActionBar />}
         notices={medium ? <StatusNotices /> : undefined}
       />
+      <ImportInput />
       <SaveMovieWizardFromStore />
       <AccessDialog />
       <InstallInstructionsDialog />

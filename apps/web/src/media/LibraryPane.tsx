@@ -1,6 +1,5 @@
 import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { CollectionPane } from "../shell/CollectionPane";
-import { ImportInput } from "./ImportInput";
 import styles from "./LibraryPane.module.css";
 import { UploadPanel } from "./UploadPanel";
 import { useImport } from "./useImport";
@@ -16,9 +15,9 @@ function isFileDrag(event: DragEvent): boolean {
 }
 
 /**
- * Collection area with import: hidden file dialog (opened via
- * `requestImport()` in the store, file types per `importKind`), dropping
- * files (pictures and audio) and progress/errors below.
+ * Collection area with import: dropping files (pictures and audio) and
+ * progress/errors below. The hidden file dialog (`ImportInput`) sits in the
+ * shell instead, because this pane can be hidden (app-shell design.md D3).
  */
 export function LibraryPane({ name, children }: LibraryPaneProps) {
   const startImport = useImport();
@@ -60,7 +59,6 @@ export function LibraryPane({ name, children }: LibraryPaneProps) {
       footer={<UploadPanel />}
     >
       {children}
-      <ImportInput />
     </CollectionPane>
   );
 }

@@ -153,6 +153,12 @@ export interface AppState {
   music: MusicClip[];
   saveState: SaveState;
   collection: CollectionId;
+  /**
+   * Collection pane of the wide and medium layouts visible (design.md D3);
+   * transient, never persisted - after a reload the pane is back. Without a
+   * toolbar the compact layout ignores it.
+   */
+  collectionVisible: boolean;
   /** Storyboard pane shows the timeline view instead of the filmstrip (design.md
    * D7); tab-only, not persisted. Switching it never touches `selection` or
    * `playback` - both views read the same store fields. */
@@ -198,6 +204,8 @@ export interface AppState {
   /** Switches the UI language at once, persists it and updates `<html lang>`. */
   setLocale(locale: Locale): void;
   setCollection(collection: CollectionId): void;
+  /** Toolbar toggle "Collections": shows or hides the collection pane (design.md D1). */
+  toggleCollectionVisible(): void;
   /** View -> "Zeitachse" / the storyboard pane's toggle button (design.md D7). */
   toggleTimelineView(): void;
   select(selection: Selection): void;
@@ -467,6 +475,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       music: [],
       saveState: "idle",
       collection: "media",
+      collectionVisible: true,
       timelineView: false,
       selection: null,
       musicSelection: null,
@@ -526,7 +535,12 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       setCollection(collection) {
         // Opening (or leaving) a collection never preselects a tile: the
         // monitor keeps showing the project (spec transitions "Übergänge in der Sammlung", design.md D7).
-        set({ collection, ...noDemo });
+        // Every way into a collection goes through here, so bringing the pane
+        // back lives here too - nothing can run into a hidden pane (design.md D5).
+        set({ collection, collectionVisible: true, ...noDemo });
+      },
+      toggleCollectionVisible() {
+        set({ collectionVisible: !get().collectionVisible });
       },
       toggleTimelineView() {
         set({ timelineView: !get().timelineView });
@@ -619,7 +633,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       requestImport(kind = "any") {
-        set({ importRequest: get().importRequest + 1, importKind: kind });
+        // The imported files land in the collection, so the import brings the
+        // pane back as well (design.md D5).
+        set({ importRequest: get().importRequest + 1, importKind: kind, collectionVisible: true });
       },
       setCollectionSheetOpen(open) {
         set({ collectionSheetOpen: open });
