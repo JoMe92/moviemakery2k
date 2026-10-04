@@ -5,7 +5,7 @@ unabhängig von den anderen archiviert.
 
 ## 1. Datenmodell
 
-- [ ] TASK-API-019 Slide-Datenmodell Version 4: `effectId` (Katalog-ID oder
+- [x] TASK-API-019 Slide-Datenmodell Version 4: `effectId` (Katalog-ID oder
   `null`) auf jedem Element, Validierung gegen den Effekt-Katalog, Migration
   von Version 3 (`effectId: null`), `gen-api` (design.md D3). Erledigt, wenn
   pytest die Migration, die Ablehnung einer unbekannten Effekt-ID und ein
