@@ -17,6 +17,14 @@ from mmy_backend.ffmpeg import ffmpeg_binary
 from PIL import Image, ImageStat
 from playwright.sync_api import Locator, Page, expect
 
+VIDEO_FPS = 10
+"""Frame rate of `two_color_video`."""
+FRAME_SECONDS = 1 / VIDEO_FPS
+"""How long one frame of the fixture lasts - the resolution at which a
+`currentTime` assertion can say anything at all: a seek lands on a frame of
+this grid (and the player nudges the request by a millisecond while nothing is
+decoded yet), so anything finer would only describe the runner's timing."""
+
 
 def mean_rgb(locator: Locator) -> tuple[float, float, float]:
     img = Image.open(io.BytesIO(locator.screenshot())).convert("RGB")
@@ -93,11 +101,11 @@ def two_color_video(tmp_path: Path) -> Path:
             binary,
             *("-v", "error", "-y", "-f", "lavfi"),
             "-i",
-            "color=c=red:size=640x480:rate=10:duration=1",
+            f"color=c=red:size=640x480:rate={VIDEO_FPS}:duration=1",
             "-f",
             "lavfi",
             "-i",
-            "color=c=blue:size=640x480:rate=10:duration=1",
+            f"color=c=blue:size=640x480:rate={VIDEO_FPS}:duration=1",
             "-filter_complex",
             "[0:v]format=yuv420p[a];[1:v]format=yuv420p[b];[a][b]concat=n=2:v=1:a=0[v]",
             *("-map", "[v]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart"),
@@ -136,7 +144,7 @@ def test_player_shows_the_video_frame_at_a_deterministic_seek_position(
     expect(time).to_contain_text("0:00:00,00")
     wait_for_decoded_frame(page)
     scrubbed = scrubbed_frame(page)
-    assert scrubbed["currentTime"] == pytest.approx(0, abs=0.01), scrubbed
+    assert scrubbed["currentTime"] == pytest.approx(0, abs=FRAME_SECONDS), scrubbed
     first = scrubbed["rgb"]
     assert isinstance(first, list) and first[0] > 150 and first[2] < 80, (
         f"the clip is scrubbed to 0 s, so its frame should be red: {scrubbed}"
@@ -161,7 +169,7 @@ def test_player_shows_the_video_frame_at_a_deterministic_seek_position(
     expect(time).to_contain_text("0:00:01,50")
     page.wait_for_function(
         "() => { const v = document.querySelector('video');"
-        " return Math.abs(v.currentTime - 1.5) < 0.05 && v.readyState >= 2; }",
+        f" return Math.abs(v.currentTime - 1.5) < {FRAME_SECONDS} && v.readyState >= 2; }}",
         timeout=15_000,
     )
     scrubbed = scrubbed_frame(page)
