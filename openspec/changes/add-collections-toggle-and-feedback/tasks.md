@@ -6,7 +6,7 @@ Shader bleiben unberührt.
 
 ## 1. Sammlungsbereich ein- und ausblenden
 
-- [ ] TASK-WEB-074 Sichtbarkeit des Sammlungsbereichs im App-Store: flüchtiger Zustand neben `collection`, `setCollection` blendet den Bereich wieder ein, `AppWindow` lässt ihn im breiten und mittleren Layout weg und gibt den Platz dem Monitor (design.md D3, D5). Erledigt, wenn Tests beide Layout-Modi, den unveränderten Aufgabenbereich, das Wiedereinblenden über jede Sammlungswahl und den sichtbaren Bereich nach einem Neuladen abdecken.
+- [x] TASK-WEB-074 Sichtbarkeit des Sammlungsbereichs im App-Store: flüchtiger Zustand neben `collection`, `setCollection` blendet den Bereich wieder ein, `AppWindow` lässt ihn im breiten und mittleren Layout weg und gibt den Platz dem Monitor (design.md D3, D5). Erledigt, wenn Tests beide Layout-Modi, den unveränderten Aufgabenbereich, das Wiedereinblenden über jede Sammlungswahl und den sichtbaren Bereich nach einem Neuladen abdecken.
 - [ ] TASK-WEB-075 Umschaltfläche „Sammlungen“ in der Symbolleiste: Y2K-Schaltfläche mit `FolderIcon` links neben der Sammlungsauswahl, gleichbleibender Name, `aria-pressed` für den Zustand, Texte in `de` und `en` (nach TASK-WEB-074; design.md D1, D2). Erledigt, wenn Tests Umschalten per Maus und Tastatur, `aria-pressed` in beiden Zuständen, beide Sprachen und das Fehlen der Schaltfläche im kompakten Layout abdecken.
 
 ## 2. Rückmeldung beim Hinzufügen
