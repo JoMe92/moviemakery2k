@@ -9,7 +9,7 @@ import type { ImageSource } from "../render/Renderer";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { MonitorPane } from "../shell/MonitorPane";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
-import { type Timeline, frameAt } from "../timeline/timeline";
+import { frameAt, type Timeline } from "../timeline/timeline";
 import { transitionName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon, StopIcon } from "../ui/icons";
@@ -163,6 +163,10 @@ export function useSlideImages(
   const loadedImages = useLoadedImages(slides, media);
   const { videos, tick, elements: videoElements } = useVideoElements(slides, media);
 
+  // `tick` is in the list without being read in the body: a new identity per
+  // pump tick is what redraws the canvas while a video's frame is still
+  // catching up (design.md D5).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tick only forces a new identity.
   const images = useCallback(
     (index: number): ImageSource | undefined => {
       const slide = slides[index];
@@ -176,8 +180,6 @@ export function useSlideImages(
         : slide.trimIn;
       return video;
     },
-    // `tick` forces a redraw while a video's frame may still be catching up,
-    // which "loadedImages" already does implicitly via its own state update.
     [slides, loadedImages, videos, timeline, time, tick],
   );
 

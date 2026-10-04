@@ -212,7 +212,9 @@ describe("touch inputs (add-mobile-layout design.md D10)", () => {
 
   it("shows the Save Movie wizard full screen with Back, Next and Cancel at the bottom", async () => {
     mockLayout("compact");
-    const slides: Slide[] = [{ kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null }];
+    const slides: Slide[] = [
+      { kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null },
+    ];
     const { store, ready } = renderApp(
       mockApi({
         listMedia: async () => [mediaItem("a")],

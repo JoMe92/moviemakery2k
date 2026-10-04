@@ -31,8 +31,16 @@ interface TrimHandleProps {
   onDrag: (edge: Edge, deltaSeconds: number) => void;
 }
 
-/** Drag handle at a clip's edge: live-adjusts trimIn/trimOut (video) or the
- * display duration (picture) by pixel delta / pxPerSecond (design.md D7). */
+/**
+ * Drag handle at a clip's edge: live-adjusts trimIn/trimOut (video) or the
+ * display duration (picture) by pixel delta / pxPerSecond (design.md D7).
+ *
+ * A pointer-only affordance inside the clip's own button (so it cannot be a
+ * button itself): hidden from assistive technology, because the same trimming
+ * is reachable by keyboard through "Properties…" (the trim dialog for a video
+ * clip, the duration dialog for a picture). `title` keeps the hint for mouse
+ * users.
+ */
 function TrimHandle({ label, edge, onDrag }: TrimHandleProps) {
   const onPointerDown = (event: ReactPointerEvent<HTMLSpanElement>) => {
     event.preventDefault();
@@ -49,13 +57,11 @@ function TrimHandle({ label, edge, onDrag }: TrimHandleProps) {
 
   return (
     <span
-      role="button"
-      tabIndex={-1}
-      aria-label={label}
+      aria-hidden="true"
+      title={label}
       data-testid={`trim-handle-${edge}`}
       className={edge === "start" ? styles.handleStart : styles.handleEnd}
       onPointerDown={onPointerDown}
-      onClick={(event) => event.stopPropagation()}
     />
   );
 }
@@ -183,16 +189,12 @@ export function TimelineView() {
         <div className={styles.track} style={{ width: `${trackWidth}px` }}>
           <div className={styles.ruler} aria-hidden="true">
             {ticks(timeline.duration, pxPerSecond).map((time) => (
-              <span
-                key={time}
-                className={styles.tick}
-                style={{ left: `${time * pxPerSecond}px` }}
-              >
+              <span key={time} className={styles.tick} style={{ left: `${time * pxPerSecond}px` }}>
                 {formatDuration(time, locale)}
               </span>
             ))}
           </div>
-          <div
+          <ol
             className={styles.lane}
             aria-label={t("timelineView.list")}
             data-testid="timeline-lane"
@@ -201,47 +203,48 @@ export function TimelineView() {
               const slide = slides[placed.index];
               if (!slide) return null;
               return (
-                <TimelineClip
-                  key={slide.id}
-                  slide={slide}
-                  number={placed.index + 1}
-                  media={media.find((m) => m.id === slide.mediaId)}
-                  placed={placed}
-                  pxPerSecond={pxPerSecond}
-                  selected={selection?.slideId === slide.id}
-                  onSelect={() => select({ kind: "slide", slideId: slide.id })}
-                  onDragEdge={onDragEdge(slide)}
+                <li key={slide.id}>
+                  <TimelineClip
+                    slide={slide}
+                    number={placed.index + 1}
+                    media={media.find((m) => m.id === slide.mediaId)}
+                    placed={placed}
+                    pxPerSecond={pxPerSecond}
+                    selected={selection?.slideId === slide.id}
+                    onSelect={() => select({ kind: "slide", slideId: slide.id })}
+                    onDragEdge={onDragEdge(slide)}
+                  />
+                </li>
+              );
+            })}
+          </ol>
+          {timeline.slides
+            .filter((placed) => placed.transitionIn > 0)
+            .map((placed) => {
+              const transitionId = placed.slide.transitionIn?.transitionId;
+              if (!transitionId) return null;
+              const name = catalogName(catalog, transitionId, locale);
+              return (
+                <span
+                  key={`wedge-${placed.slide.id}`}
+                  role="img"
+                  className={styles.wedge}
+                  data-testid={`timeline-transition-${placed.slide.id}`}
+                  style={{
+                    left: `${placed.start * pxPerSecond}px`,
+                    width: `${placed.transitionIn * pxPerSecond}px`,
+                  }}
+                  title={name}
+                  aria-label={t("timelineView.transition", { name })}
                 />
               );
             })}
-            {timeline.slides
-              .filter((placed) => placed.transitionIn > 0)
-              .map((placed) => {
-                const transitionId = placed.slide.transitionIn?.transitionId;
-                if (!transitionId) return null;
-                return (
-                  <span
-                    key={`wedge-${placed.slide.id}`}
-                    className={styles.wedge}
-                    data-testid={`timeline-transition-${placed.slide.id}`}
-                    style={{
-                      left: `${placed.start * pxPerSecond}px`,
-                      width: `${placed.transitionIn * pxPerSecond}px`,
-                    }}
-                    title={catalogName(catalog, transitionId, locale)}
-                    aria-label={t("timelineView.transition", {
-                      name: catalogName(catalog, transitionId, locale),
-                    })}
-                  />
-                );
-              })}
-            <span
-              className={styles.playhead}
-              data-testid="timeline-playhead"
-              style={{ left: `${Math.min(playback.time, timeline.duration) * pxPerSecond}px` }}
-              aria-hidden="true"
-            />
-          </div>
+          <span
+            className={styles.playhead}
+            data-testid="timeline-playhead"
+            style={{ left: `${Math.min(playback.time, timeline.duration) * pxPerSecond}px` }}
+            aria-hidden="true"
+          />
         </div>
       </div>
     </div>

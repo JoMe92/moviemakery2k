@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import type { VideoItem } from "../lib/apiClient";
 import { formatClipTime, parseClipTime } from "../musictrack/clipTime";
@@ -13,20 +13,21 @@ function FramePreview({ src, time, label }: { src: string; time: number; label: 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const draw = () => {
+  // Only reads refs, so one stable identity is enough for the effect below.
+  const draw = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!video || !canvas || !ctx || video.readyState < 2) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || video.readyState < 1) return; // seeked once metadata loads instead
     if (Math.abs(video.currentTime - time) > 0.001) video.currentTime = time;
     else draw();
-  }, [time]);
+  }, [time, draw]);
 
   return (
     <span className={styles.preview}>

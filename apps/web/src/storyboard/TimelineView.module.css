@@ -62,6 +62,8 @@
 .lane {
   position: relative;
   height: 74px;
+  margin: 0;
+  list-style: none;
   padding: 6px 0;
 }
 
@@ -127,9 +129,11 @@
   border-right: 2px solid var(--y2k-select);
 }
 
+/* Wedge and playhead sit in the track, next to the ruler and the clip list,
+   so the ruler's 18 px are part of their offset. */
 .wedge {
   position: absolute;
-  top: 6px;
+  top: 24px;
   z-index: 1;
   height: 62px;
   background: var(--y2k-select-soft);

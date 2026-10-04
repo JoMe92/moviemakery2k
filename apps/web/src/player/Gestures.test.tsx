@@ -11,7 +11,13 @@ import { CONTROLS_HIDE_MS } from "./useFullscreen";
 
 const slides: Slide[] = [
   { kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null },
-  { kind: "image", id: "s2", mediaId: "b", duration: 4, transitionIn: { transitionId: "fade", duration: 1 } },
+  {
+    kind: "image",
+    id: "s2",
+    mediaId: "b",
+    duration: 4,
+    transitionIn: { transitionId: "fade", duration: 1 },
+  },
   { kind: "image", id: "s3", mediaId: "a", duration: 3, transitionIn: null },
 ];
 

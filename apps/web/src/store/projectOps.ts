@@ -86,7 +86,7 @@ export function updateSlide(
 export function splitSlide(slides: readonly Slide[], id: string, splitPoint: number): Slide[] {
   const index = slides.findIndex((s) => s.id === id);
   const slide = slides[index];
-  if (!slide || slide.kind !== "video") return [...slides];
+  if (slide?.kind !== "video") return [...slides];
   const first: Slide = { ...slide, trimOut: splitPoint };
   const second: Slide = {
     kind: "video",

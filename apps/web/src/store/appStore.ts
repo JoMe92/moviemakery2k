@@ -698,7 +698,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       setVideoTrim(slideId, trimIn, trimOut) {
         const { slides, media } = get();
         const slide = slides.find((s) => s.id === slideId);
-        if (!slide || slide.kind !== "video") return false;
+        if (slide?.kind !== "video") return false;
         const item = media.find((m) => m.id === slide.mediaId);
         if (item?.kind !== "video") return false;
         if (!(trimIn >= 0 && trimIn < trimOut && trimOut <= item.duration)) return false;

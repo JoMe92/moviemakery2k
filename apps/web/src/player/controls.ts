@@ -87,7 +87,7 @@ export function videoSplitPoint(
 ): number | null {
   const index = slides.findIndex((s) => s.id === slideId);
   const slide = slides[index];
-  if (!slide || slide.kind !== "video") return null;
+  if (slide?.kind !== "video") return null;
   const placed = timelineOf(slides).slides[index];
   if (!placed) return null;
   const point = videoScrubTime(slide.trimIn, slide.trimOut, placed.start, time);

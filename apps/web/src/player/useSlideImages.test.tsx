@@ -108,12 +108,7 @@ describe("useSlideImages: video texture", () => {
     const timeline = buildTimeline(toTimelineSlides(SLIDES));
     let images: Images = () => undefined;
     const view = render(
-      <Harness
-        slides={SLIDES}
-        timeline={timeline}
-        time={6}
-        onReady={(fn) => (images = fn)}
-      />,
+      <Harness slides={SLIDES} timeline={timeline} time={6} onReady={(fn) => (images = fn)} />,
     );
     const video = images(1) as HTMLVideoElement;
     expect(video.src).not.toBe("");

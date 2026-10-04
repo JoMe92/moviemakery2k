@@ -9,8 +9,20 @@ import { renderApp } from "../test/renderApp";
 
 const slides: Slide[] = [
   { kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null },
-  { kind: "image", id: "s2", mediaId: "b", duration: 4, transitionIn: { transitionId: "fade", duration: 1.25 } },
-  { kind: "image", id: "s3", mediaId: "c", duration: 5, transitionIn: { transitionId: "circle", duration: 1.5 } },
+  {
+    kind: "image",
+    id: "s2",
+    mediaId: "b",
+    duration: 4,
+    transitionIn: { transitionId: "fade", duration: 1.25 },
+  },
+  {
+    kind: "image",
+    id: "s3",
+    mediaId: "c",
+    duration: 5,
+    transitionIn: { transitionId: "circle", duration: 1.5 },
+  },
 ];
 const clip = (id: string, mediaId: string): MusicClip => ({
   id,

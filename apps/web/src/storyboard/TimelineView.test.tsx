@@ -170,6 +170,9 @@ describe("Timeline view", () => {
     ];
     await setupWithMedia(slides, [mediaItem("a"), mediaItem("b")]);
     await user.click(timelineToggle());
-    expect(within(lane()).getByTestId("timeline-transition-s2")).toBeInTheDocument();
+    // The wedge is an overlay in the track, next to the clip list.
+    const wedge = within(storyboard()).getByTestId("timeline-transition-s2");
+    expect(wedge).toHaveAttribute("role", "img");
+    expect(wedge).toHaveAccessibleName("Übergang: Überblenden");
   });
 });
