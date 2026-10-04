@@ -300,7 +300,11 @@ flowchart LR
    `linux-aarch64`): no GPU, display or system packages. Pixi's Linux
    activation sets `__EGL_VENDOR_LIBRARY_DIRS`, `GLCONTEXT_LINUX_LIBEGL` and
    `GLCONTEXT_LINUX_LIBGL` so that glvnd finds the Mesa ICD and glcontext
-   loads `libEGL`/`libGL` from the environment. `render/context.py` passes
+   loads `libEGL`/`libGL` from the environment, plus
+   `LIBGL_ALWAYS_SOFTWARE=1` so that Mesa actually picks llvmpipe instead of
+   auto-detecting a host GPU driver it cannot load (on `linux-aarch64` it would
+   otherwise select the Raspberry Pi's `v3d` and fail with `eglInitialize
+   failed` rather than fall back). `render/context.py` passes
    these library paths to glcontext explicitly (falling back to
    `sys.prefix/lib`), because glcontext would otherwise call
    `ctypes.util.find_library` first and spawn `ldconfig`/`gcc` for every
@@ -485,7 +489,7 @@ FastAPI's interactive docs are available at `/docs` while the backend runs.
 
 On Linux, Pixi's activation also sets `__EGL_VENDOR_LIBRARY_DIRS`,
 `GLCONTEXT_LINUX_LIBEGL` and `GLCONTEXT_LINUX_LIBGL` to the environment's
-Mesa (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
+Mesa, and `LIBGL_ALWAYS_SOFTWARE=1` to pin llvmpipe (see `pixi.toml`). The Docker image (`backend/Dockerfile`) sets
 `MMY_CATALOG_DIR`, `MMY_SHADERS_DIR` and `MMY_DATA_DIR=/data`, sources Pixi's
 shell hook (which contains the EGL variables) in its entrypoint, and runs the
 render environment check during the build.

@@ -46,7 +46,7 @@ def check_gl() -> list[str]:
         return [
             (
                 f"EGL context failed: {exc}\n"
-                "  Expected: Mesa llvmpipe from the Pixi environment (mesalib, linux-64 only);\n"
+                "  Expected: Mesa llvmpipe from the Pixi environment (mesalib, Linux targets);\n"
                 "  __EGL_VENDOR_LIBRARY_DIRS and GLCONTEXT_LINUX_LIBEGL are set by pixi.toml."
             )
         ]
