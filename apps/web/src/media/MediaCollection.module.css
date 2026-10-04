@@ -73,6 +73,25 @@
   position: relative;
 }
 
+/*
+ * Armed hold (mmy-43e): the press has been held long enough that lifting the
+ * finger opens the tile's action sheet instead of picking the tile. Saying so
+ * while the finger is still down is what keeps the release unambiguous.
+ */
+.pickable[data-armed] {
+  outline: 2px solid var(--y2k-select);
+  outline-offset: -2px;
+  transform: scale(0.94);
+  transition: transform 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pickable[data-armed] {
+    transform: none;
+    transition: none;
+  }
+}
+
 .pickable[aria-pressed="true"]::after {
   position: absolute;
   top: 2px;

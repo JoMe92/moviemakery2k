@@ -6,6 +6,23 @@ import { SLIDE_DURATION } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
+import { HOLD_MS, LONG_PRESS_MS } from "../ui/useLongPress";
+
+/**
+ * A touch press on `tile` held `ms` and released, the way a finger does it -
+ * `user.click()` is instantaneous and cannot tell a tap from a hold (mmy-43e).
+ */
+function holdTile(tile: HTMLElement, ms: number) {
+  const touch = { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 };
+  vi.useFakeTimers();
+  try {
+    fireEvent.pointerDown(tile, touch);
+    act(() => vi.advanceTimersByTime(ms));
+    fireEvent.pointerUp(tile, touch);
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 const slide = (id: string, mediaId: string): Slide => ({
   id,
@@ -116,14 +133,10 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("offers Properties and Delete on a long press", async () => {
+  it("offers Properties and Delete after a held press", async () => {
     const { sheet, user } = await setup();
     const tile = sheet.getByRole("button", { name: "b.jpg" });
-    vi.useFakeTimers();
-    fireEvent.pointerDown(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
-    act(() => vi.advanceTimersByTime(400));
-    fireEvent.pointerUp(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
-    vi.useRealTimers();
+    holdTile(tile, HOLD_MS);
     const menu = screen.getByRole("menu", { name: "Bild „b.jpg“" });
     expect(
       within(menu)
@@ -139,15 +152,65 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
   it("deletes via the long-press menu after confirmation", async () => {
     const { sheet, user } = await setup();
     const tile = sheet.getByRole("button", { name: "c.jpg" });
-    vi.useFakeTimers();
-    fireEvent.pointerDown(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
-    act(() => vi.advanceTimersByTime(400));
-    fireEvent.pointerUp(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
-    vi.useRealTimers();
+    holdTile(tile, HOLD_MS);
     await user.click(screen.getByRole("menuitem", { name: "Löschen" }));
     expect(screen.getByRole("dialog", { name: "Bild löschen" })).toHaveTextContent(
       "Möchten Sie „c.jpg“ wirklich löschen?",
     );
+  });
+
+  // mmy-43e: a deliberate tap on a phone lasts 400-700 ms. Each of these used
+  // to be read as a long press on release, so the tile was never picked and the
+  // storyboard stayed empty.
+  it.each([120, 300, 450, 700, HOLD_MS - 1])("picks the tile on a %i ms tap", async (ms) => {
+    const { sheet } = await setup();
+    const tile = sheet.getByRole("button", { name: "b.jpg" });
+    holdTile(tile, ms);
+    expect(tile).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (1)" })).toBeEnabled();
+    holdTile(tile, ms);
+    expect(tile).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("marks the tile armed before the held press opens the menu", async () => {
+    const { sheet } = await setup();
+    const tile = sheet.getByRole("button", { name: "b.jpg" });
+    const touch = { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 };
+    vi.useFakeTimers();
+    try {
+      fireEvent.pointerDown(tile, touch);
+      act(() => vi.advanceTimersByTime(HOLD_MS - 1));
+      expect(tile).not.toHaveAttribute("data-armed");
+      act(() => vi.advanceTimersByTime(1));
+      // Armed, but still nothing decided: the finger has not been lifted.
+      expect(tile).toHaveAttribute("data-armed", "true");
+      expect(screen.queryByRole("menu")).toBeNull();
+      fireEvent.pointerUp(tile, touch);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(screen.getByRole("menu", { name: "Bild „b.jpg“" })).toBeInTheDocument();
+    expect(tile).not.toHaveAttribute("data-armed");
+    expect(tile).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("drags out of an armed press without opening the menu", async () => {
+    const { sheet } = await setup();
+    const tile = sheet.getByRole("button", { name: "b.jpg" });
+    const touch = { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 };
+    vi.useFakeTimers();
+    try {
+      fireEvent.pointerDown(tile, touch);
+      act(() => vi.advanceTimersByTime(HOLD_MS));
+      expect(tile).toHaveAttribute("data-armed", "true");
+      fireEvent.pointerMove(tile, { ...touch, clientX: 40 });
+      expect(tile).not.toHaveAttribute("data-armed");
+      fireEvent.pointerUp(tile, { ...touch, clientX: 40 });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
   it("shows My Videos with Properties and Delete but nothing to add", async () => {
@@ -162,11 +225,8 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     vi.spyOn(input, "click");
     await user.click(sheet.getByRole("button", { name: "Importieren" }));
     expect(input.accept).toMatch(/video/);
-    vi.useFakeTimers();
-    fireEvent.pointerDown(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
-    act(() => vi.advanceTimersByTime(400));
-    fireEvent.pointerUp(tile, { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 });
-    vi.useRealTimers();
+    // A video tile has no pick to protect, so it keeps the plain long press.
+    holdTile(tile, LONG_PRESS_MS);
     const menu = screen.getByRole("menu", { name: "Video „clip.mp4“" });
     await user.click(within(menu).getByRole("menuitem", { name: "Eigenschaften" }));
     expect(screen.getByRole("dialog", { name: "Eigenschaften von „clip.mp4“" })).toHaveTextContent(
