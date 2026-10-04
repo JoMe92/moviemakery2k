@@ -37,7 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # Cancel running exports; workers clean up their own partial files.
             await asyncio.to_thread(exports.shutdown)
 
-    app = FastAPI(title="moviemakerY2K", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="moviemakerY2K", version="0.2.1", lifespan=lifespan)
     app.state.settings = settings
     app.state.catalog = catalog
     app.state.title_catalog = title_catalog

@@ -13,7 +13,10 @@ A medium is an image, a video or an audio file (`MediaItem`, discriminated by
     media/<id>/peaks.json       audio: waveform, 50 peaks per second (AudioPeaks)
     media/<id>/poster.jpg       video: poster frame, JPEG q90 (add-video-import D3)
 
-Entries in media.json without `kind` (written before audio existed) are images.
+media.json has no `schemaVersion`; entries written by an older version are
+migrated by shape on read, per entry and idempotently (ADR 0003,
+`_migrate_index_entry`): an entry without `kind` predates audio and is an
+image, and a missing `*Url` is rebuilt from the entry's ID.
 
 Detection goes by content, never by name or content type: first Pillow (JPEG,
 PNG, WebP only), then ffprobe. A file with at least one decodable video stream
@@ -52,7 +55,7 @@ from pathlib import Path
 from typing import Annotated, Any, BinaryIO, Literal, get_args
 
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from pydantic.alias_generators import to_camel
 
 from mmy_backend.errors import ErrorCode, Params, error_message
@@ -194,6 +197,19 @@ type MediaItem = Annotated[ImageItem | AudioItem | VideoItem, Field(discriminato
 """An imported medium; `kind` tells the type. Index entries without `kind` are images."""
 
 
+# Every required `*Url` field of a media item is a pure function of its ID - the
+# very URL the import path builds. The index carries no version counter, so a
+# field added to a kind after entries of it were already written is
+# reconstructed from the ID on read instead of failing the whole index
+# (ADR 0003). `tests/test_media_index_migration.py` asserts this table stays
+# complete, so the next added URL field fails in CI, not in the field.
+_DERIVED_URLS: dict[str, tuple[tuple[str, str], ...]] = {
+    "image": (("thumbnailUrl", "thumbnail"), ("previewUrl", "preview")),
+    "audio": (("audioUrl", "audio"), ("peaksUrl", "peaks")),
+    "video": (("posterUrl", "poster"), ("videoUrl", "video")),
+}
+
+
 class MediaUploadSuccess(_MediaModel):
     filename: str
     ok: Literal[True]
@@ -229,6 +245,23 @@ class MediaListResponse(_MediaModel):
 
 
 _INDEX_ADAPTER = TypeAdapter(list[MediaItem])
+
+
+class MediaIndexError(RuntimeError):
+    """media.json cannot be read, so the app refuses to start (ADR 0003).
+
+    Deliberately fatal and deliberately not degraded to an empty index: the
+    project refers to media by ID, and starting empty would both invalidate
+    the project and let the next import overwrite the index of a library that
+    is still on disk.
+    """
+
+    def __init__(self, path: Path, reason: str) -> None:
+        super().__init__(
+            f"Media index {path} cannot be read and no migration applies: {reason}\n"
+            "The media files themselves are untouched. Keep a copy of the file "
+            "before editing it by hand."
+        )
 
 
 class MediaError(Exception):
@@ -697,14 +730,36 @@ def _supported_video_codec(name: str) -> bool:
     return name in _VIDEO_CODECS
 
 
+def _migrate_index_entry(entry: Any) -> Any:
+    """Raises one media.json entry to the current shape (ADR 0003).
+
+    Shape-directed and per entry: the index has no version counter, so each
+    step asks what the entry is missing rather than which version wrote it.
+    Every step is idempotent and reconstructs the field from data the entry
+    already carries, so an entry from any earlier version is repaired in one
+    pass. Anything not repairable is passed through for validation to report.
+    """
+    if not isinstance(entry, dict):
+        return entry
+    # Written before audio existed, so without a discriminator at all: an image.
+    if "kind" not in entry:
+        entry = {"kind": "image", **entry}
+    kind, media_id = entry["kind"], entry.get("id")
+    if not isinstance(kind, str) or not isinstance(media_id, str) or not is_media_id(media_id):
+        return entry
+    missing = {
+        alias: f"/api/media/{media_id}/{path}"
+        for alias, path in _DERIVED_URLS.get(kind, ())
+        if alias not in entry
+    }
+    return {**entry, **missing} if missing else entry
+
+
 def _read_index_payload(payload: bytes) -> list[MediaItem]:
-    """Parses media.json; entries without `kind` are images (written before audio existed)."""
+    """Parses media.json, migrating entries written by an older version."""
     raw = json.loads(payload)
     if isinstance(raw, list):
-        raw = [
-            {"kind": "image", **entry} if isinstance(entry, dict) and "kind" not in entry else entry
-            for entry in raw
-        ]
+        raw = [_migrate_index_entry(entry) for entry in raw]
     return _INDEX_ADAPTER.validate_python(raw)
 
 
@@ -743,7 +798,10 @@ class MediaStore:
     def _read_index(self) -> list[MediaItem]:
         if not self.index_file.exists():
             return []
-        return _read_index_payload(self.index_file.read_bytes())
+        try:
+            return _read_index_payload(self.index_file.read_bytes())
+        except (ValueError, ValidationError) as exc:
+            raise MediaIndexError(self.index_file, str(exc)) from exc
 
     def list(self) -> list[MediaItem]:
         """All media in import order."""

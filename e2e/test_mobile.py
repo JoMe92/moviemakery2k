@@ -355,6 +355,162 @@ def test_long_held_tap_still_adds_to_the_storyboard(
     expect(strip.get_by_role("button", name="Bild 1: blau.png, 5,00 s")).to_be_visible()
 
 
+# mmy-bmh: the slop that separates a tap from a pan. Mirrors TAP_SLOP in
+# apps/web/src/ui/useLongPress.ts - a drift up to it picks, a pan past it does
+# not. Kept as a literal on purpose: the e2e test is the outside view and must
+# notice if the source ever moves the threshold.
+TAP_SLOP = 32
+
+
+def drift_tap(
+    cdp: CDPSession,
+    x: float,
+    y: float,
+    *,
+    dx: float = 0.0,
+    dy: float = 0.0,
+    hold_ms: float = 150.0,
+    steps: int = 4,
+) -> None:
+    """A tap whose finger travels `dx`/`dy` from touchdown to lift (mmy-bmh).
+
+    Unlike `realistic_tap` above, which only jitters a few px around one point,
+    this walks the finger in one direction - the thumb roll the Product Owner's
+    device produced. Past about 16 px Chrome revokes the pointer and fires no
+    click at all, so only a gesture that keeps reading the touch stream can
+    still pick the tile."""
+    point = {"x": x, "y": y, "radiusX": 14, "radiusY": 14, "force": 1}
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [point]})
+    for i in range(1, steps + 1):
+        time.sleep(hold_ms / 1000 / steps)
+        moved = {**point, "x": x + dx * i / steps, "y": y + dy * i / steps}
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [moved]})
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+
+@pytest.mark.parametrize(
+    ("axis", "vector"),
+    [("horizontal", (1.0, 0.0)), ("vertical", (0.0, 1.0))],
+)
+def test_pick_tap_survives_a_drifting_finger(
+    open_device: Any, images: dict[str, Path], axis: str, vector: tuple[float, float]
+) -> None:
+    """mmy-bmh, the third axis of this gesture: a thumb does not land and lift
+    on one pixel. The Product Owner's device lost the pick at 16 px of vertical
+    drift - no selection, no menu, no PUT /api/project - while the two earlier
+    fixes (mmy-edq, mmy-43e) shipped tests that tap without moving at all.
+
+    Every drift up to the tap slop has to toggle the pick, in both axes."""
+    page = open_device("Pixel 7")
+    tap_import(page, "Bilder importieren", [images["rot.png"]])
+    cdp = page.context.new_cdp_session(page)
+    tile = pick_tile(page, "rot.png")
+    add = page.get_by_role("dialog", name="Sammlungen").get_by_role(
+        "button", name="Zum Bildstreifen hinzufügen (1)"
+    )
+    ux, uy = vector
+
+    for drift in (0, 8, 10, 12, 16, 20, 25, TAP_SLOP):
+        x, y = tile_centre(tile)
+        drift_tap(cdp, x, y, dx=drift * ux, dy=drift * uy)
+        # Playwright names the failing locator; the drift is in the message.
+        expect(tile, f"{drift} px of {axis} drift must pick").to_have_attribute(
+            "aria-pressed", "true", timeout=2000
+        )
+        expect(add).to_be_enabled()
+        expect(page.get_by_role("menuitem", name="Eigenschaften")).to_have_count(0)
+        # The same drifting tap is also the way back out of the selection.
+        x, y = tile_centre(tile)
+        drift_tap(cdp, x, y, dx=drift * ux, dy=drift * uy)
+        expect(tile).to_have_attribute("aria-pressed", "false", timeout=2000)
+
+
+def grid_scroller(page: Page) -> Any:
+    """The collection sheet's scroll container, found the way the gesture code
+    finds it (nearest really scrolling ancestor), not by CSS module class."""
+    return page.evaluate_handle(
+        """() => {
+            const panel = document.querySelector('dialog [role=tabpanel]');
+            for (let n = panel; n; n = n.parentElement) {
+                const s = getComputedStyle(n);
+                const scrolls = s.overflowY === 'auto' || s.overflowY === 'scroll';
+                if (scrolls && n.scrollHeight > n.clientHeight) return n;
+            }
+            return null;
+        }"""
+    )
+
+
+def pan(cdp: CDPSession, x: float, y: float, dy: float, steps: int = 10) -> None:
+    """A deliberate scroll of the grid, started on a tile."""
+    point = {"x": x, "y": y, "radiusX": 14, "radiusY": 14, "force": 1}
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [point]})
+    for i in range(1, steps + 1):
+        time.sleep(0.016)
+        cdp.send(
+            "Input.dispatchTouchEvent",
+            {"type": "touchMove", "touchPoints": [{**point, "y": y + dy * i / steps}]},
+        )
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+
+def test_drift_and_pan_are_told_apart_on_a_scrolling_grid(
+    open_device: Any, many_images: list[Path]
+) -> None:
+    """mmy-bmh, the two halves of the same threshold on the grid where it
+    matters - the one that scrolls, in the axis it scrolls in.
+
+    A drifting tap picks, before and after the grid has been scrolled; a
+    deliberate pan started on a tile scrolls the grid and leaves the selection
+    exactly as it was. 32 px of finger travel separates them: an incidental
+    thumb roll stays well under it (25 px measured at worst), a pan covers
+    several times it."""
+    page = open_device("Pixel 7")
+    tap_import(page, "Bilder importieren", many_images)
+    sheet = page.get_by_role("dialog", name="Sammlungen")
+    grid = sheet.get_by_role("list", name="Bilder")
+    expect(grid.get_by_role("button")).to_have_count(len(many_images), timeout=60_000)
+    cdp = page.context.new_cdp_session(page)
+
+    scroller = grid_scroller(page)
+    assert scroller.as_element() is not None, "the collection grid has to scroll for this test"
+    assert scroller.evaluate("el => el.scrollHeight - el.clientHeight") > 100
+
+    tile = grid.get_by_role("button").first
+    name = tile.get_attribute("aria-label")
+    assert name is not None
+
+    # A pan started on the tile scrolls and picks nothing.
+    expect(tile).to_have_attribute("aria-pressed", "false")
+    x, y = tile_centre(tile)
+    pan(cdp, x, y, -140)
+    page.wait_for_timeout(700)
+    assert scroller.evaluate("el => el.scrollTop") > 50, "the pan did not scroll the grid"
+    expect(tile).to_have_attribute("aria-pressed", "false")
+    expect(page.get_by_role("menuitem", name="Eigenschaften")).to_have_count(0)
+
+    # On the scrolled grid, a drifting tap still picks - in both axes, and
+    # including the 16 px of vertical drift that was reported lost.
+    for dx, dy in ((0, 12), (0, 16), (0, 25), (12, 0), (16, 0), (25, 0)):
+        x, y = tile_centre(tile)
+        drift_tap(cdp, x, y, dx=dx, dy=dy)
+        expect(tile).to_have_attribute("aria-pressed", "true", timeout=2000)
+        x, y = tile_centre(tile)
+        drift_tap(cdp, x, y, dx=dx, dy=dy)
+        expect(tile).to_have_attribute("aria-pressed", "false", timeout=2000)
+
+    # And the picked tile really reaches the backend: pick, add, filmstrip.
+    x, y = tile_centre(tile)
+    drift_tap(cdp, x, y, dy=16)
+    expect(tile).to_have_attribute("aria-pressed", "true", timeout=2000)
+    add = sheet.get_by_role("button", name="Zum Bildstreifen hinzufügen (1)")
+    realistic_tap(cdp, *tile_centre(add))
+    expect(sheet).to_be_hidden()
+    expect(
+        page.get_by_role("list", name="Bildstreifen").get_by_role("button", name=f"Bild 1: {name}")
+    ).to_be_visible()
+
+
 def test_a_real_hold_announces_itself_and_opens_the_tile_actions(
     open_device: Any, images: dict[str, Path]
 ) -> None:

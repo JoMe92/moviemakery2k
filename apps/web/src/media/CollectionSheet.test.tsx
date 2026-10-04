@@ -6,19 +6,54 @@ import { SLIDE_DURATION, slideDuration } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
-import { HOLD_MS } from "../ui/useLongPress";
+import { HOLD_MS, LONG_PRESS_TOLERANCE, TAP_SLOP } from "../ui/useLongPress";
+
+const TOUCH = { pointerId: 3, pointerType: "touch", clientX: 50, clientY: 50 };
 
 /**
  * A touch press on `tile` held `ms` and released, the way a finger does it -
  * `user.click()` is instantaneous and cannot tell a tap from a hold (mmy-43e).
  */
 function holdTile(tile: HTMLElement, ms: number) {
-  const touch = { pointerId: 3, pointerType: "touch", clientX: 5, clientY: 5 };
   vi.useFakeTimers();
   try {
-    fireEvent.pointerDown(tile, touch);
+    fireEvent.pointerDown(tile, TOUCH);
     act(() => vi.advanceTimersByTime(ms));
-    fireEvent.pointerUp(tile, touch);
+    fireEvent.pointerUp(tile, TOUCH);
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+/**
+ * A thumb tap that drifts `drift` px along `axis` before lifting (mmy-bmh).
+ * Past LONG_PRESS_TOLERANCE Chrome stops sending pointer events for the
+ * gesture and revokes the pointer instead (measured), so the release arrives
+ * as a plain touchend - the tile has to pick on that too.
+ */
+function driftTile(tile: HTMLElement, drift: number, axis: "x" | "y") {
+  const at = (d: number) => ({
+    ...TOUCH,
+    clientX: TOUCH.clientX + (axis === "x" ? d : 0),
+    clientY: TOUCH.clientY + (axis === "y" ? d : 0),
+  });
+  const point = (d: number) => ({ clientX: at(d).clientX, clientY: at(d).clientY });
+  vi.useFakeTimers();
+  try {
+    fireEvent.pointerDown(tile, TOUCH);
+    const revoked = drift > LONG_PRESS_TOLERANCE;
+    for (let k = 1; k <= 4; k += 1) {
+      act(() => vi.advanceTimersByTime(40));
+      const d = (drift * k) / 4;
+      if (revoked && d > LONG_PRESS_TOLERANCE) {
+        if (d - drift / 4 <= LONG_PRESS_TOLERANCE) fireEvent.pointerCancel(tile, TOUCH);
+        fireEvent.touchMove(tile, { touches: [point(d)], changedTouches: [point(d)] });
+      } else {
+        fireEvent.pointerMove(tile, at(d));
+      }
+    }
+    if (revoked) fireEvent.touchEnd(tile, { touches: [], changedTouches: [point(drift)] });
+    else fireEvent.pointerUp(tile, at(drift));
   } finally {
     vi.useRealTimers();
   }
@@ -174,6 +209,46 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     expect(tile).toHaveAttribute("aria-pressed", "false");
   });
 
+  // mmy-bmh: the PO's thumb rolls 10-25 px between touchdown and lift, and at
+  // 16 px vertically the pick was lost completely - no selection, no menu, no
+  // PUT /api/project. Both earlier fixes shipped tests that tap without
+  // moving, so this sweep moves the finger in both axes.
+  describe.each([
+    ["horizontally", "x" as const],
+    ["vertically", "y" as const],
+  ])("a tap that drifts %s", (_axis, axis) => {
+    it.each([0, LONG_PRESS_TOLERANCE, 10, 12, 16, 20, 25, TAP_SLOP])(
+      "picks the tile at %i px of drift",
+      async (drift) => {
+        const { sheet } = await setup();
+        const tile = sheet.getByRole("button", { name: "b.jpg" });
+        driftTile(tile, drift, axis);
+        expect(tile).toHaveAttribute("aria-pressed", "true");
+        expect(screen.queryByRole("menu")).toBeNull();
+        expect(
+          sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (1)" }),
+        ).toBeEnabled();
+        driftTile(tile, drift, axis);
+        expect(tile).toHaveAttribute("aria-pressed", "false");
+      },
+    );
+
+    it.each([TAP_SLOP + 2, 140])("leaves the selection alone at %i px: a pan", async (drift) => {
+      const { sheet } = await setup();
+      const tile = sheet.getByRole("button", { name: "b.jpg" });
+      driftTile(tile, drift, axis);
+      expect(tile).toHaveAttribute("aria-pressed", "false");
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+  });
+
+  it("adds a tile picked with a drifting thumb to the storyboard", async () => {
+    const { sheet, user, store } = await setup();
+    driftTile(sheet.getByRole("button", { name: "b.jpg" }), 16, "y");
+    await user.click(sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (1)" }));
+    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["b"]);
+  });
+
   it("marks the tile armed before the held press opens the menu", async () => {
     const { sheet } = await setup();
     const tile = sheet.getByRole("button", { name: "b.jpg" });
@@ -205,9 +280,10 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
       fireEvent.pointerDown(tile, touch);
       act(() => vi.advanceTimersByTime(HOLD_MS));
       expect(tile).toHaveAttribute("data-armed", "true");
-      fireEvent.pointerMove(tile, { ...touch, clientX: 40 });
+      // Well past TAP_SLOP: this is a drag, not a tap that drifted (mmy-bmh).
+      fireEvent.pointerMove(tile, { ...touch, clientX: touch.clientX + 4 * TAP_SLOP });
       expect(tile).not.toHaveAttribute("data-armed");
-      fireEvent.pointerUp(tile, { ...touch, clientX: 40 });
+      fireEvent.pointerUp(tile, { ...touch, clientX: touch.clientX + 4 * TAP_SLOP });
     } finally {
       vi.useRealTimers();
     }

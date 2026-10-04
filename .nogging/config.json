@@ -4,6 +4,7 @@
   "beads_command": "bd",
   "planning_lock_ttl_seconds": 7200,
   "sync_lock_ttl_seconds": 120,
+  "claim_stale_seconds": 14400,
   "change_states": [
     "open",
     "done",

@@ -6,6 +6,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] – 2026-10-04
+
+### Fixed
+
+- **Startup against a media library from an older version**: 0.2.0 added the
+  required `videoUrl` to a video in `media.json` without a migration, so a
+  backend whose library already contained a video did not start at all — the
+  index failed validation inside `create_app()` and the process died with a
+  stack trace before serving a single request. Entries written by an older
+  version are now migrated on read: a missing `*Url` is rebuilt from the
+  entry's ID, which is where it came from in the first place. No media file
+  and no `media.json` is rewritten until the next import or delete. An index
+  that this cannot repair now names the file and the reason instead of raising
+  a raw validation error. The project's position on media-index versioning is
+  written down in [ADR 0003](docs/adr/0003-media-index-versioning.md).
+- **Tapping a collection tile no longer needs a steady finger.** A tap picked
+  the tile only while the finger stayed within 8 px of where it went down; a
+  normal thumb covers 10 to 25 px, and at 16 px of vertical drift - the axis
+  the grid scrolls in - the pick was lost completely: no selection, no menu,
+  nothing added to the storyboard. The gesture now keeps two thresholds apart:
+  8 px still ends the *long* press, while a tap is recognised up to a 32 px tap
+  slop, and the release is read from the raw touch events once the browser
+  revokes the pointer (past about 16 px Chrome sends neither `pointerup` nor a
+  click). A deliberate pan started on a tile still scrolls the grid and changes
+  no selection ([MMY-bmh]).
+
 ## [0.2.0] – 2026-10-04
 
 MP4 export of the slideshow (OpenSpec change `add-movie-export`), a
@@ -388,6 +414,7 @@ classic Movie Maker 2.x (OpenSpec change `add-slideshow-mvp`).
 - The user interface is German only.
 - A click on a storyboard tile right after a drop may be ignored once.
 
-[Unreleased]: https://github.com/JoMe92/moviemakery2k/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/JoMe92/moviemakery2k/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/JoMe92/moviemakery2k/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/JoMe92/moviemakery2k/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/JoMe92/moviemakery2k/releases/tag/v0.1.0

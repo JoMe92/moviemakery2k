@@ -95,11 +95,18 @@ flowchart LR
      absolute sample per 20 ms window, 0..1) and the **decoded** duration,
      which replaces ffprobe's container estimate and is checked against the
      15-minute limit again.
-5. The media index is `media.json`. `MediaItem` is a discriminated union on
-   `kind`: `image` (`width`, `height`, `thumbnailUrl`, `previewUrl`) or `audio`
-   (`duration`, `sampleRate`, `channels`, `codec`, `audioUrl`, `peaksUrl`).
-   Entries written before audio existed have no `kind` and are read as
-   images.
+5. The media index is `media.json`, a list of entries in import order.
+   `MediaItem` is a discriminated union on `kind`: `image` (`width`, `height`,
+   `thumbnailUrl`, `previewUrl`), `audio` (`duration`, `sampleRate`,
+   `channels`, `codec`, `audioUrl`, `peaksUrl`) or `video` (`duration`,
+   `width`, `height`, `codec`, `posterUrl`, `videoUrl`). Unlike the project,
+   the index has **no** `schemaVersion`: entries are self-describing and are
+   migrated by shape on read, per entry and idempotently
+   ([ADR 0003](adr/0003-media-index-versioning.md)) — an entry without `kind`
+   was written before audio existed and is an image, and a missing `*Url` is
+   rebuilt from the entry's ID, which is where it came from in the first place.
+   An index that this cannot repair is a fatal `MediaIndexError` naming the
+   file, never a silently empty library.
 6. The response lists a success or a readable error per file; the store adds
    the new items to the collection of their kind.
 
@@ -619,7 +626,7 @@ covers the switch to English and the browser-language detection.
 
 | Layer | Tooling | What it covers |
 |---|---|---|
-| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
+| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
 | Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
 | Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |

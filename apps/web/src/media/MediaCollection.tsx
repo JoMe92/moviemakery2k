@@ -138,6 +138,9 @@ function usePickingPointer(
       onPointerMove: longPress.onPointerMove,
       onPointerUp: longPress.onPointerUp,
       onPointerCancel: longPress.onPointerCancel,
+      // The touch stream decides the tap the browser revoked (mmy-bmh).
+      onTouchMove: longPress.onTouchMove,
+      onTouchEnd: longPress.onTouchEnd,
     },
     guardClick: longPress.guardClick,
   };
