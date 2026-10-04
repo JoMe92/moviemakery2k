@@ -69,12 +69,12 @@ describe("App shell", () => {
     expect(await within(statusbar).findByText("Backend nicht erreichbar")).toBeInTheDocument();
   });
 
-  it("marks 'Videoeffekte anzeigen' as disabled", () => {
+  it("switches the collection picker via 'Videoeffekte anzeigen'", async () => {
+    const user = userEvent.setup();
     renderApp();
-    expect(screen.getByRole("button", { name: "Videoeffekte anzeigen" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    await user.click(screen.getByRole("button", { name: "Videoeffekte anzeigen" }));
+    expect(screen.getByRole("combobox", { name: /Sammlungen/ })).toHaveValue("effects");
+    expect(screen.getByRole("region", { name: "Sammlung: Videoeffekte" })).toBeInTheDocument();
   });
 
   it("switches the collection picker via 'Videoübergänge anzeigen'", async () => {

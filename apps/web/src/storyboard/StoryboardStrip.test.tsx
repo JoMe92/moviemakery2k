@@ -118,7 +118,7 @@ describe("Storyboard", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows tiles with number, duration, thumbnail, disabled effect slot and transition slots", async () => {
+  it("shows tiles with number, duration, thumbnail, effect slot and transition slots", async () => {
     await setup([slide("s1", "a"), slide("s2", "b", 2.5, "circle"), slide("s3", "a", 0.75)]);
     expect(tileLabels()).toEqual([
       "Bild 1: a.jpg, 5,00 s",
@@ -130,9 +130,10 @@ describe("Storyboard", () => {
     expect(second).toHaveTextContent("2,50 s");
     expect(second.querySelector("img")).toHaveAttribute("src", "/api/media/b/thumbnail");
 
-    const effect = within(strip()).getByRole("button", { name: "Effekt-Platz für Bild 2" });
-    expect(effect).toHaveAttribute("aria-disabled", "true");
-    expect(effect).toHaveAttribute("title", "Videoeffekte folgen später");
+    const effect = within(strip()).getByRole("button", {
+      name: "Effekt-Platz für Bild 2: kein Effekt",
+    });
+    expect(effect).toHaveAttribute("data-filled", "false");
 
     // Transition slots only between tiles; the transition belongs to the target picture.
     expect(within(strip()).queryByRole("button", { name: /^Übergang vor Bild 1/ })).toBeNull();

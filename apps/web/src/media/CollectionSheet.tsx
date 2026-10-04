@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { EffectCollection } from "../effects/EffectCollection";
 import { useT } from "../i18n/useT";
 import type { CollectionId } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
@@ -9,14 +10,15 @@ import styles from "./CollectionSheet.module.css";
 import { MediaCollection } from "./MediaCollection";
 import { UploadPanel } from "./UploadPanel";
 
-const TABS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
+const TABS: readonly CollectionId[] = ["media", "music", "video", "transitions", "effects"];
 
-/** Media kind of a collection tab (transitions have none). */
+/** Media kind of a collection tab (transitions and effects have none). */
 const KIND = { media: "image", music: "audio", video: "video" } as const;
 
 /**
  * Collection sheet of the compact layout (add-mobile-layout design.md D7):
- * tabs "My Pictures", "My Music", "My Videos" and "Video Transitions",
+ * tabs "My Pictures", "My Music", "My Videos", "Video Transitions" and
+ * "Video Effects",
  * "Import" on top. Tapping pictures, videos or music picks them; the fixed
  * button adds the picks in the order they were picked (pictures and videos
  * after the selected element or at the end, music at the end) and closes the
@@ -105,7 +107,7 @@ export function CollectionSheet() {
             </button>
           ))}
         </div>
-        {collection === "transitions" ? null : (
+        {collection === "transitions" || collection === "effects" ? null : (
           <Button
             onClick={() =>
               requestImport(
@@ -125,6 +127,8 @@ export function CollectionSheet() {
       >
         {collection === "transitions" ? (
           <TransitionCollection />
+        ) : collection === "effects" ? (
+          <EffectCollection />
         ) : (
           <MediaCollection
             key={collection}

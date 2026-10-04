@@ -99,13 +99,14 @@ async function setup(slides: Slide[] = [], locale: "de" | "en" = "de") {
 }
 
 describe("collection sheet (add-mobile-layout design.md D7)", () => {
-  it("offers the three tabs and Import", async () => {
+  it("offers the collection tabs and Import", async () => {
     const { sheet, user, store } = await setup();
     expect(sheet.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
       "Meine Bilder",
       "Meine Musik",
       "Meine Videos",
       "Videoübergänge",
+      "Videoeffekte",
     ]);
     const input = screen.getByTestId("media-import-input") as HTMLInputElement;
     const click = vi.spyOn(input, "click");
@@ -115,6 +116,12 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     await user.click(sheet.getByRole("tab", { name: "Videoübergänge" }));
     expect(store.getState().collection).toBe("transitions");
     expect(sheet.getByRole("list", { name: "Übergänge" })).toBeInTheDocument();
+
+    // "Video Effects" is a catalog tab too: tiles, no import button.
+    await user.click(sheet.getByRole("tab", { name: "Videoeffekte" }));
+    expect(store.getState().collection).toBe("effects");
+    expect(sheet.getByRole("list", { name: "Effekte" })).toBeInTheDocument();
+    expect(sheet.queryByRole("button", { name: "Importieren" })).toBeNull();
   });
 
   it("adds three pictures in the order C, A, B and closes", async () => {

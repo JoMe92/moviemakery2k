@@ -5,9 +5,9 @@ import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { slideDuration } from "../store/projectOps";
-import { EffectsIcon } from "../ui/icons";
 import { chain, useLongPress } from "../ui/useLongPress";
 import { type DragItem, formatDuration } from "./dropLogic";
+import { EffectSlot } from "./EffectSlot";
 import styles from "./StoryboardStrip.module.css";
 import { TransitionSlot } from "./TransitionSlot";
 
@@ -30,12 +30,15 @@ export interface SlideTileProps {
   onTransitionMenu: (x: number, y: number) => void;
   /** Tap on the transition slot with touch operation. */
   onTransitionActivate?: () => void;
+  /** "Keinen Effekt" on the effect slot (add-effects-catalog D4). */
+  onEffectRemove: () => void;
+  onEffectMenu: (x: number, y: number) => void;
   tileRef?: (el: HTMLButtonElement | null) => void;
   /** Insertion marker before or after this tile (dragging from the collection). */
   marker?: "before" | "after" | null;
 }
 
-/** Storyboard tile: thumbnail, number, duration and (disabled) effect slot; sortable. */
+/** Storyboard tile: thumbnail, number, duration and effect slot; sortable. */
 export function SlideTile({
   slide,
   number,
@@ -50,6 +53,8 @@ export function SlideTile({
   onTransitionRemove,
   onTransitionMenu,
   onTransitionActivate,
+  onEffectRemove,
+  onEffectMenu,
   tileRef,
   marker = null,
 }: SlideTileProps) {
@@ -189,16 +194,13 @@ export function SlideTile({
           ⋯
         </button>
       ) : (
-        <button
-          type="button"
-          className={styles.effect}
-          aria-disabled="true"
-          aria-label={t("storyboard.effectSlot", { number })}
-          title={t("storyboard.effectsLater")}
-          tabIndex={-1}
-        >
-          <EffectsIcon size={12} />
-        </button>
+        <EffectSlot
+          slideId={slide.id}
+          number={number}
+          effectId={slide.effectId}
+          onRemove={onEffectRemove}
+          onMenu={onEffectMenu}
+        />
       )}
     </li>
   );

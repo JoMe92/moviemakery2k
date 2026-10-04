@@ -195,7 +195,7 @@ describe("action sheets (long press and ⋯)", () => {
       within(sheet)
         .getAllByRole("menuitem")
         .map((i) => i.textContent),
-    ).toEqual(["Entfernen", "Eigenschaften…"]);
+    ).toEqual(["Entfernen", "Keinen Effekt", "Eigenschaften…"]);
     await user.click(within(sheet).getByRole("menuitem", { name: "Entfernen" }));
     expect(store.getState().slides.map((s) => s.id)).toEqual(["s1", "s2"]);
     expect(screen.queryByRole("dialog")).toBeNull();

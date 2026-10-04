@@ -105,6 +105,44 @@ describe("dropLogic", () => {
     });
     expect(insertionIndex({ type: "transitionSlot", slideId: "2" }, slides)).toBeNull();
   });
+
+  it("effect onto an effect slot → set (every picture, the first included)", () => {
+    const e = { type: "effect", effectId: "sepia" } as const;
+    expect(resolveDrop(e, { type: "effectSlot", slideId: "1" }, slides)).toEqual({
+      kind: "setEffect",
+      slideId: "1",
+      effectId: "sepia",
+    });
+    expect(resolveDrop(e, { type: "effectSlot", slideId: "3" }, slides)).toEqual({
+      kind: "setEffect",
+      slideId: "3",
+      effectId: "sepia",
+    });
+    // An unknown element, other targets, and other items on an effect slot: nothing.
+    expect(resolveDrop(e, { type: "effectSlot", slideId: "weg" }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(resolveDrop(e, { type: "slide", slideId: "2", after: false }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(resolveDrop(e, { type: "strip" }, slides)).toEqual({ kind: "none" });
+    expect(resolveDrop(e, { type: "transitionSlot", slideId: "2" }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(resolveDrop(media, { type: "effectSlot", slideId: "2" }, slides)).toEqual({
+      kind: "none",
+    });
+    expect(
+      resolveDrop(
+        { type: "transition", transitionId: "circle" },
+        { type: "effectSlot", slideId: "2" },
+        slides,
+      ),
+    ).toEqual({ kind: "none" });
+    // An effect never lands on the music track either.
+    expect(resolveDrop(e, { type: "musicStrip" }, slides, [])).toEqual({ kind: "none" });
+    expect(insertionIndex({ type: "effectSlot", slideId: "2" }, slides)).toBeNull();
+  });
 });
 
 describe("dropLogic: music track", () => {

@@ -260,6 +260,33 @@ describe("appStore", () => {
     expect(tIn()).toBeNull();
   });
 
+  it("effects: set, replace, remove, undo, and save with the project (TASK-WEB-065)", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = () => store.getState();
+    st().addSlide("a");
+    const first = st().slides[0]?.id ?? "";
+    const effectOf = () => st().slides[0]?.effectId;
+
+    expect(effectOf()).toBeNull();
+    st().setEffect(first, "sepia");
+    expect(effectOf()).toBe("sepia");
+    // One effect per element: setting another one replaces it.
+    st().setEffect(first, "negative");
+    expect(effectOf()).toBe("negative");
+    // "Keinen Effekt".
+    st().setEffect(first, null);
+    expect(effectOf()).toBeNull();
+    // Each step is its own undo step.
+    st().undo();
+    expect(effectOf()).toBe("negative");
+
+    st().setEffect(first, "sepia");
+    await st().flushSave();
+    expect(api.saved.at(-1)?.slides[0]?.effectId).toBe("sepia");
+  });
+
   describe("history (undo/redo, spec edit-commands)", () => {
     it("undoes and redoes add, reorder, duration and transition changes", async () => {
       const store = createAppStore(mockApi());

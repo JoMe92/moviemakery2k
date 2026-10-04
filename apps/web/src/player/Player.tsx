@@ -1,11 +1,12 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMusicAudio } from "../audio/useMusicAudio";
+import { entryName as effectEntryName } from "../effects/effectName";
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { loadImage } from "../render/imageCache";
 import { PreviewCanvas } from "../render/PreviewCanvas";
-import type { ImageSource } from "../render/Renderer";
+import type { EffectSpec, ImageSource } from "../render/Renderer";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { MonitorPane } from "../shell/MonitorPane";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
@@ -210,6 +211,8 @@ export function Player() {
   const playback = useAppStore((s) => s.playback);
   const demo = useAppStore((s) => s.demo);
   const previewId = useAppStore((s) => s.previewTransitionId);
+  const effectCatalog = useAppStore((s) => s.effects);
+  const previewEffectId = useAppStore((s) => s.previewEffectId);
 
   const timeline = timelineOf(slides);
   const empty = slides.length === 0;
@@ -221,16 +224,36 @@ export function Player() {
   );
 
   const demoTransition = demo && previewId ? catalog.find((t) => t.id === previewId) : undefined;
+  // Effect demo (add-effects-catalog D4): the sample image, held still, with
+  // the double-clicked effect applied - no clock, unlike the transition demo.
+  const demoEffect = previewEffectId
+    ? effectCatalog.find((e) => e.id === previewEffectId)
+    : undefined;
+  const sample = Boolean(demoTransition || demoEffect);
   const frame = demoTransition
     ? demoFrame(demo?.time ?? 0, demoTransition.id, demoTransition.defaultDuration)
-    : frameAt(timeline, playback.time);
+    : demoEffect
+      ? ({ kind: "still", slideIndex: 0 } as const)
+      : frameAt(timeline, playback.time);
   const images = useMemo(
-    () => (demoTransition ? (i: number) => sampleImages()[i] : slideImages),
-    [demoTransition, slideImages],
+    () => (sample ? (i: number) => sampleImages()[i] : slideImages),
+    [sample, slideImages],
   );
   const params = useCallback(
     (id: string) => catalog.find((t) => t.id === id)?.params ?? {},
     [catalog],
+  );
+  // The demo shows one effect on the sample image; otherwise every element
+  // carries its own `effectId` from the project.
+  const effects = useCallback(
+    (index: number): EffectSpec | null => {
+      if (demoEffect) return { id: demoEffect.id, params: demoEffect.params };
+      const effectId = slides[index]?.effectId;
+      if (!effectId) return null;
+      const entry = effectCatalog.find((e) => e.id === effectId);
+      return entry ? { id: entry.id, params: entry.params } : null;
+    },
+    [demoEffect, slides, effectCatalog],
   );
 
   // rAF clock only while something is playing. While music is scheduled, the
@@ -400,12 +423,17 @@ export function Player() {
         }
       >
         <div className={styles.gestures} data-testid="monitor-gestures" {...gestures}>
-          <PreviewCanvas frame={frame} images={images} params={params} />
+          <PreviewCanvas frame={frame} images={images} params={params} effects={effects} />
         </div>
         {videoElements}
         {demoTransition ? (
           <p className={styles.sample} role="status">
             {t("player.sample", { name: transitionName(demoTransition, locale) })}
+          </p>
+        ) : null}
+        {demoEffect ? (
+          <p className={styles.sample} role="status">
+            {t("player.sample", { name: effectEntryName(demoEffect, locale) })}
           </p>
         ) : null}
       </MonitorPane>

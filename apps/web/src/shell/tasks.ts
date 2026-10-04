@@ -130,7 +130,11 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           id: "showEffects",
           label: t("tasks.edit.showEffects"),
           icon: EffectsIcon,
-          disabled: true,
+          disabled: false,
+          run: () => {
+            ctx.setCollection("effects");
+            ctx.openCollectionSheet?.();
+          },
         },
         {
           id: "showTransitions",

@@ -18,6 +18,7 @@ export type VideoSlide = Schemas["VideoSlide"];
 export type MusicClip = Schemas["MusicClip"];
 export type TransitionRef = Schemas["TransitionRef"];
 export type Transition = Schemas["Transition"];
+export type Effect = Schemas["Effect"];
 export type UploadResult = Schemas["MediaUploadSuccess"] | Schemas["MediaUploadFailure"];
 export type ExportJob = Schemas["ExportJob"];
 export type ExportProfile = Schemas["ExportProfile"];
@@ -41,6 +42,8 @@ export interface ExportApi {
 export interface Api {
   health(): Promise<Health>;
   catalog(): Promise<Transition[]>;
+  /** The effect catalog (add-effects-catalog design.md D1). */
+  effectCatalog(): Promise<Effect[]>;
   listMedia(): Promise<MediaItem[]>;
   /** Uploads exactly one file and returns its result. */
   uploadMedia(file: File): Promise<UploadResult>;
@@ -200,6 +203,9 @@ export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetc
     async catalog() {
       return unwrap(await client.GET("/api/catalog/transitions"), "Loading the catalog")
         .transitions;
+    },
+    async effectCatalog() {
+      return unwrap(await client.GET("/api/catalog/effects"), "Loading the effect catalog").effects;
     },
     async listMedia() {
       return unwrap(await client.GET("/api/media"), "Loading the media list").items;

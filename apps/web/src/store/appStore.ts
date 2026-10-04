@@ -9,6 +9,7 @@ import {
   ApiError,
   type ApiErrorInfo,
   type AppApi,
+  type Effect,
   type ExportApi,
   type Health,
   type ImageSlide,
@@ -70,9 +71,10 @@ export type BackendState =
 export type SaveState = "idle" | "saving" | "saved" | "error";
 /**
  * `media` is "My Pictures" (images only), `music` is "My Music" (audio only),
- * `video` is "My Videos" (video only, add-video-import D4).
+ * `video` is "My Videos" (video only, add-video-import D4), `effects` is
+ * "Video Effects" (add-effects-catalog D4).
  */
-export type CollectionId = "media" | "music" | "video" | "transitions";
+export type CollectionId = "media" | "music" | "video" | "transitions" | "effects";
 /**
  * File dialog requested: `any` (File menu: pictures, video and audio),
  * `pictures` ("Import pictures"), `audio` ("Import audio or music") or
@@ -144,6 +146,8 @@ export interface AppState {
   loaded: boolean;
   media: MediaItem[];
   catalog: Transition[];
+  /** Effect catalog (add-effects-catalog D1); like `catalog`, loaded once at start. */
+  effects: Effect[];
   slides: Slide[];
   /** Music track (add-music-track D3); kept and saved with the project. */
   music: MusicClip[];
@@ -164,6 +168,12 @@ export interface AppState {
   clipboard: ClipboardEntry;
   /** selected transition in the collection (demo in the monitor) */
   previewTransitionId: string | null;
+  /**
+   * Effect demonstrated in the collection (add-effects-catalog D4): the
+   * monitor shows the sample image with this effect. A still image, so unlike
+   * the transition demo it needs no `demo` clock.
+   */
+  previewEffectId: string | null;
   uploads: UploadEntry[];
   /** Playback of the slideshow in the monitor. */
   playback: Playback;
@@ -193,6 +203,11 @@ export interface AppState {
   select(selection: Selection): void;
   /** Select a tile in the catalog: starts the transition demo in the monitor (null ends it). */
   setPreviewTransition(id: string | null): void;
+  /**
+   * Double-click in "Video Effects": shows the sample image with this effect
+   * in the monitor (null ends the demo).
+   */
+  setPreviewEffect(id: string | null): void;
 
   play(): void;
   pause(): void;
@@ -235,6 +250,11 @@ export interface AppState {
    */
   splitSlide(): boolean;
   setTransition(slideId: string, transitionId: string): void;
+  /**
+   * Effect slot of one element (add-effects-catalog D3/D4): a catalog ID sets
+   * the effect, `null` ("Keinen Effekt") removes it. One effect per element.
+   */
+  setEffect(slideId: string, effectId: string | null): void;
   setTransitionDuration(slideId: string, duration: number): boolean;
   /**
    * Play the transition before this picture once in the monitor, with a
@@ -412,7 +432,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
     }
 
     const duration = () => timelineOf(get().slides).duration;
-    const noDemo = { previewTransitionId: null, demo: null } as const;
+    const noDemo = { previewTransitionId: null, previewEffectId: null, demo: null } as const;
 
     /** Clipboard content copied from a slide (design.md D4): never its id or transition. */
     function clipboardOfSlide(slide: Slide): ClipboardEntry {
@@ -442,6 +462,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       loaded: false,
       media: [],
       catalog: [],
+      effects: [],
       slides: [],
       music: [],
       saveState: "idle",
@@ -453,6 +474,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       redoStack: [],
       clipboard: null,
       previewTransitionId: null,
+      previewEffectId: null,
       playback: STOPPED,
       demo: null,
       uploads: [],
@@ -476,15 +498,17 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       async init() {
         try {
-          const [health, catalog, media, project] = await Promise.all([
+          const [health, catalog, effects, media, project] = await Promise.all([
             api.health(),
             api.catalog(),
+            api.effectCatalog(),
             api.listMedia(),
             api.getProject(),
           ]);
           set({
             backend: { kind: "ok", health },
             catalog,
+            effects,
             media,
             slides: project.slides,
             music: project.music,
@@ -532,7 +556,22 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         const { playback } = get();
         set({
           previewTransitionId: id,
+          previewEffectId: null,
           demo: { playing: true, time: 0 },
+          playback: { ...playback, playing: false },
+        });
+      },
+      setPreviewEffect(id) {
+        if (id === null) {
+          set(noDemo);
+          return;
+        }
+        const { playback } = get();
+        set({
+          previewEffectId: id,
+          previewTransitionId: null,
+          // A single image: no demo clock, so the monitor simply holds it.
+          demo: null,
           playback: { ...playback, playing: false },
         });
       },
@@ -750,6 +789,13 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       removeTransition(slideId) {
         commit(updateSlide(get().slides, slideId, (s) => ({ ...s, transitionIn: null })));
+      },
+      setEffect(slideId, effectId) {
+        const { slides, effects } = get();
+        // An ID outside the catalog would be refused by the backend; ignore it
+        // here so the project never carries one. `null` always removes.
+        if (effectId !== null && !effects.some((e) => e.id === effectId)) return;
+        commit(updateSlide(slides, slideId, (s) => ({ ...s, effectId })));
       },
 
       cut() {

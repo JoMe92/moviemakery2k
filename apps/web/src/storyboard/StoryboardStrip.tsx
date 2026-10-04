@@ -20,7 +20,7 @@ import styles from "./StoryboardStrip.module.css";
 import { stepTileSize, useTileSize } from "./tileSize";
 import { VideoTrimDialog } from "./VideoTrimDialog";
 
-type Target = { kind: "slide" | "transition"; slideId: string };
+type Target = { kind: "slide" | "transition" | "effect"; slideId: string };
 type MenuState = Target & { x: number; y: number };
 
 /**
@@ -40,6 +40,7 @@ export function StoryboardStrip() {
   const setVideoTrim = useAppStore((s) => s.setVideoTrim);
   const setTransitionDuration = useAppStore((s) => s.setTransitionDuration);
   const removeTransition = useAppStore((s) => s.removeTransition);
+  const setEffect = useAppStore((s) => s.setEffect);
   const insertIndex = useInsertIndex();
   // Phones and tablets add pictures via the taskbar instead of dragging.
   const layout = useLayoutMode();
@@ -107,10 +108,27 @@ export function StoryboardStrip() {
     dialogSlide?.kind === "video" ? media.find((m) => m.id === dialogSlide.mediaId) : undefined;
   const transitionName = (id: string) => catalogName(catalog, id, locale);
 
+  const hasEffect = (slideId: string) => Boolean(slides.find((s) => s.id === slideId)?.effectId);
+
   const menuItems = (m: MenuState): ContextMenuItem[] => {
+    if (m.kind === "effect") {
+      // Effect slot: the one entry the spec asks for (add-effects-catalog D4).
+      return [
+        {
+          label: t("storyboard.removeEffect"),
+          disabled: !hasEffect(m.slideId),
+          onSelect: () => setEffect(m.slideId, null),
+        },
+      ];
+    }
     if (m.kind === "slide") {
       return [
         { label: t("storyboard.remove"), onSelect: () => remove(m.slideId) },
+        {
+          label: t("storyboard.removeEffect"),
+          disabled: !hasEffect(m.slideId),
+          onSelect: () => setEffect(m.slideId, null),
+        },
         {
           label: t("storyboard.properties"),
           onSelect: () => setDialog({ kind: "slide", slideId: m.slideId }),
@@ -188,6 +206,8 @@ export function StoryboardStrip() {
                   setMenu({ kind: "transition", slideId: slide.id, x, y })
                 }
                 onTransitionActivate={touch ? () => setTransitionSheet(slide.id) : undefined}
+                onEffectRemove={() => setEffect(slide.id, null)}
+                onEffectMenu={(x, y) => setMenu({ kind: "effect", slideId: slide.id, x, y })}
               />
             ))}
           </ol>
@@ -198,7 +218,9 @@ export function StoryboardStrip() {
           label={
             menu.kind === "slide"
               ? t("storyboard.slideMenu", { number: numberOf(menu.slideId) })
-              : t("storyboard.transitionBefore", { number: numberOf(menu.slideId) })
+              : menu.kind === "effect"
+                ? t("storyboard.effectSlot", { number: numberOf(menu.slideId) })
+                : t("storyboard.transitionBefore", { number: numberOf(menu.slideId) })
           }
           x={menu.x}
           y={menu.y}

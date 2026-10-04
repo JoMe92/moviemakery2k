@@ -29,6 +29,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { effectName } from "../effects/effectName";
 import { translator } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { AppState } from "../store/appStore";
@@ -36,7 +37,7 @@ import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
 import { catalogName } from "../transitions/transitionName";
 import { vibrate } from "../ui/haptics";
-import { AudioIcon } from "../ui/icons";
+import { AudioIcon, EffectsIcon } from "../ui/icons";
 import {
   type DragItem,
   type DropRejection,
@@ -85,6 +86,9 @@ const isSlideContainer = (c: DroppableContainer) =>
 const isSlotContainer = (c: DroppableContainer) =>
   (c.data.current as DropTarget | undefined)?.type === "transitionSlot";
 
+const isEffectSlotContainer = (c: DroppableContainer) =>
+  (c.data.current as DropTarget | undefined)?.type === "effectSlot";
+
 const isMusicContainer = (c: DroppableContainer) =>
   (c.data.current as DragItem | undefined)?.type === "music";
 
@@ -105,7 +109,8 @@ function pointRect(p: { x: number; y: number }): ClientRect {
 /**
  * Targets only inside the storyboard: the tile whose centre is closest to the
  * pointer (keyboard: to the dragged tile); without tiles, the strip itself.
- * Transitions only target transition slots (the nearest slot).
+ * Transitions only target transition slots and effects only effect slots (the
+ * nearest one of them).
  */
 const collisionDetection: CollisionDetection = (args) => {
   const point = args.pointerCoordinates ?? center(args.collisionRect);
@@ -130,8 +135,10 @@ const collisionDetection: CollisionDetection = (args) => {
   if (!contains(stripRect, point)) return [];
   // Audio only hits the strip itself: refused with a hint, no insertion marker.
   if (type === "audio") return [{ id: strip.id, data: { droppableContainer: strip, value: 0 } }];
-  if (type === "transition") {
-    const slots = args.droppableContainers.filter(isSlotContainer);
+  if (type === "transition" || type === "effect") {
+    const slots = args.droppableContainers.filter(
+      type === "effect" ? isEffectSlotContainer : isSlotContainer,
+    );
     if (slots.length === 0) return [];
     return closestCenter({ ...args, collisionRect: pointRect(point), droppableContainers: slots });
   }
@@ -147,32 +154,38 @@ const ARROWS: string[] = [
   KeyboardCode.Down,
 ];
 
-/** Keyboard for transitions: arrow down → first slot, left/right → neighbouring slot. */
-const transitionCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
-  if (!ARROWS.includes(event.code)) return undefined;
-  event.preventDefault();
-  const rect = context.collisionRect;
-  const stripRect = context.droppableRects.get(STRIP_DROPPABLE_ID);
-  if (!rect || !stripRect) return undefined;
-  const slots = context.droppableContainers
-    .getEnabled()
-    .filter(isSlotContainer)
-    .map((c) => context.droppableRects.get(c.id))
-    .filter((r): r is ClientRect => r !== undefined)
-    .sort((a, b) => a.left - b.left)
-    .map((r) => ({ x: center(r).x - rect.width / 2, y: center(r).y - rect.height / 2 }));
-  if (slots.length === 0) return undefined;
-  if (!contains(stripRect, center(rect))) {
-    return event.code === KeyboardCode.Down ? slots[0] : undefined;
-  }
-  let current = 0;
-  slots.forEach((slot, i) => {
-    if (Math.abs(slot.x - rect.left) < Math.abs((slots[current]?.x ?? 0) - rect.left)) current = i;
-  });
-  if (event.code === KeyboardCode.Right) return slots[Math.min(current + 1, slots.length - 1)];
-  if (event.code === KeyboardCode.Left) return slots[Math.max(current - 1, 0)];
-  return undefined;
-};
+/** Keyboard for a slot row (transition or effect slots): arrow down → first slot, left/right → neighbour. */
+const slotCoordinates =
+  (isSlot: (c: DroppableContainer) => boolean): KeyboardCoordinateGetter =>
+  (event, { context }) => {
+    if (!ARROWS.includes(event.code)) return undefined;
+    event.preventDefault();
+    const rect = context.collisionRect;
+    const stripRect = context.droppableRects.get(STRIP_DROPPABLE_ID);
+    if (!rect || !stripRect) return undefined;
+    const slots = context.droppableContainers
+      .getEnabled()
+      .filter(isSlot)
+      .map((c) => context.droppableRects.get(c.id))
+      .filter((r): r is ClientRect => r !== undefined)
+      .sort((a, b) => a.left - b.left)
+      .map((r) => ({ x: center(r).x - rect.width / 2, y: center(r).y - rect.height / 2 }));
+    if (slots.length === 0) return undefined;
+    if (!contains(stripRect, center(rect))) {
+      return event.code === KeyboardCode.Down ? slots[0] : undefined;
+    }
+    let current = 0;
+    slots.forEach((slot, i) => {
+      if (Math.abs(slot.x - rect.left) < Math.abs((slots[current]?.x ?? 0) - rect.left))
+        current = i;
+    });
+    if (event.code === KeyboardCode.Right) return slots[Math.min(current + 1, slots.length - 1)];
+    if (event.code === KeyboardCode.Left) return slots[Math.max(current - 1, 0)];
+    return undefined;
+  };
+
+const transitionCoordinates = slotCoordinates(isSlotContainer);
+const effectCoordinates = slotCoordinates(isEffectSlotContainer);
 
 type Containers = Parameters<KeyboardCoordinateGetter>[1]["context"]["droppableContainers"];
 
@@ -212,6 +225,7 @@ const musicCoordinates = sortableInRow(isMusicContainer);
 const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   const type = dragItem(args.context.active)?.type;
   if (type === "transition") return transitionCoordinates(event, args);
+  if (type === "effect") return effectCoordinates(event, args);
   if (type === "media" || type === "video")
     return insertCoordinates(event, args, STRIP_DROPPABLE_ID, isSlideContainer);
   if (type === "audio") return insertCoordinates(event, args, MUSIC_DROPPABLE_ID, isMusicContainer);
@@ -275,6 +289,7 @@ function dropTarget(event: DragMoveEvent | DragEndEvent): DropTarget | null {
   if (!over) return null;
   const slot = over.data.current as DropTarget | undefined;
   if (slot?.type === "transitionSlot") return { type: "transitionSlot", slideId: slot.slideId };
+  if (slot?.type === "effectSlot") return { type: "effectSlot", slideId: slot.slideId };
   const data = over.data.current as DragItem | undefined;
   if (data?.type !== "slide" && data?.type !== "music") {
     if (over.id === STRIP_DROPPABLE_ID) return { type: "strip" };
@@ -302,6 +317,9 @@ function describe(state: AppState, item: DragItem | null): string {
     return t("dnd.transition", {
       name: catalogName(state.catalog, item.transitionId, state.locale),
     });
+  }
+  if (item.type === "effect") {
+    return t("dnd.effect", { name: effectName(state.effects, item.effectId, state.locale) });
   }
   if (item.type === "media") {
     return t("dnd.picture", {
@@ -373,6 +391,10 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
         const n = store.getState().slides.findIndex((s) => s.id === slot.slideId);
         return tNow()("dnd.overSlot", { number: n + 1 });
       }
+      if (slot?.type === "effectSlot") {
+        const n = store.getState().slides.findIndex((s) => s.id === slot.slideId);
+        return tNow()("dnd.overEffectSlot", { number: n + 1 });
+      }
       if (!over) return tNow()("dnd.outside");
       const onMusic =
         over.id === MUSIC_DROPPABLE_ID ||
@@ -418,6 +440,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     else if (action.kind === "move") state.moveSlide(action.from, action.to);
     else if (action.kind === "setTransition")
       state.setTransition(action.slideId, action.transitionId);
+    else if (action.kind === "setEffect") state.setEffect(action.slideId, action.effectId);
   };
   const onDragCancel = () => {
     setActive(null);
@@ -469,6 +492,11 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
             ) : null}
             {active.type === "transition" ? (
               <TransitionIcon transitionId={active.transitionId} size={94} />
+            ) : null}
+            {active.type === "effect" ? (
+              <span className={styles.overlayAudio}>
+                <EffectsIcon size={36} />
+              </span>
             ) : null}
           </div>
         ) : null}
