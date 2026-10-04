@@ -184,7 +184,8 @@ export function useSlideImages(
       const target = placed
         ? videoScrubTime(slide.trimIn, slide.trimOut, placed.start, time)
         : slide.trimIn;
-      video.currentTime = videoSeekTarget(video, target, slide.trimIn, slide.trimOut);
+      const seekTo = videoSeekTarget(video, target, slide.trimIn, slide.trimOut);
+      if (seekTo !== null) video.currentTime = seekTo;
       return video;
     },
     [slides, loadedImages, videos, timeline, time, tick],

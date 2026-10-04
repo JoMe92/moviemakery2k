@@ -62,31 +62,47 @@ export function videoScrubTime(
   return Math.min(Math.max(time - segmentStart + trimIn, trimIn), trimOut);
 }
 
+/** `HTMLMediaElement.HAVE_METADATA`: duration and size are known. */
+export const HAVE_METADATA = 1;
 /** `HTMLMediaElement.HAVE_CURRENT_DATA`: a frame exists that can be drawn. */
 export const HAVE_CURRENT_DATA = 2;
 /** Imperceptible for the viewer, but still a seek for the browser. */
 const SEEK_NUDGE = 0.001;
+/**
+ * Position difference below which no seek is issued.
+ *
+ * A paused element reports the presentation time of the frame it is showing,
+ * which can sit up to one frame (40 ms at 25 fps) away from the position that
+ * was asked for. Seeking on that difference would start a new seek on every
+ * redraw, and every seek takes the element back below HAVE_CURRENT_DATA - the
+ * monitor would never get a drawable frame (design.md D5).
+ */
+const SEEK_EPSILON = 0.05;
 
 /**
- * Position to request on the `<video>` element for `target`.
+ * Position to request on the `<video>` element, or `null` to leave it alone.
  *
- * Assigning the position an element already has is a no-op, so nothing gets
- * decoded: a clip with `trimIn` 0 shown at playback time 0 would stay black
- * until some other position is asked for. While the element has no frame yet,
- * ask for a hair further into the trim instead (or back, at the very end) -
- * the seek is what makes the browser decode and present a frame (design.md
- * D5). Once a frame is there, the exact `target` is used again.
+ * Two cases need care. Assigning the position an element already has is a
+ * no-op, so nothing is decoded: a clip with `trimIn` 0 shown at playback time
+ * 0 would stay black until some other position is asked for. And the opposite,
+ * re-seeking over a sub-frame difference, keeps the element in `seeking` and
+ * equally black.
  */
 export function videoSeekTarget(
-  video: { readyState: number; currentTime: number },
+  video: { readyState: number; currentTime: number; seeking?: boolean },
   target: number,
   trimIn: number,
   trimOut: number,
-): number {
-  if (video.readyState >= HAVE_CURRENT_DATA) return target;
-  if (Math.abs(video.currentTime - target) > SEEK_NUDGE) return target;
-  if (target + SEEK_NUDGE <= trimOut) return target + SEEK_NUDGE;
-  return Math.max(target - SEEK_NUDGE, trimIn);
+): number | null {
+  if (video.readyState < HAVE_CURRENT_DATA) {
+    // Nothing drawable yet: make sure the request is an actual seek.
+    if (Math.abs(video.currentTime - target) > SEEK_NUDGE) return target;
+    if (video.seeking) return null;
+    if (target + SEEK_NUDGE <= trimOut) return target + SEEK_NUDGE;
+    return Math.max(target - SEEK_NUDGE, trimIn);
+  }
+  if (video.seeking) return null;
+  return Math.abs(video.currentTime - target) < SEEK_EPSILON ? null : target;
 }
 
 const timelines = new WeakMap<readonly Slide[], Timeline>();

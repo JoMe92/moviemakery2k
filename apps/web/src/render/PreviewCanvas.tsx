@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
+import { HAVE_METADATA } from "../player/controls";
 import type { Frame } from "../timeline/timeline";
 import styles from "./PreviewCanvas.module.css";
 import { type FrameTexture, type ImageSource, Renderer, WebGL2UnsupportedError } from "./Renderer";
@@ -21,8 +22,11 @@ function isReady(source: ImageSource): boolean {
     return source.complete && source.naturalWidth > 0;
   }
   if (typeof HTMLVideoElement !== "undefined" && source instanceof HTMLVideoElement) {
-    // HAVE_CURRENT_DATA (2): a frame is decoded at the current time.
-    return source.readyState >= 2 && source.videoWidth > 0;
+    // A scrubbed element keeps its last decoded frame drawable while it seeks
+    // to the next position, and every seek takes it back to HAVE_METADATA (1).
+    // Demanding HAVE_CURRENT_DATA (2) here would blank the monitor on each
+    // scrub instead of holding the previous frame (design.md D5).
+    return source.readyState >= HAVE_METADATA && source.videoWidth > 0;
   }
   return source.width > 0 && source.height > 0;
 }

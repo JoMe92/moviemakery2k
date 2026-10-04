@@ -130,10 +130,22 @@ describe("space bar", () => {
 });
 
 describe("videoSeekTarget (design.md D5)", () => {
-  it("asks for the exact position once a frame is decoded", () => {
-    const video = { readyState: 2, currentTime: 0 };
-    expect(videoSeekTarget(video, 0, 0, 2)).toBe(0);
-    expect(videoSeekTarget({ readyState: 4, currentTime: 3 }, 3, 2, 6)).toBe(3);
+  it("leaves a decoded element alone while it already shows the position", () => {
+    // A paused element reports its frame's presentation time, up to a frame
+    // away from the request; seeking on that would restart decoding forever.
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0.0168 }, 0, 0, 2)).toBeNull();
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0 }, 0, 0, 2)).toBeNull();
+  });
+
+  it("seeks a decoded element once the position really moved", () => {
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0.0168 }, 1.5, 0, 2)).toBe(1.5);
+  });
+
+  it("never interrupts a pending seek", () => {
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0, seeking: true }, 1.5, 0, 2)).toBeNull();
+    expect(
+      videoSeekTarget({ readyState: 1, currentTime: 0.001, seeking: true }, 0, 0, 2),
+    ).toBeNull();
   });
 
   it("Spec: nudges a clip that has no frame yet and already sits on the position", () => {
@@ -142,7 +154,7 @@ describe("videoSeekTarget (design.md D5)", () => {
     expect(videoSeekTarget({ readyState: 0, currentTime: 0 }, 0, 0, 2)).toBe(0.001);
   });
 
-  it("keeps the position while nothing is decoded but a real seek is pending", () => {
+  it("asks for the plain position while nothing is decoded but it really moved", () => {
     expect(videoSeekTarget({ readyState: 0, currentTime: 0 }, 1.5, 0, 2)).toBe(1.5);
   });
 
@@ -151,7 +163,6 @@ describe("videoSeekTarget (design.md D5)", () => {
   });
 
   it("never leaves the trim of a clip shorter than the nudge", () => {
-    const value = videoSeekTarget({ readyState: 0, currentTime: 1 }, 1, 1, 1);
-    expect(value).toBe(1);
+    expect(videoSeekTarget({ readyState: 0, currentTime: 1 }, 1, 1, 1)).toBe(1);
   });
 });
