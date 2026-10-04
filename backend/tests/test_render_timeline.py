@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 from mmy_backend.config import REPO_ROOT
-from mmy_backend.project import Project, Slide, TransitionRef
+from mmy_backend.project import ImageSlide, Project, TransitionRef, VideoSlide
 from mmy_backend.render.timeline import (
     EmptyFrame,
     Frame,
@@ -225,10 +225,11 @@ def test_frame_time_is_n_over_fps_and_last_frame_is_inside_movie() -> None:
 
 def test_timeline_slides_from_project() -> None:
     project = Project(
-        schema_version=2,
+        schema_version=3,
         slides=[
-            Slide(id="a", media_id="m-a", duration=5, transition_in=None),
-            Slide(
+            ImageSlide(kind="image", id="a", media_id="m-a", duration=5, transition_in=None),
+            ImageSlide(
+                kind="image",
                 id="b",
                 media_id="m-b",
                 duration=2.5,
@@ -252,4 +253,19 @@ def test_timeline_slides_from_project() -> None:
     assert frame_at(tl, 4.375) == TransitionFrame(
         from_index=0, to_index=1, transition_id="fade", progress=0.5
     )
-    assert timeline_slides_from_project(Project(schema_version=2, slides=[], music=[])) == ()
+    assert timeline_slides_from_project(Project(schema_version=3, slides=[], music=[])) == ()
+
+
+def test_timeline_slide_from_project_computes_video_duration_from_trim() -> None:
+    """A video slide's duration is `trimOut - trimIn`, not a stored field (design.md D1)."""
+    project = Project(
+        schema_version=3,
+        slides=[
+            VideoSlide(
+                kind="video", id="v", media_id="m-v", trim_in=2.0, trim_out=7.5, transition_in=None
+            ),
+        ],
+        music=[],
+    )
+    (slide,) = timeline_slides_from_project(project)
+    assert slide == TimelineSlide(id="v", media_id="m-v", duration=5.5, transition_in=None)

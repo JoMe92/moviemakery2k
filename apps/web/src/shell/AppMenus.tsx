@@ -1,6 +1,7 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
+import { videoSplitPoint } from "../player/controls";
 import { useInstallAction } from "../pwa/install";
 import { projectMusicDuration } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
@@ -36,6 +37,11 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const fitToMusic = useAppStore((s) => s.fitToMusic);
   const musicLength = useAppStore((s) => projectMusicDuration(s.music, s.media));
   const canFit = useAppStore((s) => canFitToMusic(s.slides.length, musicLength));
+  const splitSlide = useAppStore((s) => s.splitSlide);
+  const toggleTimelineView = useAppStore((s) => s.toggleTimelineView);
+  const canSplit = useAppStore((s) =>
+    s.selection ? videoSplitPoint(s.slides, s.selection.slideId, s.playback.time) !== null : false,
+  );
   const canUndo = useAppStore((s) => s.undoStack.length > 0);
   const canRedo = useAppStore((s) => s.redoStack.length > 0);
   const undo = useAppStore((s) => s.undo);
@@ -79,6 +85,8 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
                 }
               }
             : undefined,
+          split: canSplit ? () => splitSlide() : undefined,
+          toggleTimeline: toggleTimelineView,
         },
         t,
       ),
@@ -94,6 +102,9 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
       canFit,
       fitToMusic,
       musicLength,
+      canSplit,
+      splitSlide,
+      toggleTimelineView,
       canUndo,
       canRedo,
       undo,

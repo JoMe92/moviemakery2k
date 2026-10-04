@@ -56,12 +56,16 @@ class ErrorCode(StrEnum):
     PROJECT_TRANSITION_DURATION_OFF_GRID = "project.transitionDuration.offGrid"
     PROJECT_MUSIC_VOLUME_OUT_OF_RANGE = "project.musicVolume.outOfRange"
     PROJECT_MUSIC_TRIM_NEGATIVE = "project.musicTrim.negative"
+    PROJECT_SLIDE_TRIM_NEGATIVE = "project.slideTrim.negative"
     PROJECT_INVALID = "project.invalid"
     PROJECT_SLIDE_DUPLICATE_ID = "project.slide.duplicateId"
     PROJECT_SLIDE_UNKNOWN_MEDIA = "project.slide.unknownMedia"
     PROJECT_SLIDE_FIRST_HAS_TRANSITION = "project.slide.firstHasTransition"
     PROJECT_SLIDE_UNKNOWN_TRANSITION = "project.slide.unknownTransition"
     PROJECT_SLIDE_NOT_IMAGE = "project.slide.notImage"
+    PROJECT_SLIDE_NOT_VIDEO = "project.slide.notVideo"
+    PROJECT_SLIDE_TRIM_OUT_BEYOND_FILE = "project.slide.trimOutBeyondFile"
+    PROJECT_SLIDE_TRIM_IN_NOT_BEFORE_TRIM_OUT = "project.slide.trimInNotBeforeTrimOut"
     PROJECT_MUSIC_DUPLICATE_ID = "project.music.duplicateId"
     PROJECT_MUSIC_UNKNOWN_MEDIA = "project.music.unknownMedia"
     PROJECT_MUSIC_NOT_AUDIO = "project.music.notAudio"
@@ -169,6 +173,9 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.musicTrim.negative": ErrorSpec(
         "The start and end of a music clip must be 0 s or later (is {value} s).", ("value",)
     ),
+    "project.slideTrim.negative": ErrorSpec(
+        "The start and end of a video clip must be 0 s or later (is {value} s).", ("value",)
+    ),
     # --- Project: reference checks of PUT /api/project (422, ApiErrorWithIssues) --
     "project.invalid": ErrorSpec("The project is invalid: {summary}", ("count", "summary")),
     # Issues: `slide` is the 1-based position, `slideId` the slide's id.
@@ -191,6 +198,20 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.slide.notImage": ErrorSpec(
         "Slide {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
         ("slide", "slideId", "mediaId"),
+    ),
+    "project.slide.notVideo": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): media item “{mediaId}” is not a video.",
+        ("slide", "slideId", "mediaId"),
+    ),
+    "project.slide.trimOutBeyondFile": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): the end ({trimOut} s) lies beyond the end "
+        "of the video ({duration} s).",
+        ("slide", "slideId", "trimOut", "duration"),
+    ),
+    "project.slide.trimInNotBeforeTrimOut": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): the start ({trimIn} s) must lie before "
+        "the end ({trimOut} s).",
+        ("slide", "slideId", "trimIn", "trimOut"),
     ),
     # Music issues: `clip` is the 1-based position, `clipId` the clip's id.
     "project.music.duplicateId": ErrorSpec(

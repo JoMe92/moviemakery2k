@@ -27,6 +27,7 @@ import { describeBackend, describeSave } from "./store/status";
 import { useAppStore } from "./store/useAppStore";
 import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
+import { TimelineView } from "./storyboard/TimelineView";
 import { TransitionCollection } from "./transitions/TransitionCollection";
 
 const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
@@ -40,6 +41,7 @@ export function App() {
   const setCollection = useAppStore((s) => s.setCollection);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
+  const timelineView = useAppStore((s) => s.timelineView);
 
   const togglePlay = useAppStore((s) => s.togglePlay);
   const stop = useAppStore((s) => s.stop);
@@ -59,7 +61,7 @@ export function App() {
   const title = t("shell.windowTitle", { app: t("app.name") });
   const storyboard = (
     <StoryboardPane musicTrack={<MusicTrack />}>
-      <StoryboardStrip />
+      {timelineView ? <TimelineView /> : <StoryboardStrip />}
     </StoryboardPane>
   );
 

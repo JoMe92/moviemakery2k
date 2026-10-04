@@ -6,7 +6,9 @@ import { audioItem, mockApi } from "../store/testApi";
 import { AudioEngine } from "./AudioEngine";
 import { musicPlanner, useMusicAudio } from "./useMusicAudio";
 
-const slides: Slide[] = [{ id: "s1", mediaId: "img", duration: 5, transitionIn: null }];
+const slides: Slide[] = [
+  { kind: "image", id: "s1", mediaId: "img", duration: 5, transitionIn: null },
+];
 const music: MusicClip[] = [
   {
     id: "c1",

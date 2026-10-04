@@ -296,6 +296,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media/{media_id}/video": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Video
+         * @description Original video file (its own container/codec) with `Cache-Control: immutable`.
+         *
+         *     For the preview player's `<video>` element (add-timeline-editing design.md D5); export
+         *     reads the same file directly from disk. 404 for images, audio and unknown IDs. Range
+         *     requests are supported (needed for the browser to seek).
+         */
+        get: operations["get_video_api_media__media_id__video_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/project": {
         parameters: {
             query?: never;
@@ -491,7 +515,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.slideTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.notImage" | "project.slide.notVideo" | "project.slide.trimOutBeyondFile" | "project.slide.trimInNotBeforeTrimOut" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -622,6 +646,31 @@ export interface components {
              */
             width: number;
         };
+        /** ImageSlide */
+        ImageSlide: {
+            /**
+             * Duration
+             * @description Display duration in seconds
+             */
+            duration: number;
+            /**
+             * Id
+             * @description Assigned by the client, unique within the project
+             */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image";
+            /**
+             * Mediaid
+             * @description ID of an image from /api/media
+             */
+            mediaId: string;
+            /** @description Incoming transition from the previous element; always null for the first */
+            transitionIn: components["schemas"]["TransitionRef"] | null;
+        };
         /** MediaDeleteResponse */
         MediaDeleteResponse: {
             project: components["schemas"]["Project"];
@@ -744,7 +793,7 @@ export interface components {
              * Schemaversion
              * @constant
              */
-            schemaVersion: 2;
+            schemaVersion: 3;
             /** Slides */
             slides: components["schemas"]["Slide"][];
         };
@@ -775,26 +824,7 @@ export interface components {
             /** Type */
             type: string;
         };
-        /** Slide */
-        Slide: {
-            /**
-             * Duration
-             * @description Display duration in seconds
-             */
-            duration: number;
-            /**
-             * Id
-             * @description Assigned by the client, unique within the project
-             */
-            id: string;
-            /**
-             * Mediaid
-             * @description ID of a medium from /api/media
-             */
-            mediaId: string;
-            /** @description Incoming transition from the previous element; always null for the first */
-            transitionIn: components["schemas"]["TransitionRef"] | null;
-        };
+        Slide: components["schemas"]["ImageSlide"] | components["schemas"]["VideoSlide"];
         /** StaticPhase */
         StaticPhase: {
             /**
@@ -994,10 +1024,49 @@ export interface components {
              */
             posterUrl: string;
             /**
+             * Videourl
+             * @description Original video file, for the preview player (add-timeline-editing D5)
+             */
+            videoUrl: string;
+            /**
              * Width
              * @description Width after rotation
              */
             width: number;
+        };
+        /**
+         * VideoSlide
+         * @description A video clip element (add-timeline-editing design.md D1); its length is
+         *     always `trimOut - trimIn`, there is no separate duration field.
+         */
+        VideoSlide: {
+            /**
+             * Id
+             * @description Assigned by the client, unique within the project
+             */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "video";
+            /**
+             * Mediaid
+             * @description ID of a video from /api/media
+             */
+            mediaId: string;
+            /** @description Incoming transition from the previous element; always null for the first */
+            transitionIn: components["schemas"]["TransitionRef"] | null;
+            /**
+             * Trimin
+             * @description Start within the video in seconds (new clip: 0)
+             */
+            trimIn: number;
+            /**
+             * Trimout
+             * @description End within the video in seconds (new clip: the video's full duration)
+             */
+            trimOut: number;
         };
     };
     responses: never;
@@ -1546,6 +1615,47 @@ export interface operations {
                 };
                 content: {
                     "image/jpeg": unknown;
+                };
+            };
+            /** @description Unknown or invalid media id (`media.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_video_api_media__media_id__video_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original video file, unchanged */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "video/mp4": unknown;
+                    "video/x-matroska": unknown;
                 };
             };
             /** @description Unknown or invalid media id (`media.notFound`) */

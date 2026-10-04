@@ -7,6 +7,7 @@ no midpoint on solid-colour images; a test pattern checks its blocks instead).
 The GL tests always run on Linux (EGL/llvmpipe from Pixi).
 """
 
+import subprocess
 import uuid
 from collections.abc import Iterator
 from itertools import pairwise
@@ -19,8 +20,17 @@ from PIL import Image
 
 from mmy_backend.catalog import load_catalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR, REPO_ROOT
+from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.media import MediaStore
-from mmy_backend.render.frames import FrameRenderer, flip_rows, letterbox, preview_loader
+from mmy_backend.project import TransitionRef, VideoSlide
+from mmy_backend.render.frames import (
+    FrameRenderer,
+    VideoLoader,
+    VideoSource,
+    flip_rows,
+    letterbox,
+    preview_loader,
+)
 from mmy_backend.render.geometry import Rect, contain_rect
 from mmy_backend.render.shaders import ShaderLibrary, ShaderSources
 from mmy_backend.render.timeline import (
@@ -65,6 +75,16 @@ def count(data: bytes, color: tuple[int, int, int, int]) -> int:
     return sum(1 for p in pixels(data) if p == color)
 
 
+def count_near(data: bytes, color: tuple[int, int, int, int], tolerance: int = 2) -> int:
+    """Like `count`, tolerant of H.264/YUV 4:2:0 rounding (e.g. 255 -> 254) - a
+    flat colour survives an image codec exactly but not always a video one."""
+    return sum(
+        1
+        for p in pixels(data)
+        if all(abs(a - b) <= tolerance for a, b in zip(p, color, strict=True))
+    )
+
+
 def at(data: bytes, x: int, y: int, width: int = W) -> tuple[int, ...]:
     """Pixel (x, y), origin top left."""
     i = (y * width + x) * 4
@@ -95,6 +115,53 @@ class DictLoader:
     def __call__(self, media_id: str) -> Image.Image | None:
         self.loads.append(media_id)
         return self.images.get(media_id)
+
+
+def two_color_video(
+    tmp_path: Path, name: str, first_seconds: float, second_seconds: float, rate: int = 10
+) -> Path:
+    """A video, already at output size `WxH`, plain red for `first_seconds` then
+    plain blue for `second_seconds` (concatenated) - so decoding reveals which
+    moment of the file is actually being read (TASK-RENDER-007, design.md D6)."""
+    binary = ffmpeg_binary()
+    assert binary is not None, "FFmpeg is part of the pixi environment"
+    out = tmp_path / name
+    command = [
+        binary,
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=red:size={W}x{H}:rate={rate}:duration={first_seconds}",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=blue:size={W}x{H}:rate={rate}:duration={second_seconds}",
+        "-filter_complex",
+        "[0:v]format=yuv420p[a];[1:v]format=yuv420p[b];[a][b]concat=n=2:v=1:a=0[v]",
+        "-map",
+        "[v]",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        str(out),
+    ]
+    subprocess.run(command, check=True, capture_output=True)
+    return out
+
+
+def fixed_video_loader(path: Path, width: int = W, height: int = H) -> VideoLoader:
+    """VideoLoader stub that always resolves to the same file (tests don't import media)."""
+
+    def load(media_id: str) -> VideoSource | None:
+        return VideoSource(path=path, width=width, height=height)
+
+    return load
 
 
 @pytest.fixture(scope="module")
@@ -310,7 +377,7 @@ def test_iter_frames_covers_timeline_with_two_images(
     width, height = 64, 48
     with FrameRenderer(ctx, library, width, height, loader) as renderer:
         frames = list(renderer.iter_frames(timeline, fps, CATALOG))
-        assert len(renderer.cached_media_ids) <= 2
+        assert len(renderer.cached_slide_ids) <= 2
         assert renderer.peak_textures <= 2
         assert renderer.live_textures <= 2
 
@@ -322,3 +389,118 @@ def test_iter_frames_covers_timeline_with_two_images(
     assert set(pixels(last)) == {(255, 255, 0, 255)}
     # Every image is loaded at most once per appearance, not per frame.
     assert loader.loads == ["a", "b", "c", "a", "d"]
+
+
+# --- Video frame source (TASK-RENDER-007, design.md D6) ------------------------
+
+
+@requires_gl
+def test_video_slide_decodes_frames_instead_of_a_static_image(
+    ctx: moderngl.Context, library: ShaderLibrary, tmp_path: Path
+) -> None:
+    """A video segment's export frames follow the source file over time (half
+    red, half blue), unlike a still image that would be the same pixels
+    throughout."""
+    video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
+    project_slides = [
+        VideoSlide(
+            kind="video", id="s0", media_id="v", trim_in=0.0, trim_out=2.0, transition_in=None
+        )
+    ]
+    timeline = build_timeline([TimelineSlide("s0", "v", 2.0, None)])
+    fps = 10
+    with FrameRenderer(
+        ctx,
+        library,
+        W,
+        H,
+        DictLoader({}),
+        load_video=fixed_video_loader(video),
+        project_slides=project_slides,
+    ) as renderer:
+        frames = [data for _, data in renderer.iter_frames(timeline, fps, CATALOG)]
+    assert len(frames) == 20  # 2 s at 10 fps
+    assert count_near(frames[0], RED) == W * H
+    assert count_near(frames[8], RED) == W * H
+    assert count_near(frames[11], BLUE) == W * H
+    assert count_near(frames[19], BLUE) == W * H
+
+
+@requires_gl
+def test_transition_at_a_video_boundary_blends_decoded_frames(
+    ctx: moderngl.Context, library: ShaderLibrary, tmp_path: Path
+) -> None:
+    """Two video slides sharing one medium (as after Clip -> "Teilen", design.md
+    D4) but trimmed to different ranges (red half, blue half) decode
+    independently; the transition between them blends their own current frame,
+    not a shared/stale one."""
+    video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
+    project_slides = [
+        VideoSlide(
+            kind="video", id="s0", media_id="v", trim_in=0.0, trim_out=1.0, transition_in=None
+        ),
+        VideoSlide(
+            kind="video",
+            id="s1",
+            media_id="v",
+            trim_in=1.0,
+            trim_out=2.0,
+            transition_in=TransitionRef(transition_id="fade", duration=0.5),
+        ),
+    ]
+    timeline = build_timeline(
+        [
+            TimelineSlide("s0", "v", 1.0, None),
+            TimelineSlide("s1", "v", 1.0, TransitionIn("fade", 0.5)),
+        ]
+    )
+    fps = 10
+    with FrameRenderer(
+        ctx,
+        library,
+        W,
+        H,
+        DictLoader({}),
+        load_video=fixed_video_loader(video),
+        project_slides=project_slides,
+    ) as renderer:
+        frames = [data for _, data in renderer.iter_frames(timeline, fps, CATALOG)]
+    assert len(frames) == 15  # 1 s + 1 s - 0.5 s transition = 1.5 s at 10 fps
+    assert count_near(frames[0], RED) == W * H  # still s0
+    assert count_near(frames[4], RED) == W * H
+    assert count_near(frames[5], RED) == W * H  # transition start, progress 0 == the from frame
+    assert (
+        count_near(frames[9], RED) < W * H and count_near(frames[9], BLUE) < W * H
+    )  # progress 0.8, mid-blend
+    assert count_near(frames[10], BLUE) == W * H  # still s1
+    assert count_near(frames[14], BLUE) == W * H
+
+
+@requires_gl
+def test_trimmed_video_clip_exports_from_its_own_start_not_second_0(
+    ctx: moderngl.Context, library: ShaderLibrary, tmp_path: Path
+) -> None:
+    """A clip trimmed to `trimIn = 1.0` (into the file's blue half) decodes
+    starting there, not at second 0 of the original (which is red) -
+    TASK-RENDER-007's acceptance scenario."""
+    video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
+    project_slides = [
+        VideoSlide(
+            kind="video", id="s0", media_id="v", trim_in=1.0, trim_out=1.5, transition_in=None
+        )
+    ]
+    timeline = build_timeline([TimelineSlide("s0", "v", 0.5, None)])
+    fps = 10
+    with FrameRenderer(
+        ctx,
+        library,
+        W,
+        H,
+        DictLoader({}),
+        load_video=fixed_video_loader(video),
+        project_slides=project_slides,
+    ) as renderer:
+        frames = [data for _, data in renderer.iter_frames(timeline, fps, CATALOG)]
+    assert len(frames) == 5  # 0.5 s at 10 fps
+    assert all(count_near(data, BLUE) == W * H for data in frames)
+    assert all(count_near(data, RED) == 0 for data in frames)

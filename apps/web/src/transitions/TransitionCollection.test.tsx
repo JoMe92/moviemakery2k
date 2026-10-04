@@ -9,11 +9,11 @@ import { renderApp } from "../test/renderApp";
 async function setup() {
   const api = mockApi({
     getProject: vi.fn(async () => ({
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       music: [],
       slides: [
-        { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
-        { id: "s2", mediaId: "b", duration: 5, transitionIn: null },
+        { kind: "image" as const, id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+        { kind: "image" as const, id: "s2", mediaId: "b", duration: 5, transitionIn: null },
       ],
     })),
   });
@@ -52,11 +52,11 @@ describe("'Video Transitions' collection", () => {
       const view = renderApp(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 2 as const,
+            schemaVersion: 3 as const,
             music: [],
             slides: [
-              { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
-              { id: "s2", mediaId: "b", duration: 5, transitionIn: null },
+              { kind: "image" as const, id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+              { kind: "image" as const, id: "s2", mediaId: "b", duration: 5, transitionIn: null },
             ],
           })),
         }),
@@ -192,11 +192,11 @@ describe("'Video Transitions' collection with many entries (TASK-WEB-064, design
     const api = mockApi({
       catalog: vi.fn(async () => catalog.transitions as Transition[]),
       getProject: vi.fn(async () => ({
-        schemaVersion: 2 as const,
+        schemaVersion: 3 as const,
         music: [],
         slides: [
-          { id: "s1", mediaId: "a", duration: 5, transitionIn: null },
-          { id: "s2", mediaId: "b", duration: 5, transitionIn: null },
+          { kind: "image" as const, id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+          { kind: "image" as const, id: "s2", mediaId: "b", duration: 5, transitionIn: null },
         ],
       })),
     });

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { audioItem, mediaItem, mockApi } from "../store/testApi";
+import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 describe("Menu bar", () => {
@@ -65,7 +65,10 @@ describe("Menu bar", () => {
     store.getState().select({ kind: "slide", slideId: id });
 
     await user.keyboard("{Control>}c{/Control}");
-    expect(store.getState().clipboard).toEqual({ kind: "slide", mediaId: "a", duration: 5 });
+    expect(store.getState().clipboard).toEqual({
+      kind: "slide",
+      content: { kind: "image", mediaId: "a", duration: 5 },
+    });
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
     const paste = screen.getByRole("menuitem", { name: /Einfügen/ });
@@ -203,6 +206,84 @@ describe("Menu bar", () => {
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
     await user.click(screen.getByRole("menuitem", { name: /Löschen/ }));
     expect(store.getState().slides).toEqual([]);
+  });
+
+  it("Clip → Teilen is disabled for a picture element (design.md D4)", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp();
+    await ready;
+    store.getState().addSlide("a");
+    const id = store.getState().slides[0]?.id ?? "";
+    store.getState().select({ kind: "slide", slideId: id });
+
+    await user.click(screen.getByRole("menuitem", { name: "Clip" }));
+    expect(screen.getByRole("menuitem", { name: "Teilen" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("Clip → Teilen is disabled without a video selected within its own span", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp(
+      mockApi({ listMedia: vi.fn(async () => [videoItem("v", 10)]) }),
+    );
+    await ready;
+    store.getState().addSlide("v");
+    const id = store.getState().slides[0]?.id ?? "";
+
+    // No selection at all: disabled.
+    await user.click(screen.getByRole("menuitem", { name: "Clip" }));
+    expect(screen.getByRole("menuitem", { name: "Teilen" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await user.keyboard("{Escape}");
+
+    // Selected, but the playhead sits exactly on the clip's own start: disabled.
+    store.getState().select({ kind: "slide", slideId: id });
+    store.getState().seek(0);
+    await user.click(screen.getByRole("menuitem", { name: "Clip" }));
+    expect(screen.getByRole("menuitem", { name: "Teilen" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("Clip → Teilen splits the selected video clip at the playhead (design.md D4)", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp(
+      mockApi({ listMedia: vi.fn(async () => [videoItem("v", 10)]) }),
+    );
+    await ready;
+    store.getState().addSlide("v");
+    const original = store.getState().slides[0];
+    if (original?.kind !== "video") throw new Error("expected a video slide");
+    const id = original.id;
+    store.getState().select({ kind: "slide", slideId: id });
+    store.getState().seek(4);
+
+    await user.click(screen.getByRole("menuitem", { name: "Clip" }));
+    const split = screen.getByRole("menuitem", { name: "Teilen" });
+    expect(split).not.toHaveAttribute("aria-disabled");
+    await user.click(split);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+
+    const slides = store.getState().slides;
+    expect(slides).toHaveLength(2);
+    const [first, second] = slides;
+    if (first?.kind !== "video" || second?.kind !== "video") {
+      throw new Error("expected two video slides");
+    }
+    expect(first.id).toBe(id);
+    expect(first.mediaId).toBe("v");
+    expect(first.trimIn).toBe(0);
+    expect(first.trimOut).toBe(4);
+    expect(second.mediaId).toBe("v");
+    expect(second.trimIn).toBe(4);
+    expect(second.trimOut).toBe(10);
+    expect(second.transitionIn).toBeNull();
+    expect(second.id).not.toBe(id);
   });
 
   it("shows menu items and dialogs in English", async () => {

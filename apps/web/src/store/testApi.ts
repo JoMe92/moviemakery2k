@@ -48,6 +48,7 @@ export function videoItem(id: string, duration = 105.0, filename = `${id}.mp4`):
     codec: "h264",
     createdAt: "2026-10-02T00:00:00Z",
     posterUrl: `/api/media/${id}/poster`,
+    videoUrl: `/api/media/${id}/video`,
   };
 }
 
@@ -97,8 +98,8 @@ export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Proj
       filename: file.name,
       item: mediaItem(file.name),
     })),
-    deleteMedia: vi.fn(async () => ({ schemaVersion: 2 as const, slides: [], music: [] })),
-    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides: [], music: [] })),
+    deleteMedia: vi.fn(async () => ({ schemaVersion: 3 as const, slides: [], music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides: [], music: [] })),
     putProject: vi.fn(async (p: Project) => {
       saved.push(structuredClone(p));
       return p;

@@ -2,6 +2,8 @@
  * Pure control logic of the player (spec preview-player "Wiedergabesteuerung").
  * No clock, no DOM: the store calls these functions, the rAF clock supplies dt.
  */
+import type { Slide } from "../lib/apiClient";
+import { slideDuration } from "../store/projectOps";
 import {
   buildTimeline,
   type Frame,
@@ -26,16 +28,113 @@ export const MAX_STEP = 0.25;
 export const PREV_GRACE = 0.5;
 const EPS = 1e-6;
 
-const timelines = new WeakMap<readonly TimelineSlide[], Timeline>();
+/**
+ * A project element as input to the time model; a video slide's duration is
+ * always `trimOut - trimIn` (add-timeline-editing design.md D1).
+ */
+export function toTimelineSlide(slide: Slide): TimelineSlide {
+  return {
+    id: slide.id,
+    mediaId: slide.mediaId,
+    duration: slideDuration(slide),
+    transitionIn: slide.transitionIn,
+  };
+}
+
+export function toTimelineSlides(slides: readonly Slide[]): TimelineSlide[] {
+  return slides.map(toTimelineSlide);
+}
+
+/**
+ * `video.currentTime` for a video slide at the current playback `time`:
+ * `trimIn + (time - segmentStart)`, clamped to `[trimIn, trimOut]` so a
+ * moment just outside the slide's own segment (e.g. mid-transition, read
+ * from the overall clock rather than the transition's local progress) still
+ * shows a frame from within its trim (spec preview-player "Videoclips in der
+ * Wiedergabe", design.md D5).
+ */
+export function videoScrubTime(
+  trimIn: number,
+  trimOut: number,
+  segmentStart: number,
+  time: number,
+): number {
+  return Math.min(Math.max(time - segmentStart + trimIn, trimIn), trimOut);
+}
+
+/** `HTMLMediaElement.HAVE_METADATA`: duration and size are known. */
+export const HAVE_METADATA = 1;
+/** `HTMLMediaElement.HAVE_CURRENT_DATA`: a frame exists that can be drawn. */
+export const HAVE_CURRENT_DATA = 2;
+/** Imperceptible for the viewer, but still a seek for the browser. */
+const SEEK_NUDGE = 0.001;
+/**
+ * Position difference below which no seek is issued.
+ *
+ * A paused element reports the presentation time of the frame it is showing,
+ * which can sit up to one frame (40 ms at 25 fps) away from the position that
+ * was asked for. Seeking on that difference would start a new seek on every
+ * redraw, and every seek takes the element back below HAVE_CURRENT_DATA - the
+ * monitor would never get a drawable frame (design.md D5).
+ */
+const SEEK_EPSILON = 0.05;
+
+/**
+ * Position to request on the `<video>` element, or `null` to leave it alone.
+ *
+ * Two cases need care. Assigning the position an element already has is a
+ * no-op, so nothing is decoded: a clip with `trimIn` 0 shown at playback time
+ * 0 would stay black until some other position is asked for. And the opposite,
+ * re-seeking over a sub-frame difference, keeps the element in `seeking` and
+ * equally black.
+ */
+export function videoSeekTarget(
+  video: { readyState: number; currentTime: number; seeking?: boolean },
+  target: number,
+  trimIn: number,
+  trimOut: number,
+): number | null {
+  if (video.readyState < HAVE_CURRENT_DATA) {
+    // Nothing drawable yet: make sure the request is an actual seek.
+    if (Math.abs(video.currentTime - target) > SEEK_NUDGE) return target;
+    if (video.seeking) return null;
+    if (target + SEEK_NUDGE <= trimOut) return target + SEEK_NUDGE;
+    return Math.max(target - SEEK_NUDGE, trimIn);
+  }
+  if (video.seeking) return null;
+  return Math.abs(video.currentTime - target) < SEEK_EPSILON ? null : target;
+}
+
+const timelines = new WeakMap<readonly Slide[], Timeline>();
 
 /** Timeline for the (immutable) slides array, computed only once per array. */
-export function timelineOf(slides: readonly TimelineSlide[]): Timeline {
+export function timelineOf(slides: readonly Slide[]): Timeline {
   let tl = timelines.get(slides);
   if (!tl) {
-    tl = buildTimeline(slides);
+    tl = buildTimeline(toTimelineSlides(slides));
     timelines.set(slides, tl);
   }
   return tl;
+}
+
+/**
+ * Trim-relative split point for Clip → "Teilen" (design.md D4): the selected
+ * slide's source-video time at the playhead, or `null` when the slide isn't a
+ * video clip, isn't found, or the playhead isn't strictly within its own trim
+ * window (splitting exactly at an edge would leave an empty half).
+ */
+export function videoSplitPoint(
+  slides: readonly Slide[],
+  slideId: string,
+  time: number,
+): number | null {
+  const index = slides.findIndex((s) => s.id === slideId);
+  const slide = slides[index];
+  if (slide?.kind !== "video") return null;
+  const placed = timelineOf(slides).slides[index];
+  if (!placed) return null;
+  const point = videoScrubTime(slide.trimIn, slide.trimOut, placed.start, time);
+  return point > slide.trimIn && point < slide.trimOut ? point : null;
 }
 
 export function clampTime(time: number, duration: number): number {

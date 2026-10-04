@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { MusicClip, Slide } from "../lib/apiClient";
 import { formatDuration, insertionIndex, musicInsertionIndex, resolveDrop } from "./dropLogic";
 
-const s = (id: string): Slide => ({ id, mediaId: `m${id}`, duration: 5, transitionIn: null });
+const s = (id: string): Slide => ({
+  kind: "image",
+  id,
+  mediaId: `m${id}`,
+  duration: 5,
+  transitionIn: null,
+});
 const slides = [s("1"), s("2"), s("3")];
 const media = { type: "media", mediaId: "x" } as const;
 
@@ -60,6 +66,25 @@ describe("dropLogic", () => {
     expect(formatDuration(2.5, "en")).toBe("2.50 s");
   });
 
+  it("Spec: video between first and second picture → position 2", () => {
+    const video = { type: "video", mediaId: "clip" } as const;
+    expect(resolveDrop(video, { type: "slide", slideId: "1", after: true }, slides)).toEqual({
+      kind: "insert",
+      mediaId: "clip",
+      index: 1,
+    });
+    expect(resolveDrop(video, { type: "slide", slideId: "2", after: false }, slides)).toEqual({
+      kind: "insert",
+      mediaId: "clip",
+      index: 1,
+    });
+    expect(resolveDrop(video, { type: "strip" }, slides)).toEqual({
+      kind: "insert",
+      mediaId: "clip",
+      index: 3,
+    });
+  });
+
   it("transition onto a slot → set (replaces); not on the first picture, not on tiles", () => {
     const t = { type: "transition", transitionId: "circle" } as const;
     expect(resolveDrop(t, { type: "transitionSlot", slideId: "2" }, slides)).toEqual({
@@ -109,7 +134,7 @@ describe("dropLogic: music track", () => {
     expect(musicInsertionIndex({ type: "strip" }, music)).toBeNull();
   });
 
-  it("refuses audio on the storyboard and pictures on the music track", () => {
+  it("refuses audio on the storyboard and pictures or video on the music track", () => {
     for (const target of [
       { type: "strip" },
       { type: "slide", slideId: "1", after: false },
@@ -124,6 +149,9 @@ describe("dropLogic: music track", () => {
       kind: "reject",
       reason: "pictureOnMusic",
     });
+    expect(
+      resolveDrop({ type: "video", mediaId: "clip" }, { type: "musicStrip" }, slides, music),
+    ).toEqual({ kind: "reject", reason: "pictureOnMusic" });
     expect(resolveDrop({ type: "slide", slideId: "1" }, { type: "musicStrip" }, slides)).toEqual({
       kind: "none",
     });

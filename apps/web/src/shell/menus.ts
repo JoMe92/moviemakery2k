@@ -32,6 +32,8 @@ export interface MenuHandlers {
   paste?: () => void;
   togglePlay?: () => void;
   stop?: () => void;
+  /** View -> "Timeline": toggles the storyboard pane's timeline view (design.md D7). */
+  toggleTimeline?: () => void;
   about?: () => void;
   /** Tools → Options (language setting). */
   options?: () => void;
@@ -42,6 +44,8 @@ export interface MenuHandlers {
   install?: () => void;
   /** Clip → "Fit movie to music"; absent without pictures or music (item disabled). */
   fitToMusic?: () => void;
+  /** Clip → "Split"; absent unless a video clip is selected within its own span. */
+  split?: () => void;
 }
 
 const item = (id: string, label: string, onSelect?: () => void, shortcut?: string): MenuEntry => ({
@@ -89,7 +93,7 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
       id: "view",
       label: t("menu.view.label"),
       entries: [
-        item("timeline", t("menu.view.timeline")),
+        item("timeline", t("menu.view.timeline"), h.toggleTimeline),
         item("fullscreen", t("menu.view.fullScreen")),
       ],
     },
@@ -110,7 +114,7 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
       label: t("menu.clip.label"),
       entries: [
         item("add-to-storyboard", t("menu.clip.addToStoryboard")),
-        item("split", t("menu.clip.split")),
+        item("split", t("menu.clip.split"), h.split),
         separator,
         item("fit-to-music", t("menu.clip.fitToMusic"), h.fitToMusic),
       ],

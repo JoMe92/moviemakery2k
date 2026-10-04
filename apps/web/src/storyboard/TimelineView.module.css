@@ -1,0 +1,152 @@
+.view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.hint {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  color: var(--y2k-text-muted);
+  text-align: center;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--y2k-separator);
+}
+
+.zoomLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--y2k-text-muted);
+}
+
+.scroll {
+  overflow-x: auto;
+  flex: 1;
+}
+
+.track {
+  position: relative;
+  min-width: 100%;
+  height: 92px;
+}
+
+.ruler {
+  position: relative;
+  height: 18px;
+  border-bottom: 1px solid var(--y2k-separator);
+}
+
+.tick {
+  position: absolute;
+  top: 2px;
+  padding-left: 2px;
+  border-left: 1px solid var(--y2k-border);
+  color: var(--y2k-text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lane {
+  position: relative;
+  height: 74px;
+  margin: 0;
+  list-style: none;
+  padding: 6px 0;
+}
+
+.clip {
+  position: absolute;
+  top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  height: 62px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-edge-dark);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-storyboard-slot));
+  cursor: pointer;
+  text-align: left;
+}
+
+.clip[aria-pressed="true"] {
+  border-color: var(--y2k-select);
+  outline: 2px solid var(--y2k-select);
+  outline-offset: -1px;
+}
+
+.clip:focus-visible {
+  outline: 2px solid var(--y2k-focus);
+  outline-offset: 1px;
+}
+
+.clipLabel {
+  overflow: hidden;
+  width: 100%;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipDuration {
+  font-size: 10px;
+  color: var(--y2k-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.handleStart,
+.handleEnd {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.handleStart {
+  left: 0;
+  border-left: 2px solid var(--y2k-select);
+}
+
+.handleEnd {
+  right: 0;
+  border-right: 2px solid var(--y2k-select);
+}
+
+/* Wedge and playhead sit in the track, next to the ruler and the clip list,
+   so the ruler's 18 px are part of their offset. */
+.wedge {
+  position: absolute;
+  top: 24px;
+  z-index: 1;
+  height: 62px;
+  background: var(--y2k-select-soft);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  pointer-events: none;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: 2px;
+  height: 100%;
+  background: var(--y2k-icon-red);
+  pointer-events: none;
+}

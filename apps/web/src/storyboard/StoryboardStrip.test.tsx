@@ -1,20 +1,46 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Slide } from "../lib/apiClient";
-import { mockApi } from "../store/testApi";
+import type { MediaItem, Slide } from "../lib/apiClient";
+import { slideDuration } from "../store/projectOps";
+import { mockApi, videoItem } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 const slide = (id: string, mediaId: string, duration = 5, t: string | null = null): Slide => ({
+  kind: "image",
   id,
   mediaId,
   duration,
   transitionIn: t ? { transitionId: t, duration: 1.25 } : null,
 });
 
+const videoSlide = (id: string, mediaId: string, trimIn = 0, trimOut = 10): Slide => ({
+  kind: "video",
+  id,
+  mediaId,
+  trimIn,
+  trimOut,
+  transitionIn: null,
+});
+
+function durationAt(slides: readonly Slide[], index: number): number | undefined {
+  const s = slides[index];
+  return s ? slideDuration(s) : undefined;
+}
+
 async function setup(slides: Slide[]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+  });
+  const view = renderApp(api);
+  await act(() => view.ready);
+  return view;
+}
+
+async function setupWithMedia(slides: Slide[], media: MediaItem[]) {
+  const api = mockApi({
+    listMedia: vi.fn(async () => media),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -230,7 +256,7 @@ describe("Storyboard", () => {
     await user.keyboard("[Space]");
     await tick();
     expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
-    expect(store.getState().slides[0]?.duration).toBe(5);
+    expect(durationAt(store.getState().slides, 0)).toBe(5);
   });
 
   it("sets a transition on a slot by keyboard and replaces an existing one", async () => {
@@ -321,9 +347,9 @@ describe("Storyboard", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "Erlaubt sind 0,5 bis 60 Sekunden in Schritten von 0,25.",
     );
-    expect(store.getState().slides[1]?.duration).toBe(5);
+    expect(durationAt(store.getState().slides, 1)).toBe(5);
     await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
-    expect(store.getState().slides[1]?.duration).toBe(5);
+    expect(durationAt(store.getState().slides, 1)).toBe(5);
 
     fireEvent.contextMenu(within(strip()).getByRole("button", { name: /^Bild 2:/ }), {
       clientX: 10,
@@ -335,7 +361,7 @@ describe("Storyboard", () => {
     await user.clear(again);
     await user.type(again, "2,5");
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
-    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(durationAt(store.getState().slides, 1)).toBe(2.5);
     expect(tileLabels()[1]).toBe("Bild 2: b.jpg, 2,50 s");
   });
 
@@ -359,7 +385,7 @@ describe("Storyboard", () => {
     await user.clear(input);
     await user.type(input, "2,5");
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
-    expect(store.getState().slides[1]?.duration).toBe(2.5);
+    expect(durationAt(store.getState().slides, 1)).toBe(2.5);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(within(enStrip).getByRole("button", { name: /^Picture 2:/ })).toHaveTextContent(
       "2.50 s",
@@ -384,7 +410,71 @@ describe("Storyboard", () => {
     await user.clear(input);
     await user.type(input, "2.5");
     await user.click(within(dialog).getByRole("button", { name: "OK" }));
-    expect(store.getState().slides[0]?.duration).toBe(2.5);
+    expect(durationAt(store.getState().slides, 0)).toBe(2.5);
     expect(tileLabels()[0]).toBe("Bild 1: a.jpg, 2,50 s");
+  });
+
+  it("Spec: trims a video clip to a sub-range via the Properties dialog", async () => {
+    const user = userEvent.setup();
+    const { store } = await setupWithMedia(
+      [videoSlide("s1", "clip", 0, 10)],
+      [videoItem("clip", 10)],
+    );
+    await user.dblClick(within(strip()).getByRole("button", { name: /^Bild 1:/ }));
+    const dialog = screen.getByRole("dialog", { name: "Videoclip 1 kürzen" });
+    const start = within(dialog).getByRole("textbox", { name: "Anfang" });
+    const end = within(dialog).getByRole("textbox", { name: "Ende" });
+    expect(start).toHaveValue("0:00,00");
+    expect(end).toHaveValue("0:10,00");
+
+    await user.clear(start);
+    await user.type(start, "2");
+    await user.clear(end);
+    await user.type(end, "7");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(store.getState().slides[0]).toMatchObject({ kind: "video", trimIn: 2, trimOut: 7 });
+    expect(tileLabels()[0]).toBe("Bild 1: clip.mp4, 5,00 s");
+  });
+
+  it("Spec: an invalid video trim (end not after start) is rejected", async () => {
+    const user = userEvent.setup();
+    const { store } = await setupWithMedia(
+      [videoSlide("s1", "clip", 0, 10)],
+      [videoItem("clip", 10)],
+    );
+    await user.dblClick(within(strip()).getByRole("button", { name: /^Bild 1:/ }));
+    const dialog = screen.getByRole("dialog", { name: "Videoclip 1 kürzen" });
+    const start = within(dialog).getByRole("textbox", { name: "Anfang" });
+    const end = within(dialog).getByRole("textbox", { name: "Ende" });
+
+    await user.clear(start);
+    await user.type(start, "5");
+    await user.clear(end);
+    await user.type(end, "3");
+    await user.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Erlaubt sind Anfang und Ende von 0:00,00 bis 0:10,00; der Anfang muss vor dem Ende liegen.",
+    );
+    expect(store.getState().slides[0]).toMatchObject({ trimIn: 0, trimOut: 10 });
+
+    await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(store.getState().slides[0]).toMatchObject({ trimIn: 0, trimOut: 10 });
+  });
+
+  it("opens the video trim dialog via the context menu (Properties enabled)", async () => {
+    const user = userEvent.setup();
+    await setupWithMedia([videoSlide("s1", "clip", 0, 10)], [videoItem("clip", 10)]);
+    fireEvent.contextMenu(within(strip()).getByRole("button", { name: /^Bild 1:/ }), {
+      clientX: 10,
+      clientY: 10,
+    });
+    const properties = screen.getByRole("menuitem", { name: "Eigenschaften…" });
+    expect(properties).not.toHaveAttribute("aria-disabled", "true");
+    await user.click(properties);
+    expect(screen.getByRole("dialog", { name: "Videoclip 1 kürzen" })).toBeInTheDocument();
   });
 });

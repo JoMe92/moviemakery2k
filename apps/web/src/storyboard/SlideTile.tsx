@@ -4,6 +4,7 @@ import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef } from "
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
+import { slideDuration } from "../store/projectOps";
 import { EffectsIcon } from "../ui/icons";
 import { chain, useLongPress } from "../ui/useLongPress";
 import { type DragItem, formatDuration } from "./dropLogic";
@@ -62,7 +63,7 @@ export function SlideTile({
   // aria-pressed shows the selection; the role comes from <button>.
   const { "aria-pressed": _pressed, role: _role, ...dragAttributes } = attributes;
   const name = media?.filename ?? t("storyboard.missingImage");
-  const duration = formatDuration(slide.duration, locale);
+  const duration = formatDuration(slideDuration(slide), locale);
   const touch = isTouchLayout(useLayoutMode());
   const openMenuAt = (el: HTMLElement) => {
     onSelect();
@@ -168,6 +169,8 @@ export function SlideTile({
               decoding="async"
               draggable={false}
             />
+          ) : media?.kind === "video" ? (
+            <img src={media.posterUrl} alt="" loading="lazy" decoding="async" draggable={false} />
           ) : null}
           <span className={styles.number}>{number}</span>
         </span>

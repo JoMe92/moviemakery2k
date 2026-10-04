@@ -6,6 +6,7 @@ import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slide = (id: string, mediaId: string): Slide => ({
+  kind: "image",
   id,
   mediaId,
   duration: 5,
@@ -53,7 +54,7 @@ const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
 async function setup(slides: Slide[] = []) {
   mockLayout("medium");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   return view;

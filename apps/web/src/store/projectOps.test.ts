@@ -9,6 +9,7 @@ import {
 } from "./projectOps";
 
 const s = (id: string, t: string | null = null): Slide => ({
+  kind: "image",
   id,
   mediaId: `m${id}`,
   duration: 5,

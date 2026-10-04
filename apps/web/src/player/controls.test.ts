@@ -14,9 +14,11 @@ import {
   shouldToggleOnSpace,
   startPlayback,
   timelineOf,
+  videoSeekTarget,
 } from "./controls";
 
 const slide = (id: string, duration = 5, t: number | null = null) => ({
+  kind: "image" as const,
   id,
   mediaId: `m${id}`,
   duration,
@@ -124,5 +126,43 @@ describe("space bar", () => {
     expect(shouldToggleOnSpace({ key: " ", ctrlKey: true, target: body }, ctx)).toBe(false);
     expect(shouldToggleOnSpace({ key: " ", repeat: true, target: body }, ctx)).toBe(false);
     expect(shouldToggleOnSpace({ key: "Enter", target: body }, ctx)).toBe(false);
+  });
+});
+
+describe("videoSeekTarget (design.md D5)", () => {
+  it("leaves a decoded element alone while it already shows the position", () => {
+    // A paused element reports its frame's presentation time, up to a frame
+    // away from the request; seeking on that would restart decoding forever.
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0.0168 }, 0, 0, 2)).toBeNull();
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0 }, 0, 0, 2)).toBeNull();
+  });
+
+  it("seeks a decoded element once the position really moved", () => {
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0.0168 }, 1.5, 0, 2)).toBe(1.5);
+  });
+
+  it("never interrupts a pending seek", () => {
+    expect(videoSeekTarget({ readyState: 4, currentTime: 0, seeking: true }, 1.5, 0, 2)).toBeNull();
+    expect(
+      videoSeekTarget({ readyState: 1, currentTime: 0.001, seeking: true }, 0, 0, 2),
+    ).toBeNull();
+  });
+
+  it("Spec: nudges a clip that has no frame yet and already sits on the position", () => {
+    // The CI case: trimIn 0 shown at playback time 0 - assigning 0 again
+    // would be a no-op, so nothing would ever be decoded.
+    expect(videoSeekTarget({ readyState: 0, currentTime: 0 }, 0, 0, 2)).toBe(0.001);
+  });
+
+  it("asks for the plain position while nothing is decoded but it really moved", () => {
+    expect(videoSeekTarget({ readyState: 0, currentTime: 0 }, 1.5, 0, 2)).toBe(1.5);
+  });
+
+  it("nudges backwards at the very end of the trim", () => {
+    expect(videoSeekTarget({ readyState: 0, currentTime: 2 }, 2, 0, 2)).toBe(1.999);
+  });
+
+  it("never leaves the trim of a clip shorter than the nudge", () => {
+    expect(videoSeekTarget({ readyState: 0, currentTime: 1 }, 1, 1, 1)).toBe(1);
   });
 });

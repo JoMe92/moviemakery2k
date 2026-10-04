@@ -47,8 +47,9 @@ const LABELS = {
       "Diese Sammlung ist leer. Wählen Sie „Video importieren“ oder ziehen Sie Videodateien hierher.",
     menu: "Video „clip.mp4“",
     del: "Löschen",
+    addToStoryboard: "Zum Storyboard hinzufügen",
     title: "Video löschen",
-    question: "Möchten Sie „clip.mp4“ wirklich löschen?",
+    question: "Möchten Sie „clip.mp4“ wirklich löschen? Es wird auch aus dem Storyboard entfernt.",
     yes: "Ja",
   },
   en: {
@@ -63,8 +64,10 @@ const LABELS = {
     empty: "This collection is empty. Choose “Import video” or drag video files here.",
     menu: "Video “clip.mp4”",
     del: "Delete",
+    addToStoryboard: "Add to Storyboard",
     title: "Delete Video",
-    question: "Are you sure you want to delete “clip.mp4”?",
+    question:
+      "Are you sure you want to delete “clip.mp4”? It will also be removed from the storyboard.",
     yes: "Yes",
   },
 } as const;
@@ -217,17 +220,31 @@ describe("“My Videos” collection", () => {
     },
   );
 
-  it("never adds a video to the storyboard or music track (no draggable, no menu entry)", async () => {
+  it("appends a video clip by double-click: full trim, no transition", async () => {
+    const { ready, store } = renderApp(importApi([videoItem("clip", 8)]));
+    await act(() => ready);
+    act(() => store.getState().setCollection("video"));
+    const tile = screen.getByRole("button", { name: "clip.mp4, 0:08" });
+    // Draggable like a picture/audio tile (unlike before add-timeline-editing).
+    expect(tile).toHaveAttribute("aria-roledescription", "ziehbares Video");
+
+    await userEvent.setup().dblClick(tile);
+    expect(store.getState().slides).toHaveLength(1);
+    expect(store.getState().slides[0]).toMatchObject({
+      kind: "video",
+      mediaId: "clip",
+      trimIn: 0,
+      trimOut: 8,
+      transitionIn: null,
+    });
+    expect(store.getState().music).toEqual([]);
+  });
+
+  it("offers “Add to Storyboard” in a video tile's context menu", async () => {
     const { ready, store } = renderApp(importApi([videoItem("clip")]));
     await act(() => ready);
     act(() => store.getState().setCollection("video"));
     const tile = screen.getByRole("button", { name: LABELS.de.tile });
-
-    await userEvent.setup().dblClick(tile);
-    expect(store.getState().slides).toEqual([]);
-    expect(store.getState().music).toEqual([]);
-    // No dnd-kit draggable attributes (unlike picture/audio tiles).
-    expect(tile).not.toHaveAttribute("aria-roledescription");
 
     fireEvent.contextMenu(tile, { clientX: 10, clientY: 10 });
     const menu = screen.getByRole("menu", { name: LABELS.de.menu });
@@ -235,7 +252,17 @@ describe("“My Videos” collection", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((m) => m.textContent),
-    ).toEqual(["Löschen"]);
+    ).toEqual([LABELS.de.addToStoryboard, LABELS.de.del]);
+    await userEvent.setup().click(within(menu).getByRole("menuitem", { name: LABELS.de.del }));
+    screen.getByRole("dialog", { name: LABELS.de.title });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Nein" }));
+
+    fireEvent.contextMenu(tile, { clientX: 10, clientY: 10 });
+    const reopened = within(screen.getByRole("menu"));
+    await userEvent
+      .setup()
+      .click(reopened.getByRole("menuitem", { name: LABELS.de.addToStoryboard }));
+    expect(store.getState().slides).toHaveLength(1);
   });
 
   it.each(LOCALES)("deletes a video tile after confirmation (%s)", async (locale) => {

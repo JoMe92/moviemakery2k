@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { MusicClip } from "../lib/apiClient";
+import { slideDuration } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
@@ -55,9 +56,9 @@ describe("Clip → Film an Musik anpassen", () => {
     const entry = await openClipMenu(user);
     expect(entry).not.toHaveAttribute("aria-disabled", "true");
     await user.click(entry);
-    expect(store.getState().slides.map((s) => s.duration)).toEqual(Array(10).fill(6));
+    expect(store.getState().slides.map(slideDuration)).toEqual(Array(10).fill(6));
     await store.getState().flushSave();
-    expect(api.saved.at(-1)?.slides.map((s) => s.duration)).toEqual(Array(10).fill(6));
+    expect(api.saved.at(-1)?.slides.map(slideDuration)).toEqual(Array(10).fill(6));
   });
 
   it("Spec: Nicht erreichbar — dialog names 5 minutes and nothing changes", async () => {

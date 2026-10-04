@@ -32,8 +32,18 @@ What works today:
   desktop. The backend validates the files and creates thumbnails and preview
   images.
 - **Video import** — MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1) land in
-  *My Videos* with a poster frame, name and duration; a video cannot (yet) be
-  added to the storyboard, played or exported — see [Roadmap](#roadmap).
+  *My Videos* with a poster frame, name and duration.
+- **Video clips on the storyboard** — drag a video into the storyboard like a
+  picture; it plays back muted in the preview and exports with the same
+  transitions. Trim its start and end in a properties dialog with a live
+  poster preview at each edge, or split it at the playhead (*Clip → Split*)
+  into two clips that keep the original's incoming transition on the first
+  half. Clip sound and narration are not mixed with the movie yet — see
+  [Roadmap](#roadmap).
+- **Timeline view** — *View → Timeline* (or the storyboard pane's own toggle)
+  switches to a second, proportional-width track view with a time ruler, a
+  zoom slider and drag handles at each clip's edges for the same trimming;
+  selection and the playhead are shared with the storyboard.
 - **Music** — import MP3, WAV, M4A/AAC, OGG and FLAC into *My Music*, put
   pieces on the *Audio/Music* track below the storyboard, trim them, set
   their volume and fades, and fit the movie to the music. The preview plays
@@ -85,9 +95,7 @@ What works today:
   shaders used so far
 - Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
 - Titles and credits with the Entrance → Main → Exit animation model
-- Video clips on the storyboard (playback, trimming and splitting, clip
-  sound ↔ music), narration recording
-- Timeline view
+- Clip sound mixed with the music track, narration recording
 
 ## Screenshots
 

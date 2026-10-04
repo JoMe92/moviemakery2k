@@ -1,24 +1,33 @@
 """Project model and project store (spec slideshow-project "Projektmodell", design.md D3 and D7;
-music track: add-music-track design.md D3, spec music-track).
+music track: add-music-track design.md D3, spec music-track;
+video clips: add-timeline-editing design.md D1, spec slideshow-project).
 
-`<data_dir>/project.json` contains a `Project` with `schemaVersion: 2`. Every
-element (slide) refers to an image and optionally carries its incoming
-transition from the previous element; the first element has none. The music
-track (`music`) is a list of music clips that play one after the other from 0;
-each refers to an audio medium.
+`<data_dir>/project.json` contains a `Project` with `schemaVersion: 3`. Every
+element (slide) is either an **image slide** (`kind: "image"`, a display
+`duration`) or a **video slide** (`kind: "video"`, `trimIn`/`trimOut` in
+seconds into the referenced video; its length follows only from
+`trimOut - trimIn`, there is no separate duration field). Either kind MAY
+carry one incoming transition from the previous element; the first element has
+none. The music track (`music`) is a list of music clips that play one after
+the other from 0; each refers to an audio medium.
 
 A file with `schemaVersion: 1` (written before the music track existed) is
-loaded as a version-2 project with an empty music track; it is written as
-version 2 on the next save. The API only accepts version 2.
+loaded as a version-2 project with an empty music track. A file with
+`schemaVersion: 2` (written before video slides existed) is loaded with every
+slide as an image slide, its duration unchanged. Either is written at the
+current schema version on the next save. The API only accepts the current
+schema version.
 
 Validation runs in two stages:
 
 1. Structure (Pydantic): fields, types, ID format, duration ranges and 0.25 s
    grid, music volume and trim values, list lengths.
-2. References (`ProjectStore.save`): media and transition IDs exist, slides
-   refer to images and music clips to audio, slide and clip IDs are unique,
-   the first element has no transition, and every clip's range lies within its
-   file (`0 <= trimStart < end <= duration`, played length >= 0.5 s).
+2. References (`ProjectStore.save`): media and transition IDs exist, image
+   slides refer to images, video slides to videos and music clips to audio,
+   slide and clip IDs are unique, the first element has no transition, every
+   clip's range lies within its file (`0 <= trimStart < end <= duration`,
+   played length >= 0.5 s), and every video slide's trim lies within its video
+   (`0 <= trimIn < trimOut <= duration`).
 
 Errors of stage 1 are FastAPI's native 422 list; rule violations there carry an
 error code as `type` (design.md D5). Errors of stage 2 are `ApiErrorIssue`s,
@@ -57,12 +66,12 @@ from mmy_backend.errors import (
     error_message,
     validation_error,
 )
-from mmy_backend.media import AudioItem, ImageItem
+from mmy_backend.media import AudioItem, ImageItem, VideoItem
 from mmy_backend.storage import write_bytes_atomic
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION: Literal[2] = 2
+SCHEMA_VERSION: Literal[3] = 3
 MAX_SLIDES = 1000
 MAX_MUSIC_CLIPS = 100
 MUSIC_VOLUME_MIN = 0.0
@@ -76,7 +85,8 @@ TRANSITION_DURATION_MAX = 5.0
 SLIDE_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
 
 _GRID_EPSILON = 1e-9
-# Tolerance when comparing trim values with the (ffprobe) media duration.
+# Tolerance when comparing trim values (music clips, video slides) with the
+# (ffprobe) media duration.
 _TRIM_EPSILON = 1e-6
 
 
@@ -141,6 +151,12 @@ def _trim_check(value: float) -> float:
     return value
 
 
+def _slide_trim_check(value: float) -> float:
+    if not math.isfinite(value) or value < 0:
+        raise validation_error("project.slideTrim.negative", value=value)
+    return value
+
+
 MusicVolume = Annotated[
     float,
     Strict(),
@@ -152,6 +168,9 @@ MusicVolume = Annotated[
 ]
 TrimTime = Annotated[
     float, Strict(), AfterValidator(_trim_check), Field(json_schema_extra={"minimum": 0})
+]
+SlideTrimTime = Annotated[
+    float, Strict(), AfterValidator(_slide_trim_check), Field(json_schema_extra={"minimum": 0})
 ]
 
 
@@ -171,7 +190,8 @@ class TransitionRef(_ProjectModel):
     duration: TransitionDuration
 
 
-class Slide(_ProjectModel):
+class ImageSlide(_ProjectModel):
+    kind: Literal["image"]
     id: Annotated[
         str,
         Field(
@@ -179,11 +199,37 @@ class Slide(_ProjectModel):
             description="Assigned by the client, unique within the project",
         ),
     ]
-    media_id: str = Field(description="ID of a medium from /api/media")
+    media_id: str = Field(description="ID of an image from /api/media")
     duration: SlideDuration
     transition_in: TransitionRef | None = Field(
         description="Incoming transition from the previous element; always null for the first"
     )
+
+
+class VideoSlide(_ProjectModel):
+    """A video clip element (add-timeline-editing design.md D1); its length is
+    always `trimOut - trimIn`, there is no separate duration field."""
+
+    kind: Literal["video"]
+    id: Annotated[
+        str,
+        Field(
+            pattern=SLIDE_ID_PATTERN,
+            description="Assigned by the client, unique within the project",
+        ),
+    ]
+    media_id: str = Field(description="ID of a video from /api/media")
+    trim_in: SlideTrimTime = Field(description="Start within the video in seconds (new clip: 0)")
+    trim_out: SlideTrimTime = Field(
+        description="End within the video in seconds (new clip: the video's full duration)"
+    )
+    transition_in: TransitionRef | None = Field(
+        description="Incoming transition from the previous element; always null for the first"
+    )
+
+
+type Slide = Annotated[ImageSlide | VideoSlide, Field(discriminator="kind")]
+"""A storyboard element; `kind` tells whether it is an image or a video clip."""
 
 
 class MusicClip(_ProjectModel):
@@ -208,7 +254,7 @@ class MusicClip(_ProjectModel):
 
 
 class Project(_ProjectModel):
-    schema_version: Literal[2]
+    schema_version: Literal[3]
     slides: Annotated[list[Slide], Field(max_length=MAX_SLIDES)]
     music: Annotated[list[MusicClip], Field(max_length=MAX_MUSIC_CLIPS)]
 
@@ -221,11 +267,26 @@ def migrate_project_data(raw: Any) -> Any:
     """Raises a stored project to the current schema version.
 
     Version 1 (before the music track) becomes version 2 with an empty music
-    track; anything else is returned unchanged and validated as is.
+    track. Version 2 (and the version-2 shape just produced from version 1)
+    has no `kind` on its slides; each becomes `kind: "image"` with its
+    duration unchanged. Anything else is returned unchanged and validated as is.
     """
-    if isinstance(raw, dict) and raw.get("schemaVersion") == 1 and "music" not in raw:
-        return {**raw, "schemaVersion": SCHEMA_VERSION, "music": []}
-    return raw
+    if not isinstance(raw, dict):
+        return raw
+    version = raw.get("schemaVersion")
+    if version == 1 and "music" not in raw:
+        raw = {**raw, "schemaVersion": 2, "music": []}
+        version = 2
+    if version != 2:
+        return raw
+    slides = raw.get("slides")
+    if not isinstance(slides, list):
+        return raw
+    migrated_slides = [
+        {"kind": "image", **slide} if isinstance(slide, dict) and "kind" not in slide else slide
+        for slide in slides
+    ]
+    return {**raw, "schemaVersion": SCHEMA_VERSION, "slides": migrated_slides}
 
 
 # --- Reference checks --------------------------------------------------------
@@ -259,7 +320,7 @@ def _issue(
 
 def check_references(
     project: Project,
-    media: Iterable[ImageItem | AudioItem],
+    media: Iterable[ImageItem | AudioItem | VideoItem],
     transition_ids: Collection[str],
 ) -> list[ApiErrorIssue]:
     """Checks the references of a structurally valid project; empty list = valid."""
@@ -271,7 +332,7 @@ def check_references(
 
 def _check_slides(
     project: Project,
-    items: dict[str, ImageItem | AudioItem],
+    items: dict[str, ImageItem | AudioItem | VideoItem],
     transition_ids: Collection[str],
 ) -> list[ApiErrorIssue]:
     issues: list[ApiErrorIssue] = []
@@ -299,15 +360,29 @@ def _check_slides(
                     mediaId=slide.media_id,
                 )
             )
-        elif item.kind != "image":
+        elif slide.kind == "image":
+            if item.kind != "image":
+                issues.append(
+                    _issue(
+                        ("slides", index, "mediaId"),
+                        "project.slide.notImage",
+                        **where,
+                        mediaId=slide.media_id,
+                    )
+                )
+        elif item.kind != "video":
             issues.append(
                 _issue(
                     ("slides", index, "mediaId"),
-                    "project.slide.notImage",
+                    "project.slide.notVideo",
                     **where,
                     mediaId=slide.media_id,
                 )
             )
+        else:
+            trim_issue = _check_slide_trim(index, slide, item.duration, where)
+            if trim_issue is not None:
+                issues.append(trim_issue)
         transition = slide.transition_in
         if transition is None:
             continue
@@ -329,7 +404,32 @@ def _check_slides(
     return issues
 
 
-def _check_music(project: Project, items: dict[str, ImageItem | AudioItem]) -> list[ApiErrorIssue]:
+def _check_slide_trim(
+    index: int, slide: VideoSlide, duration: float, where: Params
+) -> ApiErrorIssue | None:
+    """`0 <= trimIn < trimOut <= duration` (spec slideshow-project)."""
+    if slide.trim_out > duration + _TRIM_EPSILON:
+        return _issue(
+            ("slides", index, "trimOut"),
+            "project.slide.trimOutBeyondFile",
+            **where,
+            trimOut=slide.trim_out,
+            duration=duration,
+        )
+    if slide.trim_in >= slide.trim_out:
+        return _issue(
+            ("slides", index, "trimIn"),
+            "project.slide.trimInNotBeforeTrimOut",
+            **where,
+            trimIn=slide.trim_in,
+            trimOut=slide.trim_out,
+        )
+    return None
+
+
+def _check_music(
+    project: Project, items: dict[str, ImageItem | AudioItem | VideoItem]
+) -> list[ApiErrorIssue]:
     issues: list[ApiErrorIssue] = []
     seen: dict[str, int] = {}
     for index, clip in enumerate(project.music):
@@ -464,7 +564,7 @@ class ProjectStore:
         self,
         project: Project,
         *,
-        media: Iterable[ImageItem | AudioItem],
+        media: Iterable[ImageItem | AudioItem | VideoItem],
         transition_ids: Collection[str],
     ) -> Project:
         """Checks the references and writes atomically; on errors everything stays unchanged."""

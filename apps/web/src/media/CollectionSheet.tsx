@@ -16,10 +16,11 @@ const KIND = { media: "image", music: "audio", video: "video" } as const;
 
 /**
  * Collection sheet of the compact layout (add-mobile-layout design.md D7):
- * tabs "My Pictures", "My Music" and "Video Transitions", "Import" on top.
- * Tapping pictures or music picks them; the fixed button adds the picks in
- * the order they were picked (pictures after the selected picture or at the
- * end, music at the end) and closes the sheet.
+ * tabs "My Pictures", "My Music", "My Videos" and "Video Transitions",
+ * "Import" on top. Tapping pictures, videos or music picks them; the fixed
+ * button adds the picks in the order they were picked (pictures and videos
+ * after the selected element or at the end, music at the end) and closes the
+ * sheet.
  */
 export function CollectionSheet() {
   const { t } = useT();
@@ -49,7 +50,7 @@ export function CollectionSheet() {
 
   const add = () => {
     const state = store.getState();
-    if (collection === "media") {
+    if (collection === "media" || collection === "video") {
       const index = state.selection
         ? state.slides.findIndex((s) => s.id === state.selection?.slideId)
         : -1;
@@ -71,8 +72,7 @@ export function CollectionSheet() {
       height="full"
       onClose={close}
       footer={
-        // Videos cannot be added to the storyboard yet (add-video-import non-goal).
-        collection === "transitions" || collection === "video" ? undefined : (
+        collection === "transitions" ? undefined : (
           <Button disabled={count === 0} onClick={add} className={styles.add}>
             {t(
               collection === "music" ? "collectionSheet.addMusic" : "collectionSheet.addPictures",

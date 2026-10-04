@@ -1,10 +1,12 @@
-"""Media endpoints (TASK-API-002, TASK-API-003; add-video-import TASK-API-017).
+"""Media endpoints (TASK-API-002, TASK-API-003; add-video-import TASK-API-017;
+video playback: add-timeline-editing TASK-WEB-059, design.md D5).
 
 - POST   /api/media                 import pictures, video and audio, one result per file
 - GET    /api/media                 collection in import order
 - GET    /api/media/{id}/thumbnail  thumbnail (JPEG, immutable)
 - GET    /api/media/{id}/preview    preview image (JPEG, immutable)
 - GET    /api/media/{id}/poster     video poster frame (JPEG, immutable)
+- GET    /api/media/{id}/video      original video file, for the preview player (immutable)
 - GET    /api/media/{id}/audio      audio preview version (AAC in M4A, immutable)
 - GET    /api/media/{id}/peaks      waveform data (JSON, immutable)
 - DELETE /api/media/{id}            delete a medium, cascading into the project
@@ -117,6 +119,45 @@ def get_poster(media_id: str, store: Annotated[MediaStore, Depends(get_media_sto
     404 for images, audio and unknown IDs (add-video-import D3).
     """
     return _poster_response(store, media_id)
+
+
+# Stored original's extension (media.py's `_VIDEO_EXTENSIONS` values) -> content type.
+_VIDEO_CONTENT_TYPES: dict[str, str] = {"mp4": "video/mp4", "mkv": "video/x-matroska"}
+
+
+def _video_response(store: MediaStore, media_id: str) -> Any:
+    # Images, audio and unknown or malformed IDs are 404; get() checks the ID format first.
+    if not isinstance(store.get(media_id), VideoItem):
+        raise _not_found(media_id)
+    item_dir = store.item_dir(media_id)
+    for ext, content_type in _VIDEO_CONTENT_TYPES.items():
+        path = item_dir / f"original.{ext}"
+        if path.is_file():
+            return FileResponse(
+                path, media_type=content_type, headers={"Cache-Control": IMMUTABLE_CACHE}
+            )
+    raise _not_found(media_id)
+
+
+@router.get(
+    "/{media_id}/video",
+    response_class=FileResponse,
+    responses={
+        status.HTTP_200_OK: {
+            "content": {"video/mp4": {}, "video/x-matroska": {}},
+            "description": "Original video file, unchanged",
+        },
+        **_NOT_FOUND,
+    },
+)
+def get_video(media_id: str, store: Annotated[MediaStore, Depends(get_media_store)]) -> Any:
+    """Original video file (its own container/codec) with `Cache-Control: immutable`.
+
+    For the preview player's `<video>` element (add-timeline-editing design.md D5); export
+    reads the same file directly from disk. 404 for images, audio and unknown IDs. Range
+    requests are supported (needed for the browser to seek).
+    """
+    return _video_response(store, media_id)
 
 
 def _audio_file_response(store: MediaStore, media_id: str, filename: str, media_type: str) -> Any:

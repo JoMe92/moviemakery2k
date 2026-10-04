@@ -8,6 +8,7 @@ import { renderApp } from "../test/renderApp";
 const WIZARD_TITLE = "Film speichern";
 
 const slide = (id: string, mediaId: string): Slide => ({
+  kind: "image",
   id,
   mediaId,
   duration: 5,
@@ -16,7 +17,7 @@ const slide = (id: string, mediaId: string): Slide => ({
 
 async function setup(slides: Slide[]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);

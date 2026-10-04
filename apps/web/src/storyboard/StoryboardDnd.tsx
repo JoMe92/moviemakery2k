@@ -117,7 +117,7 @@ const collisionDetection: CollisionDetection = (args) => {
   const musicStrip = args.droppableContainers.find((c) => c.id === MUSIC_DROPPABLE_ID);
   if (musicRect && musicStrip && contains(musicRect, point)) {
     const whole = [{ id: musicStrip.id, data: { droppableContainer: musicStrip, value: 0 } }];
-    if (type === "media") return whole;
+    if (type === "media" || type === "video") return whole;
     if (type !== "audio" && type !== "music") return [];
     const clips = args.droppableContainers.filter(isMusicContainer);
     if (clips.length === 0) return whole;
@@ -212,7 +212,8 @@ const musicCoordinates = sortableInRow(isMusicContainer);
 const coordinateGetter: KeyboardCoordinateGetter = (event, args) => {
   const type = dragItem(args.context.active)?.type;
   if (type === "transition") return transitionCoordinates(event, args);
-  if (type === "media") return insertCoordinates(event, args, STRIP_DROPPABLE_ID, isSlideContainer);
+  if (type === "media" || type === "video")
+    return insertCoordinates(event, args, STRIP_DROPPABLE_ID, isSlideContainer);
   if (type === "audio") return insertCoordinates(event, args, MUSIC_DROPPABLE_ID, isMusicContainer);
   if (type === "music") return musicCoordinates(event, args);
   return slideCoordinates(event, args);
@@ -307,6 +308,11 @@ function describe(state: AppState, item: DragItem | null): string {
       name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
     });
   }
+  if (item.type === "video") {
+    return t("dnd.video", {
+      name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
+    });
+  }
   if (item.type === "audio") {
     return t("dnd.audio", {
       name: state.media.find((m) => m.id === item.mediaId)?.filename ?? "",
@@ -352,7 +358,8 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     useSensor(KeyboardSensor, { coordinateGetter }),
   );
 
-  const insertIndex = active?.type === "media" ? insertionIndex(target, slides) : null;
+  const insertIndex =
+    active?.type === "media" || active?.type === "video" ? insertionIndex(target, slides) : null;
   const musicInsertIndex = active?.type === "audio" ? musicInsertionIndex(target, music) : null;
 
   // Announcements read the locale at call time from the store.
@@ -418,7 +425,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
   };
 
   const overlayMedia =
-    active?.type === "media"
+    active?.type === "media" || active?.type === "video"
       ? media.find((m) => m.id === active.mediaId)
       : active?.type === "slide"
         ? media.find((m) => m.id === slides.find((s) => s.id === active.slideId)?.mediaId)
@@ -454,6 +461,7 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
         {active ? (
           <div className={styles.overlay} data-testid="drag-overlay">
             {overlayMedia?.kind === "image" ? <img src={overlayMedia.thumbnailUrl} alt="" /> : null}
+            {overlayMedia?.kind === "video" ? <img src={overlayMedia.posterUrl} alt="" /> : null}
             {overlayAudio ? (
               <span className={styles.overlayAudio}>
                 <AudioIcon size={36} />

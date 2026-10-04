@@ -18,6 +18,7 @@ import { SlideTile } from "./SlideTile";
 import { useInsertIndex } from "./StoryboardDnd";
 import styles from "./StoryboardStrip.module.css";
 import { stepTileSize, useTileSize } from "./tileSize";
+import { VideoTrimDialog } from "./VideoTrimDialog";
 
 type Target = { kind: "slide" | "transition"; slideId: string };
 type MenuState = Target & { x: number; y: number };
@@ -36,6 +37,7 @@ export function StoryboardStrip() {
   const select = useAppStore((s) => s.select);
   const removeSlide = useAppStore((s) => s.removeSlide);
   const setSlideDuration = useAppStore((s) => s.setSlideDuration);
+  const setVideoTrim = useAppStore((s) => s.setVideoTrim);
   const setTransitionDuration = useAppStore((s) => s.setTransitionDuration);
   const removeTransition = useAppStore((s) => s.removeTransition);
   const insertIndex = useInsertIndex();
@@ -101,6 +103,8 @@ export function StoryboardStrip() {
   const dialogSlide = dialog ? slides.find((s) => s.id === dialog.slideId) : undefined;
   const dialogTransition =
     dialog?.kind === "transition" ? (dialogSlide?.transitionIn ?? null) : null;
+  const dialogVideoItem =
+    dialogSlide?.kind === "video" ? media.find((m) => m.id === dialogSlide.mediaId) : undefined;
   const transitionName = (id: string) => catalogName(catalog, id, locale);
 
   const menuItems = (m: MenuState): ContextMenuItem[] => {
@@ -204,15 +208,27 @@ export function StoryboardStrip() {
       ) : null}
       <TransitionSheet slideId={transitionSheet} onClose={() => setTransitionSheet(null)} />
       <DurationDialog
-        open={dialog?.kind === "slide" && dialogSlide !== undefined}
+        open={dialog?.kind === "slide" && dialogSlide?.kind === "image"}
         title={t("storyboard.slideProperties", { number: dialog ? numberOf(dialog.slideId) : "" })}
         label={t("storyboard.slideDuration")}
-        value={dialogSlide?.duration ?? SLIDE_DURATION.default}
+        value={dialogSlide?.kind === "image" ? dialogSlide.duration : SLIDE_DURATION.default}
         range={SLIDE_DURATION}
         touchStep={0.5}
         onConfirm={(value) => (dialog ? setSlideDuration(dialog.slideId, value) : false)}
         onClose={() => setDialog(null)}
       />
+      {dialogSlide?.kind === "video" && dialogVideoItem?.kind === "video" ? (
+        <VideoTrimDialog
+          open={dialog?.kind === "slide"}
+          number={dialog ? numberOf(dialog.slideId) : 0}
+          clip={dialogSlide}
+          video={dialogVideoItem}
+          onConfirm={(trimIn, trimOut) =>
+            dialog ? setVideoTrim(dialog.slideId, trimIn, trimOut) : false
+          }
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
       <DurationDialog
         open={dialogTransition !== null}
         title={t("storyboard.transitionBefore", {

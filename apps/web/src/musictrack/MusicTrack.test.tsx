@@ -10,6 +10,7 @@ import { MUSIC_PX_PER_SECOND } from "./MusicClipBlock";
 import { clearPeaksCache } from "./peaks";
 
 const slide = (id: string, duration = 5): Slide => ({
+  kind: "image",
   id,
   mediaId: "a",
   duration,
@@ -38,7 +39,7 @@ function setup(project: Partial<Project> = {}, media: MediaItem[] = MEDIA) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
     getProject: vi.fn(async () => ({
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       slides: project.slides ?? [],
       music: project.music ?? [],
     })),
