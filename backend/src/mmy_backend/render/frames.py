@@ -59,6 +59,7 @@ from mmy_backend.render.timeline import (
     Frame,
     StillFrame,
     Timeline,
+    TimelineSlide,
     frame_at,
     frame_count,
     frame_time,
@@ -230,6 +231,14 @@ def _spawn_video_stream(source: VideoSource, start: float, fps: float) -> _Video
     return _VideoStream(process=process, width=source.width, height=source.height)
 
 
+def _cache_key(slide: TimelineSlide) -> str:
+    """Key of one slide's cache entry: its own ID, so that two slides sharing a
+    video medium (e.g. after a split) decode independently, plus the media ID,
+    so an entry is never reused for different content when a renderer draws a
+    timeline that happens to reuse slide IDs."""
+    return f"{slide.id}\x00{slide.media_id}"
+
+
 @dataclass(eq=False)
 class _SlideImage:
     media_id: str
@@ -299,7 +308,7 @@ class FrameRenderer:
 
     @property
     def cached_slide_ids(self) -> tuple[str, ...]:
-        """IDs of the slides currently cached (at most `MAX_CACHED_IMAGES`)."""
+        """Keys of the cached slides (at most `MAX_CACHED_IMAGES`), see `_cache_key`."""
         return tuple(self._images)
 
     @property
@@ -319,10 +328,11 @@ class FrameRenderer:
         as the preview's `videoScrubTime`).
         """
         placed = timeline.slides[index]
-        slide_id, media_id = placed.slide.id, placed.slide.media_id
-        cached = self._images.get(slide_id)
+        media_id = placed.slide.media_id
+        key = _cache_key(placed.slide)
+        cached = self._images.get(key)
         if cached is not None:
-            self._images.move_to_end(slide_id)
+            self._images.move_to_end(key)
             if cached.video is not None:
                 cached.advance(self.width, self.height)
             return cached
@@ -336,7 +346,7 @@ class FrameRenderer:
             source = self.load_image(media_id)
             canvas = None if source is None else letterbox(source, self.width, self.height)
             entry = _SlideImage(media_id=media_id, canvas=canvas)
-        self._images[slide_id] = entry
+        self._images[key] = entry
         return entry
 
     def _open_video(
