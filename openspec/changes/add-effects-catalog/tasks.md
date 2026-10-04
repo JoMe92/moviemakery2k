@@ -46,7 +46,7 @@ unabhängig von den anderen archiviert.
 
 ## 4. Abschluss
 
-- [ ] TASK-INFRA-022 E2E und Doku: Playwright-Smoke erweitert um Effekt auf
+- [x] TASK-INFRA-022 E2E und Doku: Playwright-Smoke erweitert um Effekt auf
   ein Element setzen → Vorschau zeigt ihn → Export enthält denselben Effekt
   an dieser Stelle; README/CHANGELOG „Unreleased“ (nach TASK-WEB-065).
   Erledigt, wenn `pixi run test-e2e` grün ist.
