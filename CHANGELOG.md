@@ -305,6 +305,12 @@ change `add-mobile-delivery`).
   ignored (listed as a known limitation in 0.1.0).
 - The Docker build no longer fails on a `COPY` of the non-existent
   `backend/README.md`.
+- Export on Linux aarch64 (e.g. a Raspberry Pi) works again: Mesa auto-detected
+  the host GPU driver (`v3d`), which the Pixi environment does not ship, and
+  failed outright instead of falling back, so no OpenGL context could be created
+  (`eglInitialize failed`). Pixi's Linux activation now sets
+  `LIBGL_ALWAYS_SOFTWARE=1`, which pins the intended llvmpipe software renderer
+  on both Linux targets.
 
 ## [0.1.0] – 2026-10-02
 
