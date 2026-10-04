@@ -18,6 +18,8 @@ uvicorn-standard = ">=0.54"
 pydantic = ">=2.13"
 python-multipart = ">=0.0.32"
 pillow = ">=12"
+# LAN mode (scripts/serve_lan.py): QR code in the terminal, no further dependencies.
+segno = ">=1.6"
 # Export renderer (design.md D1, D8): headless GL via EGL.
 moderngl = ">=5.12"
 glcontext = ">=3"
@@ -88,11 +90,14 @@ test = { depends-on = ["test-web", "test-backend"] }
 
 build = { cmd = "pnpm -r build", depends-on = ["install-web"] }
 demo = { cmd = "python scripts/dev.py demo", depends-on = ["build"], description = "Built web app + API from a single process (MMY_API_PORT, default 8000)" }
+serve-lan = { cmd = "python scripts/serve_lan.py", depends-on = ["build"], description = "Built web app + API in the home network with access token and QR code (docs/mobile.md)" }
 
 gen-api = { cmd = "python -m mmy_backend.openapi apps/web/src/generated/openapi.json && pnpm --filter @mmy/web exec openapi-typescript src/generated/openapi.json -o src/generated/schema.d.ts", depends-on = ["install-web"], description = "Generate TS types from the backend OpenAPI document" }
 
 e2e-browsers = { cmd = "playwright install chromium", description = "Chromium for the E2E tests (into .pixi/playwright-browsers)" }
 test-e2e = { cmd = "pytest -c e2e/pytest.ini e2e", depends-on = ["build", "e2e-browsers"], description = "Browser tests against backend + built web app" }
+
+gen-icons = { cmd = "python scripts/gen_icons.py", description = "PNG/SVG icons of the installable app from the own design (apps/web/public/icons)" }
 
 check-shaders = { cmd = "python scripts/check_shaders.py", description = "Compile GLSL ES 3.00 shaders and check them against the catalog" }
 

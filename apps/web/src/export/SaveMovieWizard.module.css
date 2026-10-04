@@ -110,3 +110,9 @@
   margin: 0;
   max-width: 420px;
 }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

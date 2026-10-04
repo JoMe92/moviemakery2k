@@ -1,7 +1,7 @@
 """Configuration from environment variables.
 
 MMY_DATA_DIR, MMY_CATALOG_DIR, MMY_WEB_DIST, MMY_SHADERS_DIR and MMY_FONTS_DIR
-(export renderer).
+(export renderer), and MMY_ACCESS_TOKEN (LAN mode; unset means no access protection).
 """
 
 import os
@@ -26,6 +26,8 @@ class Settings:
     """packages/shaders: prelude/epilogue/vertex.glsl and transitions/<id>.glsl"""
     fonts_dir: Path = DEFAULT_FONTS_DIR
     """packages/fonts: the bundled title font."""
+    access_token: str | None = None
+    """LAN mode: token required for /api/ (`mmy_backend.access`); None disables the check."""
 
     @property
     def catalog_file(self) -> Path:
@@ -54,4 +56,5 @@ class Settings:
             web_dist=path("MMY_WEB_DIST", REPO_ROOT / "apps" / "web" / "dist"),
             shaders_dir=path("MMY_SHADERS_DIR", DEFAULT_SHADERS_DIR),
             fonts_dir=path("MMY_FONTS_DIR", DEFAULT_FONTS_DIR),
+            access_token=source.get("MMY_ACCESS_TOKEN") or None,
         )

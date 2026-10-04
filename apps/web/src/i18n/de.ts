@@ -72,6 +72,7 @@ export const de = {
       effects: "Videoeffekte",
       autoMovie: "AutoMovie…",
       options: "Optionen…",
+      install: "Als App installieren…",
     },
     clip: {
       label: "Clip",
@@ -119,6 +120,7 @@ export const de = {
       short: "3. Fertig stellen",
       saveToComputer: "Auf dem Computer speichern",
       publishWeb: "Im Web veröffentlichen",
+      installApp: "Als App installieren…",
     },
   },
   status: {
@@ -129,6 +131,7 @@ export const de = {
     saving: "Wird gespeichert…",
     saved: "Gespeichert",
     saveFailed: "Speichern fehlgeschlagen",
+    noAccess: "Kein Zugang",
   },
   about: {
     title: "Info über {app}",
@@ -361,6 +364,9 @@ export const de = {
     remainingMinutesSeconds: "ca. {min} Min. {sec} Sek.",
     saved: "Der Film „{file}“ wurde gespeichert.",
     download: "Film herunterladen",
+    share: "Teilen…",
+    sharePreparing: "Wird vorbereitet…",
+    shareFailed: "Das Teilen ist fehlgeschlagen. Sie können den Film weiterhin herunterladen.",
     finishHint: "Klicken Sie auf „Fertig stellen“, um den Assistenten zu schließen.",
     back: "Zurück",
     next: "Weiter",
@@ -370,6 +376,21 @@ export const de = {
     failed: "Der Film konnte nicht gespeichert werden.",
     cancelled: "Der Export wurde abgebrochen.",
   },
+  access: {
+    title: "Zugang erforderlich",
+    body: "Dieses Gerät hat keinen Zugang zu moviemakerY2K. Öffnen Sie den Link oder scannen Sie den QR-Code erneut, den „pixi run serve-lan“ im Terminal anzeigt.",
+  },
+  install: {
+    title: "Als App installieren",
+    intro:
+      "Ihr Browser bietet keinen Installationsdialog. So legen Sie moviemakerY2K auf den Home-Bildschirm:",
+    stepShare: "Tippen Sie in der Browserleiste auf „Teilen“.",
+    stepHomeScreen: "Wählen Sie „Zum Home-Bildschirm“.",
+  },
+  pwa: {
+    updateAvailable: "Neue Version verfügbar.",
+    reload: "Neu laden",
+  },
   errors: {
     unknown: "Ein unbekannter Fehler ist aufgetreten.",
     invalidInput: "Die Eingabe ist ungültig.",
@@ -377,6 +398,9 @@ export const de = {
     client: {
       offline: "Das Backend ist nicht erreichbar.",
       requestFailed: "Die Anfrage an das Backend ist fehlgeschlagen (Status {status}).",
+    },
+    auth: {
+      required: "Zugang erforderlich: Öffnen Sie den Link oder QR-Code aus dem Terminal erneut.",
     },
     media: {
       notFound: "Das Medium wurde nicht gefunden.",

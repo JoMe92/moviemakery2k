@@ -1,6 +1,7 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
+import { useInstallAction } from "../pwa/install";
 import { projectMusicDuration } from "../store/appStore";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { canFitToMusic } from "../timeline/fitToMusic";
@@ -43,6 +44,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const cut = useAppStore((s) => s.cut);
   const copy = useAppStore((s) => s.copy);
   const paste = useAppStore((s) => s.paste);
+  const installApp = useInstallAction();
   const { t } = useT();
 
   const menus = useMemo(
@@ -53,6 +55,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
           newProject: () => setConfirmNew(true),
           about: () => setAbout(true),
           options: () => setOptions(true),
+          install: installApp,
           importImages: () => requestImport("any"),
           saveMovie: hasSlides ? openExportWizard : undefined,
           // Picture or music clip, whichever is selected (the selections are exclusive).
@@ -99,6 +102,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
       cut,
       copy,
       paste,
+      installApp,
       t,
     ],
   );

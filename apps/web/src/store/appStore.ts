@@ -11,6 +11,7 @@ import {
   type AppApi,
   type ExportApi,
   type Health,
+  isAuthRequired,
   type MediaItem,
   type MusicClip,
   type Project,
@@ -58,7 +59,9 @@ export const AUTOSAVE_DELAY_MS = 500;
 export type BackendState =
   | { kind: "unknown" }
   | { kind: "ok"; health: Health }
-  | { kind: "offline" };
+  | { kind: "offline" }
+  /** LAN mode without a valid access token (add-mobile-delivery design.md D4). */
+  | { kind: "unauthorized" };
 export type SaveState = "idle" | "saving" | "saved" | "error";
 /**
  * `media` is "My Pictures" (images only), `music` is "My Music" (audio only),
@@ -306,10 +309,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         .then(() => {
           set({ saveState: dirty ? "saving" : "saved" });
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           // The next change saves again (spec app-shell "Backend fällt aus").
           dirty = true;
           set({ saveState: "error" });
+          if (isAuthRequired(error)) set({ backend: { kind: "unauthorized" } });
         })
         .finally(() => {
           saving = null;
@@ -454,8 +458,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             saveState: "saved",
             loaded: true,
           });
-        } catch {
-          set({ backend: { kind: "offline" }, loaded: true });
+        } catch (error) {
+          const backend: BackendState = isAuthRequired(error)
+            ? { kind: "unauthorized" }
+            : { kind: "offline" };
+          set({ backend, loaded: true });
         }
       },
 
@@ -569,6 +576,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
               patch(entry.key, { status: "error", failure: uploadFailureInfo(result) });
             }
           } catch (error) {
+            if (isAuthRequired(error)) set({ backend: { kind: "unauthorized" } });
             if (error instanceof ApiError) {
               const failure = error.info ?? { code: null, params: {}, message: error.message };
               patch(entry.key, { status: "error", failure });

@@ -76,6 +76,7 @@ export const en = {
       effects: "Video Effects",
       autoMovie: "AutoMovie…",
       options: "Options…",
+      install: "Install as app…",
     },
     clip: {
       label: "Clip",
@@ -123,6 +124,7 @@ export const en = {
       short: "3. Finish",
       saveToComputer: "Save to my computer",
       publishWeb: "Publish to the web",
+      installApp: "Install as app…",
     },
   },
   status: {
@@ -133,6 +135,7 @@ export const en = {
     saving: "Saving…",
     saved: "Saved",
     saveFailed: "Saving failed",
+    noAccess: "No access",
   },
   about: {
     title: "About {app}",
@@ -361,6 +364,9 @@ export const en = {
     remainingMinutesSeconds: "approx. {min} min {sec} sec",
     saved: "The movie “{file}” has been saved.",
     download: "Download Movie",
+    share: "Share…",
+    sharePreparing: "Preparing…",
+    shareFailed: "Sharing failed. You can still download the movie.",
     finishHint: "Click “Finish” to close the wizard.",
     back: "Back",
     next: "Next",
@@ -370,6 +376,20 @@ export const en = {
     failed: "The movie could not be saved.",
     cancelled: "The export was cancelled.",
   },
+  access: {
+    title: "Access required",
+    body: "This device has no access to moviemakerY2K. Open the link or scan the QR code that “pixi run serve-lan” shows in the terminal again.",
+  },
+  install: {
+    title: "Install as app",
+    intro: "Your browser has no install dialog. Add moviemakerY2K to your home screen like this:",
+    stepShare: "Tap “Share” in the browser bar.",
+    stepHomeScreen: "Choose “Add to Home Screen”.",
+  },
+  pwa: {
+    updateAvailable: "New version available.",
+    reload: "Reload",
+  },
   errors: {
     unknown: "An unknown error occurred.",
     invalidInput: "The input is invalid.",
@@ -377,6 +397,9 @@ export const en = {
     client: {
       offline: "The backend is not reachable.",
       requestFailed: "The request to the backend failed (status {status}).",
+    },
+    auth: {
+      required: "Access required: open the link or QR code from the terminal again.",
     },
     media: {
       notFound: "Media item not found.",

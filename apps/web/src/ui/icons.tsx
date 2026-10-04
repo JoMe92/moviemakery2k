@@ -209,6 +209,17 @@ export function AudioIcon(props: IconProps) {
 }
 
 /** Warning: yellow triangle with an exclamation mark (own drawing). */
+/** Phone with an arrow into it: "Install as app" (add-mobile-delivery D7). */
+export function InstallIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="4.5" y="1.5" width="7" height="13" rx="1.2" style={tok("icon-ink")} />
+      <rect x="5.5" y="3" width="5" height="9" style={tok("pane")} />
+      <path d="M8 4v5M6 7l2 2.2L10 7" style={{ ...strokeTok("icon-blue"), strokeWidth: 1.4 }} />
+    </Svg>
+  );
+}
+
 export function WarningIcon(props: IconProps) {
   return (
     <Svg {...props}>

@@ -35,6 +35,11 @@ export interface MenuHandlers {
   about?: () => void;
   /** Tools → Options (language setting). */
   options?: () => void;
+  /**
+   * Tools → "Install as app…"; absent outside a secure context or when running
+   * installed — then the item is absent, not disabled (add-mobile-delivery D7).
+   */
+  install?: () => void;
   /** Clip → "Fit movie to music"; absent without pictures or music (item disabled). */
   fitToMusic?: () => void;
 }
@@ -97,6 +102,7 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
         separator,
         item("automovie", t("menu.tools.autoMovie")),
         item("options", t("menu.tools.options"), h.options),
+        ...(h.install ? [item("install", t("menu.tools.install"), h.install)] : []),
       ],
     },
     {

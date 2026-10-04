@@ -304,6 +304,7 @@
       "ErrorCode": {
         "description": "All stable error codes; part of the API contract as an OpenAPI enum (design.md D4).\n\nNever rename a code, add a new one instead.",
         "enum": [
+          "auth.required",
           "media.notFound",
           "media.tooManyFiles",
           "media.unsupportedType",
