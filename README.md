@@ -27,7 +27,10 @@ What works today:
 
 - **Movie Maker-style main window** — menu bar, task pane, collections,
   preview monitor and storyboard in an original Y2K theme. Areas that are not
-  implemented yet are visible but disabled.
+  implemented yet are visible but disabled. The toolbar's *Collections*
+  toggle hides the collection pane and gives its space to the preview
+  monitor; any choice of a collection brings it back, and after a reload it
+  is visible again.
 - **Picture import** — JPEG, PNG and WebP via dialog or drag & drop from the
   desktop. The backend validates the files and creates thumbnails and preview
   images.
@@ -50,7 +53,10 @@ What works today:
   the music in sync with pictures and transitions; the exported movie
   contains the mix. See [Music](#music).
 - **Storyboard** — drag pictures into the storyboard, reorder them, remove
-  them and set a duration per picture (0.5–60 s).
+  them and set a duration per picture (0.5–60 s). Adding from a collection —
+  by double-click, through the tile's context menu or with the collection
+  sheet's button on a phone — confirms itself: a short notice names how many
+  of what were added, and the one added last is scrolled into view.
 - **Undo/Redo and Cut/Copy/Paste** — every storyboard and music-track change
   can be undone and redone (*Edit → Undo/Redo* or Ctrl+Z/Ctrl+Y), at least
   50 steps deep; a selected picture or music clip can be cut, copied and
@@ -355,7 +361,9 @@ close button, Escape, a tap on the backdrop or a swipe down at the grip.
 - **Adding** works by picking instead of dragging: *2. Edit → View
   collections* opens the collection sheet; tap pictures (or music) in the
   order you want them, then *Add to storyboard (n)* / *Add to music track
-  (n)*. Pictures go after the selected picture or to the end.
+  (n)*. Pictures go after the selected picture or to the end. A short notice
+  then names what was added, the new elements are scrolled into view, and the
+  phone vibrates briefly.
 - **Reordering**: long press a tile or clip and drag it, or use *Move
   left/right*. A quick swipe scrolls the strip instead. On a tablet you can
   also drag pictures from the collection into the storyboard.
@@ -370,8 +378,10 @@ close button, Escape, a tap on the backdrop or a swipe down at the grip.
   next picture, double-tap (or *Full screen*) for the full-screen preview,
   pinch the storyboard (or *Smaller*/*Larger*) for three tile sizes, which
   are remembered.
-- **Haptics**: a short vibration on a long press, a drop and a refused drop,
-  switchable under *Tools → Options… → Vibration*.
+- **Haptics**: a short vibration on a long press, a drop, a refused drop and
+  an add from the collection, switchable under *Tools → Options… →
+  Vibration*. It is always an addition — the notice and the scrolling confirm
+  an add on their own.
 
 **iOS and iPadOS.** Safari has no Vibration API, so there is no haptic
 feedback and the *Vibration* switch is not shown. The ring/silent switch

@@ -28,6 +28,32 @@ All notable changes to this project are documented here. The format follows
   `PUT /api/project` accepts version 4 only and rejects an unknown effect ID
   as `project.slide.unknownEffect`. `GET /api/catalog/effects` serves the new
   catalog, validated at startup like the transition catalog.
+- **A *Collections* toggle in the toolbar.** The collection pane sat fixed in
+  the middle of the workspace, so whoever worked on the filmstrip or the
+  monitor could not reclaim its space. One toolbar button now hides and shows
+  it; the freed space goes to the preview monitor, and the task pane,
+  storyboard, music track and status bar stay where they are. Anything that
+  chooses a collection — the picker, *Show collections*, *Show video
+  transitions*, the import — brings the pane back, so nothing runs into a
+  hidden pane. The state is deliberately not remembered: after a reload all
+  areas are visible again. The compact layout has no toolbar and keeps its
+  collection sheet ([MMY-ja3], [MMY-jli]).
+- **Adding from a collection now confirms itself.** It used to be silent: the
+  collection sheet closed, and with the filmstrip scrolled away there was no
+  way to tell whether the pictures had arrived. A short notice now names what
+  was added ("3 Bilder hinzugefügt", "1 music clip added", with the plural
+  forms of both languages), the element added last is scrolled into view, and
+  on a device with vibration the phone gives a short buzz with the same
+  pattern as a drop — an addition, never the whole feedback. This covers all
+  three ways in: the sheet's button, a double-click on a tile and its context
+  menu. The selection stays untouched, so the insertion point for the next
+  add is where you left it ([MMY-0yo], [MMY-57j]).
+- **One short-notice channel for the whole app.** The notice strip of the
+  compact and medium layouts and a new temporary field in the wide layout's
+  status bar now show the same notice for the same 2.5 s, announced politely
+  for assistive technology. A notice about an action outranks the state
+  messages, so the autosave it triggers cannot overwrite the confirmation a
+  fraction of a second later ([MMY-0yo]).
 
 ## [0.2.1] – 2026-10-04
 
