@@ -98,6 +98,21 @@ def images(tmp_path: Path) -> dict[str, Path]:
     return out
 
 
+@pytest.fixture
+def many_images(tmp_path: Path) -> list[Path]:
+    """Enough pictures for the collection grid to actually scroll (mmy-bmh):
+    the gesture that loses a tap is a thumb drifting in the axis the grid
+    scrolls in, so the regression test needs a grid with somewhere to scroll."""
+    folder = tmp_path / "viele"
+    folder.mkdir()
+    out: list[Path] = []
+    for i in range(24):
+        path = folder / f"bild{i:02d}.png"
+        Image.new("RGB", (640, 480), (11 * i % 256, 60, 180)).save(path)
+        out.append(path)
+    return out
+
+
 VIDEO_SECONDS = 105.0
 """Matches the spec's own example (media-library "Video importieren"): 1:45."""
 

@@ -19,6 +19,16 @@ All notable changes to this project are documented here. The format follows
   that this cannot repair now names the file and the reason instead of raising
   a raw validation error. The project's position on media-index versioning is
   written down in [ADR 0003](docs/adr/0003-media-index-versioning.md).
+- **Tapping a collection tile no longer needs a steady finger.** A tap picked
+  the tile only while the finger stayed within 8 px of where it went down; a
+  normal thumb covers 10 to 25 px, and at 16 px of vertical drift - the axis
+  the grid scrolls in - the pick was lost completely: no selection, no menu,
+  nothing added to the storyboard. The gesture now keeps two thresholds apart:
+  8 px still ends the *long* press, while a tap is recognised up to a 32 px tap
+  slop, and the release is read from the raw touch events once the browser
+  revokes the pointer (past about 16 px Chrome sends neither `pointerup` nor a
+  click). A deliberate pan started on a tile still scrolls the grid and changes
+  no selection ([MMY-bmh]).
 
 ## [0.2.0] – 2026-10-04
 
