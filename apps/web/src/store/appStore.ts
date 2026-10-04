@@ -131,6 +131,22 @@ export type EditRequestInput = EditRequest extends infer R
     : never
   : never;
 
+/**
+ * Request to scroll an element into view (design.md D6): adding from the
+ * collection asks, the filmstrip and the music track scroll - they own their
+ * tiles and their scroll container. `seq` makes repeats distinct.
+ */
+export type RevealRequest =
+  | { kind: "slide"; slideId: string; seq: number }
+  | { kind: "musicClip"; clipId: string; seq: number };
+
+/** A reveal request before the store numbers it. */
+export type RevealRequestInput = RevealRequest extends infer R
+  ? R extends RevealRequest
+    ? Omit<R, "seq">
+    : never
+  : never;
+
 export interface UploadEntry {
   key: string;
   filename: string;
@@ -206,6 +222,8 @@ export interface AppState {
    * layouts, a temporary status-bar field in the wide one.
    */
   notice: ActionNotice | null;
+  /** Last request to scroll an element into view, or null. */
+  revealRequest: RevealRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -253,6 +271,8 @@ export interface AppState {
    * messages ("Saved", backend changes) until it expires (design.md D4).
    */
   notify(text: string): void;
+  /** Ask the filmstrip or the music track to scroll an element into view. */
+  reveal(request: RevealRequestInput): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -510,6 +530,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       importKind: "any",
       editRequest: null,
       notice: null,
+      revealRequest: null,
       collectionSheetOpen: false,
       exportWizardOpen: false,
       locale,
@@ -666,6 +687,10 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       notify(text) {
         set({ notice: { text, seq: (get().notice?.seq ?? 0) + 1 } });
+      },
+      reveal(request) {
+        const seq = (get().revealRequest?.seq ?? 0) + 1;
+        set({ revealRequest: { ...request, seq } as RevealRequest });
       },
 
       async importFiles(files) {

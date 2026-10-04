@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
+import { scrollIntoView, useRevealRequest } from "../shell/reveal";
 import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
@@ -150,13 +151,13 @@ export function StoryboardStrip() {
     ];
   };
 
+  // Adding from the collection asks for the new picture to be shown; the
+  // strip owns the tiles and the scroll container (app-shell design.md D6).
+  useRevealRequest("slide", tiles);
+
   const playingId = playingIndex === null ? null : (slides[playingIndex]?.id ?? null);
   useEffect(() => {
-    if (playingId) {
-      tiles.current
-        .get(playingId)
-        ?.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "smooth" });
-    }
+    if (playingId) scrollIntoView(tiles.current.get(playingId));
   }, [playingId]);
 
   const empty = slides.length === 0;

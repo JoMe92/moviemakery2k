@@ -9,6 +9,7 @@ import { Sheet } from "../ui/Sheet";
 import styles from "./CollectionSheet.module.css";
 import { MediaCollection } from "./MediaCollection";
 import { UploadPanel } from "./UploadPanel";
+import { useAddFromCollection } from "./useAddFromCollection";
 
 const TABS: readonly CollectionId[] = ["media", "music", "video", "transitions", "effects"];
 
@@ -21,8 +22,8 @@ const KIND = { media: "image", music: "audio", video: "video" } as const;
  * "Video Effects",
  * "Import" on top. Tapping pictures, videos or music picks them; the fixed
  * button adds the picks in the order they were picked (pictures and videos
- * after the selected element or at the end, music at the end) and closes the
- * sheet.
+ * after the selected element or at the end, music at the end), confirms the
+ * add (app-shell design.md D6) and closes the sheet.
  */
 export function CollectionSheet() {
   const { t } = useT();
@@ -32,8 +33,7 @@ export function CollectionSheet() {
   const setCollection = useAppStore((s) => s.setCollection);
   const requestImport = useAppStore((s) => s.requestImport);
   const media = useAppStore((s) => s.media);
-  const addSlide = useAppStore((s) => s.addSlide);
-  const addMusicClip = useAppStore((s) => s.addMusicClip);
+  const { addToStoryboard, addToMusicTrack } = useAddFromCollection();
   const store = useAppStoreApi();
   const [picked, setPicked] = useState<string[]>([]);
   const baseId = useId();
@@ -56,10 +56,9 @@ export function CollectionSheet() {
       const index = state.selection
         ? state.slides.findIndex((s) => s.id === state.selection?.slideId)
         : -1;
-      const start = index >= 0 ? index + 1 : state.slides.length;
-      for (const [k, id] of picked.entries()) addSlide(id, start + k);
+      addToStoryboard(picked, index >= 0 ? index + 1 : state.slides.length);
     } else {
-      for (const id of picked) addMusicClip(id);
+      addToMusicTrack(picked);
     }
     close();
   };
