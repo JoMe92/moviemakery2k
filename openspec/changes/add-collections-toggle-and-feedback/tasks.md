@@ -11,7 +11,7 @@ Shader bleiben unberührt.
 
 ## 2. Rückmeldung beim Hinzufügen
 
-- [ ] TASK-WEB-076 Kurzhinweis als gemeinsamer Kanal: Hinweis und auslösende Aktion im App-Store, `StatusNotices` zeigt ihn mit Vorrang vor „Gespeichert“ und Backend-Wechsel, die Statusleiste des breiten Layouts bekommt eine vorübergehende Angabe mit `role="status"` (design.md D4). Erledigt, wenn Tests beide Darstellungen, den Ablauf nach 2,5 s, den Vorrang vor einer Zustandsmeldung und das Ersetzen durch einen neueren Hinweis abdecken.
+- [x] TASK-WEB-076 Kurzhinweis als gemeinsamer Kanal: Hinweis und auslösende Aktion im App-Store, `StatusNotices` zeigt ihn mit Vorrang vor „Gespeichert“ und Backend-Wechsel, die Statusleiste des breiten Layouts bekommt eine vorübergehende Angabe mit `role="status"` (design.md D4). Erledigt, wenn Tests beide Darstellungen, den Ablauf nach 2,5 s, den Vorrang vor einer Zustandsmeldung und das Ersetzen durch einen neueren Hinweis abdecken.
 - [ ] TASK-WEB-077 Bestätigung beim Hinzufügen aus der Sammlung: Sheet-Schaltfläche, Doppelklick und Kontextmenü melden Anzahl und Art mit Pluralformen in `de` und `en`, scrollen das zuletzt hinzugefügte Element sichtbar, lassen die Auswahl unverändert und lösen `vibrate("drop")` aus (nach TASK-WEB-076; design.md D6). Erledigt, wenn Tests alle drei Wege, beide Sprachen, Einzahl und Mehrzahl, das Scrollen und die Vibration je Schalterstellung abdecken.
 
 ## 3. Abschluss
