@@ -26,6 +26,7 @@ export const en = {
     windowTitle: "{app} – Untitled Project",
     taskPane: "Movie Tasks",
     toolbar: "Toolbar",
+    toggleCollections: "Collections",
     collections: "Collections:",
     collection: "Collection: {name}",
     collectionPrefix: "Collection:",

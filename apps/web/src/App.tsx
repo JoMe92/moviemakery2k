@@ -47,6 +47,7 @@ export function App() {
   const collection = useAppStore((s) => s.collection);
   const setCollection = useAppStore((s) => s.setCollection);
   const collectionVisible = useAppStore((s) => s.collectionVisible);
+  const toggleCollectionVisible = useAppStore((s) => s.toggleCollectionVisible);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
   const timelineView = useAppStore((s) => s.timelineView);
@@ -118,6 +119,8 @@ export function App() {
             collections={collections}
             collection={collection}
             onCollectionChange={(id) => setCollection(id as CollectionId)}
+            collectionVisible={collectionVisible}
+            onToggleCollection={toggleCollectionVisible}
           />
         }
         taskPane={medium ? undefined : <TaskPane groups={taskGroups} />}

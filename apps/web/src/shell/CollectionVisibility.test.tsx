@@ -1,16 +1,15 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 /*
- * The hideable collection pane of the wide and medium layouts (app-shell
- * design.md D3, D5). The toolbar toggle itself is covered by
- * Toolbar.test.tsx; here the store drives the state so the layout effect is
- * tested on its own.
+ * The toolbar toggle "Collections" and the hideable collection pane of the
+ * wide and medium layouts (app-shell design.md D1, D2, D3, D5).
  */
 
-async function setup(mode: "wide" | "medium") {
+async function setup(mode: "wide" | "medium" | "compact") {
   mockLayout(mode);
   const view = renderApp();
   await act(() => view.ready);
@@ -78,5 +77,77 @@ describe("hiding the collection pane", () => {
     const fresh = await setup("wide");
     expect(collection()).toBeInTheDocument();
     expect(fresh.store.getState().collectionVisible).toBe(true);
+  });
+});
+
+const toggle = () => screen.getByRole("button", { name: "Sammlungen" });
+
+describe("the toolbar toggle “Collections”", () => {
+  it("sits in the toolbar left of the picker and starts pressed", async () => {
+    await setup("wide");
+    const toolbar = screen.getByRole("toolbar", { name: "Symbolleiste" });
+    const button = within(toolbar).getByRole("button", { name: "Sammlungen" });
+    const picker = within(toolbar).getByRole("combobox", { name: "Sammlungen:" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    // Document order: the toggle comes first.
+    expect(button.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("hides and shows the pane by mouse, keeping its name and tracking aria-pressed", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup("wide");
+
+    await user.click(toggle());
+    expect(store.getState().collectionVisible).toBe(false);
+    expect(collection()).toBeNull();
+    // Same accessible name in both states (design.md D1).
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle());
+    expect(collection()).toBeInTheDocument();
+    expect(toggle()).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("is reachable and operable by keyboard", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup("wide");
+    act(() => toggle().focus());
+    expect(toggle()).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(store.getState().collectionVisible).toBe(false);
+    await user.keyboard(" ");
+    expect(store.getState().collectionVisible).toBe(true);
+    // The keyboard never loses the button, even while the pane is away.
+    expect(toggle()).toHaveFocus();
+  });
+
+  it("works in the medium layout as well", async () => {
+    const user = userEvent.setup();
+    await setup("medium");
+    await user.click(toggle());
+    expect(collection()).toBeNull();
+    expect(toggle()).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("is named “Collections” in English", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup("wide");
+    act(() => store.getState().setLocale("en"));
+
+    const button = screen.getByRole("button", { name: "Collections" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    await user.click(button);
+    expect(screen.getByRole("button", { name: "Collections" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    expect(screen.queryByRole("region", { name: "Collection: My Pictures" })).toBeNull();
+  });
+
+  it("is absent in the compact layout, which has no toolbar", async () => {
+    await setup("compact");
+    expect(screen.queryByRole("toolbar", { name: "Symbolleiste" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sammlungen" })).toBeNull();
   });
 });

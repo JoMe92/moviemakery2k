@@ -21,6 +21,7 @@ export const de = {
     windowTitle: "{app} – Unbenanntes Projekt",
     taskPane: "Filmaufgaben",
     toolbar: "Symbolleiste",
+    toggleCollections: "Sammlungen",
     collections: "Sammlungen:",
     collection: "Sammlung: {name}",
     collectionPrefix: "Sammlung:",
