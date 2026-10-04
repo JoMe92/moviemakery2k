@@ -121,6 +121,8 @@ export function MusicClipBlock({
         onPointerMove={longPress.onPointerMove}
         onPointerUp={longPress.onPointerUp}
         onPointerCancel={longPress.onPointerCancel}
+        onTouchMove={longPress.onTouchMove}
+        onTouchEnd={longPress.onTouchEnd}
         className={styles.block}
         style={{ width: `${width}px` }}
         aria-pressed={selected}

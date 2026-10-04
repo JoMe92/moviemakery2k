@@ -146,6 +146,8 @@ export function SlideTile({
         onPointerMove={longPress.onPointerMove}
         onPointerUp={longPress.onPointerUp}
         onPointerCancel={longPress.onPointerCancel}
+        onTouchMove={longPress.onTouchMove}
+        onTouchEnd={longPress.onTouchEnd}
         className={styles.tile}
         aria-pressed={selected}
         aria-current={playing ? "true" : undefined}
