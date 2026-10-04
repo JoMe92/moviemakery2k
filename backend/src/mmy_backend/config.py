@@ -34,6 +34,10 @@ class Settings:
         return self.catalog_dir / "transitions.json"
 
     @property
+    def effect_catalog_file(self) -> Path:
+        return self.catalog_dir / "effects.json"
+
+    @property
     def title_catalog_file(self) -> Path:
         return self.catalog_dir / "titles.json"
 

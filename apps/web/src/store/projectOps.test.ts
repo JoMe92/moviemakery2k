@@ -13,6 +13,7 @@ const s = (id: string, t: string | null = null): Slide => ({
   id,
   mediaId: `m${id}`,
   duration: 5,
+  effectId: null,
   transitionIn: t ? { transitionId: t, duration: 1.25 } : null,
 });
 const ids = (slides: Slide[]) => slides.map((x) => x.id);

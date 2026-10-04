@@ -132,9 +132,22 @@
   border: 1px dashed var(--y2k-edge-dark);
   border-radius: var(--y2k-radius);
   background: var(--y2k-face-light);
+  color: var(--y2k-text-muted);
   cursor: default;
-  opacity: 0.6;
-  filter: grayscale(1);
+}
+
+/* An effect is set on this element (add-effects-catalog D4). */
+.effect[data-filled="true"] {
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-select-soft);
+  color: var(--y2k-text);
+}
+
+/* Highlight while an effect is dragged over the slot. */
+.effect[data-drop="true"] {
+  border: 2px solid var(--y2k-select);
+  background: var(--y2k-select-soft);
+  color: var(--y2k-text);
 }
 
 /* Transition slot between two tiles. */

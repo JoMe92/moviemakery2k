@@ -14,6 +14,7 @@ const slide = (id: string, duration = 5): Slide => ({
   id,
   mediaId: "a",
   duration,
+  effectId: null,
   transitionIn: null,
 });
 
@@ -39,7 +40,7 @@ function setup(project: Partial<Project> = {}, media: MediaItem[] = MEDIA) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
     getProject: vi.fn(async () => ({
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       slides: project.slides ?? [],
       music: project.music ?? [],
     })),

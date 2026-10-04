@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import type {
   AppApi,
   AudioItem,
+  Effect,
   ExportJob,
   ImageItem,
   Project,
@@ -71,6 +72,23 @@ export const CATALOG: Transition[] = [
   },
 ];
 
+export const EFFECT_CATALOG: Effect[] = [
+  {
+    id: "sepia",
+    names: { de: "Sepia", en: "Sepia" },
+    shader: "sepia.glsl",
+    params: {},
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+  {
+    id: "negative",
+    names: { de: "Negativ", en: "Negative" },
+    shader: "negative.glsl",
+    params: {},
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+];
+
 export function exportJob(overrides: Partial<ExportJob> = {}): ExportJob {
   return {
     id: "job1",
@@ -92,14 +110,15 @@ export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Proj
     saved,
     health: vi.fn(async () => ({ status: "ok" as const, ffmpeg: "9.0" })),
     catalog: vi.fn(async () => CATALOG),
+    effectCatalog: vi.fn(async () => EFFECT_CATALOG),
     listMedia: vi.fn(async () => [mediaItem("a"), mediaItem("b")]),
     uploadMedia: vi.fn(async (file: File) => ({
       ok: true as const,
       filename: file.name,
       item: mediaItem(file.name),
     })),
-    deleteMedia: vi.fn(async () => ({ schemaVersion: 3 as const, slides: [], music: [] })),
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides: [], music: [] })),
+    deleteMedia: vi.fn(async () => ({ schemaVersion: 4 as const, slides: [], music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides: [], music: [] })),
     putProject: vi.fn(async (p: Project) => {
       saved.push(structuredClone(p));
       return p;

@@ -5,7 +5,7 @@ unabhängig von den anderen archiviert.
 
 ## 1. Datenmodell
 
-- [ ] TASK-API-019 Slide-Datenmodell Version 4: `effectId` (Katalog-ID oder
+- [x] TASK-API-019 Slide-Datenmodell Version 4: `effectId` (Katalog-ID oder
   `null`) auf jedem Element, Validierung gegen den Effekt-Katalog, Migration
   von Version 3 (`effectId: null`), `gen-api` (design.md D3). Erledigt, wenn
   pytest die Migration, die Ablehnung einer unbekannten Effekt-ID und ein
@@ -36,7 +36,7 @@ unabhängig von den anderen archiviert.
   Erledigt, wenn ein Test die Gesamtzahl (22) und die Abwesenheit der
   zeitabhängigen und Geschwindigkeits-Effekte (Fade/Ease/Hue Cycle/Speed)
   prüft.
-- [ ] TASK-WEB-065 Effekt-Platz und Sammlung „Videoeffekte“: Ziehen aus der
+- [x] TASK-WEB-065 Effekt-Platz und Sammlung „Videoeffekte“: Ziehen aus der
   neuen Sammlung auf den Kachel-Effekt-Platz, Kontextmenü „Keinen Effekt“,
   Effekt-Symbol auf der Kachel, Aufgabenbereich-Eintrag „Videoeffekte
   anzeigen“ aktiv, Sammlung mit Doppelklick-Demo am Beispielbild (nach
@@ -46,7 +46,7 @@ unabhängig von den anderen archiviert.
 
 ## 4. Abschluss
 
-- [ ] TASK-INFRA-022 E2E und Doku: Playwright-Smoke erweitert um Effekt auf
+- [x] TASK-INFRA-022 E2E und Doku: Playwright-Smoke erweitert um Effekt auf
   ein Element setzen → Vorschau zeigt ihn → Export enthält denselben Effekt
   an dieser Stelle; README/CHANGELOG „Unreleased“ (nach TASK-WEB-065).
   Erledigt, wenn `pixi run test-e2e` grün ist.

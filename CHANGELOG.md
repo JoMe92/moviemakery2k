@@ -6,6 +6,29 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **21 video effects** (OpenSpec change `add-effects-catalog`): a second
+  catalog beside the transitions — Sepia, Negative, Posterize, Threshold,
+  Grayscale, Brightness up/down, Blur, Pixelate, Film Age (Old/Older/Oldest),
+  Film Grain, Charcoal, Pen and Ink, Watercolor, Mirror horizontal/vertical
+  and Rotate 90°/180°/270°, each with its own GLSL shader and documented
+  source. The effect slot reserved on every storyboard tile is now active:
+  drag an effect from the new *Video Effects* collection onto it (one effect
+  per element), *No Effect* in the context menu or Delete removes it, and a
+  double-click in the collection demonstrates the effect on the sample
+  picture. The effect runs as one extra single-texture rendering pass before
+  the existing still/transition pass, from the same shader files in the
+  preview and in the export, so the exported movie carries the same effect at
+  the same spot.
+- **BREAKING (API):** project **schema version 4**: every element (picture and
+  video clip alike) carries a required, nullable `effectId` (an ID from the
+  effect catalog). A stored version-3 project is migrated on read (every
+  element gets `effectId: null`) and written at version 4 on the next save;
+  `PUT /api/project` accepts version 4 only and rejects an unknown effect ID
+  as `project.slide.unknownEffect`. `GET /api/catalog/effects` serves the new
+  catalog, validated at startup like the transition catalog.
+
 ## [0.2.1] – 2026-10-04
 
 ### Fixed

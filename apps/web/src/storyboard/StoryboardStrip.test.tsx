@@ -11,6 +11,7 @@ const slide = (id: string, mediaId: string, duration = 5, t: string | null = nul
   id,
   mediaId,
   duration,
+  effectId: null,
   transitionIn: t ? { transitionId: t, duration: 1.25 } : null,
 });
 
@@ -20,6 +21,7 @@ const videoSlide = (id: string, mediaId: string, trimIn = 0, trimOut = 10): Slid
   mediaId,
   trimIn,
   trimOut,
+  effectId: null,
   transitionIn: null,
 });
 
@@ -30,7 +32,7 @@ function durationAt(slides: readonly Slide[], index: number): number | undefined
 
 async function setup(slides: Slide[]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -40,7 +42,7 @@ async function setup(slides: Slide[]) {
 async function setupWithMedia(slides: Slide[], media: MediaItem[]) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -116,7 +118,7 @@ describe("Storyboard", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows tiles with number, duration, thumbnail, disabled effect slot and transition slots", async () => {
+  it("shows tiles with number, duration, thumbnail, effect slot and transition slots", async () => {
     await setup([slide("s1", "a"), slide("s2", "b", 2.5, "circle"), slide("s3", "a", 0.75)]);
     expect(tileLabels()).toEqual([
       "Bild 1: a.jpg, 5,00 s",
@@ -128,9 +130,10 @@ describe("Storyboard", () => {
     expect(second).toHaveTextContent("2,50 s");
     expect(second.querySelector("img")).toHaveAttribute("src", "/api/media/b/thumbnail");
 
-    const effect = within(strip()).getByRole("button", { name: "Effekt-Platz für Bild 2" });
-    expect(effect).toHaveAttribute("aria-disabled", "true");
-    expect(effect).toHaveAttribute("title", "Videoeffekte folgen später");
+    const effect = within(strip()).getByRole("button", {
+      name: "Effekt-Platz für Bild 2: kein Effekt",
+    });
+    expect(effect).toHaveAttribute("data-filled", "false");
 
     // Transition slots only between tiles; the transition belongs to the target picture.
     expect(within(strip()).queryByRole("button", { name: /^Übergang vor Bild 1/ })).toBeNull();

@@ -6,10 +6,24 @@ import { renderApp } from "../test/renderApp";
 import { NOTICE_DURATION } from "./StatusNotices";
 
 const project = {
-  schemaVersion: 3 as const,
+  schemaVersion: 4 as const,
   slides: [
-    { kind: "image" as const, id: "s1", mediaId: "a", duration: 3, transitionIn: null },
-    { kind: "image" as const, id: "s2", mediaId: "b", duration: 3, transitionIn: null },
+    {
+      kind: "image" as const,
+      id: "s1",
+      mediaId: "a",
+      duration: 3,
+      effectId: null,
+      transitionIn: null,
+    },
+    {
+      kind: "image" as const,
+      id: "s2",
+      mediaId: "b",
+      duration: 3,
+      effectId: null,
+      transitionIn: null,
+    },
   ],
   music: [],
 };

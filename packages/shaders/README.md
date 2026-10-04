@@ -57,9 +57,36 @@ freestanding title element) or alpha-blended over the already-drawn frame
 (an overlay title) is controlled by `gl.BLEND` state at draw time, not by
 this shader (design.md D2).
 
+## Effect shader contract
+
+An effect (`add-effects-catalog`, design.md D1/D2) is the same kind of
+program, but with **one** input texture and no `progress` — a stateless,
+single-image filter (sepia, negative, mirror, rotate, …), run as an extra
+pass before the existing still/transition pass. A file `effects/<id>.glsl`
+contains **only**:
+
+```glsl
+uniform float <param>;   // one per entry in the catalog's params, same name
+vec4 effect(vec2 uv) { … }
+```
+
+The renderer assembles the program as `effect-prelude.glsl` +
+`effects/<id>.glsl` + `effect-epilogue.glsl`, plus the shared `vertex.glsl`.
+
+| Provided | Meaning |
+|---|---|
+| `getColor(uv)` | The image (frame space, already letterboxed to 4:3) |
+| `uniform vec2 resolution` | Output size in pixels |
+| `uv` | 0…1, origin at the bottom left |
+
+An element without an effect skips this pass entirely (no copy — identical
+pixels to before this change). Same rules as transitions otherwise: no
+runtime randomness beyond deterministic integer hashes, sizes relative to a
+640 px width.
+
 ## Checks
 
-`pixi run check-shaders` assembles every transition program, validates it
-with `glslangValidator` (ES 3.00) and cross-checks the parameters against
-the catalog; it also compiles the title vertex/fragment shaders on their
-own. The task is part of `pixi run check`.
+`pixi run check-shaders` assembles every transition and effect program,
+validates it with `glslangValidator` (ES 3.00) and cross-checks the
+parameters against the respective catalog; it also compiles the title
+vertex/fragment shaders on their own. The task is part of `pixi run check`.

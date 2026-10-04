@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { EffectCollection } from "./effects/EffectCollection";
 import { SaveMovieWizardFromStore } from "./export/SaveMovieWizard";
 import { useT } from "./i18n/useT";
 import { CollectionSheet } from "./media/CollectionSheet";
@@ -30,7 +31,13 @@ import { StoryboardStrip } from "./storyboard/StoryboardStrip";
 import { TimelineView } from "./storyboard/TimelineView";
 import { TransitionCollection } from "./transitions/TransitionCollection";
 
-const COLLECTION_IDS: readonly CollectionId[] = ["media", "music", "video", "transitions"];
+const COLLECTION_IDS: readonly CollectionId[] = [
+  "media",
+  "music",
+  "video",
+  "transitions",
+  "effects",
+];
 
 /*
  * Composes the main window. State lives in the app store (store/appStore.ts),
@@ -117,6 +124,8 @@ export function App() {
           <LibraryPane name={collectionName}>
             {collection === "transitions" ? (
               <TransitionCollection />
+            ) : collection === "effects" ? (
+              <EffectCollection />
             ) : (
               <MediaCollection
                 key={collection}

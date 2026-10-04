@@ -138,12 +138,12 @@ describe("appStore", () => {
     });
     const api = mockApi({
       getProject: vi.fn(async () => ({
-        schemaVersion: 3 as const,
+        schemaVersion: 4 as const,
         slides: [],
         music: [clip("m1", "x"), clip("m2", "y")],
       })),
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 3 as const,
+        schemaVersion: 4 as const,
         slides: [],
         music: [clip("m2", "y")],
       })),
@@ -162,7 +162,7 @@ describe("appStore", () => {
     store.getState().newProject();
     await store.getState().flushSave();
     expect(store.getState().music).toEqual([]);
-    expect(api.saved.at(-1)).toEqual({ schemaVersion: 3, slides: [], music: [] });
+    expect(api.saved.at(-1)).toEqual({ schemaVersion: 4, slides: [], music: [] });
   });
 
   it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
@@ -258,6 +258,33 @@ describe("appStore", () => {
 
     st().removeTransition(second);
     expect(tIn()).toBeNull();
+  });
+
+  it("effects: set, replace, remove, undo, and save with the project (TASK-WEB-065)", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = () => store.getState();
+    st().addSlide("a");
+    const first = st().slides[0]?.id ?? "";
+    const effectOf = () => st().slides[0]?.effectId;
+
+    expect(effectOf()).toBeNull();
+    st().setEffect(first, "sepia");
+    expect(effectOf()).toBe("sepia");
+    // One effect per element: setting another one replaces it.
+    st().setEffect(first, "negative");
+    expect(effectOf()).toBe("negative");
+    // "Keinen Effekt".
+    st().setEffect(first, null);
+    expect(effectOf()).toBeNull();
+    // Each step is its own undo step.
+    st().undo();
+    expect(effectOf()).toBe("negative");
+
+    st().setEffect(first, "sepia");
+    await st().flushSave();
+    expect(api.saved.at(-1)?.slides[0]?.effectId).toBe("sepia");
   });
 
   describe("history (undo/redo, spec edit-commands)", () => {
@@ -389,7 +416,7 @@ describe("appStore", () => {
       st().copy();
       expect(st().clipboard).toEqual({
         kind: "slide",
-        content: { kind: "image", mediaId: "a", duration: 5 },
+        content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
       });
       // The original is still there and still selected.
       expect(st().slides.map((s) => s.id)).toEqual([first, second]);
@@ -423,7 +450,7 @@ describe("appStore", () => {
       expect(st().selection).toBeNull();
       expect(st().clipboard).toEqual({
         kind: "slide",
-        content: { kind: "image", mediaId: "a", duration: 5 },
+        content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
       });
       // Exactly one more undo step for the whole cut (not two for copy+remove).
       expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
@@ -555,15 +582,23 @@ describe("appStore", () => {
       const store = createAppStore(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 3 as const,
+            schemaVersion: 4 as const,
             music: [],
             slides: [
-              { kind: "image" as const, id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+              {
+                kind: "image" as const,
+                id: "s1",
+                mediaId: "a",
+                duration: 5,
+                effectId: null,
+                transitionIn: null,
+              },
               {
                 kind: "image" as const,
                 id: "s2",
                 mediaId: "b",
                 duration: 5,
+                effectId: null,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
               {
@@ -571,6 +606,7 @@ describe("appStore", () => {
                 id: "s3",
                 mediaId: "a",
                 duration: 5,
+                effectId: null,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
             ],

@@ -38,6 +38,7 @@ export const de = {
     music: "Meine Musik",
     video: "Meine Videos",
     transitions: "Videoübergänge",
+    effects: "Videoeffekte",
   },
   menu: {
     bar: "Menüleiste",
@@ -218,7 +219,8 @@ export const de = {
     slide: "Bild {number}: {name}, {duration}",
     slideMenu: "Bild {number} des Storyboards",
     effectSlot: "Effekt-Platz für Bild {number}",
-    effectsLater: "Videoeffekte folgen später",
+    noEffect: "kein Effekt",
+    removeEffect: "Keinen Effekt",
     transitionBefore: "Übergang vor Bild {number}",
     noTransition: "keiner (harter Schnitt)",
     remove: "Entfernen",
@@ -254,11 +256,13 @@ export const de = {
     overMusic: "Über der Musikleiste.",
     element: "Element",
     transition: "Übergang „{name}“",
+    effect: "Effekt „{name}“",
     picture: "Bild „{name}“",
     video: "Video „{name}“",
     pickedUp:
       "{item} aufgenommen. Pfeiltasten bewegen, Eingabe- oder Leertaste legt ab, Escape bricht ab.",
     overSlot: "Über dem Übergangsplatz vor Bild {number}.",
+    overEffectSlot: "Über dem Effekt-Platz von Bild {number}.",
     overStoryboard: "Über dem Storyboard.",
     outside: "Außerhalb des Storyboards.",
     dropped: "{item} abgelegt.",
@@ -327,6 +331,11 @@ export const de = {
     unavailable: "Der Übergangskatalog ist nicht verfügbar.",
     list: "Übergänge",
     draggable: "ziehbarer Übergang",
+  },
+  effects: {
+    unavailable: "Der Effektkatalog ist nicht verfügbar.",
+    list: "Effekte",
+    draggable: "ziehbarer Effekt",
   },
   player: {
     seek: "Suchleiste",
@@ -464,6 +473,7 @@ export const de = {
         firstHasTransition:
           "Bild {slide} (ID „{slideId}“): Das erste Bild kann keinen eingehenden Übergang haben.",
         unknownTransition: "Bild {slide} (ID „{slideId}“): unbekannter Übergang „{transitionId}“.",
+        unknownEffect: "Bild {slide} (ID „{slideId}“): unbekannter Effekt „{effectId}“.",
         notImage: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Bild.",
         notVideo: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Video.",
         trimOutBeyondFile:

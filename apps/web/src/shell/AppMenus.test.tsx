@@ -67,7 +67,7 @@ describe("Menu bar", () => {
     await user.keyboard("{Control>}c{/Control}");
     expect(store.getState().clipboard).toEqual({
       kind: "slide",
-      content: { kind: "image", mediaId: "a", duration: 5 },
+      content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
     });
 
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));

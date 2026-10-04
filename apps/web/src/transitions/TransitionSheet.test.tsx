@@ -11,13 +11,14 @@ const slide = (id: string, mediaId: string, t: string | null = null, d = 1.25): 
   id,
   mediaId,
   duration: 5,
+  effectId: null,
   transitionIn: t ? { transitionId: t, duration: d } : null,
 });
 
 async function setup(slides: Slide[], locale: "de" | "en" = "de") {
   mockLayout("compact");
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);

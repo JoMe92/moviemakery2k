@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from mmy_backend.access import AccessTokenMiddleware
 from mmy_backend.api import router
-from mmy_backend.catalog import load_catalog
+from mmy_backend.catalog import load_catalog, load_effect_catalog
 from mmy_backend.config import Settings
 from mmy_backend.exports import ExportManager
 from mmy_backend.media import MediaStore
@@ -23,8 +23,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     catalog = load_catalog(settings.catalog_file)
     title_catalog = load_title_catalog(settings.title_catalog_file)
+    effect_catalog = load_effect_catalog(settings.effect_catalog_file)
     media = MediaStore(settings.data_dir)
-    exports = ExportManager(settings.data_dir, media, catalog, settings.shaders_dir)
+    exports = ExportManager(settings.data_dir, media, catalog, settings.shaders_dir, effect_catalog)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -41,6 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.catalog = catalog
     app.state.title_catalog = title_catalog
+    app.state.effect_catalog = effect_catalog
     app.state.media = media
     app.state.project = ProjectStore(settings.data_dir)
     app.state.exports = exports

@@ -404,6 +404,7 @@ def _music_project(
             "id": f"s{i}",
             "mediaId": media_id,
             "duration": 1.0,
+            "effectId": None,
             "transitionIn": None if i == 0 else {"transitionId": "fade", "duration": 0.5},
         }
         for i, media_id in enumerate(images)
@@ -419,7 +420,7 @@ def _music_project(
             "fadeOut": False,
         }
     ]
-    project = {"schemaVersion": 3, "slides": slides, "music": clips if music else []}
+    project = {"schemaVersion": 4, "slides": slides, "music": clips if music else []}
     res = client.put("/api/project", json=project)
     assert res.status_code == 200, res.text
     return images, audio

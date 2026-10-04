@@ -3,7 +3,13 @@ import { useT } from "../i18n/useT";
 import { HAVE_METADATA } from "../player/controls";
 import type { Frame } from "../timeline/timeline";
 import styles from "./PreviewCanvas.module.css";
-import { type FrameTexture, type ImageSource, Renderer, WebGL2UnsupportedError } from "./Renderer";
+import {
+  type EffectSpec,
+  type FrameTexture,
+  type ImageSource,
+  Renderer,
+  WebGL2UnsupportedError,
+} from "./Renderer";
 import { transitionSources } from "./shaderSource";
 
 export interface PreviewCanvasProps {
@@ -12,6 +18,11 @@ export interface PreviewCanvasProps {
   images: (slideIndex: number) => ImageSource | undefined;
   /** Catalog parameters of a transition (`uniform float <name>`). */
   params: (transitionId: string) => Readonly<Record<string, number>>;
+  /**
+   * Effect of the filmstrip element (add-effects-catalog design.md D2/D4), or
+   * null without one. Omitted entirely = no element carries an effect.
+   */
+  effects?: (slideIndex: number) => EffectSpec | null;
 }
 
 /** This many frame textures are kept between draws (most recently used). */
@@ -73,10 +84,11 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
     const { width, height } = sizeRef.current;
     // Capped buffer: ×2 at most, 1920 px wide at most (add-mobile-layout D14).
     renderer.resize(width, height, window.devicePixelRatio || 1, true);
-    const { frame, images, params } = propsRef.current;
+    const { frame, images, params, effects } = propsRef.current;
+    const effectOf = (index: number) => effects?.(index) ?? null;
     if (frame.kind === "still") {
       const tex = textureFor(renderer, images(frame.slideIndex));
-      if (tex) renderer.drawStill(tex);
+      if (tex) renderer.drawStill(tex, effectOf(frame.slideIndex));
       else renderer.drawEmpty();
       return;
     }
@@ -90,9 +102,13 @@ export function PreviewCanvas(props: PreviewCanvasProps) {
           frame.transitionId,
           frame.progress,
           params(frame.transitionId),
+          effectOf(frame.fromIndex),
+          effectOf(frame.toIndex),
         );
-      } else if (from || to) {
-        renderer.drawStill((from ?? to) as FrameTexture);
+      } else if (from) {
+        renderer.drawStill(from, effectOf(frame.fromIndex));
+      } else if (to) {
+        renderer.drawStill(to, effectOf(frame.toIndex));
       } else {
         renderer.drawEmpty();
       }

@@ -19,7 +19,9 @@ export type DragItem =
   | { type: "slide"; slideId: string }
   /** Clip on the music track. */
   | { type: "music"; clipId: string }
-  | { type: "transition"; transitionId: string };
+  | { type: "transition"; transitionId: string }
+  /** Effect from "Video Effects" (add-effects-catalog D4). */
+  | { type: "effect"; effectId: string };
 
 /** Target under the pointer: a tile (with side) or the empty storyboard. */
 export type DropTarget =
@@ -27,6 +29,8 @@ export type DropTarget =
   | { type: "strip" }
   /** Transition slot before the item `slideId` (only for transitions from the catalog). */
   | { type: "transitionSlot"; slideId: string }
+  /** Effect slot of the item `slideId` (only for effects from the catalog). */
+  | { type: "effectSlot"; slideId: string }
   /** A clip on the music track (with side) or the music track itself. */
   | { type: "musicClip"; clipId: string; after: boolean }
   | { type: "musicStrip" };
@@ -38,6 +42,7 @@ export type DropAction =
   | { kind: "insert"; mediaId: string; index: number }
   | { kind: "move"; from: number; to: number }
   | { kind: "setTransition"; slideId: string; transitionId: string }
+  | { kind: "setEffect"; slideId: string; effectId: string }
   | { kind: "insertMusic"; mediaId: string; index: number }
   | { kind: "moveMusic"; from: number; to: number }
   | { kind: "reject"; reason: DropRejection }
@@ -48,12 +53,17 @@ export const mediaDraggableId = (mediaId: string) => `media:${mediaId}`;
 export const videoDraggableId = (mediaId: string) => `video:${mediaId}`;
 export const transitionDraggableId = (transitionId: string) => `transition:${transitionId}`;
 export const transitionSlotId = (slideId: string) => `slot:${slideId}`;
+export const effectDraggableId = (effectId: string) => `effect:${effectId}`;
+export const effectSlotId = (slideId: string) => `effect-slot:${slideId}`;
 export const MUSIC_DROPPABLE_ID = "music-strip";
 export const audioDraggableId = (mediaId: string) => `audio:${mediaId}`;
 export const musicClipSortableId = (clipId: string) => `music:${clipId}`;
 
 const isStoryboardTarget = (target: DropTarget) =>
-  target.type === "slide" || target.type === "strip" || target.type === "transitionSlot";
+  target.type === "slide" ||
+  target.type === "strip" ||
+  target.type === "transitionSlot" ||
+  target.type === "effectSlot";
 const isMusicTarget = (
   target: DropTarget,
 ): target is Extract<DropTarget, { type: "musicClip" | "musicStrip" }> =>
@@ -87,6 +97,8 @@ export function insertionIndex(target: DropTarget | null, slides: readonly Slide
  * the index of the tile it is dropped on; empty area → to the end).
  * Transition from the catalog → set on a transition slot (replaces an
  * existing one); the first item has no slot.
+ * Effect from the catalog → set on an effect slot (replaces an existing one);
+ * every item has one (add-effects-catalog D4).
  * Audio from the collection → insert on the music track; a clip on the music
  * track → reorder there (same semantics as tiles). Audio on the storyboard and
  * pictures on the music track are refused with a reason for the hint.
@@ -127,7 +139,13 @@ export function resolveDrop(
       ? { kind: "setTransition", slideId: target.slideId, transitionId: item.transitionId }
       : { kind: "none" };
   }
-  if (target.type === "transitionSlot") return { kind: "none" };
+  if (item.type === "effect") {
+    if (target.type !== "effectSlot") return { kind: "none" };
+    return slides.some((s) => s.id === target.slideId)
+      ? { kind: "setEffect", slideId: target.slideId, effectId: item.effectId }
+      : { kind: "none" };
+  }
+  if (target.type === "transitionSlot" || target.type === "effectSlot") return { kind: "none" };
   if (item.type === "media" || item.type === "video") {
     const index = insertionIndex(target, slides);
     return index === null ? { kind: "none" } : { kind: "insert", mediaId: item.mediaId, index };

@@ -8,12 +8,13 @@ import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slides: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null },
+  { kind: "image", id: "s1", mediaId: "a", duration: 3, effectId: null, transitionIn: null },
   {
     kind: "image",
     id: "s2",
     mediaId: "b",
     duration: 4,
+    effectId: null,
     transitionIn: { transitionId: "fade", duration: 1.25 },
   },
   {
@@ -21,6 +22,7 @@ const slides: Slide[] = [
     id: "s3",
     mediaId: "c",
     duration: 5,
+    effectId: null,
     transitionIn: { transitionId: "circle", duration: 1.5 },
   },
 ];
@@ -45,7 +47,7 @@ async function setup(layout: "compact" | "wide" = "compact") {
       audioItem("song", 60),
       audioItem("tune", 30),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);
@@ -193,7 +195,7 @@ describe("action sheets (long press and ⋯)", () => {
       within(sheet)
         .getAllByRole("menuitem")
         .map((i) => i.textContent),
-    ).toEqual(["Entfernen", "Eigenschaften…"]);
+    ).toEqual(["Entfernen", "Keinen Effekt", "Eigenschaften…"]);
     await user.click(within(sheet).getByRole("menuitem", { name: "Entfernen" }));
     expect(store.getState().slides.map((s) => s.id)).toEqual(["s1", "s2"]);
     expect(screen.queryByRole("dialog")).toBeNull();

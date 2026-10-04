@@ -8,8 +8,17 @@ import { renderApp } from "../test/renderApp";
 const withSlides = () =>
   mockApi({
     getProject: vi.fn(async () => ({
-      schemaVersion: 3 as const,
-      slides: [{ kind: "image" as const, id: "s1", mediaId: "a", duration: 3, transitionIn: null }],
+      schemaVersion: 4 as const,
+      slides: [
+        {
+          kind: "image" as const,
+          id: "s1",
+          mediaId: "a",
+          duration: 3,
+          effectId: null,
+          transitionIn: null,
+        },
+      ],
       music: [],
     })),
   });

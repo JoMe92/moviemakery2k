@@ -18,11 +18,12 @@ import pytest
 from conftest import requires_gl
 from PIL import Image
 
-from mmy_backend.catalog import load_catalog
+from mmy_backend.catalog import EffectCatalog, load_catalog, load_effect_catalog
 from mmy_backend.config import DEFAULT_SHADERS_DIR, REPO_ROOT
 from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.media import MediaStore
-from mmy_backend.project import TransitionRef, VideoSlide
+from mmy_backend.project import ImageSlide, TransitionRef, VideoSlide
+from mmy_backend.render.effects import EffectLibrary, EffectSources
 from mmy_backend.render.frames import (
     FrameRenderer,
     VideoLoader,
@@ -404,7 +405,13 @@ def test_video_slide_decodes_frames_instead_of_a_static_image(
     video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
     project_slides = [
         VideoSlide(
-            kind="video", id="s0", media_id="v", trim_in=0.0, trim_out=2.0, transition_in=None
+            kind="video",
+            id="s0",
+            media_id="v",
+            trim_in=0.0,
+            trim_out=2.0,
+            effect_id=None,
+            transition_in=None,
         )
     ]
     timeline = build_timeline([TimelineSlide("s0", "v", 2.0, None)])
@@ -437,7 +444,13 @@ def test_transition_at_a_video_boundary_blends_decoded_frames(
     video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
     project_slides = [
         VideoSlide(
-            kind="video", id="s0", media_id="v", trim_in=0.0, trim_out=1.0, transition_in=None
+            kind="video",
+            id="s0",
+            media_id="v",
+            trim_in=0.0,
+            trim_out=1.0,
+            effect_id=None,
+            transition_in=None,
         ),
         VideoSlide(
             kind="video",
@@ -445,6 +458,7 @@ def test_transition_at_a_video_boundary_blends_decoded_frames(
             media_id="v",
             trim_in=1.0,
             trim_out=2.0,
+            effect_id=None,
             transition_in=TransitionRef(transition_id="fade", duration=0.5),
         ),
     ]
@@ -486,7 +500,13 @@ def test_trimmed_video_clip_exports_from_its_own_start_not_second_0(
     video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
     project_slides = [
         VideoSlide(
-            kind="video", id="s0", media_id="v", trim_in=1.0, trim_out=1.5, transition_in=None
+            kind="video",
+            id="s0",
+            media_id="v",
+            trim_in=1.0,
+            trim_out=1.5,
+            effect_id=None,
+            transition_in=None,
         )
     ]
     timeline = build_timeline([TimelineSlide("s0", "v", 0.5, None)])
@@ -504,3 +524,125 @@ def test_trimmed_video_clip_exports_from_its_own_start_not_second_0(
     assert len(frames) == 5  # 0.5 s at 10 fps
     assert all(count_near(data, BLUE) == W * H for data in frames)
     assert all(count_near(data, RED) == 0 for data in frames)
+
+
+# --- Effects in the export (add-effects-catalog design.md D2/D3) ---------------
+
+
+def _effect_project_slides(*effect_ids: str | None) -> list[ImageSlide]:
+    return [
+        ImageSlide(
+            kind="image",
+            id=f"s{i}",
+            media_id="red" if i == 0 else "blue",
+            duration=2.0,
+            effect_id=effect_id,
+            transition_in=TransitionRef(transition_id="fade", duration=1.0) if i > 0 else None,
+        )
+        for i, effect_id in enumerate(effect_ids)
+    ]
+
+
+@pytest.fixture
+def effect_catalog() -> EffectCatalog:
+    return load_effect_catalog(REPO_ROOT / "packages" / "catalog" / "effects.json")
+
+
+@requires_gl
+def test_still_without_an_effect_is_untouched_by_the_effect_pass(
+    ctx: moderngl.Context, library: ShaderLibrary, effect_catalog: EffectCatalog
+) -> None:
+    """Without an `effectId` the still stays the shader-free path (design.md D4)."""
+    loader = DictLoader({"red": solid((255, 0, 0)), "blue": solid((0, 0, 255))})
+    timeline = timeline_for("red", "blue")
+    effect_library = EffectLibrary(ctx, EffectSources(DEFAULT_SHADERS_DIR))
+    try:
+        with FrameRenderer(
+            ctx,
+            library,
+            W,
+            H,
+            loader,
+            project_slides=_effect_project_slides(None, None),
+            effect_library=effect_library,
+            effects=effect_catalog,
+        ) as renderer:
+            data = renderer.render(StillFrame(0), timeline, CATALOG)
+    finally:
+        effect_library.release()
+    assert count(data, RED) == W * H
+
+
+@requires_gl
+def test_still_with_an_effect_renders_it(
+    ctx: moderngl.Context, library: ShaderLibrary, effect_catalog: EffectCatalog
+) -> None:
+    """A pure red still with `negative` comes out cyan - the effect runs in the
+    export exactly as the preview's `drawStill` applies it."""
+    loader = DictLoader({"red": solid((255, 0, 0)), "blue": solid((0, 0, 255))})
+    timeline = timeline_for("red", "blue")
+    effect_library = EffectLibrary(ctx, EffectSources(DEFAULT_SHADERS_DIR))
+    try:
+        with FrameRenderer(
+            ctx,
+            library,
+            W,
+            H,
+            loader,
+            project_slides=_effect_project_slides("negative", None),
+            effect_library=effect_library,
+            effects=effect_catalog,
+        ) as renderer:
+            data = renderer.render(StillFrame(0), timeline, CATALOG)
+            # The element without an effect keeps its own colour.
+            plain = renderer.render(StillFrame(1), timeline, CATALOG)
+    finally:
+        effect_library.release()
+    assert count(data, (0, 255, 255, 255)) == W * H
+    assert count(plain, BLUE) == W * H
+
+
+@requires_gl
+def test_transition_applies_each_element_s_own_effect(
+    ctx: moderngl.Context, library: ShaderLibrary, effect_catalog: EffectCatalog
+) -> None:
+    """Both images of a transition can carry a different effect at once: at
+    `progress` 0 the frame is the `from` image's effect result, at 1 the `to`
+    image's (two intermediate textures, design.md D2)."""
+    loader = DictLoader({"red": solid((255, 0, 0)), "blue": solid((0, 0, 255))})
+    timeline = timeline_for("red", "blue")
+    effect_library = EffectLibrary(ctx, EffectSources(DEFAULT_SHADERS_DIR))
+    try:
+        with FrameRenderer(
+            ctx,
+            library,
+            W,
+            H,
+            loader,
+            project_slides=_effect_project_slides("negative", "grayscale"),
+            effect_library=effect_library,
+            effects=effect_catalog,
+        ) as renderer:
+            start = renderer.render(TransitionFrame(0, 1, "fade", 0.0), timeline, CATALOG)
+            end = renderer.render(TransitionFrame(0, 1, "fade", 1.0), timeline, CATALOG)
+    finally:
+        effect_library.release()
+    # negative(red) = cyan; grayscale(blue) = a grey, so R == G == B and not blue.
+    assert count(start, (0, 255, 255, 255)) == W * H
+    r, g, b, a = pixels(end)[0]
+    assert r == g == b and (r, g, b, a) != BLUE
+    assert count(end, (r, g, b, a)) == W * H
+
+
+@requires_gl
+def test_without_an_effect_catalog_the_effect_id_is_ignored(
+    ctx: moderngl.Context, library: ShaderLibrary
+) -> None:
+    """An export built without the effect catalog renders exactly as before."""
+    loader = DictLoader({"red": solid((255, 0, 0)), "blue": solid((0, 0, 255))})
+    timeline = timeline_for("red", "blue")
+    with FrameRenderer(
+        ctx, library, W, H, loader, project_slides=_effect_project_slides("negative", None)
+    ) as renderer:
+        data = renderer.render(StillFrame(0), timeline, CATALOG)
+    assert count(data, RED) == W * H
