@@ -10,6 +10,14 @@ export interface LongPressHandlers {
   onPointerMove: (event: PointerEvent<HTMLElement>) => void;
   onPointerUp: (event: PointerEvent<HTMLElement>) => void;
   onPointerCancel: (event: PointerEvent<HTMLElement>) => void;
+  /**
+   * Wraps the tile's native `onClick`: a touch/pen gesture already handled
+   * above (tap or long press) must not also run the native click that
+   * follows it on real hardware - canceling the pointer events doesn't
+   * reliably suppress it (mmy-edq), and a mouse click (which never reaches
+   * onPointerDown above) always runs it.
+   */
+  guardClick: (onClick: () => void) => void;
 }
 
 /**
@@ -24,18 +32,29 @@ export function useLongPress(
   {
     enabled = true,
     onArmed,
+    onTap,
     haptic = true,
   }: {
     enabled?: boolean;
     onArmed?: () => void;
+    /**
+     * A touch/pen pointer released before LONG_PRESS_MS without exceeding
+     * LONG_PRESS_TOLERANCE: a plain tap. Takes over the gesture from the
+     * native click, because on real hardware a tap's touchstart-to-touchend
+     * duration or jitter can cross either threshold and otherwise race or
+     * get silently dropped (mmy-edq). Only mouse pointers (ignored above)
+     * keep using the native click, via the returned `guardClick`.
+     */
+    onTap?: () => void;
     /** Vibrate when armed; off where the touch drag start vibrates already. */
     haptic?: boolean;
   } = {},
 ): LongPressHandlers {
   const state = useRef<{ x: number; y: number; id: number; armed: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const callbacks = useRef({ onLongPress, onArmed, haptic });
-  callbacks.current = { onLongPress, onArmed, haptic };
+  const suppressClick = useRef(false);
+  const callbacks = useRef({ onLongPress, onArmed, onTap, haptic });
+  callbacks.current = { onLongPress, onArmed, onTap, haptic };
 
   const clear = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -72,11 +91,23 @@ export function useLongPress(
       const s = state.current;
       clear();
       state.current = null;
-      if (s?.armed && s.id === event.pointerId) callbacks.current.onLongPress();
+      if (!s || s.id !== event.pointerId) return;
+      // The native click that follows on real hardware must not also fire:
+      // guardClick() below swallows it.
+      suppressClick.current = true;
+      if (s.armed) callbacks.current.onLongPress();
+      else callbacks.current.onTap?.();
     },
     onPointerCancel() {
       clear();
       state.current = null;
+    },
+    guardClick(onClick) {
+      if (suppressClick.current) {
+        suppressClick.current = false;
+        return;
+      }
+      onClick();
     },
   };
 }
