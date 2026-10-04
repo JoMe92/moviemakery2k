@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Startup against a media library from an older version**: 0.2.0 added the
+  required `videoUrl` to a video in `media.json` without a migration, so a
+  backend whose library already contained a video did not start at all — the
+  index failed validation inside `create_app()` and the process died with a
+  stack trace before serving a single request. Entries written by an older
+  version are now migrated on read: a missing `*Url` is rebuilt from the
+  entry's ID, which is where it came from in the first place. No media file
+  and no `media.json` is rewritten until the next import or delete. An index
+  that this cannot repair now names the file and the reason instead of raising
+  a raw validation error. The project's position on media-index versioning is
+  written down in [ADR 0003](docs/adr/0003-media-index-versioning.md).
+
 ## [0.2.0] – 2026-10-04
 
 MP4 export of the slideshow (OpenSpec change `add-movie-export`), a
