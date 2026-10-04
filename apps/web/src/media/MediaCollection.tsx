@@ -25,7 +25,7 @@ import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
 import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
-import { chain, useLongPress } from "../ui/useLongPress";
+import { chain, HOLD_MS, LONG_PRESS_MS, useLongPress } from "../ui/useLongPress";
 import styles from "./MediaCollection.module.css";
 import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
 
@@ -99,15 +99,35 @@ function tileAttributes(
 
 type PointerHandler = ((event: PointerEvent<HTMLElement>) => void) | undefined;
 
-/** Long press (picking mode) on top of the dnd-kit listeners. */
+/**
+ * Long press (picking mode) on top of the dnd-kit listeners. A tap picks the
+ * tile, so the press only becomes the action sheet after an unmistakable
+ * HOLD_MS hold (mmy-43e), and while it is armed the tile says so
+ * (`data-armed`) - the release is then no longer a coin toss between picking
+ * and a menu.
+ */
 function usePickingPointer(
   picking: boolean,
   onLongPress: () => void,
   onTap: () => void,
   listeners: Record<string, unknown> | undefined,
+  /**
+   * Hold the action sheet needs: HOLD_MS wherever a tap picks the tile, the
+   * plain LONG_PRESS_MS on a video tile, whose tap means nothing (videos
+   * cannot be added yet), so there is no ambiguity to resolve.
+   */
+  delay: number = HOLD_MS,
 ) {
-  const longPress = useLongPress(onLongPress, { enabled: picking, onTap });
+  const [armed, setArmed] = useState(false);
+  const longPress = useLongPress(onLongPress, {
+    enabled: picking,
+    delay,
+    onTap,
+    onArmed: () => setArmed(true),
+    onDisarmed: () => setArmed(false),
+  });
   return {
+    armed,
     pointer: {
       onPointerDown: chain(listeners?.onPointerDown as PointerHandler, longPress.onPointerDown),
       onPointerMove: longPress.onPointerMove,
@@ -141,7 +161,7 @@ function MediaTile({
     disabled: picking,
     attributes: { roleDescription: t("media.draggable") },
   });
-  const { pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
+  const { armed, pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
   // aria-pressed stays the tile selection (not the dnd-kit drag state).
   const dragAttributes = tileAttributes(attributes, picking);
   return (
@@ -154,6 +174,7 @@ function MediaTile({
       {...listeners}
       {...pointer}
       className={picking ? styles.pickable : undefined}
+      data-armed={armed || undefined}
       caption={item.filename}
       aria-label={item.filename}
       title={item.filename}
@@ -200,7 +221,7 @@ function AudioTile({
     disabled: picking,
     attributes: { roleDescription: t("media.audioDraggable") },
   });
-  const { pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
+  const { armed, pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, listeners);
   // aria-pressed stays the tile selection (not the dnd-kit drag state).
   const dragAttributes = tileAttributes(attributes, picking);
   return (
@@ -213,6 +234,7 @@ function AudioTile({
       {...listeners}
       {...pointer}
       className={picking ? styles.pickable : undefined}
+      data-armed={armed || undefined}
       selected={selected}
       caption={item.filename}
       aria-label={t("media.audioTile", { name: item.filename, duration })}
@@ -249,7 +271,13 @@ function VideoTile({
 }: TileHandlers & { item: VideoItem }) {
   const { t, locale } = useT();
   // Not draggable; in the collection sheet a long press offers Properties and Delete.
-  const { pointer, guardClick } = usePickingPointer(picking, onLongPress, onTap, undefined);
+  const { armed, pointer, guardClick } = usePickingPointer(
+    picking,
+    onLongPress,
+    onTap,
+    undefined,
+    LONG_PRESS_MS,
+  );
   const duration = formatClipDuration(locale, item.duration);
   return (
     <Tile
@@ -272,6 +300,7 @@ function VideoTile({
       }
       {...handlers}
       {...pointer}
+      data-armed={armed || undefined}
       onClick={() => guardClick(handlers.onClick)}
     />
   );

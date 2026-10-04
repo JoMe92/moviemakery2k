@@ -5,6 +5,19 @@ import { vibrate } from "./haptics";
 export const LONG_PRESS_MS = 400;
 export const LONG_PRESS_TOLERANCE = 8;
 
+/**
+ * Long press where a plain press has its own meaning and the press itself is
+ * the primary action - the collection sheet, where a tap picks the tile
+ * (design.md D7). A deliberate finger tap on a phone routinely lasts 400 to
+ * 700 ms (measured, mmy-43e), so at LONG_PRESS_MS such a tap was classified as
+ * a long press on release: it opened the tile's action sheet instead of picking
+ * the tile, and the storyboard stayed empty. Here the press must be an
+ * unmistakable hold, well past the longest deliberate tap, and the hook
+ * announces the arm (`onArmed`/`onDisarmed`) so the user sees what the release
+ * will do before lifting the finger.
+ */
+export const HOLD_MS = 1000;
+
 export interface LongPressHandlers {
   onPointerDown: (event: PointerEvent<HTMLElement>) => void;
   onPointerMove: (event: PointerEvent<HTMLElement>) => void;
@@ -22,23 +35,34 @@ export interface LongPressHandlers {
 
 /**
  * Detects a long press of a touch or pen pointer (the mouse has its right
- * click). The callback runs when the finger is lifted after at least 400 ms
- * without moving more than 8 px; a press that turns into a drag (movement
+ * click). The callback runs when the finger is lifted after at least `delay`
+ * ms without moving more than 8 px; a press that turns into a drag (movement
  * after the delay) or a cancel does nothing, so long press + drag stays free
- * for reordering.
+ * for reordering. `onArmed`/`onDisarmed` bracket the time in which the release
+ * would run `onLongPress` instead of `onTap`, so a caller whose tap has its
+ * own meaning can make that visible while the finger is still down.
  */
 export function useLongPress(
   onLongPress: () => void,
   {
     enabled = true,
+    delay = LONG_PRESS_MS,
     onArmed,
+    onDisarmed,
     onTap,
     haptic = true,
   }: {
     enabled?: boolean;
+    /** Hold needed for the long press; HOLD_MS where a tap means something. */
+    delay?: number;
     onArmed?: () => void;
     /**
-     * A touch/pen pointer released before LONG_PRESS_MS without exceeding
+     * An armed press ended (released, cancelled or turned into a drag): the
+     * counterpart of `onArmed` for a caller that shows the armed state.
+     */
+    onDisarmed?: () => void;
+    /**
+     * A touch/pen pointer released before `delay` without exceeding
      * LONG_PRESS_TOLERANCE: a plain tap. Takes over the gesture from the
      * native click, because on real hardware a tap's touchstart-to-touchend
      * duration or jitter can cross either threshold and otherwise race or
@@ -53,8 +77,8 @@ export function useLongPress(
   const state = useRef<{ x: number; y: number; id: number; armed: boolean } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
-  const callbacks = useRef({ onLongPress, onArmed, onTap, haptic });
-  callbacks.current = { onLongPress, onArmed, onTap, haptic };
+  const callbacks = useRef({ onLongPress, onArmed, onDisarmed, onTap, haptic });
+  callbacks.current = { onLongPress, onArmed, onDisarmed, onTap, haptic };
 
   const clear = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -77,7 +101,7 @@ export function useLongPress(
         state.current.armed = true;
         if (callbacks.current.haptic) vibrate("activate");
         callbacks.current.onArmed?.();
-      }, LONG_PRESS_MS);
+      }, delay);
     },
     onPointerMove(event) {
       const s = state.current;
@@ -85,12 +109,14 @@ export function useLongPress(
       if (Math.hypot(event.clientX - s.x, event.clientY - s.y) > LONG_PRESS_TOLERANCE) {
         clear();
         state.current = null;
+        if (s.armed) callbacks.current.onDisarmed?.();
       }
     },
     onPointerUp(event) {
       const s = state.current;
       clear();
       state.current = null;
+      if (s?.armed) callbacks.current.onDisarmed?.();
       if (!s || s.id !== event.pointerId) return;
       // The native click that follows on real hardware must not also fire:
       // guardClick() below swallows it.
@@ -99,8 +125,10 @@ export function useLongPress(
       else callbacks.current.onTap?.();
     },
     onPointerCancel() {
+      const s = state.current;
       clear();
       state.current = null;
+      if (s?.armed) callbacks.current.onDisarmed?.();
     },
     guardClick(onClick) {
       if (suppressClick.current) {

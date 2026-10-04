@@ -294,6 +294,98 @@ def test_pick_tap_registers_with_realistic_touch_timing(
     expect(strip.get_by_role("button", name=f"Bild 2: {names[1]}, 5,00 s")).to_be_visible()
 
 
+def pick_tile(page: Page, name: str) -> Locator:
+    """The collection sheet's tile for picture `name`."""
+    sheet = page.get_by_role("dialog", name="Sammlungen")
+    return sheet.get_by_role("list", name="Bilder").get_by_role("button", name=name)
+
+
+def tile_centre(tile: Locator) -> tuple[float, float]:
+    expect(tile).to_be_visible()
+    box = tile.bounding_box()
+    assert box is not None
+    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+
+@pytest.mark.parametrize("hold_ms", [120, 300, 450, 700])
+def test_pick_tap_survives_a_deliberate_hold(
+    open_device: Any, images: dict[str, Path], hold_ms: int
+) -> None:
+    """mmy-43e: a deliberate finger tap on a phone routinely lasts 400-700 ms.
+    Every one of those durations has to toggle the pick; none of them may be
+    reclassified as a long press on release and open the tile's action sheet
+    instead - that left the footer button at "(0)" and the storyboard empty.
+    Measured with real dispatched touch events, because `.tap()`/`.click()`
+    are instantaneous and pass even with the bug present."""
+    page = open_device("Pixel 7")
+    tap_import(page, "Bilder importieren", [images["rot.png"]])
+    cdp = page.context.new_cdp_session(page)
+    tile = pick_tile(page, "rot.png")
+    x, y = tile_centre(tile)
+    add = page.get_by_role("dialog", name="Sammlungen").get_by_role(
+        "button", name="Zum Bildstreifen hinzufügen (1)"
+    )
+
+    realistic_tap(cdp, x, y, hold_ms=hold_ms)
+    expect(tile).to_have_attribute("aria-pressed", "true")
+    expect(add).to_be_enabled()
+    expect(page.get_by_role("menuitem", name="Eigenschaften")).to_have_count(0)
+
+    # The same hold is also the way back out of the selection.
+    realistic_tap(cdp, x, y, hold_ms=hold_ms)
+    expect(tile).to_have_attribute("aria-pressed", "false")
+    expect(page.get_by_role("menuitem", name="Eigenschaften")).to_have_count(0)
+
+
+def test_long_held_tap_still_adds_to_the_storyboard(
+    open_device: Any, images: dict[str, Path]
+) -> None:
+    """mmy-43e, the user's report end to end ("Wenn ich da drauf klicke, bleibt
+    der Bildstreifen leer"): picking with a slow 700 ms tap and then tapping
+    the footer button puts the picture into the filmstrip."""
+    page = open_device("Pixel 7")
+    tap_import(page, "Bilder importieren", [images["blau.png"]])
+    cdp = page.context.new_cdp_session(page)
+    sheet = page.get_by_role("dialog", name="Sammlungen")
+    realistic_tap(cdp, *tile_centre(pick_tile(page, "blau.png")), hold_ms=700)
+    add = sheet.get_by_role("button", name="Zum Bildstreifen hinzufügen (1)")
+    realistic_tap(cdp, *tile_centre(add), hold_ms=700)
+    expect(sheet).to_be_hidden()
+    strip = page.get_by_role("list", name="Bildstreifen")
+    expect(strip.get_by_role("button", name="Bild 1: blau.png, 5,00 s")).to_be_visible()
+
+
+def test_a_real_hold_announces_itself_and_opens_the_tile_actions(
+    open_device: Any, images: dict[str, Path]
+) -> None:
+    """mmy-43e/design.md D7: the tile actions ("Eigenschaften", "Löschen") stay
+    reachable by holding the tile, but only for a hold no deliberate tap
+    reaches, and the tile marks itself armed while the finger is still down, so
+    the release is no longer ambiguous. Such a hold does not pick the tile."""
+    page = open_device("Pixel 7")
+    tap_import(page, "Bilder importieren", [images["gruen.png"]])
+    cdp = page.context.new_cdp_session(page)
+    tile = pick_tile(page, "gruen.png")
+    x, y = tile_centre(tile)
+
+    point = {"x": x, "y": y, "radiusX": 12, "radiusY": 12, "force": 1}
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [point]})
+    try:
+        # Armed while the finger is down - no menu yet, nothing picked yet.
+        expect(tile).to_have_attribute("data-armed", "true")
+        expect(page.get_by_role("menuitem", name="Eigenschaften")).to_have_count(0)
+        expect(tile).to_have_attribute("aria-pressed", "false")
+    finally:
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+    menu = page.get_by_role("menu", name="Bild „gruen.png“")
+    expect(menu.get_by_role("menuitem", name="Eigenschaften")).to_be_visible()
+    expect(menu.get_by_role("menuitem", name="Löschen")).to_be_visible()
+    expect(tile).to_have_attribute("aria-pressed", "false")
+    menu.get_by_role("menuitem", name="Eigenschaften").tap()
+    expect(page.get_by_role("dialog", name="Eigenschaften von „gruen.png“")).to_be_visible()
+
+
 def test_tablet_shows_monitor_and_collection_side_by_side(open_device: Any) -> None:
     page = open_device(TABLET)
     collection = page.get_by_role("region", name="Sammlung: Meine Bilder").bounding_box()
