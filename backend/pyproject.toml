@@ -1,6 +1,6 @@
 [project]
 name = "mmy-backend"
-version = "0.1.0"
+version = "0.2.0"
 description = "moviemakerY2K backend: media, transition catalog, project and FFmpeg export"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.13"
