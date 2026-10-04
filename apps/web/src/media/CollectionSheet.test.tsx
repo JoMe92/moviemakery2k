@@ -64,6 +64,7 @@ const slide = (id: string, mediaId: string): Slide => ({
   id,
   mediaId,
   duration: 3,
+  effectId: null,
   transitionIn: null,
 });
 
@@ -78,7 +79,7 @@ async function setup(slides: Slide[] = [], locale: "de" | "en" = "de") {
       audioItem("tune", 30),
       videoItem("clip", 12),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);

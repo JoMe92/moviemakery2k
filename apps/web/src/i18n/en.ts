@@ -463,6 +463,7 @@ export const en = {
         firstHasTransition:
           "Picture {slide} (ID “{slideId}”): the first picture cannot have an incoming transition.",
         unknownTransition: "Picture {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
+        unknownEffect: "Picture {slide} (ID “{slideId}”): unknown effect “{effectId}”.",
         notImage: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
         notVideo: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not a video.",
         trimOutBeyondFile:

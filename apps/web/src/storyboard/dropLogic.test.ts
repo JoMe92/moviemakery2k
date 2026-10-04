@@ -7,6 +7,7 @@ const s = (id: string): Slide => ({
   id,
   mediaId: `m${id}`,
   duration: 5,
+  effectId: null,
   transitionIn: null,
 });
 const slides = [s("1"), s("2"), s("3")];

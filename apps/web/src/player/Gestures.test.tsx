@@ -10,15 +10,16 @@ import { timelineOf } from "./controls";
 import { CONTROLS_HIDE_MS } from "./useFullscreen";
 
 const slides: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null },
+  { kind: "image", id: "s1", mediaId: "a", duration: 3, effectId: null, transitionIn: null },
   {
     kind: "image",
     id: "s2",
     mediaId: "b",
     duration: 4,
+    effectId: null,
     transitionIn: { transitionId: "fade", duration: 1 },
   },
-  { kind: "image", id: "s3", mediaId: "a", duration: 3, transitionIn: null },
+  { kind: "image", id: "s3", mediaId: "a", duration: 3, effectId: null, transitionIn: null },
 ];
 
 afterEach(() => {
@@ -31,7 +32,7 @@ afterEach(() => {
 async function setup(layout: "compact" | "wide" = "compact") {
   if (layout === "compact") mockLayout("compact");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   return { ...view, user: userEvent.setup() };

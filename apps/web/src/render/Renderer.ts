@@ -345,6 +345,7 @@ export class Renderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.effectFbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    // biome-ignore lint/correctness/useHookAtTopLevel: WebGL call, not a React hook.
     gl.useProgram(info.program);
     gl.bindVertexArray(this.vao);
     gl.activeTexture(gl.TEXTURE0);

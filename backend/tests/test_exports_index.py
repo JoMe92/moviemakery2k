@@ -68,9 +68,10 @@ def _prepare(client: TestClient) -> None:
         "id": "s0",
         "mediaId": media_id,
         "duration": 1.0,
+        "effectId": None,
         "transitionIn": None,
     }
-    res = client.put("/api/project", json={"schemaVersion": 3, "slides": [slide], "music": []})
+    res = client.put("/api/project", json={"schemaVersion": 4, "slides": [slide], "music": []})
     assert res.status_code == 200, res.text
 
 

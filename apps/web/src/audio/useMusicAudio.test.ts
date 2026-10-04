@@ -7,7 +7,7 @@ import { AudioEngine } from "./AudioEngine";
 import { musicPlanner, useMusicAudio } from "./useMusicAudio";
 
 const slides: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "img", duration: 5, transitionIn: null },
+  { kind: "image", id: "s1", mediaId: "img", duration: 5, effectId: null, transitionIn: null },
 ];
 const music: MusicClip[] = [
   {

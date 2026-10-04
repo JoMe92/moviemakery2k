@@ -15,6 +15,7 @@ record and the source arithmetic actually support.
 """
 
 import json
+import shutil
 from pathlib import Path
 from typing import Any, cast
 
@@ -49,11 +50,10 @@ def _load_effects() -> list[dict[str, Any]]:
 def _broken_effect_catalog(tmp_path: Path, mutate: Any) -> Settings:
     raw: dict[str, Any] = json.loads((CATALOG_DIR / "effects.json").read_text(encoding="utf-8"))
     mutate(raw)
+    # A copy of the whole catalog directory: the app validates every catalog at
+    # startup (transitions, titles, effects), so only `effects.json` may be broken.
     catalog_dir = tmp_path / "catalog"
-    catalog_dir.mkdir()
-    (catalog_dir / "transitions.json").write_text(
-        (CATALOG_DIR / "transitions.json").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    shutil.copytree(CATALOG_DIR, catalog_dir)
     (catalog_dir / "effects.json").write_text(json.dumps(raw), encoding="utf-8")
     return Settings(data_dir=tmp_path / "data", catalog_dir=catalog_dir, web_dist=tmp_path / "d")
 

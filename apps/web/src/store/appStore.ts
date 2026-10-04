@@ -318,7 +318,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
   const store = createStore<AppState>()((set, get) => {
     const toProject = (): Project => ({
-      schemaVersion: 3,
+      schemaVersion: 4,
       slides: get().slides,
       music: get().music,
     });
@@ -669,6 +669,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
                 mediaId,
                 trimIn: 0,
                 trimOut: item.duration,
+                effectId: null,
                 transitionIn: null,
               }
             : {
@@ -676,6 +677,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
                 id: newSlideId(),
                 mediaId,
                 duration: SLIDE_DURATION.default,
+                effectId: null,
                 transitionIn: null,
               };
         const { slides } = get();

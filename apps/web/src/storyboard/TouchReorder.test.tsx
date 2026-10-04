@@ -10,6 +10,7 @@ const slide = (id: string, mediaId: string): Slide => ({
   id,
   mediaId,
   duration: 3,
+  effectId: null,
   transitionIn: null,
 });
 const clip = (id: string, mediaId: string): MusicClip => ({
@@ -76,7 +77,7 @@ async function setup() {
       audioItem("z", 50),
     ],
     getProject: vi.fn(async () => ({
-      schemaVersion: 3 as const,
+      schemaVersion: 4 as const,
       slides: [slide("s1", "a"), slide("s2", "b"), slide("s3", "c")],
       music: [clip("m1", "x"), clip("m2", "y"), clip("m3", "z")],
     })),

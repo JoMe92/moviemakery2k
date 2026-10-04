@@ -2,28 +2,30 @@
 music track: add-music-track design.md D3, spec music-track;
 video clips: add-timeline-editing design.md D1, spec slideshow-project).
 
-`<data_dir>/project.json` contains a `Project` with `schemaVersion: 3`. Every
+`<data_dir>/project.json` contains a `Project` with `schemaVersion: 4`. Every
 element (slide) is either an **image slide** (`kind: "image"`, a display
 `duration`) or a **video slide** (`kind: "video"`, `trimIn`/`trimOut` in
 seconds into the referenced video; its length follows only from
-`trimOut - trimIn`, there is no separate duration field). Either kind MAY
+`trimOut - trimIn`, there is no separate duration field). Either kind carries
+an `effectId` (an ID from the effect catalog, or `null` for no effect) and MAY
 carry one incoming transition from the previous element; the first element has
 none. The music track (`music`) is a list of music clips that play one after
 the other from 0; each refers to an audio medium.
 
-A file with `schemaVersion: 1` (written before the music track existed) is
-loaded as a version-2 project with an empty music track. A file with
-`schemaVersion: 2` (written before video slides existed) is loaded with every
-slide as an image slide, its duration unchanged. Either is written at the
-current schema version on the next save. The API only accepts the current
-schema version.
+Older files are raised to the current version on load, one step at a time: a
+file with `schemaVersion: 1` (written before the music track existed) gains an
+empty music track, one with `schemaVersion: 2` (written before video slides
+existed) gets every slide as an image slide with its duration unchanged, and
+one with `schemaVersion: 3` (written before effects existed) gets
+`effectId: null` on every slide. Each is written at the current schema version
+on the next save. The API only accepts the current schema version.
 
 Validation runs in two stages:
 
 1. Structure (Pydantic): fields, types, ID format, duration ranges and 0.25 s
    grid, music volume and trim values, list lengths.
-2. References (`ProjectStore.save`): media and transition IDs exist, image
-   slides refer to images, video slides to videos and music clips to audio,
+2. References (`ProjectStore.save`): media, transition and effect IDs exist,
+   image slides refer to images, video slides to videos and music clips to audio,
    slide and clip IDs are unique, the first element has no transition, every
    clip's range lies within its file (`0 <= trimStart < end <= duration`,
    played length >= 0.5 s), and every video slide's trim lies within its video
@@ -42,7 +44,7 @@ import asyncio
 import json
 import logging
 import math
-from collections.abc import Collection, Iterable
+from collections.abc import Callable, Collection, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -71,7 +73,7 @@ from mmy_backend.storage import write_bytes_atomic
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION: Literal[3] = 3
+SCHEMA_VERSION: Literal[4] = 4
 MAX_SLIDES = 1000
 MAX_MUSIC_CLIPS = 100
 MUSIC_VOLUME_MIN = 0.0
@@ -201,6 +203,7 @@ class ImageSlide(_ProjectModel):
     ]
     media_id: str = Field(description="ID of an image from /api/media")
     duration: SlideDuration
+    effect_id: str | None = Field(description="ID from the effect catalog, or null for no effect")
     transition_in: TransitionRef | None = Field(
         description="Incoming transition from the previous element; always null for the first"
     )
@@ -223,6 +226,7 @@ class VideoSlide(_ProjectModel):
     trim_out: SlideTrimTime = Field(
         description="End within the video in seconds (new clip: the video's full duration)"
     )
+    effect_id: str | None = Field(description="ID from the effect catalog, or null for no effect")
     transition_in: TransitionRef | None = Field(
         description="Incoming transition from the previous element; always null for the first"
     )
@@ -254,7 +258,7 @@ class MusicClip(_ProjectModel):
 
 
 class Project(_ProjectModel):
-    schema_version: Literal[3]
+    schema_version: Literal[4]
     slides: Annotated[list[Slide], Field(max_length=MAX_SLIDES)]
     music: Annotated[list[MusicClip], Field(max_length=MAX_MUSIC_CLIPS)]
 
@@ -263,13 +267,24 @@ def empty_project() -> Project:
     return Project(schema_version=SCHEMA_VERSION, slides=[], music=[])
 
 
+def _migrate_slides(
+    raw: dict[str, Any], version: int, step: Callable[[Any], Any]
+) -> dict[str, Any]:
+    """One slide-shaped migration step; a non-list `slides` is left to validation."""
+    slides = raw.get("slides")
+    if not isinstance(slides, list):
+        return {**raw, "schemaVersion": version}
+    return {**raw, "schemaVersion": version, "slides": [step(slide) for slide in slides]}
+
+
 def migrate_project_data(raw: Any) -> Any:
-    """Raises a stored project to the current schema version.
+    """Raises a stored project to the current schema version, one step at a time.
 
     Version 1 (before the music track) becomes version 2 with an empty music
-    track. Version 2 (and the version-2 shape just produced from version 1)
-    has no `kind` on its slides; each becomes `kind: "image"` with its
-    duration unchanged. Anything else is returned unchanged and validated as is.
+    track. Version 2 (before video slides) has no `kind` on its slides; each
+    becomes `kind: "image"` with its duration unchanged. Version 3 (before
+    effects, add-effects-catalog design.md D3) gets `effectId: null` on every
+    slide. A newer or unknown version is returned unchanged and validated as is.
     """
     if not isinstance(raw, dict):
         return raw
@@ -277,16 +292,28 @@ def migrate_project_data(raw: Any) -> Any:
     if version == 1 and "music" not in raw:
         raw = {**raw, "schemaVersion": 2, "music": []}
         version = 2
-    if version != 2:
-        return raw
-    slides = raw.get("slides")
-    if not isinstance(slides, list):
-        return raw
-    migrated_slides = [
-        {"kind": "image", **slide} if isinstance(slide, dict) and "kind" not in slide else slide
-        for slide in slides
-    ]
-    return {**raw, "schemaVersion": SCHEMA_VERSION, "slides": migrated_slides}
+    if version == 2:
+        raw = _migrate_slides(
+            raw,
+            3,
+            lambda slide: (
+                {"kind": "image", **slide}
+                if isinstance(slide, dict) and "kind" not in slide
+                else slide
+            ),
+        )
+        version = 3
+    if version == 3:
+        raw = _migrate_slides(
+            raw,
+            SCHEMA_VERSION,
+            lambda slide: (
+                {**slide, "effectId": None}
+                if isinstance(slide, dict) and "effectId" not in slide
+                else slide
+            ),
+        )
+    return raw
 
 
 # --- Reference checks --------------------------------------------------------
@@ -322,10 +349,11 @@ def check_references(
     project: Project,
     media: Iterable[ImageItem | AudioItem | VideoItem],
     transition_ids: Collection[str],
+    effect_ids: Collection[str],
 ) -> list[ApiErrorIssue]:
     """Checks the references of a structurally valid project; empty list = valid."""
     items = {item.id: item for item in media}
-    issues = _check_slides(project, items, transition_ids)
+    issues = _check_slides(project, items, transition_ids, effect_ids)
     issues.extend(_check_music(project, items))
     return issues
 
@@ -334,6 +362,7 @@ def _check_slides(
     project: Project,
     items: dict[str, ImageItem | AudioItem | VideoItem],
     transition_ids: Collection[str],
+    effect_ids: Collection[str],
 ) -> list[ApiErrorIssue]:
     issues: list[ApiErrorIssue] = []
     seen: dict[str, int] = {}
@@ -383,6 +412,15 @@ def _check_slides(
             trim_issue = _check_slide_trim(index, slide, item.duration, where)
             if trim_issue is not None:
                 issues.append(trim_issue)
+        if slide.effect_id is not None and slide.effect_id not in effect_ids:
+            issues.append(
+                _issue(
+                    ("slides", index, "effectId"),
+                    "project.slide.unknownEffect",
+                    **where,
+                    effectId=slide.effect_id,
+                )
+            )
         transition = slide.transition_in
         if transition is None:
             continue
@@ -566,10 +604,11 @@ class ProjectStore:
         *,
         media: Iterable[ImageItem | AudioItem | VideoItem],
         transition_ids: Collection[str],
+        effect_ids: Collection[str],
     ) -> Project:
         """Checks the references and writes atomically; on errors everything stays unchanged."""
         async with self._lock:
-            issues = check_references(project, media, transition_ids)
+            issues = check_references(project, media, transition_ids, effect_ids)
             if issues:
                 raise ProjectValidationError(issues)
             await asyncio.to_thread(self._write, project)

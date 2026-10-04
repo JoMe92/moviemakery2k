@@ -10,6 +10,7 @@ const slide = (id: string, mediaId: string): Slide => ({
   id,
   mediaId,
   duration: 5,
+  effectId: null,
   transitionIn: null,
 });
 
@@ -54,7 +55,7 @@ const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
 async function setup(slides: Slide[] = []) {
   mockLayout("medium");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   return view;

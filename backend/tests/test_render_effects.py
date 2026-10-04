@@ -254,7 +254,7 @@ def _draw_four_corners(
 ) -> tuple[int, ...]:
     program = library.get(effect_id)
     assert program is not None
-    texture = ctx.texture((2, 2), 4, FOUR_CORNERS)
+    texture = ctx.texture((2, 2), 4, bytes(FOUR_CORNERS))
     fbo = ctx.simple_framebuffer((2, 2), components=4)
     try:
         fbo.use()

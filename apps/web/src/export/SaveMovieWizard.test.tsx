@@ -513,11 +513,25 @@ describe("wizard via the app store", () => {
     const store = createAppStore(
       mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 3 as const,
+          schemaVersion: 4 as const,
           music: [],
           slides: [
-            { kind: "image" as const, id: "s1", mediaId: "a", duration: 30, transitionIn: null },
-            { kind: "image" as const, id: "s2", mediaId: "b", duration: 15, transitionIn: null },
+            {
+              kind: "image" as const,
+              id: "s1",
+              mediaId: "a",
+              duration: 30,
+              effectId: null,
+              transitionIn: null,
+            },
+            {
+              kind: "image" as const,
+              id: "s2",
+              mediaId: "b",
+              duration: 15,
+              effectId: null,
+              transitionIn: null,
+            },
           ],
         })),
       }),

@@ -4,7 +4,7 @@ from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from mmy_backend.catalog import TransitionCatalog
+from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.errors import ProjectValidationResponse
 from mmy_backend.media import MediaStore
 from mmy_backend.project import Project, ProjectStore, ProjectValidationError
@@ -22,6 +22,10 @@ def get_media_store(request: Request) -> MediaStore:
 
 def get_catalog(request: Request) -> TransitionCatalog:
     return cast(TransitionCatalog, request.app.state.catalog)
+
+
+def get_effect_catalog(request: Request) -> EffectCatalog:
+    return cast(EffectCatalog, request.app.state.effect_catalog)
 
 
 @router.get("")
@@ -47,6 +51,7 @@ async def put_project(
     store: Annotated[ProjectStore, Depends(get_project_store)],
     media: Annotated[MediaStore, Depends(get_media_store)],
     catalog: Annotated[TransitionCatalog, Depends(get_catalog)],
+    effects: Annotated[EffectCatalog, Depends(get_effect_catalog)],
 ) -> Project:
     """Replaces the project. On 422 the saved state stays unchanged."""
     try:
@@ -54,6 +59,7 @@ async def put_project(
             project,
             media=media.list(),
             transition_ids={t.id for t in catalog.transitions},
+            effect_ids={e.id for e in effects.effects},
         )
     except ProjectValidationError as exc:
         raise HTTPException(

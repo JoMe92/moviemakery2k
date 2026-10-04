@@ -18,13 +18,14 @@ import { useSlideImages } from "./Player";
  * [5, 8).
  */
 const SLIDES: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+  { kind: "image", id: "s1", mediaId: "a", duration: 5, effectId: null, transitionIn: null },
   {
     kind: "video",
     id: "s2",
     mediaId: "clip",
     trimIn: 2,
     trimOut: 6,
+    effectId: null,
     transitionIn: { transitionId: "fade", duration: 1 },
   },
 ];
@@ -108,7 +109,15 @@ describe("useSlideImages: video texture", () => {
     // Assigning the position the element already has decodes nothing, so the
     // monitor would stay black on a fresh clip (CI's golden-frame case).
     const slides: Slide[] = [
-      { kind: "video", id: "s1", mediaId: "clip", trimIn: 0, trimOut: 2, transitionIn: null },
+      {
+        kind: "video",
+        id: "s1",
+        mediaId: "clip",
+        trimIn: 0,
+        trimOut: 2,
+        effectId: null,
+        transitionIn: null,
+      },
     ];
     const timeline = buildTimeline(toTimelineSlides(slides));
     let images: Images = () => undefined;

@@ -138,12 +138,12 @@ describe("appStore", () => {
     });
     const api = mockApi({
       getProject: vi.fn(async () => ({
-        schemaVersion: 3 as const,
+        schemaVersion: 4 as const,
         slides: [],
         music: [clip("m1", "x"), clip("m2", "y")],
       })),
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 3 as const,
+        schemaVersion: 4 as const,
         slides: [],
         music: [clip("m2", "y")],
       })),
@@ -162,7 +162,7 @@ describe("appStore", () => {
     store.getState().newProject();
     await store.getState().flushSave();
     expect(store.getState().music).toEqual([]);
-    expect(api.saved.at(-1)).toEqual({ schemaVersion: 3, slides: [], music: [] });
+    expect(api.saved.at(-1)).toEqual({ schemaVersion: 4, slides: [], music: [] });
   });
 
   it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
@@ -389,7 +389,7 @@ describe("appStore", () => {
       st().copy();
       expect(st().clipboard).toEqual({
         kind: "slide",
-        content: { kind: "image", mediaId: "a", duration: 5 },
+        content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
       });
       // The original is still there and still selected.
       expect(st().slides.map((s) => s.id)).toEqual([first, second]);
@@ -423,7 +423,7 @@ describe("appStore", () => {
       expect(st().selection).toBeNull();
       expect(st().clipboard).toEqual({
         kind: "slide",
-        content: { kind: "image", mediaId: "a", duration: 5 },
+        content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
       });
       // Exactly one more undo step for the whole cut (not two for copy+remove).
       expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
@@ -555,15 +555,23 @@ describe("appStore", () => {
       const store = createAppStore(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 3 as const,
+            schemaVersion: 4 as const,
             music: [],
             slides: [
-              { kind: "image" as const, id: "s1", mediaId: "a", duration: 5, transitionIn: null },
+              {
+                kind: "image" as const,
+                id: "s1",
+                mediaId: "a",
+                duration: 5,
+                effectId: null,
+                transitionIn: null,
+              },
               {
                 kind: "image" as const,
                 id: "s2",
                 mediaId: "b",
                 duration: 5,
+                effectId: null,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
               {
@@ -571,6 +579,7 @@ describe("appStore", () => {
                 id: "s3",
                 mediaId: "a",
                 duration: 5,
+                effectId: null,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
             ],

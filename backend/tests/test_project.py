@@ -19,7 +19,7 @@ from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.main import create_app
 from mmy_backend.project import Project, ProjectStore, on_grid
 
-EMPTY = {"schemaVersion": 3, "slides": [], "music": []}
+EMPTY = {"schemaVersion": 4, "slides": [], "music": []}
 
 
 @pytest.fixture
@@ -44,12 +44,14 @@ def _slide(
     media_id: str,
     duration: float = 5.0,
     transition: tuple[str, float] | None = None,
+    effect: str | None = None,
 ) -> dict[str, Any]:
     return {
         "kind": "image",
         "id": slide_id,
         "mediaId": media_id,
         "duration": duration,
+        "effectId": effect,
         "transitionIn": (
             None
             if transition is None
@@ -64,6 +66,7 @@ def _video_slide(
     trim_in: float,
     trim_out: float,
     transition: tuple[str, float] | None = None,
+    effect: str | None = None,
 ) -> dict[str, Any]:
     return {
         "kind": "video",
@@ -71,6 +74,7 @@ def _video_slide(
         "mediaId": media_id,
         "trimIn": trim_in,
         "trimOut": trim_out,
+        "effectId": effect,
         "transitionIn": (
             None
             if transition is None
@@ -113,7 +117,7 @@ def _upload_video(client: TestClient, tmp_path: Path, seconds: float = 4.0) -> t
 
 def _valid_project(media: list[str]) -> dict[str, Any]:
     return {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "slides": [
             _slide("a", media[0], 5.0),
             _slide("b", media[1], 2.75, ("fade", 1.25)),
@@ -127,7 +131,7 @@ def _valid_project(media: list[str]) -> dict[str, Any]:
 
 def _valid_mixed_project(image_id: str, video_id: str, duration: float) -> dict[str, Any]:
     return {
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "slides": [
             _slide("a", image_id, 5.0),
             _video_slide("b", video_id, 0.0, duration, ("fade", 1.0)),
@@ -394,7 +398,7 @@ def test_reference_errors_are_collected_as_project_invalid(client: TestClient) -
 def test_invalid_put_without_previous_project_writes_nothing(
     client: TestClient, settings: Settings
 ) -> None:
-    bad = {"schemaVersion": 3, "slides": [_slide("a", "missing")], "music": []}
+    bad = {"schemaVersion": 4, "slides": [_slide("a", "missing")], "music": []}
     assert client.put("/api/project", json=bad).status_code == 422
     assert client.get("/api/project").json() == EMPTY
     assert not (settings.data_dir / "project.json").exists()
@@ -428,7 +432,7 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
     with TestClient(create_app(settings)) as client:
         a, b, c = _upload(client, 3)
         project = {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "slides": [
                 _slide("s1", a, 5.0),
                 _slide("s2", b, 4.0, ("fade", 1.0)),
@@ -443,7 +447,7 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
         updated = asyncio.run(store.remove_media(a))
 
         expected = {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "slides": [
                 _slide("s2", b, 4.0),
                 _slide("s4", c, 2.0, ("fade", 0.5)),
@@ -459,7 +463,7 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
 def test_remove_unused_media_does_not_write(settings: Settings) -> None:
     store = ProjectStore(settings.data_dir)
     result = asyncio.run(store.remove_media("f" * 32))
-    assert result == Project(schema_version=3, slides=[], music=[])
+    assert result == Project(schema_version=4, slides=[], music=[])
     assert not (settings.data_dir / "project.json").exists()
 
 
@@ -471,11 +475,26 @@ def test_openapi_documents_project_endpoints(client: TestClient) -> None:
     assert slide["discriminator"]["propertyName"] == "kind"
     assert set(slide["discriminator"]["mapping"]) == {"image", "video"}
     image_slide = schemas["ImageSlide"]
-    assert image_slide["required"] == ["kind", "id", "mediaId", "duration", "transitionIn"]
+    assert image_slide["required"] == [
+        "kind",
+        "id",
+        "mediaId",
+        "duration",
+        "effectId",
+        "transitionIn",
+    ]
     assert image_slide["properties"]["duration"]["minimum"] == 0.5
     assert image_slide["properties"]["duration"]["multipleOf"] == 0.25
     video_slide = schemas["VideoSlide"]
-    assert video_slide["required"] == ["kind", "id", "mediaId", "trimIn", "trimOut", "transitionIn"]
+    assert video_slide["required"] == [
+        "kind",
+        "id",
+        "mediaId",
+        "trimIn",
+        "trimOut",
+        "effectId",
+        "transitionIn",
+    ]
     assert video_slide["properties"]["trimIn"]["minimum"] == 0
     assert video_slide["properties"]["trimOut"]["minimum"] == 0
 
@@ -509,7 +528,7 @@ def test_version_2_file_migrates_slides_to_image_kind(settings: Settings) -> Non
     with TestClient(create_app(settings)) as client:
         loaded = client.get("/api/project").json()
         assert loaded == {
-            "schemaVersion": 3,
+            "schemaVersion": 4,
             "slides": [_slide("s1", image_id, 4.5)],
             "music": [],
         }
@@ -608,3 +627,108 @@ def test_invalid_video_slide_is_rejected_and_keeps_previous_project(
     assert matching[0]["message"] == message
     assert client.get("/api/project").json() == previous
     assert (settings.data_dir / "project.json").read_bytes() == file_before
+
+
+# --- Effects: effectId per element, version-4 migration (TASK-API-019) -------------------
+
+
+def _effect_project(image_id: str, video_id: str, duration: float) -> dict[str, Any]:
+    """Mixed project, each kind once with and once without an effect (design.md D3)."""
+    return {
+        "schemaVersion": 4,
+        "slides": [
+            _slide("a", image_id, 5.0, effect="sepia"),
+            _slide("b", image_id, 2.5, ("fade", 1.0)),
+            _video_slide("c", video_id, 0.0, duration, ("fade", 1.0), effect="film-grain"),
+            _video_slide("d", video_id, 0.0, duration, ("fade", 1.0)),
+        ],
+        "music": [],
+    }
+
+
+def test_mixed_project_with_and_without_effects_roundtrips(
+    client: TestClient, settings: Settings, tmp_path: Path
+) -> None:
+    [image_id] = _upload(client, 1)
+    video_id, duration = _upload_video(client, tmp_path)
+    project = _effect_project(image_id, video_id, duration)
+
+    res = client.put("/api/project", json=project)
+    assert res.status_code == 200, res.text
+    assert res.json() == project
+    assert client.get("/api/project").json() == project
+    assert json.loads((settings.data_dir / "project.json").read_text()) == project
+
+
+@pytest.mark.parametrize("index", [0, 2])
+def test_unknown_effect_id_is_rejected_and_keeps_previous_project(
+    client: TestClient, settings: Settings, tmp_path: Path, index: int
+) -> None:
+    """An effect ID outside the catalog is a reference error, for either slide kind."""
+    [image_id] = _upload(client, 1)
+    video_id, duration = _upload_video(client, tmp_path)
+    previous = _effect_project(image_id, video_id, duration)
+    assert client.put("/api/project", json=previous).status_code == 200
+    file_before = (settings.data_dir / "project.json").read_bytes()
+
+    bad = _effect_project(image_id, video_id, duration)
+    bad["slides"][index]["effectId"] = "gibt-es-nicht"
+    res = client.put("/api/project", json=bad)
+
+    assert res.status_code == 422, res.text
+    slide_id = previous["slides"][index]["id"]
+    assert _issues(res.json()["detail"]) == [
+        {
+            "code": "project.slide.unknownEffect",
+            "params": {
+                "slide": index + 1,
+                "slideId": slide_id,
+                "effectId": "gibt-es-nicht",
+            },
+            "message": (f"Slide {index + 1} (ID “{slide_id}”): unknown effect “gibt-es-nicht”."),
+            "loc": ["body", "slides", index, "effectId"],
+        }
+    ]
+    assert client.get("/api/project").json() == previous
+    assert (settings.data_dir / "project.json").read_bytes() == file_before
+
+
+def test_effect_id_must_be_a_string_or_null(client: TestClient) -> None:
+    media = _upload(client, 2)
+    bad = _valid_project(media)
+    bad["slides"][0]["effectId"] = 7
+    res = client.put("/api/project", json=bad)
+    assert res.status_code == 422
+    assert any(i["loc"][:4] == ["body", "slides", 0, "image"] for i in res.json()["detail"])
+
+
+def test_version_3_file_gets_a_null_effect_on_every_slide(
+    settings: Settings, tmp_path: Path
+) -> None:
+    """A stored version-3 project (before effects) loads as version 4 with
+    `effectId: null` on image and video elements alike, and is written at the
+    current version on the next save."""
+    with TestClient(create_app(settings)) as client:
+        [image_id] = _upload(client, 1)
+        video_id, duration = _upload_video(client, tmp_path)
+    v3_slides = [_slide("a", image_id, 5.0), _video_slide("b", video_id, 0.0, duration)]
+    for slide in v3_slides:
+        del slide["effectId"]
+    v3 = {"schemaVersion": 3, "slides": v3_slides, "music": []}
+    project_file = settings.data_dir / "project.json"
+    project_file.write_text(json.dumps(v3))
+
+    with TestClient(create_app(settings)) as client:
+        loaded = client.get("/api/project").json()
+        assert loaded == {
+            "schemaVersion": 4,
+            "slides": [_slide("a", image_id, 5.0), _video_slide("b", video_id, 0.0, duration)],
+            "music": [],
+        }
+        # Loading alone does not rewrite the file (and keeps no backup).
+        assert json.loads(project_file.read_text()) == v3
+        assert not list(settings.data_dir.glob("project.json.corrupt-*"))
+
+        assert client.put("/api/project", json=loaded).status_code == 200
+
+    assert json.loads(project_file.read_text()) == loaded

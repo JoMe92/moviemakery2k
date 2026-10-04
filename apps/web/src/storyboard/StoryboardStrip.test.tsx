@@ -11,6 +11,7 @@ const slide = (id: string, mediaId: string, duration = 5, t: string | null = nul
   id,
   mediaId,
   duration,
+  effectId: null,
   transitionIn: t ? { transitionId: t, duration: 1.25 } : null,
 });
 
@@ -20,6 +21,7 @@ const videoSlide = (id: string, mediaId: string, trimIn = 0, trimOut = 10): Slid
   mediaId,
   trimIn,
   trimOut,
+  effectId: null,
   transitionIn: null,
 });
 
@@ -30,7 +32,7 @@ function durationAt(slides: readonly Slide[], index: number): number | undefined
 
 async function setup(slides: Slide[]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -40,7 +42,7 @@ async function setup(slides: Slide[]) {
 async function setupWithMedia(slides: Slide[], media: MediaItem[]) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
-    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);

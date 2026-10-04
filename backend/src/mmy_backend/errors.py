@@ -62,6 +62,7 @@ class ErrorCode(StrEnum):
     PROJECT_SLIDE_UNKNOWN_MEDIA = "project.slide.unknownMedia"
     PROJECT_SLIDE_FIRST_HAS_TRANSITION = "project.slide.firstHasTransition"
     PROJECT_SLIDE_UNKNOWN_TRANSITION = "project.slide.unknownTransition"
+    PROJECT_SLIDE_UNKNOWN_EFFECT = "project.slide.unknownEffect"
     PROJECT_SLIDE_NOT_IMAGE = "project.slide.notImage"
     PROJECT_SLIDE_NOT_VIDEO = "project.slide.notVideo"
     PROJECT_SLIDE_TRIM_OUT_BEYOND_FILE = "project.slide.trimOutBeyondFile"
@@ -194,6 +195,10 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.slide.unknownTransition": ErrorSpec(
         "Slide {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
         ("slide", "slideId", "transitionId"),
+    ),
+    "project.slide.unknownEffect": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): unknown effect “{effectId}”.",
+        ("slide", "slideId", "effectId"),
     ),
     "project.slide.notImage": ErrorSpec(
         "Slide {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",

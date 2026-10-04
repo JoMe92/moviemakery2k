@@ -404,7 +404,13 @@ def test_video_slide_decodes_frames_instead_of_a_static_image(
     video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
     project_slides = [
         VideoSlide(
-            kind="video", id="s0", media_id="v", trim_in=0.0, trim_out=2.0, transition_in=None
+            kind="video",
+            id="s0",
+            media_id="v",
+            trim_in=0.0,
+            trim_out=2.0,
+            effect_id=None,
+            transition_in=None,
         )
     ]
     timeline = build_timeline([TimelineSlide("s0", "v", 2.0, None)])
@@ -437,7 +443,13 @@ def test_transition_at_a_video_boundary_blends_decoded_frames(
     video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
     project_slides = [
         VideoSlide(
-            kind="video", id="s0", media_id="v", trim_in=0.0, trim_out=1.0, transition_in=None
+            kind="video",
+            id="s0",
+            media_id="v",
+            trim_in=0.0,
+            trim_out=1.0,
+            effect_id=None,
+            transition_in=None,
         ),
         VideoSlide(
             kind="video",
@@ -445,6 +457,7 @@ def test_transition_at_a_video_boundary_blends_decoded_frames(
             media_id="v",
             trim_in=1.0,
             trim_out=2.0,
+            effect_id=None,
             transition_in=TransitionRef(transition_id="fade", duration=0.5),
         ),
     ]
@@ -486,7 +499,13 @@ def test_trimmed_video_clip_exports_from_its_own_start_not_second_0(
     video = two_color_video(tmp_path, "clip.mp4", first_seconds=1.0, second_seconds=1.0)
     project_slides = [
         VideoSlide(
-            kind="video", id="s0", media_id="v", trim_in=1.0, trim_out=1.5, transition_in=None
+            kind="video",
+            id="s0",
+            media_id="v",
+            trim_in=1.0,
+            trim_out=1.5,
+            effect_id=None,
+            transition_in=None,
         )
     ]
     timeline = build_timeline([TimelineSlide("s0", "v", 0.5, None)])

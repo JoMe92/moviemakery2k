@@ -235,6 +235,7 @@ describe("“My Videos” collection", () => {
       mediaId: "clip",
       trimIn: 0,
       trimOut: 8,
+      effectId: null,
       transitionIn: null,
     });
     expect(store.getState().music).toEqual([]);

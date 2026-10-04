@@ -16,6 +16,8 @@ def get_catalog(request: Request) -> TransitionCatalog:
 
 def get_title_catalog(request: Request) -> TitleCatalog:
     return cast(TitleCatalog, request.app.state.title_catalog)
+
+
 def get_effect_catalog(request: Request) -> EffectCatalog:
     return cast(EffectCatalog, request.app.state.effect_catalog)
 
