@@ -6,6 +6,7 @@ import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slide = (id: string, mediaId: string): Slide => ({
+  kind: "image",
   id,
   mediaId,
   duration: 3,
@@ -75,7 +76,7 @@ async function setup() {
       audioItem("z", 50),
     ],
     getProject: vi.fn(async () => ({
-      schemaVersion: 2 as const,
+      schemaVersion: 3 as const,
       slides: [slide("s1", "a"), slide("s2", "b"), slide("s3", "c")],
       music: [clip("m1", "x"), clip("m2", "y"), clip("m3", "z")],
     })),

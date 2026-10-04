@@ -2,13 +2,14 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { MusicClip } from "../lib/apiClient";
+import { slideDuration } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slides = [
-  { id: "s1", mediaId: "a", duration: 3, transitionIn: null },
-  { id: "s2", mediaId: "b", duration: 3, transitionIn: null },
+  { kind: "image" as const, id: "s1", mediaId: "a", duration: 3, transitionIn: null },
+  { kind: "image" as const, id: "s2", mediaId: "b", duration: 3, transitionIn: null },
 ];
 const clip: MusicClip = {
   id: "c1",
@@ -55,7 +56,7 @@ describe("menu sheet (add-mobile-layout design.md D11)", () => {
 
   it("creates a new project on the phone", async () => {
     const api = mockApi({
-      getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+      getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
     });
     const { user, group, store } = await openMenu(api);
     const media = store.getState().media;
@@ -84,7 +85,7 @@ describe("menu sheet (add-mobile-layout design.md D11)", () => {
 
   it("opens 'Film speichern…' when the storyboard has pictures", async () => {
     const api = mockApi({
-      getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+      getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
     });
     const { user, group, store } = await openMenu(api);
     const file = await group("Datei");
@@ -95,12 +96,12 @@ describe("menu sheet (add-mobile-layout design.md D11)", () => {
   it("fits the movie to the music via Clip", async () => {
     const api = mockApi({
       listMedia: async () => [mediaItem("a"), mediaItem("b"), audioItem("song", 20)],
-      getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [clip] })),
+      getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [clip] })),
     });
     const { user, group, store } = await openMenu(api);
     const clipMenu = await group("Clip");
     await user.click(clipMenu.getByRole("button", { name: "Film an Musik anpassen" }));
-    expect(store.getState().slides.map((s) => s.duration)).toEqual([10, 10]);
+    expect(store.getState().slides.map((s) => slideDuration(s))).toEqual([10, 10]);
   });
 
   it("shows Help → About as a sheet", async () => {

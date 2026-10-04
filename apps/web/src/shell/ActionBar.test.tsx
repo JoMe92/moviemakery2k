@@ -8,9 +8,9 @@ import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slides: Slide[] = [
-  { id: "s1", mediaId: "a", duration: 3, transitionIn: null },
-  { id: "s2", mediaId: "b", duration: 4, transitionIn: { transitionId: "fade", duration: 1.25 } },
-  { id: "s3", mediaId: "c", duration: 5, transitionIn: { transitionId: "circle", duration: 1.5 } },
+  { kind: "image", id: "s1", mediaId: "a", duration: 3, transitionIn: null },
+  { kind: "image", id: "s2", mediaId: "b", duration: 4, transitionIn: { transitionId: "fade", duration: 1.25 } },
+  { kind: "image", id: "s3", mediaId: "c", duration: 5, transitionIn: { transitionId: "circle", duration: 1.5 } },
 ];
 const clip = (id: string, mediaId: string): MusicClip => ({
   id,
@@ -33,7 +33,7 @@ async function setup(layout: "compact" | "wide" = "compact") {
       audioItem("song", 60),
       audioItem("tune", 30),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music })),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);

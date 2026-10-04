@@ -2,11 +2,11 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
-import { SLIDE_DURATION } from "../store/projectOps";
+import { SLIDE_DURATION, slideDuration } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
-import { HOLD_MS, LONG_PRESS_MS } from "../ui/useLongPress";
+import { HOLD_MS } from "../ui/useLongPress";
 
 /**
  * A touch press on `tile` held `ms` and released, the way a finger does it -
@@ -25,6 +25,7 @@ function holdTile(tile: HTMLElement, ms: number) {
 }
 
 const slide = (id: string, mediaId: string): Slide => ({
+  kind: "image",
   id,
   mediaId,
   duration: 3,
@@ -42,7 +43,7 @@ async function setup(slides: Slide[] = [], locale: "de" | "en" = "de") {
       audioItem("tune", 30),
       videoItem("clip", 12),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 2 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 3 as const, slides, music: [] })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);
@@ -96,7 +97,7 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
       "aria-roledescription",
     );
     await user.click(add());
-    expect(store.getState().slides.map((s) => [s.mediaId, s.duration])).toEqual([
+    expect(store.getState().slides.map((s) => [s.mediaId, slideDuration(s)])).toEqual([
       ["c", SLIDE_DURATION.default],
       ["a", SLIDE_DURATION.default],
       ["b", SLIDE_DURATION.default],
@@ -213,20 +214,28 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("shows My Videos with Properties and Delete but nothing to add", async () => {
+  it("picks a video and adds it to the storyboard (add-timeline-editing D2)", async () => {
     const { sheet, user, store } = await setup();
     await user.click(sheet.getByRole("tab", { name: "Meine Videos" }));
     expect(store.getState().collection).toBe("video");
     const tile = sheet.getByRole("button", { name: /^clip\.mp4/ });
     await user.click(tile);
-    expect(tile).toHaveAttribute("aria-pressed", "false");
-    expect(sheet.queryByRole("button", { name: /hinzufügen/ })).toBeNull();
+    expect(tile).toHaveAttribute("aria-pressed", "true");
+    await user.click(sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (1)" }));
+    expect(store.getState().slides.map((s) => [s.kind, s.mediaId])).toEqual([["video", "clip"]]);
+  });
+
+  it("shows a video's Properties and Delete in the long-press menu", async () => {
+    const { sheet, user, store } = await setup();
+    await user.click(sheet.getByRole("tab", { name: "Meine Videos" }));
+    expect(store.getState().collection).toBe("video");
+    const tile = sheet.getByRole("button", { name: /^clip\.mp4/ });
     const input = screen.getByTestId("media-import-input") as HTMLInputElement;
     vi.spyOn(input, "click");
     await user.click(sheet.getByRole("button", { name: "Importieren" }));
     expect(input.accept).toMatch(/video/);
-    // A video tile has no pick to protect, so it keeps the plain long press.
-    holdTile(tile, LONG_PRESS_MS);
+    // A video is picked like a picture now, so the menu needs the same hold.
+    holdTile(tile, HOLD_MS);
     const menu = screen.getByRole("menu", { name: "Video „clip.mp4“" });
     await user.click(within(menu).getByRole("menuitem", { name: "Eigenschaften" }));
     expect(screen.getByRole("dialog", { name: "Eigenschaften von „clip.mp4“" })).toHaveTextContent(
