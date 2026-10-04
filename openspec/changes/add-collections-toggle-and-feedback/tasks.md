@@ -16,4 +16,4 @@ Shader bleiben unberührt.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-028 E2E und Doku: Playwright fährt den Weg des Product Owners am Handy ab (mehrere Bilder wählen, hinzufügen, Kurzhinweis lesen, Bilder im Bildstreifen sehen) und blendet am Desktop den Sammlungsbereich aus und über die Sammlungsauswahl wieder ein; dazu README und CHANGELOG „Unreleased“ (nach allen anderen Tasks; design.md D8). Erledigt, wenn `pixi run test-e2e` und `pixi run check` grün sind.
+- [x] TASK-INFRA-028 E2E und Doku: Playwright fährt den Weg des Product Owners am Handy ab (mehrere Bilder wählen, hinzufügen, Kurzhinweis lesen, Bilder im Bildstreifen sehen) und blendet am Desktop den Sammlungsbereich aus und über die Sammlungsauswahl wieder ein; dazu README und CHANGELOG „Unreleased“ (nach allen anderen Tasks; design.md D8). Erledigt, wenn `pixi run test-e2e` und `pixi run check` grün sind.
