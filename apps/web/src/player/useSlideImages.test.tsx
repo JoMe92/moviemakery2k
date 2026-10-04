@@ -104,6 +104,23 @@ describe("useSlideImages: video texture", () => {
     expect(second.paused).toBe(true);
   });
 
+  it("Spec: a clip at trimIn 0 at time 0 still asks for a position it can decode", () => {
+    // Assigning the position the element already has decodes nothing, so the
+    // monitor would stay black on a fresh clip (CI's golden-frame case).
+    const slides: Slide[] = [
+      { kind: "video", id: "s1", mediaId: "clip", trimIn: 0, trimOut: 2, transitionIn: null },
+    ];
+    const timeline = buildTimeline(toTimelineSlides(slides));
+    let images: Images = () => undefined;
+    render(
+      <Harness slides={slides} timeline={timeline} time={0} onReady={(fn) => (images = fn)} />,
+    );
+    const video = images(0) as HTMLVideoElement;
+    expect(video.readyState).toBeLessThan(2); // nothing decoded in jsdom
+    expect(video.currentTime).toBeGreaterThan(0);
+    expect(video.currentTime).toBeLessThan(0.01);
+  });
+
   it("releases the video element when its slide is removed", () => {
     const timeline = buildTimeline(toTimelineSlides(SLIDES));
     let images: Images = () => undefined;

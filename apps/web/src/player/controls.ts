@@ -62,6 +62,33 @@ export function videoScrubTime(
   return Math.min(Math.max(time - segmentStart + trimIn, trimIn), trimOut);
 }
 
+/** `HTMLMediaElement.HAVE_CURRENT_DATA`: a frame exists that can be drawn. */
+export const HAVE_CURRENT_DATA = 2;
+/** Imperceptible for the viewer, but still a seek for the browser. */
+const SEEK_NUDGE = 0.001;
+
+/**
+ * Position to request on the `<video>` element for `target`.
+ *
+ * Assigning the position an element already has is a no-op, so nothing gets
+ * decoded: a clip with `trimIn` 0 shown at playback time 0 would stay black
+ * until some other position is asked for. While the element has no frame yet,
+ * ask for a hair further into the trim instead (or back, at the very end) -
+ * the seek is what makes the browser decode and present a frame (design.md
+ * D5). Once a frame is there, the exact `target` is used again.
+ */
+export function videoSeekTarget(
+  video: { readyState: number; currentTime: number },
+  target: number,
+  trimIn: number,
+  trimOut: number,
+): number {
+  if (video.readyState >= HAVE_CURRENT_DATA) return target;
+  if (Math.abs(video.currentTime - target) > SEEK_NUDGE) return target;
+  if (target + SEEK_NUDGE <= trimOut) return target + SEEK_NUDGE;
+  return Math.max(target - SEEK_NUDGE, trimIn);
+}
+
 const timelines = new WeakMap<readonly Slide[], Timeline>();
 
 /** Timeline for the (immutable) slides array, computed only once per array. */

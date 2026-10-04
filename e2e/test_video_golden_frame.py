@@ -27,6 +27,42 @@ def mean_rgb(locator: Locator) -> tuple[float, float, float]:
     return (r, g, b)
 
 
+def wait_for_decoded_frame(page: Page, timeout: float = 15.0) -> None:
+    """Waits until the hidden `<video>` holds a drawable frame.
+
+    The browser decides when to decode; `readyState >= HAVE_CURRENT_DATA` (2) is
+    the point from which `drawImage` has pixels at all, so the colour assertions
+    below describe the app's rendering instead of racing the decoder.
+    """
+    page.wait_for_function(
+        "() => { const v = document.querySelector('video'); return !!v && v.readyState >= 2; }",
+        timeout=timeout * 1000,
+    )
+
+
+_SCRUBBED_FRAME = """() => {
+  const v = document.querySelector('video');
+  const canvas = new OffscreenCanvas(32, 24);
+  const ctx = canvas.getContext('2d', { alpha: false });
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i + 1]; b += data[i + 2]; }
+  const n = data.length / 4;
+  return { currentTime: v.currentTime, rgb: [r / n, g / n, b / n] };
+}"""
+
+
+def scrubbed_frame(page: Page) -> dict[str, object]:
+    """The frame the player scrubbed the hidden `<video>` to, read with a plain
+    Canvas2D `drawImage` - the step before the WebGL upload. Asserting this
+    separately says whether a black monitor comes from the player's scrubbing
+    (`currentTime`, design.md D5) or from the GL path."""
+    return page.evaluate(_SCRUBBED_FRAME)  # type: ignore[no-any-return]
+
+
 def wait_for_color(
     page: Page,
     monitor: Locator,
@@ -34,7 +70,8 @@ def wait_for_color(
     timeout: float = 5.0,
 ) -> tuple[float, float, float]:
     """Polls the monitor's mean colour until `is_expected` holds or `timeout` (s)
-    runs out; decoding a video frame (unlike an `<img>`) is not awaitable."""
+    runs out: the canvas is painted by the player's own redraw pump, one tick
+    (~66 ms) after the frame the assertion is about became available."""
     deadline = time_module.monotonic() + timeout
     rgb = mean_rgb(monitor)
     while not is_expected(rgb) and time_module.monotonic() < deadline:
@@ -93,24 +130,44 @@ def test_player_shows_the_video_frame_at_a_deterministic_seek_position(
     monitor = page.get_by_role("img", name="Vorschaubild")
     time = page.get_by_label("Zeit")
 
-    # Stopped at the start (trimIn 0): the still frame is red. Decoding the
-    # first frame of a video that was never played is itself asynchronous
-    # (the browser only fetches past its metadata once something needs a
-    # frame), so this settles a moment after the tile/storyboard state does.
+    # Stopped at the start (trimIn 0): the still frame is red. Wait for the
+    # element to actually hold a frame first - the browser schedules that
+    # decode itself, and only the player's seek (design.md D5) asks for it.
     expect(time).to_contain_text("0:00:00,00")
+    wait_for_decoded_frame(page)
+    scrubbed = scrubbed_frame(page)
+    assert scrubbed["currentTime"] == pytest.approx(0, abs=0.01), scrubbed
+    first = scrubbed["rgb"]
+    assert isinstance(first, list) and first[0] > 150 and first[2] < 80, (
+        f"the clip is scrubbed to 0 s, so its frame should be red: {scrubbed}"
+    )
     start = wait_for_color(page, monitor, lambda rgb: rgb[0] > 150 and rgb[2] < 80)
-    assert start[0] > 150 and start[2] < 80, f"0 s should show red: {start}"
+    assert start[0] > 150 and start[2] < 80, f"0 s should show red in the monitor: {start}"
 
     # Seek to a deterministic position well inside the blue half; the video
     # scrubs to it (currentTime = trimIn + time, design.md D5), no own clock.
+    # React tracks the last value it wrote, so a plain `el.value = …` is
+    # ignored; go through the native setter (as test_video_timeline_flow does).
     page.evaluate(
         "(v) => {"
         "  const el = document.querySelector('input[type=range]');"
-        "  el.value = v;"
+        "  const setter = Object.getOwnPropertyDescriptor("
+        "    window.HTMLInputElement.prototype, 'value').set;"
+        "  setter.call(el, v);"
         "  el.dispatchEvent(new Event('input', {bubbles: true}));"
         "}",
         "1.5",
     )
     expect(time).to_contain_text("0:00:01,50")
+    page.wait_for_function(
+        "() => { const v = document.querySelector('video');"
+        " return Math.abs(v.currentTime - 1.5) < 0.05 && v.readyState >= 2; }",
+        timeout=15_000,
+    )
+    scrubbed = scrubbed_frame(page)
+    second = scrubbed["rgb"]
+    assert isinstance(second, list) and second[2] > 150 and second[0] < 80, (
+        f"the clip is scrubbed to 1.5 s, so its frame should be blue: {scrubbed}"
+    )
     later = wait_for_color(page, monitor, lambda rgb: rgb[2] > 150 and rgb[0] < 80)
-    assert later[2] > 150 and later[0] < 80, f"1.5 s should show blue: {later}"
+    assert later[2] > 150 and later[0] < 80, f"1.5 s should show blue in the monitor: {later}"

@@ -15,7 +15,13 @@ import { Button } from "../ui/Button";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon, StopIcon } from "../ui/icons";
 import { useGestures } from "../ui/useGestures";
 import { startClock } from "./clock";
-import { demoFrame, shouldToggleOnSpace, timelineOf, videoScrubTime } from "./controls";
+import {
+  demoFrame,
+  shouldToggleOnSpace,
+  timelineOf,
+  videoScrubTime,
+  videoSeekTarget,
+} from "./controls";
 import styles from "./Player.module.css";
 import { sampleImages } from "./sampleImages";
 import { useFullscreen } from "./useFullscreen";
@@ -175,9 +181,10 @@ export function useSlideImages(
       const video = videos.current.get(slide.mediaId);
       if (!video) return undefined;
       const placed = timeline.slides[index];
-      video.currentTime = placed
+      const target = placed
         ? videoScrubTime(slide.trimIn, slide.trimOut, placed.start, time)
         : slide.trimIn;
+      video.currentTime = videoSeekTarget(video, target, slide.trimIn, slide.trimOut);
       return video;
     },
     [slides, loadedImages, videos, timeline, time, tick],
