@@ -59,7 +59,7 @@ from typing import Annotated
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
 from pydantic.alias_generators import to_camel
 
-from mmy_backend.catalog import TransitionCatalog
+from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.errors import ErrorCode, Params, error_message, validation_error
 from mmy_backend.media import AudioItem, MediaStore
 from mmy_backend.project import Project
@@ -270,11 +270,15 @@ class ExportManager:
         media: MediaStore,
         catalog: TransitionCatalog,
         shaders_dir: Path,
+        effects: EffectCatalog | None = None,
     ) -> None:
         self.exports_dir = data_dir / EXPORTS_DIRNAME
         self.index_file = self.exports_dir / INDEX_FILENAME
         self._media = media
         self._catalog = catalog
+        self._effects = effects
+        """Effect catalog (add-effects-catalog design.md D2); None means an
+        element's `effectId` is ignored by the export."""
         self._shaders_dir = shaders_dir
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
@@ -546,6 +550,7 @@ class ExportManager:
                     shaders_dir=self._shaders_dir,
                     load_video=video_loader(self._media),
                     project_slides=job.project.slides,
+                    effects=self._effects,
                 )
             finally:
                 (job.directory / MIX_FILENAME).unlink(missing_ok=True)

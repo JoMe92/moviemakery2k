@@ -25,7 +25,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     title_catalog = load_title_catalog(settings.title_catalog_file)
     effect_catalog = load_effect_catalog(settings.effect_catalog_file)
     media = MediaStore(settings.data_dir)
-    exports = ExportManager(settings.data_dir, media, catalog, settings.shaders_dir)
+    exports = ExportManager(settings.data_dir, media, catalog, settings.shaders_dir, effect_catalog)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:

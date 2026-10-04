@@ -42,7 +42,7 @@ from typing import IO, Self
 import moderngl
 from PIL import Image
 
-from mmy_backend.catalog import TransitionCatalog
+from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.media import MediaStore, VideoItem
 from mmy_backend.project import Slide
@@ -283,6 +283,8 @@ class FrameRenderer:
         *,
         load_video: VideoLoader | None = None,
         project_slides: Sequence[Slide] = (),
+        effect_library: EffectLibrary | None = None,
+        effects: EffectCatalog | None = None,
     ) -> None:
         if width <= 0 or height <= 0:
             raise ValueError(f"Invalid output size {width}x{height}")
@@ -292,6 +294,11 @@ class FrameRenderer:
         self.height = height
         self.load_image = load_image
         self.load_video = load_video
+        self.effect_library = effect_library
+        self.effects = effects
+        """Effect catalog and its compiled programs (add-effects-catalog design.md
+        D2/D3). Without both, an element's `effectId` is ignored and the export
+        renders exactly as before this change."""
         self.project_slides = project_slides
         """Original project slides, aligned 1:1 with `Timeline.slides` by index
         (add-timeline-editing design.md D6): tells `_entry` whether a timeline
@@ -402,6 +409,20 @@ class FrameRenderer:
 
     # --- Effect pass (design.md D2) --------------------------------------------
 
+    def _effect_of(self, index: int) -> tuple[str, Mapping[str, float]] | None:
+        """Effect of the timeline element `index`: its catalog ID and the entry's
+        fixed parameters, or None without an effect (or without a catalog)."""
+        if self.effects is None or self.effect_library is None:
+            return None
+        slide = self.project_slides[index] if index < len(self.project_slides) else None
+        effect_id = None if slide is None else slide.effect_id
+        if not effect_id:
+            return None
+        params = next((e.params for e in self.effects.effects if e.id == effect_id), None)
+        # An ID outside the catalog cannot reach a saved project (the API
+        # rejects it), so a miss here means the catalog changed under us: skip.
+        return None if params is None else (effect_id, params)
+
     def apply_effect(
         self,
         texture: moderngl.Texture,
@@ -451,15 +472,40 @@ class FrameRenderer:
         if isinstance(frame, EmptyFrame):
             return self._black
         if isinstance(frame, StillFrame):
-            return self._pixels(self._entry(frame.slide_index, timeline, time, fps))
+            entry = self._entry(frame.slide_index, timeline, time, fps)
+            effect = self._effect_of(frame.slide_index)
+            if effect is None or entry.canvas is None:
+                # Stills without shaders (design.md D4) whenever no effect is set.
+                return self._pixels(entry)
+            # With an effect the still goes through GL as well: the effect pass
+            # feeds the fade program at progress 0, which is the still case of
+            # the preview (`drawStill`).
+            return self._render_transition(
+                entry, entry, FALLBACK_TRANSITION_ID, 0.0, {}, effect, effect
+            )
 
         source = self._entry(frame.from_index, timeline, time, fps)
         target = self._entry(frame.to_index, timeline, time, fps)
         if source.canvas is None or target.canvas is None:
             # Like PreviewCanvas: only one image → still, none → black.
-            return self._pixels(source if source.canvas is not None else target)
+            present = source if source.canvas is not None else target
+            index = frame.from_index if source.canvas is not None else frame.to_index
+            effect = self._effect_of(index)
+            if effect is None or present.canvas is None:
+                return self._pixels(present)
+            return self._render_transition(
+                present, present, FALLBACK_TRANSITION_ID, 0.0, {}, effect, effect
+            )
         params = next((t.params for t in catalog.transitions if t.id == frame.transition_id), {})
-        return self._render_transition(source, target, frame.transition_id, frame.progress, params)
+        return self._render_transition(
+            source,
+            target,
+            frame.transition_id,
+            frame.progress,
+            params,
+            self._effect_of(frame.from_index),
+            self._effect_of(frame.to_index),
+        )
 
     def _render_transition(
         self,
@@ -468,10 +514,23 @@ class FrameRenderer:
         transition_id: str,
         progress: float,
         params: Mapping[str, float],
+        from_effect: tuple[str, Mapping[str, float]] | None = None,
+        to_effect: tuple[str, Mapping[str, float]] | None = None,
     ) -> bytes:
         program = self.library.get(transition_id)
         from_texture = self._texture(source)
         to_texture = self._texture(target)
+        # Effect pass before the still/transition pass (design.md D2); without an
+        # effect `apply_effect` returns the texture unchanged, with no copy.
+        if self.effect_library is not None:
+            if from_effect is not None:
+                from_texture = self.apply_effect(
+                    from_texture, from_effect[0], self.effect_library, from_effect[1], slot=0
+                )
+            if to_effect is not None:
+                to_texture = self.apply_effect(
+                    to_texture, to_effect[0], self.effect_library, to_effect[1], slot=1
+                )
         self._fbo.use()
         self._fbo.clear(0.0, 0.0, 0.0, 1.0)
         from_texture.use(location=FROM_TEXTURE_UNIT)

@@ -58,9 +58,9 @@ flowchart LR
 |---|---|---|
 | Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio (`audio/AudioEngine.ts`) |
 | Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with music mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
-| Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition plus the shared prelude/epilogue/vertex shader; used by preview and export |
+| Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition and per effect plus the shared preludes/epilogues/vertex shader; used by preview and export |
 | Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
-| Catalog | `packages/catalog/` | Transition metadata and parameters (single source of truth), JSON Schema |
+| Catalog | `packages/catalog/` | Transition and effect metadata and parameters (single source of truth), JSON Schema |
 | E2E tests | `e2e/` | Playwright tests against the real backend and the built web app |
 | Scripts | `scripts/` | Dev launcher (`dev.py`), shader check, render-environment check, export benchmark, Docker export smoke test, Git hooks, Nogging tooling |
 
@@ -112,17 +112,17 @@ flowchart LR
 
 ### 2. Project
 
-- The project is one versioned JSON document (`schemaVersion: 3`); `slides`
+- The project is one versioned JSON document (`schemaVersion: 4`); `slides`
   is a discriminated union on `kind`:
 
   ```json
   {
-    "schemaVersion": 3,
+    "schemaVersion": 4,
     "slides": [
       { "kind": "image", "id": "s1", "mediaId": "…", "duration": 5,
-        "transitionIn": null },
+        "effectId": null, "transitionIn": null },
       { "kind": "video", "id": "s2", "mediaId": "…",
-        "trimIn": 0, "trimOut": 8.5,
+        "trimIn": 0, "trimOut": 8.5, "effectId": "sepia",
         "transitionIn": { "transitionId": "circle", "duration": 1.25 } }
     ],
     "music": [
@@ -138,11 +138,16 @@ flowchart LR
   `trimOut - trimIn` (`0 ≤ trimIn < trimOut ≤` the video's decoded duration);
   music clips refer to audio, and each clip's range must satisfy
   `0 ≤ trimStart < end ≤ duration` with a played length of at least 0.5 s
-  (`trimEnd: null` = end of the file). A stored version-1 project (before the
-  music track) is loaded with `music: []`; a version-2 project (before video
-  slides) has every slide read as `kind: "image"`, its `duration` unchanged;
-  either is written at version 3 on the next save, and the API accepts
-  version 3 only.
+  (`trimEnd: null` = end of the file). Either kind of slide carries an
+  `effectId` — an ID from the effect catalog or `null` for no effect, one
+  effect per element, all parameters from the catalog entry.
+
+- Older files are raised one version at a time on read: a version-1 project
+  (before the music track) gains `music: []`, a version-2 project (before
+  video slides) has every slide read as `kind: "image"` with its `duration`
+  unchanged, and a version-3 project (before effects) gets `effectId: null`
+  on every slide. Each is written at version 4 on the next save, and the API
+  accepts version 4 only.
 
 - A transition belongs to its **target** slide (`transitionIn`) and moves with
   it when slides are reordered. The first slide never has one.
@@ -150,10 +155,10 @@ flowchart LR
   Defaults: slide 5 s, transition 1.25 s (the Movie Maker default is an
   estimate, see the research notes).
 - Every change in the store triggers a **debounced autosave** (500 ms,
-  `PUT /api/project`). The backend validates media IDs and transition IDs
-  against the media index and the catalog; on `422` the stored project stays
-  unchanged. Files are written atomically (temp file + `os.replace`) under an
-  `asyncio.Lock`.
+  `PUT /api/project`). The backend validates media IDs, transition IDs and
+  effect IDs against the media index and the two catalogs; on `422` the stored
+  project stays unchanged. Files are written atomically (temp file +
+  `os.replace`) under an `asyncio.Lock`.
 - Deleting a medium cascades: all storyboard entries using it are removed
   together with their incoming transitions, and all music clips using it are
   removed from the music track. While a `queued` or `running`
@@ -227,6 +232,11 @@ nothing.
 - A requestAnimationFrame clock advances playback; the renderer draws
   `frameAt(...)` each frame. A transition is drawn by the program assembled
   from the shared shader files, with the catalog parameters as uniforms.
+- An element with an `effectId` first goes through one extra pass: its own
+  single-texture effect program renders into an intermediate texture (one per
+  transition side, so both images can carry a different effect at once), and
+  that texture feeds the still/transition pass instead of the source image.
+  Without an effect the pass is skipped entirely — no copy.
 - Shaders are imported as text at build time (Vite `?raw`), compiled once and
   cached. A shader that fails to compile falls back to Fade and is logged.
 - If WebGL2 is not available, the monitor shows a notice instead; import and
@@ -298,11 +308,14 @@ flowchart LR
    output size with the browser's integer `containRect` and uploaded as a
    texture with its origin at the bottom left (like `UNPACK_FLIP_Y`). At most
    two picture textures (current and next) are held at once.
-3. **Frames.** Frame *n* is drawn for `t = n / 30`. Still segments are copied
-   without a shader (exactly what the preview shows at progress 0);
-   transitions run the catalog entry's shader with its parameters, falling
-   back to `fade` if a shader is missing or does not compile — like the
-   browser.
+3. **Frames.** Frame *n* is drawn for `t = n / 30`. Still segments of an
+   element without an effect are copied without a shader (exactly what the
+   preview shows at progress 0); transitions run the catalog entry's shader
+   with its parameters, falling back to `fade` if a shader is missing or does
+   not compile — like the browser. An element with an `effectId` runs the
+   effect pass first (same shader files, same intermediate-texture scheme as
+   the preview), which also sends its still frames through GL: the fade
+   program at progress 0 on the effect's result.
 4. **Shared shaders.** The fragment program is assembled exactly like
    `apps/web/src/render/shaderSource.ts` (prelude + transition + epilogue).
    The only change is the first line: `#version 300 es` becomes
@@ -462,6 +475,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 |---|---|---|
 | `GET` | `/api/health` | Liveness check, including the FFmpeg version found |
 | `GET` | `/api/catalog/transitions` | The transition catalog validated at startup |
+| `GET` | `/api/catalog/effects` | The effect catalog validated at startup |
 | `GET` | `/api/media` | All imported media in import order |
 | `POST` | `/api/media` | Upload pictures and audio (multipart field `files`; JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG, FLAC); per-file result |
 | `GET` | `/api/media/{id}/thumbnail` | Thumbnail JPEG (`Cache-Control: immutable`) |
@@ -470,7 +484,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/media/{id}/peaks` | Waveform data `{rate: 50, peaks}` (`Cache-Control: immutable`) |
 | `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
-| `PUT` | `/api/project` | Replace the project (`schemaVersion` 3 with `slides` and `music`); `422` leaves the stored state unchanged |
+| `PUT` | `/api/project` | Replace the project (`schemaVersion` 4 with `slides` and `music`); `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
 | `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |
@@ -498,7 +512,7 @@ FastAPI's interactive docs are available at `/docs` while the backend runs.
 |---|---|---|
 | `MMY_API_PORT` | `8000` | Port of the backend (and the Vite `/api` proxy target) |
 | `MMY_DATA_DIR` | `backend/.data/` | Uploaded media, `media.json`, `project.json`, `exports/` |
-| `MMY_CATALOG_DIR` | `packages/catalog/` | Where `transitions.json` is loaded from |
+| `MMY_CATALOG_DIR` | `packages/catalog/` | Where `transitions.json` and `effects.json` are loaded from |
 | `MMY_WEB_DIST` | `apps/web/dist/` | Built web app served at `/` if present |
 | `MMY_SHADERS_DIR` | `packages/shaders/` | Shader files read by the export renderer |
 

@@ -64,13 +64,22 @@ What works today:
   double-click it to put it in front of the selected picture) and set its
   duration (0.25–5 s). Transitions overlap neighbouring pictures, just like
   in the original.
+- **21 video effects** — Sepia, Negative, Posterize, Threshold, Grayscale,
+  Brightness up/down, Blur, Pixelate, Film Age (Old, Older, Oldest), Film
+  Grain, Charcoal, Pen and Ink, Watercolor, Mirror horizontal/vertical and
+  Rotate 90°/180°/270°. Drag one from the *Video Effects* collection onto a
+  tile's effect slot; one effect per element, *No Effect* in the tile's
+  context menu removes it again. The effect runs as an extra rendering pass
+  before the transition, so the preview and the exported movie show the same
+  pixels.
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
   toggles playback.
-- **Transition preview** — clicking a transition in the collection plays it
-  once in the monitor with sample pictures, labelled *Sample: <name>*
-  (*Beispiel: <Name>*); opening the collection shows the project, and play,
-  seek or selecting a picture returns to it.
+- **Transition and effect preview** — clicking a transition in the collection
+  plays it once in the monitor with sample pictures, labelled *Sample: <name>*
+  (*Beispiel: <Name>*); double-clicking an effect shows it on the same sample
+  picture. Opening a collection shows the project, and play, seek or selecting
+  a picture returns to it.
 - **Autosave** — the project is saved in the backend and restored after a
   reload.
 - **Save movie** — a Movie Maker-style wizard exports the storyboard as an MP4
@@ -93,7 +102,9 @@ What works today:
   (Flip, Slide Up, Slide Up Center, Roll, Spin Out, Page Curl, Shatter,
   Whirlwind, Shrink) — a different rendering technique than the 2D wipe
   shaders used so far
-- Video effects (Grayscale, Sepia, Film Age, Blur, Fade in/out …)
+- The effects the stateless image pass cannot express: the time-dependent
+  Fade/Ease at an element's edge and the two clip-speed effects (Speed Up
+  Double, Slow Down Half)
 - Titles and credits with the Entrance → Main → Exit animation model
 - Clip sound mixed with the music track, narration recording
 
@@ -425,9 +436,9 @@ instead.
 | Path | Contents |
 |---|---|
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
-| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition catalog, project, MP4 export with music mixdown (moderngl + FFmpeg) |
-| [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition shaders, shared by preview and export |
-| [`packages/catalog/`](packages/catalog) | Transition catalog with the documented parameters (single source of truth) |
+| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition and effect catalogs, project, MP4 export with music mixdown (moderngl + FFmpeg) |
+| [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition and effect shaders, shared by preview and export |
+| [`packages/catalog/`](packages/catalog) | Transition and effect catalogs with the documented parameters (single source of truth) |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |
 | [`scripts/`](scripts) | Dev launcher, shader and render-environment checks, export benchmark and Docker smoke test, Git hooks |
 | [`docs/`](docs) | [Architecture](docs/architecture.md), [ADRs](docs/adr/README.md), [research on the original](docs/research/movie-maker-reference.md) |
