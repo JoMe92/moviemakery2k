@@ -16,6 +16,7 @@ import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
 import { CompactWindow } from "./shell/CompactWindow";
 import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
+import { useActionNotice } from "./shell/notice";
 import { StatusBar } from "./shell/StatusBar";
 import { NoAccessIndicator, SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
@@ -58,6 +59,9 @@ export function App() {
 
   const layout = useLayoutMode();
   useLayoutAttributes(layout);
+  // The wide layout shows the short notice in its status bar; the other two
+  // use StatusNotices (design.md D4).
+  const notice = useActionNotice();
 
   const taskGroups = useTaskGroups();
   const { t } = useT();
@@ -150,6 +154,7 @@ export function App() {
               items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
                 (x): x is string => x !== null,
               )}
+              notice={notice}
             />
           )
         }

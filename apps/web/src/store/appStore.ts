@@ -141,6 +141,12 @@ export interface UploadEntry {
   offline?: boolean;
 }
 
+/** A short notice about an action; `seq` makes a repeat of the same text new. */
+export interface ActionNotice {
+  text: string;
+  seq: number;
+}
+
 export interface AppState {
   backend: BackendState;
   loaded: boolean;
@@ -193,6 +199,13 @@ export interface AppState {
   collectionSheetOpen: boolean;
   /** Last requested editing dialog or action menu (touch operation), or null. */
   editRequest: EditRequest | null;
+  /**
+   * Short notice about the last explicit action (design.md D4), or null.
+   * `seq` counts up with every notice so the same text twice is shown twice.
+   * One channel, two presentations: `StatusNotices` in the compact and medium
+   * layouts, a temporary status-bar field in the wide one.
+   */
+  notice: ActionNotice | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -234,6 +247,12 @@ export interface AppState {
   setCollectionSheetOpen(open: boolean): void;
   /** Ask the storyboard or music track to open a dialog or action menu. */
   requestEdit(request: EditRequestInput): void;
+  /**
+   * Show a short notice about an action just carried out; the text is already
+   * translated. It replaces a standing notice at once and outranks the state
+   * messages ("Saved", backend changes) until it expires (design.md D4).
+   */
+  notify(text: string): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -490,6 +509,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       importRequest: 0,
       importKind: "any",
       editRequest: null,
+      notice: null,
       collectionSheetOpen: false,
       exportWizardOpen: false,
       locale,
@@ -643,6 +663,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       requestEdit(request) {
         const seq = (get().editRequest?.seq ?? 0) + 1;
         set({ editRequest: { ...request, seq } as EditRequest });
+      },
+      notify(text) {
+        set({ notice: { text, seq: (get().notice?.seq ?? 0) + 1 } });
       },
 
       async importFiles(files) {

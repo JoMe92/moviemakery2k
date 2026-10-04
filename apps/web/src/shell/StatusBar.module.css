@@ -22,3 +22,8 @@
 .field:first-child {
   flex: 1;
 }
+
+/* Vorübergehende Angabe zur letzten Aktion (app-shell design.md D4). */
+.notice {
+  font-weight: bold;
+}
