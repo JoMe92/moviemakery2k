@@ -36,7 +36,7 @@ unabhängig von den anderen archiviert.
   Erledigt, wenn ein Test die Gesamtzahl (22) und die Abwesenheit der
   zeitabhängigen und Geschwindigkeits-Effekte (Fade/Ease/Hue Cycle/Speed)
   prüft.
-- [ ] TASK-WEB-065 Effekt-Platz und Sammlung „Videoeffekte“: Ziehen aus der
+- [x] TASK-WEB-065 Effekt-Platz und Sammlung „Videoeffekte“: Ziehen aus der
   neuen Sammlung auf den Kachel-Effekt-Platz, Kontextmenü „Keinen Effekt“,
   Effekt-Symbol auf der Kachel, Aufgabenbereich-Eintrag „Videoeffekte
   anzeigen“ aktiv, Sammlung mit Doppelklick-Demo am Beispielbild (nach
