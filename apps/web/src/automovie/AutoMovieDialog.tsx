@@ -3,6 +3,7 @@ import { useT } from "../i18n/useT";
 import { ConfirmDialog } from "../shell/AppDialogs";
 import { projectMusicDuration } from "../store/appStore";
 import { useAppStore } from "../store/useAppStore";
+import { limitTitleLine, TITLE_LINE_MAX_LENGTH } from "../titles/titleText";
 import { Button } from "../ui/Button";
 import { Dialog } from "../ui/Dialog";
 import styles from "./AutoMovieDialog.module.css";
@@ -78,8 +79,9 @@ function AutoMovieForm({ onClose }: { onClose: () => void }) {
             className={styles.input}
             type="text"
             autoComplete="off"
+            maxLength={TITLE_LINE_MAX_LENGTH}
             value={filmTitle}
-            onChange={(event) => setFilmTitle(event.target.value)}
+            onChange={(event) => setFilmTitle(limitTitleLine(event.target.value))}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();

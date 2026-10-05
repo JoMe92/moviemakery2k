@@ -1,10 +1,11 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { ImageSlide, MusicClip, Slide, Transition, VideoSlide } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
 import { audioItem, CATALOG, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
+import { TITLE_LINE_MAX_LENGTH } from "../titles/titleText";
 
 const MENU = "AutoMovie…";
 
@@ -299,6 +300,40 @@ describe("Extras → AutoMovie…", () => {
     await create(user, "Klassisch");
     // Four media elements between the film title and "Ende".
     expect(store.getState().slides).toHaveLength(6);
+  });
+
+  it("stops the film title at the limit, so the opening title stays saveable", async () => {
+    const user = userEvent.setup();
+    const api = mockApi({
+      listMedia: async () => collection(),
+      catalog: async () => [...CATALOG, DISSOLVE],
+    });
+    const { store, ready } = renderApp(api);
+    await ready;
+    await openDialog(user);
+    const field = screen.getByLabelText("Filmtitel:");
+    await user.click(field);
+    // The over-long paste of spec titles-and-credits' "Zu langer Filmtitel".
+    await user.paste("T".repeat(500));
+    expect(field).toHaveValue("T".repeat(TITLE_LINE_MAX_LENGTH));
+    // At the limit the field takes no further character.
+    await user.type(field, "weiter");
+    expect(field).toHaveValue("T".repeat(TITLE_LINE_MAX_LENGTH));
+
+    await user.click(screen.getByRole("radio", { name: /Klassisch/ }));
+    await user.click(screen.getByRole("button", { name: "Erstellen" }));
+    expect(titleTexts(store.getState().slides)).toEqual([
+      ["T".repeat(TITLE_LINE_MAX_LENGTH)],
+      ["Ende"],
+    ]);
+
+    // The project the backend gets carries no over-long line, so it saves.
+    await act(() => store.getState().flushSave());
+    const saved = api.saved.at(-1);
+    expect(saved?.slides[0]?.kind).toBe("title");
+    for (const line of titleTexts(saved?.slides ?? []).flatMap((lines) => lines ?? [])) {
+      expect(line.length).toBeLessThanOrEqual(TITLE_LINE_MAX_LENGTH);
+    }
   });
 
   it("undoes the whole AutoMovie in one step", async () => {
