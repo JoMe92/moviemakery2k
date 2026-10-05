@@ -39,7 +39,7 @@ wieder, ohne deren Kataloge zu ändern.
   (Nachspann)), Start-Validierung (nach TASK-FX-010, TASK-RENDER-008;
   design.md D4). Erledigt, wenn ein Test alle 8 Einträge, ihr Layout und
   ihre Phasen-Effekte gegen die Katalog-Validierung prüft.
-- [ ] TASK-WEB-066 Titel-Assistent: Schritte Platzierung/Text/Stil/Farbe,
+- [x] TASK-WEB-066 Titel-Assistent: Schritte Platzierung/Text/Stil/Farbe,
   Platzierungs-Optionen je nach aktueller Auswahl, Live-Vorschau im
   Schritt „Stil“, erzeugt ein Titel-Element oder setzt das Overlay-Feld
   (nach TASK-API-020, TASK-CAT-007; design.md D6). Erledigt, wenn
