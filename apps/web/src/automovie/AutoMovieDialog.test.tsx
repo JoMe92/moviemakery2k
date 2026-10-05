@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import type { MusicClip, Transition } from "../lib/apiClient";
+import type { ImageSlide, MusicClip, Slide, Transition, VideoSlide } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
 import { audioItem, CATALOG, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
@@ -46,6 +46,17 @@ function withCollection() {
       catalog: async () => [...CATALOG, DISSOLVE],
     }),
   );
+}
+
+/**
+ * The filmstrip narrowed to picture and video elements. AutoMovie builds only
+ * those today: the opening and closing titles are still deferred (Bead
+ * mmy-0pz), so a title element turning up here means the expectations below
+ * need updating rather than being quietly skipped.
+ */
+function mediaSlides(slides: readonly Slide[]): (ImageSlide | VideoSlide)[] {
+  expect(slides.map((slide) => slide.kind)).not.toContain("title");
+  return slides.filter((slide): slide is ImageSlide | VideoSlide => slide.kind !== "title");
 }
 
 async function openDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -104,7 +115,7 @@ describe("Extras → AutoMovie…", () => {
     const { store, ready } = withCollection();
     await ready;
     await create(user, "Klassisch");
-    const { slides } = store.getState();
+    const slides = mediaSlides(store.getState().slides);
     expect(slides.map((slide) => slide.mediaId)).toEqual(["a", "b", "v", "c"]);
     expect(slides[0]?.transitionIn).toBeNull();
     expect(slides.slice(1).map((slide) => slide.transitionIn?.transitionId)).toEqual([
@@ -128,7 +139,7 @@ describe("Extras → AutoMovie…", () => {
     const { store, ready } = withCollection();
     await ready;
     await create(user, "Alter Film");
-    const { slides } = store.getState();
+    const slides = mediaSlides(store.getState().slides);
     expect(slides.map((slide) => slide.effectId)).toEqual([
       "film-age-older",
       "film-age-older",
@@ -194,7 +205,12 @@ describe("Extras → AutoMovie…", () => {
     expect(store.getState().slides).toEqual(before);
 
     await user.click(screen.getByRole("button", { name: "Ja" }));
-    expect(store.getState().slides.map((slide) => slide.mediaId)).toEqual(["a", "b", "v", "c"]);
+    expect(mediaSlides(store.getState().slides).map((slide) => slide.mediaId)).toEqual([
+      "a",
+      "b",
+      "v",
+      "c",
+    ]);
   });
 
   it("keeps the filmstrip when the question is declined", async () => {

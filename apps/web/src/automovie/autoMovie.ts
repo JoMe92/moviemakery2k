@@ -9,12 +9,20 @@
  * store, so they can be tested in isolation.
  *
  * Deferred: the opening title with the entered film title and the closing
- * "Ende"/"The End", both in the style's `titleStyleId`, are missing — the
- * slide model has no title element yet (Bead mmy-0pz, waiting on the `title`
- * slide kind of add-titles-and-credits). `filmTitle` is already carried
- * through so only the two insertions have to be added.
+ * "Ende"/"The End", both in the style's `titleStyleId`, are still missing
+ * (Bead mmy-0pz). The `title` slide kind they need is in the model since
+ * schema 5; `filmTitle` is already carried through, so only the two
+ * insertions have to be added. AutoMovie sets no overlay `title` on the
+ * elements it builds — the style's title belongs on its own element.
  */
-import type { AutoMovieStyle, ImageItem, MediaItem, Slide, VideoItem } from "../lib/apiClient";
+import type {
+  AutoMovieStyle,
+  ImageItem,
+  ImageSlide,
+  MediaItem,
+  VideoItem,
+  VideoSlide,
+} from "../lib/apiClient";
 import { newSlideId, SLIDE_DURATION } from "../store/projectOps";
 
 /** What AutoMovie puts on the filmstrip: pictures and video clips, never audio. */
@@ -58,7 +66,7 @@ export function buildAutoMovie(
   media: readonly MediaItem[],
   style: AutoMovieStyle,
   transitionDuration: number,
-): Slide[] {
+): (ImageSlide | VideoSlide)[] {
   return autoMovieMedia(media).map((item, index) => {
     const transitionIn =
       index === 0 ? null : { transitionId: style.transitionId, duration: transitionDuration };
@@ -70,6 +78,7 @@ export function buildAutoMovie(
           trimIn: 0,
           trimOut: item.duration,
           effectId: style.effectId,
+          title: null,
           transitionIn,
         }
       : {
@@ -78,6 +87,7 @@ export function buildAutoMovie(
           mediaId: item.id,
           duration: SLIDE_DURATION.default,
           effectId: style.effectId,
+          title: null,
           transitionIn,
         };
   });
