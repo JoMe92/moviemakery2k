@@ -5,7 +5,7 @@ klein.
 
 ## 1. Oberfläche
 
-- [ ] TASK-WEB-078 Titeltext in jedem Eingabefeld begrenzen
+- [x] TASK-WEB-078 Titeltext in jedem Eingabefeld begrenzen
   Eine gemeinsame Konstante in `apps/web/src/titles/`, die die Grenze des
   Backends spiegelt, und ein `maxLength` daraus an den Zeilenfeldern und
   den Nachspann-Einträgen des Titel-Assistenten sowie am Filmtitel-Feld
