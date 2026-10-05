@@ -468,6 +468,10 @@ export const en = {
       slideTrim: {
         negative: "The start and end of a video clip must be 0 s or later (is {value} s).",
       },
+      titleText: {
+        missing: "Title “{slideId}”: either lines or credit entries must be set.",
+        ambiguous: "Title “{slideId}”: lines and credit entries must not both be set.",
+      },
       invalid: "The project is invalid: {summary}",
       slide: {
         duplicateId:
@@ -477,6 +481,7 @@ export const en = {
           "Picture {slide} (ID “{slideId}”): the first picture cannot have an incoming transition.",
         unknownTransition: "Picture {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
         unknownEffect: "Picture {slide} (ID “{slideId}”): unknown effect “{effectId}”.",
+        unknownTitleStyle: "Picture {slide} (ID “{slideId}”): unknown title style “{styleId}”.",
         notImage: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
         notVideo: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not a video.",
         trimOutBeyondFile:

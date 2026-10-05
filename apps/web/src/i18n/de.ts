@@ -472,6 +472,11 @@ export const de = {
       slideTrim: {
         negative: "Anfang und Ende eines Videoclips dürfen nicht vor 0 s liegen (ist {value} s).",
       },
+      titleText: {
+        missing: "Titel „{slideId}“: Es muss entweder Zeilen oder Nachspann-Einträge geben.",
+        ambiguous:
+          "Titel „{slideId}“: Zeilen und Nachspann-Einträge dürfen nicht beide gesetzt sein.",
+      },
       invalid: "Das Projekt ist ungültig: {summary}",
       slide: {
         duplicateId:
@@ -481,6 +486,7 @@ export const de = {
           "Bild {slide} (ID „{slideId}“): Das erste Bild kann keinen eingehenden Übergang haben.",
         unknownTransition: "Bild {slide} (ID „{slideId}“): unbekannter Übergang „{transitionId}“.",
         unknownEffect: "Bild {slide} (ID „{slideId}“): unbekannter Effekt „{effectId}“.",
+        unknownTitleStyle: "Bild {slide} (ID „{slideId}“): unbekannter Titel-Stil „{styleId}“.",
         notImage: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Bild.",
         notVideo: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Video.",
         trimOutBeyondFile:

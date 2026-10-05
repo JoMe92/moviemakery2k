@@ -57,12 +57,15 @@ class ErrorCode(StrEnum):
     PROJECT_MUSIC_VOLUME_OUT_OF_RANGE = "project.musicVolume.outOfRange"
     PROJECT_MUSIC_TRIM_NEGATIVE = "project.musicTrim.negative"
     PROJECT_SLIDE_TRIM_NEGATIVE = "project.slideTrim.negative"
+    PROJECT_TITLE_TEXT_MISSING = "project.titleText.missing"
+    PROJECT_TITLE_TEXT_AMBIGUOUS = "project.titleText.ambiguous"
     PROJECT_INVALID = "project.invalid"
     PROJECT_SLIDE_DUPLICATE_ID = "project.slide.duplicateId"
     PROJECT_SLIDE_UNKNOWN_MEDIA = "project.slide.unknownMedia"
     PROJECT_SLIDE_FIRST_HAS_TRANSITION = "project.slide.firstHasTransition"
     PROJECT_SLIDE_UNKNOWN_TRANSITION = "project.slide.unknownTransition"
     PROJECT_SLIDE_UNKNOWN_EFFECT = "project.slide.unknownEffect"
+    PROJECT_SLIDE_UNKNOWN_TITLE_STYLE = "project.slide.unknownTitleStyle"
     PROJECT_SLIDE_NOT_IMAGE = "project.slide.notImage"
     PROJECT_SLIDE_NOT_VIDEO = "project.slide.notVideo"
     PROJECT_SLIDE_TRIM_OUT_BEYOND_FILE = "project.slide.trimOutBeyondFile"
@@ -177,6 +180,13 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.slideTrim.negative": ErrorSpec(
         "The start and end of a video clip must be 0 s or later (is {value} s).", ("value",)
     ),
+    # Title element: exactly one of `lines`/`creditEntries` is set.
+    "project.titleText.missing": ErrorSpec(
+        "Title “{slideId}”: either lines or credit entries must be set.", ("slideId",)
+    ),
+    "project.titleText.ambiguous": ErrorSpec(
+        "Title “{slideId}”: lines and credit entries must not both be set.", ("slideId",)
+    ),
     # --- Project: reference checks of PUT /api/project (422, ApiErrorWithIssues) --
     "project.invalid": ErrorSpec("The project is invalid: {summary}", ("count", "summary")),
     # Issues: `slide` is the 1-based position, `slideId` the slide's id.
@@ -199,6 +209,11 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.slide.unknownEffect": ErrorSpec(
         "Slide {slide} (ID “{slideId}”): unknown effect “{effectId}”.",
         ("slide", "slideId", "effectId"),
+    ),
+    # Title element or overlay title referring to an ID outside the title catalog.
+    "project.slide.unknownTitleStyle": ErrorSpec(
+        "Slide {slide} (ID “{slideId}”): unknown title style “{styleId}”.",
+        ("slide", "slideId", "styleId"),
     ),
     "project.slide.notImage": ErrorSpec(
         "Slide {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",

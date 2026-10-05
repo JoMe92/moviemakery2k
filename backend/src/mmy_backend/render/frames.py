@@ -242,7 +242,8 @@ def _cache_key(slide: TimelineSlide) -> str:
 
 @dataclass(eq=False)
 class _SlideImage:
-    media_id: str
+    media_id: str | None
+    """None for a title element, which refers to no medium."""
     canvas: Image.Image | None
     """Fitted current frame at output size; None if the source is missing or unreadable."""
     pixels: bytes | None = None
@@ -359,7 +360,13 @@ class FrameRenderer:
             _, oldest = self._images.popitem(last=False)
             oldest.release()
         project_slide = self.project_slides[index] if index < len(self.project_slides) else None
-        if project_slide is not None and project_slide.kind == "video":
+        if media_id is None:
+            # A title element (add-titles-and-credits design.md D5) has no medium:
+            # its appearance comes from the title render path (`draw_title` and
+            # friends below), which TASK-INFRA-023 wires into `render`. Until
+            # then it stays a black frame rather than a missing-media warning.
+            entry = _SlideImage(media_id=None, canvas=None)
+        elif project_slide is not None and project_slide.kind == "video":
             entry = self._open_video(media_id, project_slide.trim_in, placed.start, time, fps)
         else:
             source = self.load_image(media_id)
@@ -415,7 +422,8 @@ class FrameRenderer:
         if self.effects is None or self.effect_library is None:
             return None
         slide = self.project_slides[index] if index < len(self.project_slides) else None
-        effect_id = None if slide is None else slide.effect_id
+        # A title element carries no `effectId` (add-titles-and-credits design.md D5).
+        effect_id = None if slide is None or slide.kind == "title" else slide.effect_id
         if not effect_id:
             return None
         params = next((e.params for e in self.effects.effects if e.id == effect_id), None)

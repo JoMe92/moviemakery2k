@@ -576,7 +576,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.slideTrim.negative" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.unknownEffect" | "project.slide.notImage" | "project.slide.notVideo" | "project.slide.trimOutBeyondFile" | "project.slide.trimInNotBeforeTrimOut" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.slideTrim.negative" | "project.titleText.missing" | "project.titleText.ambiguous" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.unknownEffect" | "project.slide.unknownTitleStyle" | "project.slide.notImage" | "project.slide.notVideo" | "project.slide.trimOutBeyondFile" | "project.slide.trimInNotBeforeTrimOut" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -734,6 +734,8 @@ export interface components {
              * @description ID of an image from /api/media
              */
             mediaId: string;
+            /** @description Overlay title, or null for none */
+            title: components["schemas"]["TitleOverlay"] | null;
             /** @description Incoming transition from the previous element; always null for the first */
             transitionIn: components["schemas"]["TransitionRef"] | null;
         };
@@ -859,7 +861,7 @@ export interface components {
              * Schemaversion
              * @constant
              */
-            schemaVersion: 4;
+            schemaVersion: 5;
             /** Slides */
             slides: components["schemas"]["Slide"][];
         };
@@ -890,7 +892,7 @@ export interface components {
             /** Type */
             type: string;
         };
-        Slide: components["schemas"]["ImageSlide"] | components["schemas"]["VideoSlide"];
+        Slide: components["schemas"]["ImageSlide"] | components["schemas"]["VideoSlide"] | components["schemas"]["TitleSlide"];
         /** StaticPhase */
         StaticPhase: {
             /**
@@ -934,6 +936,80 @@ export interface components {
             de: string;
             /** En */
             en: string;
+        };
+        /**
+         * TitleOverlay
+         * @description A title drawn over an image or video element (add-titles-and-credits
+         *     design.md D5). Like `effectId` it has no duration of its own: it follows the
+         *     duration of the element that hosts it.
+         */
+        TitleOverlay: {
+            /**
+             * Color
+             * @description Text colour as a six-digit hex triplet, e.g. `#ffffff`
+             */
+            color: string;
+            /**
+             * Lines
+             * @description One or two lines, as the style's layout expects
+             */
+            lines: string[];
+            /**
+             * Styleid
+             * @description ID from the title catalog
+             */
+            styleId: string;
+        };
+        /**
+         * TitleSlide
+         * @description A freestanding title or credits element (add-titles-and-credits design.md
+         *     D5) for the placements "at the start of the movie", "before an element" and
+         *     "at the end": it refers to no medium and has its own display duration, like
+         *     an image element (default `TITLE_DURATION_DEFAULT`).
+         *
+         *     Exactly one of `lines` (layouts `one-line`/`two-line`) and `creditEntries`
+         *     (layout `credits`) is set; the other is null. There is no `title` field: a
+         *     title element can never hold an overlay title of its own (spec
+         *     slideshow-project), and `extra="forbid"` rejects one.
+         */
+        TitleSlide: {
+            /**
+             * Color
+             * @description Text colour as a six-digit hex triplet, e.g. `#ffffff`
+             */
+            color: string;
+            /**
+             * Creditentries
+             * @description The list of entries for a credits style; null for a normal title
+             */
+            creditEntries: string[] | null;
+            /**
+             * Duration
+             * @description Display duration in seconds
+             */
+            duration: number;
+            /**
+             * Id
+             * @description Assigned by the client, unique within the project
+             */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "title";
+            /**
+             * Lines
+             * @description One or two lines for a one-line/two-line style; null for credits
+             */
+            lines: string[] | null;
+            /**
+             * Styleid
+             * @description ID from the title catalog
+             */
+            styleId: string;
+            /** @description Incoming transition from the previous element; always null for the first */
+            transitionIn: components["schemas"]["TransitionRef"] | null;
         };
         /** TitleSource */
         TitleSource: {
@@ -1126,6 +1202,8 @@ export interface components {
              * @description ID of a video from /api/media
              */
             mediaId: string;
+            /** @description Overlay title, or null for none */
+            title: components["schemas"]["TitleOverlay"] | null;
             /** @description Incoming transition from the previous element; always null for the first */
             transitionIn: components["schemas"]["TransitionRef"] | null;
             /**

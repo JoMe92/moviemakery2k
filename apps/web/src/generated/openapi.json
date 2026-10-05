@@ -424,12 +424,15 @@
           "project.musicVolume.outOfRange",
           "project.musicTrim.negative",
           "project.slideTrim.negative",
+          "project.titleText.missing",
+          "project.titleText.ambiguous",
           "project.invalid",
           "project.slide.duplicateId",
           "project.slide.unknownMedia",
           "project.slide.firstHasTransition",
           "project.slide.unknownTransition",
           "project.slide.unknownEffect",
+          "project.slide.unknownTitleStyle",
           "project.slide.notImage",
           "project.slide.notVideo",
           "project.slide.trimOutBeyondFile",
@@ -764,6 +767,17 @@
             "title": "Mediaid",
             "type": "string"
           },
+          "title": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TitleOverlay"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Overlay title, or null for none"
+          },
           "transitionIn": {
             "anyOf": [
               {
@@ -782,6 +796,7 @@
           "mediaId",
           "duration",
           "effectId",
+          "title",
           "transitionIn"
         ],
         "title": "ImageSlide",
@@ -1114,7 +1129,7 @@
             "type": "array"
           },
           "schemaVersion": {
-            "const": 4,
+            "const": 5,
             "title": "Schemaversion",
             "type": "integer"
           },
@@ -1212,6 +1227,7 @@
         "discriminator": {
           "mapping": {
             "image": "#/components/schemas/ImageSlide",
+            "title": "#/components/schemas/TitleSlide",
             "video": "#/components/schemas/VideoSlide"
           },
           "propertyName": "kind"
@@ -1222,6 +1238,9 @@
           },
           {
             "$ref": "#/components/schemas/VideoSlide"
+          },
+          {
+            "$ref": "#/components/schemas/TitleSlide"
           }
         ]
       },
@@ -1332,6 +1351,136 @@
           "en"
         ],
         "title": "TitleNames",
+        "type": "object"
+      },
+      "TitleOverlay": {
+        "additionalProperties": false,
+        "description": "A title drawn over an image or video element (add-titles-and-credits\ndesign.md D5). Like `effectId` it has no duration of its own: it follows the\nduration of the element that hosts it.",
+        "properties": {
+          "color": {
+            "description": "Text colour as a six-digit hex triplet, e.g. `#ffffff`",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "lines": {
+            "description": "One or two lines, as the style's layout expects",
+            "items": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Lines",
+            "type": "array"
+          },
+          "styleId": {
+            "description": "ID from the title catalog",
+            "title": "Styleid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lines",
+          "styleId",
+          "color"
+        ],
+        "title": "TitleOverlay",
+        "type": "object"
+      },
+      "TitleSlide": {
+        "additionalProperties": false,
+        "description": "A freestanding title or credits element (add-titles-and-credits design.md\nD5) for the placements \"at the start of the movie\", \"before an element\" and\n\"at the end\": it refers to no medium and has its own display duration, like\nan image element (default `TITLE_DURATION_DEFAULT`).\n\nExactly one of `lines` (layouts `one-line`/`two-line`) and `creditEntries`\n(layout `credits`) is set; the other is null. There is no `title` field: a\ntitle element can never hold an overlay title of its own (spec\nslideshow-project), and `extra=\"forbid\"` rejects one.",
+        "properties": {
+          "color": {
+            "description": "Text colour as a six-digit hex triplet, e.g. `#ffffff`",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "creditEntries": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The list of entries for a credits style; null for a normal title",
+            "title": "Creditentries"
+          },
+          "duration": {
+            "description": "Display duration in seconds",
+            "maximum": 60.0,
+            "minimum": 0.5,
+            "multipleOf": 0.25,
+            "title": "Duration",
+            "type": "number"
+          },
+          "id": {
+            "description": "Assigned by the client, unique within the project",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "title",
+            "title": "Kind",
+            "type": "string"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                "maxItems": 2,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "One or two lines for a one-line/two-line style; null for credits",
+            "title": "Lines"
+          },
+          "styleId": {
+            "description": "ID from the title catalog",
+            "title": "Styleid",
+            "type": "string"
+          },
+          "transitionIn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Incoming transition from the previous element; always null for the first"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "lines",
+          "creditEntries",
+          "styleId",
+          "color",
+          "duration",
+          "transitionIn"
+        ],
+        "title": "TitleSlide",
         "type": "object"
       },
       "TitleSource": {
@@ -1700,6 +1849,17 @@
             "title": "Mediaid",
             "type": "string"
           },
+          "title": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TitleOverlay"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Overlay title, or null for none"
+          },
           "transitionIn": {
             "anyOf": [
               {
@@ -1731,6 +1891,7 @@
           "trimIn",
           "trimOut",
           "effectId",
+          "title",
           "transitionIn"
         ],
         "title": "VideoSlide",

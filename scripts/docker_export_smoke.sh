@@ -142,13 +142,13 @@ save_project() {
   local code
   cat >"$WORK/project.json" <<JSON
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "music": [],
   "slides": [
     {"kind": "image", "id": "smoke-1", "mediaId": "$RED_ID", "duration": $SLIDE_SECONDS,
-     "effectId": null, "transitionIn": null},
+     "effectId": null, "title": null, "transitionIn": null},
     {"kind": "image", "id": "smoke-2", "mediaId": "$BLUE_ID", "duration": $SLIDE_SECONDS,
-     "effectId": null, "transitionIn": {"transitionId": "fade", "duration": $TRANSITION_SECONDS}}
+     "effectId": null, "title": null, "transitionIn": {"transitionId": "fade", "duration": $TRANSITION_SECONDS}}
   ]
 }
 JSON

@@ -62,7 +62,7 @@ from pydantic.alias_generators import to_camel
 from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.errors import ErrorCode, Params, error_message, validation_error
 from mmy_backend.media import AudioItem, MediaStore
-from mmy_backend.project import Project
+from mmy_backend.project import Project, slide_media_id
 from mmy_backend.render.context import RenderContextError
 from mmy_backend.render.encode import (
     DEFAULT_PROFILE,
@@ -454,7 +454,7 @@ class ExportManager:
                 if job.project is None or not job.status.active:
                     continue
                 project = job.project
-                if any(s.media_id == media_id for s in project.slides) or any(
+                if any(slide_media_id(s) == media_id for s in project.slides) or any(
                     c.media_id == media_id for c in project.music
                 ):
                     return job.id
