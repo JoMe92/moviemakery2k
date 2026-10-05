@@ -14,7 +14,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 2. Export-Mischung
 
-- [ ] TASK-RENDER-009 Export-Mischung erweitert: `narration_schedule`
+- [x] TASK-RENDER-009 Export-Mischung erweitert: `narration_schedule`
   (`at` direkt übernommen, keine Verkettung, Überlappung erlaubt),
   `video_clip_audio_schedule` (aus Timeline-Platzierung und
   `trimIn`/`trimOut` abgeleitet), `music_filter_graph` generisch für eine
