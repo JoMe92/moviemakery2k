@@ -16,6 +16,7 @@ import { AppMenus } from "./shell/AppMenus";
 import { AppWindow } from "./shell/AppWindow";
 import { CompactWindow } from "./shell/CompactWindow";
 import { useLayoutAttributes, useLayoutMode } from "./shell/layoutMode";
+import { useActionNotice } from "./shell/notice";
 import { StatusBar } from "./shell/StatusBar";
 import { NoAccessIndicator, SaveFailedIndicator, StatusNotices } from "./shell/StatusNotices";
 import { StoryboardPane } from "./shell/StoryboardPane";
@@ -46,6 +47,8 @@ const COLLECTION_IDS: readonly CollectionId[] = [
 export function App() {
   const collection = useAppStore((s) => s.collection);
   const setCollection = useAppStore((s) => s.setCollection);
+  const collectionVisible = useAppStore((s) => s.collectionVisible);
+  const toggleCollectionVisible = useAppStore((s) => s.toggleCollectionVisible);
   const backend = useAppStore((s) => s.backend);
   const saveState = useAppStore((s) => s.saveState);
   const timelineView = useAppStore((s) => s.timelineView);
@@ -56,6 +59,9 @@ export function App() {
 
   const layout = useLayoutMode();
   useLayoutAttributes(layout);
+  // The wide layout shows the short notice in its status bar; the other two
+  // use StatusNotices (design.md D4).
+  const notice = useActionNotice();
 
   const taskGroups = useTaskGroups();
   const { t } = useT();
@@ -117,22 +123,28 @@ export function App() {
             collections={collections}
             collection={collection}
             onCollectionChange={(id) => setCollection(id as CollectionId)}
+            collectionVisible={collectionVisible}
+            onToggleCollection={toggleCollectionVisible}
           />
         }
         taskPane={medium ? undefined : <TaskPane groups={taskGroups} />}
         collection={
-          <LibraryPane name={collectionName}>
-            {collection === "transitions" ? (
-              <TransitionCollection />
-            ) : collection === "effects" ? (
-              <EffectCollection />
-            ) : (
-              <MediaCollection
-                key={collection}
-                kind={collection === "music" ? "audio" : collection === "video" ? "video" : "image"}
-              />
-            )}
-          </LibraryPane>
+          collectionVisible ? (
+            <LibraryPane name={collectionName}>
+              {collection === "transitions" ? (
+                <TransitionCollection />
+              ) : collection === "effects" ? (
+                <EffectCollection />
+              ) : (
+                <MediaCollection
+                  key={collection}
+                  kind={
+                    collection === "music" ? "audio" : collection === "video" ? "video" : "image"
+                  }
+                />
+              )}
+            </LibraryPane>
+          ) : undefined
         }
         monitor={<Player />}
         storyboard={storyboard}
@@ -142,6 +154,7 @@ export function App() {
               items={[describeBackend(backend, t), describeSave(saveState, t)].filter(
                 (x): x is string => x !== null,
               )}
+              notice={notice}
             />
           )
         }
@@ -157,6 +170,7 @@ export function App() {
         actionBar={<ActionBar />}
         notices={medium ? <StatusNotices /> : undefined}
       />
+      <ImportInput />
       <SaveMovieWizardFromStore />
       <AccessDialog />
       <InstallInstructionsDialog />

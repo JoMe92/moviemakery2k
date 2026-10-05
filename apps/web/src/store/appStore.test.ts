@@ -693,4 +693,49 @@ describe("appStore", () => {
       expect(st().demo).toBeNull();
     });
   });
+
+  describe("visibility of the collection pane (app-shell design.md D3, D5)", () => {
+    it("starts visible and is never persisted, so a fresh store shows the pane again", async () => {
+      const api = mockApi();
+      const store = createAppStore(api);
+      await store.getState().init();
+      expect(store.getState().collectionVisible).toBe(true);
+      store.getState().toggleCollectionVisible();
+      expect(store.getState().collectionVisible).toBe(false);
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      // Nothing about the pane reaches the project, so a reload cannot restore it.
+      expect(api.putProject).not.toHaveBeenCalled();
+
+      const reloaded = createAppStore(mockApi());
+      await reloaded.getState().init();
+      expect(reloaded.getState().collectionVisible).toBe(true);
+    });
+
+    it("toggles back and forth without touching the shown collection", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      store.getState().setCollection("music");
+      store.getState().toggleCollectionVisible();
+      expect(store.getState().collectionVisible).toBe(false);
+      store.getState().toggleCollectionVisible();
+      expect(store.getState().collectionVisible).toBe(true);
+      expect(store.getState().collection).toBe("music");
+    });
+
+    it("every choice of a collection brings the pane back, the import included", async () => {
+      const store = createAppStore(mockApi());
+      await store.getState().init();
+      const st = () => store.getState();
+      for (const id of ["media", "music", "video", "transitions"] as const) {
+        st().toggleCollectionVisible();
+        expect(st().collectionVisible).toBe(false);
+        st().setCollection(id);
+        expect(st().collectionVisible).toBe(true);
+        expect(st().collection).toBe(id);
+      }
+      st().toggleCollectionVisible();
+      st().requestImport("pictures");
+      expect(st().collectionVisible).toBe(true);
+    });
+  });
 });

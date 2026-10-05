@@ -1,5 +1,6 @@
 import { type ReactNode, useId } from "react";
 import { useT } from "../i18n/useT";
+import { Button } from "../ui/Button";
 import { FolderIcon } from "../ui/icons";
 import styles from "./Toolbar.module.css";
 
@@ -13,19 +14,42 @@ export interface ToolbarProps {
   /** Controlled value: ID of the collection currently shown. */
   collection: string;
   onCollectionChange: (id: string) => void;
+  /** Collection pane visible; the toggle is marked pressed while it is. */
+  collectionVisible: boolean;
+  onToggleCollection: () => void;
   /** Additional toolbar buttons to the left of the collection picker. */
   children?: ReactNode;
 }
 
-/** Toolbar with the collection picker. */
-export function Toolbar({ collections, collection, onCollectionChange, children }: ToolbarProps) {
+/**
+ * Toolbar with the "Collections" toggle and the collection picker. The
+ * toggle's name stays the same in both states; its state is `aria-pressed`
+ * (pressed while the pane is visible, design.md D1).
+ */
+export function Toolbar({
+  collections,
+  collection,
+  onCollectionChange,
+  collectionVisible,
+  onToggleCollection,
+  children,
+}: ToolbarProps) {
   const { t } = useT();
   const selectId = useId();
   return (
     <div className={styles.toolbar} role="toolbar" aria-label={t("shell.toolbar")}>
-      {children ? <div className={styles.buttons}>{children}</div> : null}
+      <div className={styles.buttons}>
+        <Button
+          variant="toolbar"
+          icon={<FolderIcon size={16} />}
+          aria-pressed={collectionVisible}
+          onClick={onToggleCollection}
+        >
+          {t("shell.toggleCollections")}
+        </Button>
+        {children}
+      </div>
       <label htmlFor={selectId} className={styles.label}>
-        <FolderIcon size={16} />
         {t("shell.collections")}
       </label>
       <select

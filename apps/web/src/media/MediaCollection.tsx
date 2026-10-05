@@ -33,6 +33,7 @@ import { Tile } from "../ui/Tile";
 import { chain, HOLD_MS, useLongPress } from "../ui/useLongPress";
 import styles from "./MediaCollection.module.css";
 import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
+import { useAddFromCollection } from "./useAddFromCollection";
 
 /** Per-kind collection text: empty hint, tile list label, context menu and delete dialog. */
 const COLLECTION_TEXT: Record<
@@ -362,8 +363,7 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
   const allMedia = useAppStore((s) => s.media);
   const media = useMemo(() => allMedia.filter((m) => m.kind === kind), [allMedia, kind]);
   const text = COLLECTION_TEXT[kind];
-  const addSlide = useAppStore((s) => s.addSlide);
-  const addMusicClip = useAppStore((s) => s.addMusicClip);
+  const { addToStoryboard, addToMusicTrack } = useAddFromCollection();
   const deleteMedia = useAppStore((s) => s.deleteMedia);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -446,8 +446,8 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
               onTap: pickToggle,
               onDoubleClick: () => {
                 if (picking) return;
-                if (item.kind === "image" || item.kind === "video") addSlide(item.id);
-                else if (item.kind === "audio") addMusicClip(item.id);
+                if (item.kind === "image" || item.kind === "video") addToStoryboard([item.id]);
+                else if (item.kind === "audio") addToMusicTrack([item.id]);
               },
               picking: picking !== undefined,
               onLongPress: () => {
@@ -485,12 +485,17 @@ export function MediaCollection({ kind = "image", picking }: MediaCollectionProp
             ...(picking
               ? [{ label: t("media.properties"), onSelect: () => setProperties(menu.item) }]
               : menu.item.kind === "image" || menu.item.kind === "video"
-                ? [{ label: t("media.addToStoryboard"), onSelect: () => addSlide(menu.item.id) }]
+                ? [
+                    {
+                      label: t("media.addToStoryboard"),
+                      onSelect: () => addToStoryboard([menu.item.id]),
+                    },
+                  ]
                 : menu.item.kind === "audio"
                   ? [
                       {
                         label: t("media.addToMusicTrack"),
-                        onSelect: () => addMusicClip(menu.item.id),
+                        onSelect: () => addToMusicTrack([menu.item.id]),
                       },
                     ]
                   : []),

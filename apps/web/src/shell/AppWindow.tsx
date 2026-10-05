@@ -8,7 +8,8 @@ export interface AppWindowProps {
   toolbar: ReactNode;
   /** Task pane on the left (wide layout only). */
   taskPane?: ReactNode;
-  collection: ReactNode;
+  /** Collection pane; absent while the toolbar toggle hides it (design.md D3). */
+  collection?: ReactNode;
   monitor: ReactNode;
   storyboard: ReactNode;
   /** Status bar (wide layout) … */
@@ -29,7 +30,8 @@ export interface AppWindowProps {
  * Main window in the Movie Maker layout: title bar, menu bar and toolbar on
  * top, below them task pane | collection | monitor, then the full-width
  * storyboard and the status bar. The medium variant drops the task pane and
- * puts the taskbar at the bottom instead of the status bar.
+ * puts the taskbar at the bottom instead of the status bar. Without a
+ * collection pane the monitor takes its place; everything else stays put.
  */
 export function AppWindow({
   title,
@@ -55,7 +57,7 @@ export function AppWindow({
       </header>
       {menuBar}
       {toolbar}
-      <div className={styles.workspace}>
+      <div className={styles.workspace} data-collection={collection ? "shown" : "hidden"}>
         {taskPane}
         {collection}
         {monitor}

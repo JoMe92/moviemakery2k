@@ -7,6 +7,7 @@ import { useT } from "../i18n/useT";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
 import { useLayoutMode } from "../shell/layoutMode";
+import { useRevealRequest } from "../shell/reveal";
 import { audioDurations } from "../store/musicOps";
 import { useAppStore } from "../store/useAppStore";
 import {
@@ -122,6 +123,10 @@ export function MusicTrack() {
       });
     }
   }, [editRequest]);
+
+  // Adding music from the collection asks for the new clip to be shown
+  // (app-shell design.md D6).
+  useRevealRequest("musicClip", tiles);
 
   const durations = useMemo(() => audioDurations(media), [media]);
   const total = musicDuration(music, durations);

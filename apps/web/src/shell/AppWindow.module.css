@@ -50,6 +50,11 @@
   padding: 4px 4px 0;
 }
 
+/* Sammlungsbereich ausgeblendet: der Monitor bekommt seinen Platz (design.md D3). */
+.workspace[data-collection="hidden"] {
+  grid-template-columns: var(--y2k-taskpane-width) minmax(0, 1fr);
+}
+
 /* Medium layout (tablet, phone in landscape): collection | monitor, taskbar below. */
 .window[data-variant="medium"] {
   grid-template-rows: auto auto auto minmax(0, 1fr) minmax(var(--y2k-storyboard-height), auto) auto;
@@ -66,6 +71,10 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   padding-right: calc(4px + var(--y2k-safe-right));
   padding-left: calc(4px + var(--y2k-safe-left));
+}
+
+.window[data-variant="medium"] .workspace[data-collection="hidden"] {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .bottom {

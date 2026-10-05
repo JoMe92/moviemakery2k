@@ -21,6 +21,7 @@ export const de = {
     windowTitle: "{app} – Unbenanntes Projekt",
     taskPane: "Filmaufgaben",
     toolbar: "Symbolleiste",
+    toggleCollections: "Sammlungen",
     collections: "Sammlungen:",
     collection: "Sammlung: {name}",
     collectionPrefix: "Sammlung:",
@@ -133,6 +134,12 @@ export const de = {
     saved: "Gespeichert",
     saveFailed: "Speichern fehlgeschlagen",
     noAccess: "Kein Zugang",
+    addedPictures: { one: "{count} Bild hinzugefügt", other: "{count} Bilder hinzugefügt" },
+    addedVideos: { one: "{count} Video hinzugefügt", other: "{count} Videos hinzugefügt" },
+    addedMusic: {
+      one: "{count} Musikstück hinzugefügt",
+      other: "{count} Musikstücke hinzugefügt",
+    },
   },
   about: {
     title: "Info über {app}",

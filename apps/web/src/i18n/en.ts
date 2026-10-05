@@ -26,6 +26,7 @@ export const en = {
     windowTitle: "{app} – Untitled Project",
     taskPane: "Movie Tasks",
     toolbar: "Toolbar",
+    toggleCollections: "Collections",
     collections: "Collections:",
     collection: "Collection: {name}",
     collectionPrefix: "Collection:",
@@ -137,6 +138,9 @@ export const en = {
     saved: "Saved",
     saveFailed: "Saving failed",
     noAccess: "No access",
+    addedPictures: { one: "{count} picture added", other: "{count} pictures added" },
+    addedVideos: { one: "{count} video added", other: "{count} videos added" },
+    addedMusic: { one: "{count} music clip added", other: "{count} music clips added" },
   },
   about: {
     title: "About {app}",

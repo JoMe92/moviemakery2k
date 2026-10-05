@@ -131,6 +131,22 @@ export type EditRequestInput = EditRequest extends infer R
     : never
   : never;
 
+/**
+ * Request to scroll an element into view (design.md D6): adding from the
+ * collection asks, the filmstrip and the music track scroll - they own their
+ * tiles and their scroll container. `seq` makes repeats distinct.
+ */
+export type RevealRequest =
+  | { kind: "slide"; slideId: string; seq: number }
+  | { kind: "musicClip"; clipId: string; seq: number };
+
+/** A reveal request before the store numbers it. */
+export type RevealRequestInput = RevealRequest extends infer R
+  ? R extends RevealRequest
+    ? Omit<R, "seq">
+    : never
+  : never;
+
 export interface UploadEntry {
   key: string;
   filename: string;
@@ -139,6 +155,12 @@ export interface UploadEntry {
   failure?: ApiErrorInfo;
   /** Upload failed because the backend was unreachable (text comes from the catalog). */
   offline?: boolean;
+}
+
+/** A short notice about an action; `seq` makes a repeat of the same text new. */
+export interface ActionNotice {
+  text: string;
+  seq: number;
 }
 
 export interface AppState {
@@ -153,6 +175,12 @@ export interface AppState {
   music: MusicClip[];
   saveState: SaveState;
   collection: CollectionId;
+  /**
+   * Collection pane of the wide and medium layouts visible (design.md D3);
+   * transient, never persisted - after a reload the pane is back. Without a
+   * toolbar the compact layout ignores it.
+   */
+  collectionVisible: boolean;
   /** Storyboard pane shows the timeline view instead of the filmstrip (design.md
    * D7); tab-only, not persisted. Switching it never touches `selection` or
    * `playback` - both views read the same store fields. */
@@ -187,6 +215,15 @@ export interface AppState {
   collectionSheetOpen: boolean;
   /** Last requested editing dialog or action menu (touch operation), or null. */
   editRequest: EditRequest | null;
+  /**
+   * Short notice about the last explicit action (design.md D4), or null.
+   * `seq` counts up with every notice so the same text twice is shown twice.
+   * One channel, two presentations: `StatusNotices` in the compact and medium
+   * layouts, a temporary status-bar field in the wide one.
+   */
+  notice: ActionNotice | null;
+  /** Last request to scroll an element into view, or null. */
+  revealRequest: RevealRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
   /** Export interface for the wizard (same API as the store). */
@@ -198,6 +235,8 @@ export interface AppState {
   /** Switches the UI language at once, persists it and updates `<html lang>`. */
   setLocale(locale: Locale): void;
   setCollection(collection: CollectionId): void;
+  /** Toolbar toggle "Collections": shows or hides the collection pane (design.md D1). */
+  toggleCollectionVisible(): void;
   /** View -> "Zeitachse" / the storyboard pane's toggle button (design.md D7). */
   toggleTimelineView(): void;
   select(selection: Selection): void;
@@ -226,6 +265,14 @@ export interface AppState {
   setCollectionSheetOpen(open: boolean): void;
   /** Ask the storyboard or music track to open a dialog or action menu. */
   requestEdit(request: EditRequestInput): void;
+  /**
+   * Show a short notice about an action just carried out; the text is already
+   * translated. It replaces a standing notice at once and outranks the state
+   * messages ("Saved", backend changes) until it expires (design.md D4).
+   */
+  notify(text: string): void;
+  /** Ask the filmstrip or the music track to scroll an element into view. */
+  reveal(request: RevealRequestInput): void;
   importFiles(files: readonly File[]): Promise<void>;
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
@@ -467,6 +514,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       music: [],
       saveState: "idle",
       collection: "media",
+      collectionVisible: true,
       timelineView: false,
       selection: null,
       musicSelection: null,
@@ -481,6 +529,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       importRequest: 0,
       importKind: "any",
       editRequest: null,
+      notice: null,
+      revealRequest: null,
       collectionSheetOpen: false,
       exportWizardOpen: false,
       locale,
@@ -526,7 +576,12 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       setCollection(collection) {
         // Opening (or leaving) a collection never preselects a tile: the
         // monitor keeps showing the project (spec transitions "Übergänge in der Sammlung", design.md D7).
-        set({ collection, ...noDemo });
+        // Every way into a collection goes through here, so bringing the pane
+        // back lives here too - nothing can run into a hidden pane (design.md D5).
+        set({ collection, collectionVisible: true, ...noDemo });
+      },
+      toggleCollectionVisible() {
+        set({ collectionVisible: !get().collectionVisible });
       },
       toggleTimelineView() {
         set({ timelineView: !get().timelineView });
@@ -619,7 +674,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
 
       requestImport(kind = "any") {
-        set({ importRequest: get().importRequest + 1, importKind: kind });
+        // The imported files land in the collection, so the import brings the
+        // pane back as well (design.md D5).
+        set({ importRequest: get().importRequest + 1, importKind: kind, collectionVisible: true });
       },
       setCollectionSheetOpen(open) {
         set({ collectionSheetOpen: open });
@@ -627,6 +684,13 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       requestEdit(request) {
         const seq = (get().editRequest?.seq ?? 0) + 1;
         set({ editRequest: { ...request, seq } as EditRequest });
+      },
+      notify(text) {
+        set({ notice: { text, seq: (get().notice?.seq ?? 0) + 1 } });
+      },
+      reveal(request) {
+        const seq = (get().revealRequest?.seq ?? 0) + 1;
+        set({ revealRequest: { ...request, seq } as RevealRequest });
       },
 
       async importFiles(files) {
