@@ -6,6 +6,7 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import { buildAutoMovie, isStyleAvailable } from "../automovie/autoMovie";
 import { uploadFailureInfo } from "../i18n/errors";
 import { applyDocumentLocale, initialLocale, type Locale, writeStoredLocale } from "../i18n/locale";
+import { translate } from "../i18n/t";
 import {
   ApiError,
   type ApiErrorInfo,
@@ -397,14 +398,13 @@ export interface AppState {
    * Extras → "AutoMovie…" (add-automovie design.md D2): replaces the whole
    * filmstrip with the media collection in import order in the chosen style —
    * the style's transition between all adjacent elements, its effect on every
-   * element — and, if the project has music, runs "Fit movie to music" on the
-   * result. The collection itself stays untouched. One undo step for the whole
-   * operation. `false` = nothing done (unknown style, a style that needs music
-   * without a music track, or no pictures and videos at all).
-   *
-   * Deferred: the opening and closing title elements (Bead mmy-0pz); the
-   * `filmTitle` is already passed in but has nowhere to go until the slide
-   * model knows a title element.
+   * picture and video clip, a title element with `filmTitle` at the start and
+   * one with "Ende"/"The End" at the end, both in the style's `titleStyleId`
+   * — and, if the project has music, runs "Fit movie to music" on the result.
+   * The collection itself stays untouched. One undo step for the whole operation.
+   * `false` = nothing done (unknown style, a style whose title style is not in
+   * the title catalog, a style that needs music without a music track, or no
+   * pictures and videos at all). A blank `filmTitle` gets no opening title.
    */
   autoMovie(styleId: string, filmTitle: string): boolean;
   newProject(): void;
@@ -1120,13 +1120,22 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         }
         return result;
       },
-      autoMovie(styleId, _filmTitle) {
-        const { automovieStyles, media, music } = get();
+      autoMovie(styleId, filmTitle) {
+        const { automovieStyles, media, music, titles, locale } = get();
         const style = automovieStyles.find((entry) => entry.id === styleId);
         if (!style) return false;
+        // The backend validates every `titleStyleId` against the title catalog
+        // at startup (TASK-CAT-008), so an unknown one means a broken catalog
+        // pair — and a title element the backend would refuse.
+        const titleStyle = titleStyleById(titles, style.titleStyleId);
+        if (!titleStyle) return false;
         const musicLength = projectMusicDuration(music, media);
         if (!isStyleAvailable(style, musicLength > 0)) return false;
-        const built = buildAutoMovie(media, style, defaultTransitionDuration(style.transitionId));
+        const built = buildAutoMovie(media, style, defaultTransitionDuration(style.transitionId), {
+          filmTitle,
+          endTitle: translate(locale, "autoMovie.endTitle"),
+          layout: titleStyle.layout,
+        });
         if (built.length === 0) return false;
         // "Fit movie to music" is applied here rather than through the store
         // action, so the whole AutoMovie is a single undo step (design.md D2:

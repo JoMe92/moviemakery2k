@@ -91,15 +91,15 @@ What works today:
   exported movie shows the same text, the same bundled font (Liberation Sans)
   and the same animation. See [Titles and credits](#titles-and-credits).
 - **AutoMovie** — *Tools → AutoMovie…* builds a whole movie from the media
-  collection in one go: every picture and video clip in import order, one
-  transition between all of them and, depending on the style, an effect on
-  every element. Three styles: *Classic* (Fade, no effect), *Old Movie*
-  (Dissolve plus *Film Age, Older* on every element) and *Music Video*
-  (Circle, fitted to the length of the music — selectable only with a music
-  track). A filmstrip that is not empty is only replaced after a
-  confirmation; the collection itself stays untouched, and the result is an
-  ordinary project you can keep editing. The opening and closing titles of
-  the three styles arrive with the title feature.
+  collection in one go: a title with the movie title you entered, every
+  picture and video clip in import order, a closing *The End*, one transition
+  between all of them and, depending on the style, an effect on every picture
+  and clip. Three styles: *Classic* (Fade, no effect), *Old Movie* (Dissolve
+  plus *Film Age, Older* on every element) and *Music Video* (Circle, fitted
+  to the length of the music — selectable only with a music track); each
+  brings its own title style. A filmstrip that is not empty is only replaced
+  after a confirmation; the collection itself stays untouched, and the result
+  is an ordinary project you can keep editing.
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
   toggles playback.
