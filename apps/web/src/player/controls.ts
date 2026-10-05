@@ -3,7 +3,8 @@
  * No clock, no DOM: the store calls these functions, the rAF clock supplies dt.
  */
 import type { Slide } from "../lib/apiClient";
-import { slideDuration, slideMediaId } from "../store/projectOps";
+import { isStretchableSlide, slideDuration, slideMediaId } from "../store/projectOps";
+import type { FitSlide } from "../timeline/fitToMusic";
 import {
   buildTimeline,
   type Frame,
@@ -44,6 +45,19 @@ export function toTimelineSlide(slide: Slide): TimelineSlide {
 
 export function toTimelineSlides(slides: readonly Slide[]): TimelineSlide[] {
   return slides.map(toTimelineSlide);
+}
+
+/**
+ * A project element as input to "Fit movie to music": its length in the time
+ * model plus whether the fit may change it - a picture or title element is
+ * stretchable, a video clip is fixed (fit-to-music-with-video-clips D1).
+ */
+export function toFitSlide(slide: Slide): FitSlide {
+  return { ...toTimelineSlide(slide), stretchable: isStretchableSlide(slide) };
+}
+
+export function toFitSlides(slides: readonly Slide[]): FitSlide[] {
+  return slides.map(toFitSlide);
 }
 
 /**

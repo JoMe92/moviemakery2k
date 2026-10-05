@@ -39,7 +39,7 @@ import {
   startPlayback,
   MAX_STEP as TICK_MAX_STEP,
   timelineOf,
-  toTimelineSlides,
+  toFitSlides,
   videoSplitPoint,
 } from "../player/controls";
 import { type FitToMusicResult, fitToMusic } from "../timeline/fitToMusic";
@@ -91,6 +91,7 @@ import {
   SLIDE_DURATION,
   splitSlide,
   updateSlide,
+  withFittedDuration,
 } from "./projectOps";
 
 export const AUTOSAVE_DELAY_MS = 500;
@@ -1249,15 +1250,12 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       fitToMusic() {
         const { slides, music, media } = get();
-        const result = fitToMusic(toTimelineSlides(slides), projectMusicDuration(music, media));
+        const result = fitToMusic(toFitSlides(slides), projectMusicDuration(music, media));
         if (result.kind === "ok") {
-          // A video clip's length is its trim, not a display duration to stretch
-          // (add-timeline-editing non-goal); only pictures are resized here.
-          commit(
-            slides.map((s, i) =>
-              s.kind === "video" ? s : { ...s, duration: result.durations[i] ?? s.duration },
-            ),
-          );
+          // The fit itself knows which elements it may stretch and returns a
+          // duration for every one of them, so the store only applies the list
+          // instead of deciding again (fit-to-music-with-video-clips D1).
+          commit(slides.map((s, i) => withFittedDuration(s, result.durations[i])));
         }
         return result;
       },
@@ -1281,15 +1279,10 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         // "Fit movie to music" is applied here rather than through the store
         // action, so the whole AutoMovie is a single undo step (design.md D2:
         // the result is an ordinary project and stays editable like any other).
-        const fit = fitToMusic(toTimelineSlides(built), musicLength);
+        const fit = fitToMusic(toFitSlides(built), musicLength);
         const slides =
           fit.kind === "ok"
-            ? built.map((slide, index) =>
-                // A video clip's length is its trim, not a duration to stretch.
-                slide.kind === "video"
-                  ? slide
-                  : { ...slide, duration: fit.durations[index] ?? slide.duration },
-              )
+            ? built.map((slide, index) => withFittedDuration(slide, fit.durations[index]))
             : built;
         commit(slides);
         return true;

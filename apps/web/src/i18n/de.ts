@@ -159,9 +159,9 @@ export const de = {
   fitToMusic: {
     title: "Film an Musik anpassen",
     tooLong:
-      "Die Musik dauert {music}. Mit den vorhandenen Bildern ist höchstens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
+      "Die Musik dauert {music}. Mit den vorhandenen Elementen ist höchstens {reachable} erreichbar. Die Anzeigedauern bleiben unverändert.",
     tooShort:
-      "Die Musik dauert {music}. Mit den vorhandenen Bildern ist mindestens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
+      "Die Musik dauert {music}. Mit den vorhandenen Elementen ist mindestens {reachable} erreichbar. Die Anzeigedauern bleiben unverändert.",
   },
   autoMovie: {
     title: "AutoMovie",

@@ -5,7 +5,7 @@ Datenmodell oder eine API-Änderung braucht sie nicht.
 
 ## 1. Zeitmodell
 
-- [ ] TASK-WEB-079 `fitToMusic` rechnet mit dehnbaren und festen Elementen
+- [x] TASK-WEB-079 `fitToMusic` rechnet mit dehnbaren und festen Elementen
   Dehnbar sind Bild- und Titel-Elemente, fest ist ein Videoclip;
   bisektiert wird die gleichmäßige Dauer der dehnbaren Elemente, gemessen
   über den ganzen Bildstreifen, der Rest liegt auf dem letzten dehnbaren
@@ -18,7 +18,7 @@ Datenmodell oder eine API-Änderung braucht sie nicht.
 
 ## 2. Oberfläche
 
-- [ ] TASK-WEB-080 Aufrufer und Dialog auf dehnbare Elemente nachgezogen
+- [x] TASK-WEB-080 Aufrufer und Dialog auf dehnbare Elemente nachgezogen
   Der Store setzt die Dauern, die die Funktion liefert, statt selbst zu
   entscheiden, welches Element er dehnt; der Menüeintrag bleibt
   verfügbar, solange es Elemente und Musik gibt, und der Dialog nennt die
@@ -30,7 +30,7 @@ Datenmodell oder eine API-Änderung braucht sie nicht.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-030 E2E und Doku zur exakten Anpassung an die Musik
+- [x] TASK-INFRA-030 E2E und Doku zur exakten Anpassung an die Musik
   Playwright baut einen Bildstreifen aus Bildern und einem Videoclip,
   fügt Musik hinzu, wählt „Film an Musik anpassen“ und prüft die
   Gesamtdauer in der Statusleiste; dazu README und CHANGELOG „Unreleased“
