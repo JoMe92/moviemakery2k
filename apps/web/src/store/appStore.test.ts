@@ -344,6 +344,34 @@ describe("appStore", () => {
     expect(store.getState().clipAudioBalance).toBe(50);
   });
 
+  it("setClipAudioBalance takes whole steps from 0 to 100 and autosaves (D4)", async () => {
+    const api = mockApi();
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = () => store.getState();
+
+    expect(st().setClipAudioBalance(0)).toBe(true);
+    expect(st().clipAudioBalance).toBe(0);
+    await store.getState().flushSave();
+    expect(api.saved.at(-1)?.clipAudioBalance).toBe(0);
+
+    // Out of range or fractional: nothing changes, and nothing is pushed to undo.
+    const steps = st().undoStack.length;
+    for (const bad of [-1, 101, 50.5, Number.NaN]) {
+      expect(st().setClipAudioBalance(bad), String(bad)).toBe(false);
+    }
+    expect(st().clipAudioBalance).toBe(0);
+    expect(st().undoStack).toHaveLength(steps);
+
+    // Setting the value it already has is accepted but is not an undo step.
+    expect(st().setClipAudioBalance(0)).toBe(true);
+    expect(st().undoStack).toHaveLength(steps);
+
+    expect(st().setClipAudioBalance(100)).toBe(true);
+    store.getState().undo();
+    expect(st().clipAudioBalance).toBe(0);
+  });
+
   it("drops narration clips of a deleted medium through the backend cascade", async () => {
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({

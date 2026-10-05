@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
@@ -206,6 +206,27 @@ describe("Menu bar", () => {
     await user.click(screen.getByRole("menuitem", { name: "Bearbeiten" }));
     await user.click(screen.getByRole("menuitem", { name: /Löschen/ }));
     expect(store.getState().slides).toEqual([]);
+  });
+
+  it("Clip → Audio-Pegel… sets the one global level (add-narration-and-audio-levels D4)", async () => {
+    const user = userEvent.setup();
+    const { store, ready } = renderApp();
+    await ready;
+    expect(store.getState().clipAudioBalance).toBe(50);
+
+    await user.click(screen.getByRole("menuitem", { name: "Clip" }));
+    await user.click(screen.getByRole("menuitem", { name: "Audio-Pegel…" }));
+    const slider = await screen.findByRole("slider", { name: "Pegel" });
+    fireEvent.change(slider, { target: { value: "100" } });
+    await user.click(screen.getByRole("button", { name: "OK" }));
+
+    expect(store.getState().clipAudioBalance).toBe(100);
+    await waitFor(() =>
+      expect(screen.queryByRole("slider", { name: "Pegel" })).not.toBeInTheDocument(),
+    );
+    // Undoable like every other project change (spec edit-commands).
+    store.getState().undo();
+    expect(store.getState().clipAudioBalance).toBe(50);
   });
 
   it("Clip → Teilen is disabled for a picture element (design.md D4)", async () => {

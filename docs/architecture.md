@@ -16,7 +16,7 @@ flowchart LR
     TL["timeline.ts<br/>buildTimeline / frameAt"]
     MS["music.ts<br/>musicSchedule"]
     GL["WebGL2 renderer"]
-    AE["AudioEngine<br/>(Web Audio, audio clock)"]
+    AE["AudioEngine<br/>(Web Audio, audio clock,<br/>music + narration + clip sound)"]
   end
   subgraph Server["Python: backend/ (FastAPI)"]
     API["/api routes"]
@@ -56,7 +56,7 @@ flowchart LR
 
 | Component | Path | Responsibility |
 |---|---|---|
-| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio (`audio/AudioEngine.ts`) |
+| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio for all three tracks (`audio/AudioEngine.ts`) |
 | Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with music mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
 | Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition and per effect plus the shared preludes/epilogues/vertex shader; used by preview and export |
 | Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
@@ -271,26 +271,44 @@ nothing.
 
 ### 6. Preview audio
 
-`apps/web/src/audio/AudioEngine.ts` plays the music schedule with Web Audio;
-`useMusicAudio.ts` connects it to the store.
+`apps/web/src/audio/AudioEngine.ts` plays an audio schedule with Web Audio;
+`usePreviewAudio.ts` connects it to the store. The engine is
+**track-independent**: music, narration and the original sound of the video
+elements arrive as one flat list of segments (`timeline/audio.ts`), each
+already carrying the gain its side got from the global level.
 
-- **Decoding.** As soon as a medium is on the music track (clip added,
-  project loaded), its `preview.m4a` is fetched and decoded once in an
-  `OfflineAudioContext` (no user gesture needed) and cached per medium.
+- **Three schedules, one segment shape.** Music is sequential (section 4),
+  narration takes each clip's stored absolute `at` and allows overlap, and the
+  video-clip sound is derived from the timeline placement plus `trimIn`/
+  `trimOut` and has no volume or fades of its own. All three go through the
+  same movie-end rule (dropped past the end, cut at it, end-of-movie
+  fade-out).
+- **One global level.** `clipAudioBalance` (0–100) yields two gains: at 0 the
+  clip sound is silent, at 100 music and narration are, at 50 both play at
+  full gain, and in between the quieter side ramps linearly. A silent side is
+  not scheduled at all. Clip → *Audio-Pegel…* sets the value; it is undoable
+  and autosaved like every other project change.
+- **Decoding.** As soon as a medium is referenced (clip added, project
+  loaded), it is fetched and decoded once in an `OfflineAudioContext` (no user
+  gesture needed) and cached per medium — audio media from their
+  `preview.m4a`, video media from their `videoUrl`. A video without an audio
+  track simply fails to decode and stays silent; nothing has to ask first.
 - **Playback.** Each segment becomes an `AudioBufferSourceNode` → `GainNode`
   started at its movie time with `start(when, sourceIn + offset, …)`; volume
   and fades are linear gain ramps. Every change of the plan — play, pause,
-  stop, seek, a project or music edit — stops all sources and schedules again
-  from the current movie time.
-- **Audio clock.** While music is scheduled and the `AudioContext` runs,
-  `clockTime()` derives the movie time from `AudioContext.currentTime`, and
-  the player's requestAnimationFrame loop advances playback by that clock
-  instead of its own frame delta. Picture and sound therefore cannot drift
-  apart; without music (or without a running context) the rAF clock is
-  used as before.
+  stop, seek, a project, track or level edit — stops all sources and schedules
+  again from the current movie time.
+- **Still one clock.** A video element's sound goes through this engine, never
+  through `video.play()`: the `<video>` element stays muted and is scrubbed by
+  `currentTime` alone (D5 of `add-timeline-editing`). While sound is scheduled
+  and the `AudioContext` runs, `clockTime()` derives the movie time from
+  `AudioContext.currentTime`, and the player's requestAnimationFrame loop
+  advances playback by that clock instead of its own frame delta. Picture and
+  sound therefore cannot drift apart; without sound (or without a running
+  context) the rAF clock is used as before.
 - **Autoplay policy.** The `AudioContext` is created or resumed only inside a
   user gesture: the play button, the space bar, or any pointer/key event while
-  the project has music.
+  the project has music, narration or a video element.
 - The transition sample of the collection is silent. `preview.m4a` carries
   the usual AAC priming delay (20–45 ms), so the preview is not sample-exact;
   the export mixes from the originals instead.
@@ -679,7 +697,7 @@ covers the switch to English and the browser-language detection.
 |---|---|---|
 | Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
 | Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
-| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
+| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), narration and video-clip-sound schedules, the global audio level, *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), clip sound through the store and the hook, music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
 | E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Device profiles iPhone 13, Pixel 7 and iPad (gen 7) with touch: no horizontal scroll, 44 px targets, the whole flow by tapping in portrait and landscape (`e2e/test_mobile.py`); slideshow flow in the real app; LAN mode with access token, token link, cookie and manifest (`e2e/test_lan_mode.py`); language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |

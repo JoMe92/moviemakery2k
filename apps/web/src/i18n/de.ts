@@ -80,6 +80,7 @@ export const de = {
       label: "Clip",
       addToStoryboard: "Zum Storyboard hinzufügen",
       split: "Teilen",
+      audioLevels: "Audio-Pegel…",
       fitToMusic: "Film an Musik anpassen",
     },
     play: {
@@ -146,6 +147,14 @@ export const de = {
     version: "Version {version}",
     text: "{app} ist vom klassischen Movie Maker inspiriert. Es ist kein Microsoft-Produkt und steht in keiner Verbindung zu Microsoft.",
     license: "Lizenz: {license}",
+  },
+  audioLevels: {
+    title: "Audio-Pegel",
+    slider: "Pegel",
+    clipAudio: "Ton von Videoclips",
+    musicAndNarration: "Musik und Erzählung",
+    hint: "Ein Pegel für den ganzen Film: links nur Musik und Erzählung, rechts nur der Ton der Videoclips, in der Mitte beides voll.",
+    value: "{clip} % Clip-Ton, {musicAndNarration} % Musik und Erzählung",
   },
   fitToMusic: {
     title: "Film an Musik anpassen",

@@ -51,6 +51,8 @@ export interface MenuHandlers {
   fitToMusic?: () => void;
   /** Clip → "Split"; absent unless a video clip is selected within its own span. */
   split?: () => void;
+  /** Clip → "Audio levels…" (add-narration-and-audio-levels D4); always there. */
+  audioLevels?: () => void;
 }
 
 const item = (id: string, label: string, onSelect?: () => void, shortcut?: string): MenuEntry => ({
@@ -121,6 +123,7 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
         item("add-to-storyboard", t("menu.clip.addToStoryboard")),
         item("split", t("menu.clip.split"), h.split),
         separator,
+        item("audio-levels", t("menu.clip.audioLevels"), h.audioLevels),
         item("fit-to-music", t("menu.clip.fitToMusic"), h.fitToMusic),
       ],
     },

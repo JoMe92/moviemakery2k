@@ -3,7 +3,7 @@
  * "Musikleiste"). Clips play in list order; there is no start time per clip.
  */
 import type { MediaItem, MusicClip } from "../lib/apiClient";
-import type { MediaDurations } from "../timeline/music";
+import type { MediaDurations } from "../timeline/audio";
 import { newSlideId } from "./projectOps";
 
 /** At most this many clips on the music track (spec music-track "Musikspur"). */

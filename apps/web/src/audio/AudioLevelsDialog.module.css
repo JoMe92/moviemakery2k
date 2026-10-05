@@ -1,0 +1,28 @@
+.scale {
+  display: flex;
+  justify-content: space-between;
+  width: 280px;
+  margin-bottom: 2px;
+  color: var(--y2k-text-muted);
+}
+
+.slider {
+  width: 280px;
+}
+
+.value {
+  margin: 6px 0 0;
+}
+
+.hint {
+  margin: 8px 0 0;
+  max-width: 320px;
+  color: var(--y2k-text-muted);
+}
+
+/* Touch control (add-mobile-layout design.md D10). */
+.stepper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}

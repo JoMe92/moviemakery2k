@@ -1,14 +1,22 @@
 /**
- * Music in the preview (add-music-track design.md D5, spec preview-player
- * "Musik in der Wiedergabe").
+ * Sound in the preview (add-music-track design.md D5, add-narration-and-audio-
+ * levels design.md D1; spec preview-player "Musik in der Wiedergabe",
+ * "Clip-Ton und Erzählung in der Wiedergabe").
  *
- * Web Audio playback of the music schedule (`timeline/music.ts`): one
+ * Web Audio playback of an audio schedule (`timeline/audio.ts`): one
  * `AudioBufferSourceNode` → `GainNode` per segment, linear gain ramps for the
  * fades. Buffers are fetched and decoded per medium once and cached. Every
- * change of the plan (play, pause, stop, seek, project or music change, demo)
+ * change of the plan (play, pause, stop, seek, project or audio change, demo)
  * stops all sources and schedules again from the current time.
  *
- * While music is scheduled and the AudioContext runs, `clockTime()` returns
+ * The engine is **track-independent**: music, narration and the original sound
+ * of video elements arrive as one flat list of segments, each already carrying
+ * the gain its track got from the global audio level (D4). That is what keeps
+ * the one-clock rule of add-timeline-editing D5 intact — a video element's
+ * sound is scheduled here like any other segment, never started through
+ * `video.play()`, so `<video>` stays pure picture scrubbing.
+ *
+ * While sound is scheduled and the AudioContext runs, `clockTime()` returns
  * the movie time derived from `AudioContext.currentTime`; the player uses it
  * as the master clock so that image and sound cannot drift apart. Otherwise
  * it returns `null` and the player keeps its rAF clock.
@@ -17,7 +25,7 @@
  * calls inside the user gesture (play button, space bar). Everything Web Audio
  * is injected (`AudioEngineDeps`) so tests can use a fake context.
  */
-import type { MusicSegment } from "../timeline/music";
+import type { AudioSegment } from "../timeline/audio";
 
 export interface AudioBufferLike {
   readonly duration: number;
@@ -61,12 +69,12 @@ export interface AudioEngineDeps {
   fetchData(url: string): Promise<ArrayBuffer>;
 }
 
-/** What the engine should play, derived from the store. */
-export interface MusicPlan {
+/** What the engine should play, derived from the store; any mix of tracks. */
+export interface AudioPlan {
   playing: boolean;
   /** Movie time (s) of the store playback. */
   time: number;
-  segments: readonly MusicSegment[];
+  segments: readonly AudioSegment[];
   /** Silent (transition demo). */
   muted: boolean;
 }
@@ -85,7 +93,7 @@ const SEEK_TOLERANCE = 1e-6;
 /** Extra ramp points where fade-in and fade-out overlap (their product is not linear). */
 const OVERLAP_STEPS = 8;
 
-const IDLE: MusicPlan = { playing: false, time: 0, segments: [], muted: false };
+const IDLE: AudioPlan = { playing: false, time: 0, segments: [], muted: false };
 
 function browserDeps(): AudioEngineDeps {
   const hasContext = typeof AudioContext !== "undefined";
@@ -118,14 +126,14 @@ interface Voice {
 }
 
 /** Gain of a segment at `x` seconds into the segment (fades multiply). */
-export function segmentGain(seg: MusicSegment, x: number): number {
+export function segmentGain(seg: AudioSegment, x: number): number {
   const fadeIn = seg.fadeIn > 0 ? Math.min(1, Math.max(0, x / seg.fadeIn)) : 1;
   const fadeOut = seg.fadeOut > 0 ? Math.min(1, Math.max(0, (seg.length - x) / seg.fadeOut)) : 1;
   return seg.gain * fadeIn * fadeOut;
 }
 
 /** Envelope breakpoints (seconds into the segment) after `offset`. */
-function rampPoints(seg: MusicSegment, offset: number): number[] {
+function rampPoints(seg: AudioSegment, offset: number): number[] {
   const points = new Set<number>();
   if (seg.fadeIn > 0) points.add(seg.fadeIn);
   if (seg.fadeOut > 0) {
@@ -141,7 +149,7 @@ function rampPoints(seg: MusicSegment, offset: number): number[] {
   return [...points].filter((x) => x > offset && x <= seg.length).sort((a, b) => a - b);
 }
 
-function segmentsKey(segments: readonly MusicSegment[]): string {
+function segmentsKey(segments: readonly AudioSegment[]): string {
   return JSON.stringify(segments);
 }
 
@@ -150,7 +158,7 @@ export class AudioEngine {
   private ctx: AudioContextLike | null = null;
   private readonly cache = new Map<string, CacheEntry>();
   private voices: Voice[] = [];
-  private plan: MusicPlan = IDLE;
+  private plan: AudioPlan = IDLE;
   private planKey = segmentsKey([]);
   private anchor: { ctxTime: number; movieTime: number } | null = null;
   private lastReported: number | null = null;
@@ -176,7 +184,12 @@ export class AudioEngine {
     }
   }
 
-  /** Fetch and decode a medium once (when added to the music track or on load). */
+  /**
+   * Fetch and decode a medium once (when a clip referring to it appears, or on
+   * load). A video medium is preloaded from its `videoUrl` exactly like an
+   * audio file; one without an audio track simply fails to decode and stays
+   * silent in the preview (design.md D1).
+   */
   preload(mediaId: string, url: string): void {
     const decode = this.deps.decode;
     if (!decode) return;
@@ -210,7 +223,7 @@ export class AudioEngine {
   }
 
   /** Apply the current store state; reschedules only on a relevant change. */
-  update(plan: MusicPlan): void {
+  update(plan: AudioPlan): void {
     const key = segmentsKey(plan.segments);
     const seeked =
       plan.playing &&

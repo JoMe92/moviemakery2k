@@ -71,6 +71,7 @@ import {
 import {
   CLIP_AUDIO_BALANCE,
   insertSlide,
+  isValidClipAudioBalance,
   isValidSlideDuration,
   isValidTransitionDuration,
   moveSlide,
@@ -406,6 +407,13 @@ export interface AppState {
    * returns whether the change was applied.
    */
   updateMusicClip(clipId: string, patch: MusicClipPatch): boolean;
+  /**
+   * Clip → "Audio levels…" (add-narration-and-audio-levels D4): the one global
+   * level between video-clip sound and music plus narration; autosaved and
+   * undoable. A value outside 0–100 or not a whole number changes nothing;
+   * returns whether the change was applied.
+   */
+  setClipAudioBalance(balance: number): boolean;
   /**
    * Clip → "Fit movie to music" (add-music-track D8): sets all picture
    * durations at once (one change, autosaved). Changes nothing if the music
@@ -1123,6 +1131,14 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       removeMusicClip(clipId) {
         commitMusic(removeMusicClipOp(get().music, clipId));
+      },
+      setClipAudioBalance(balance) {
+        if (!isValidClipAudioBalance(balance)) return false;
+        if (balance === get().clipAudioBalance) return true;
+        pushHistory(snapshot());
+        set({ clipAudioBalance: balance });
+        scheduleSave();
+        return true;
       },
       updateMusicClip(clipId, patch) {
         const { music, media } = get();

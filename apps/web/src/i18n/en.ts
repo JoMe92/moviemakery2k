@@ -84,6 +84,7 @@ export const en = {
       label: "Clip",
       addToStoryboard: "Add to Storyboard",
       split: "Split",
+      audioLevels: "Audio Levels…",
       fitToMusic: "Fit Movie to Music",
     },
     play: {
@@ -147,6 +148,14 @@ export const en = {
     version: "Version {version}",
     text: "{app} is inspired by the classic Movie Maker. It is not a Microsoft product and is not affiliated with Microsoft.",
     license: "License: {license}",
+  },
+  audioLevels: {
+    title: "Audio Levels",
+    slider: "Level",
+    clipAudio: "Audio from video clips",
+    musicAndNarration: "Music and narration",
+    hint: "One level for the whole movie: left only music and narration, right only the audio of the video clips, in the middle both at full volume.",
+    value: "{clip} % clip audio, {musicAndNarration} % music and narration",
   },
   fitToMusic: {
     title: "Fit Movie to Music",
