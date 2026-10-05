@@ -18,7 +18,7 @@ Datenmodell oder eine API-Änderung braucht sie nicht.
 
 ## 2. Oberfläche
 
-- [ ] TASK-WEB-080 Aufrufer und Dialog auf dehnbare Elemente nachgezogen
+- [x] TASK-WEB-080 Aufrufer und Dialog auf dehnbare Elemente nachgezogen
   Der Store setzt die Dauern, die die Funktion liefert, statt selbst zu
   entscheiden, welches Element er dehnt; der Menüeintrag bleibt
   verfügbar, solange es Elemente und Musik gibt, und der Dialog nennt die
