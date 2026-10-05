@@ -13,7 +13,7 @@ Render-Technik) und die achte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 2. Oberfläche
 
-- [ ] TASK-WEB-069 AutoMovie-Dialog und Algorithmus: Extras → „AutoMovie…“
+- [x] TASK-WEB-069 AutoMovie-Dialog und Algorithmus: Extras → „AutoMovie…“
   öffnet den Dialog (Filmtitel, Stil-Auswahl mit deaktiviertem
   musikpflichtigem Stil ohne Musikspur, Rückfrage bei nicht leerem
   Bildstreifen); „Erstellen“ baut den Bildstreifen aus der
