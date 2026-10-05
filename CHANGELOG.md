@@ -134,6 +134,30 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- **„Fit Movie to Music“ now really hits the music when a video clip is on
+  the storyboard** (OpenSpec change `fit-to-music-with-video-clips`): the menu
+  item promises the movie lasts as long as the music, but since video clips
+  exist it missed. The fit spread the target duration evenly over *all*
+  elements, while the caller applied the new duration only to elements that
+  have a display duration — a clip's length is its trim window and is
+  deliberately not stretched. With a clip on the storyboard the movie
+  therefore landed beside the music instead of on it: three pictures and a
+  7.5 s clip came out at 51.25 s against 60 s of music. The fit now tells
+  **stretchable** elements (pictures and title elements) from **fixed** ones
+  (video clips), searches the even duration of the stretchable elements and
+  keeps measuring the whole storyboard with the clips at their real length,
+  so a transition on the border between a fixed and a stretchable element is
+  still counted correctly. The remainder goes to the last stretchable
+  element, and the reachable minimum and maximum count the fixed clips in —
+  so a storyboard that has nothing to stretch, or whose clips alone are
+  already longer than the music, gets the usual dialog naming the reachable
+  duration instead of a silent miss. The menu item stays available as before
+  (elements plus music), and its dialog now speaks of elements and display
+  durations rather than pictures, which was simply false for a storyboard of
+  pure video clips. This also repairs AutoMovie's *Music Video* style, which
+  applies the same fit and explicitly promises that the total matches the
+  music — anyone with an imported video hit the bug on every AutoMovie run
+  ([MMY-9wd], [MMY-dez], [MMY-osu]).
 - **An over-long title text no longer breaks the autosave** (OpenSpec change
   `limit-title-text-length`): the backend has always rejected a title line
   longer than 200 characters, but no field of the web app limited its input.

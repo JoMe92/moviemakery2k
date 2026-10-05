@@ -50,7 +50,7 @@ What works today:
   selection and the playhead are shared with the storyboard.
 - **Music** — import MP3, WAV, M4A/AAC, OGG and FLAC into *My Music*, put
   pieces on the *Audio/Music* track below the storyboard, trim them, set
-  their volume and fades, and fit the movie to the music. The preview plays
+  their volume and fades, and fit the movie exactly to the music. The preview plays
   the music in sync with pictures and transitions; the exported movie
   contains the mix. See [Music](#music).
 - **Narration and audio levels** — record a narration through the microphone
@@ -281,12 +281,17 @@ proportional to the length.
 - **Music longer than the movie** is cut at the end of the movie and always
   faded out over the last second; the track says so (*Music 3:12 / Movie
   2:40 – will be cut at the end*). **Shorter music** is followed by silence.
-- **Fit Movie to Music** in the *Clip* menu (*Film an Musik anpassen*)
-  spreads the length of the music evenly over the pictures, taking the
-  transitions into account (rounded to 0.25 s, 0.5–60 s per picture; the
-  remainder goes to the last picture). If the music is too long or too short
-  for the existing pictures, a dialog names the reachable duration and
-  nothing changes. The item is disabled without music or without pictures.
+- **Fit Movie to Music** in the *Clip* menu (*Film an Musik anpassen*) makes
+  the movie last exactly as long as the music. It spreads the length evenly
+  over the **stretchable** elements — every element with a display duration
+  of its own, so pictures and title elements — and takes the transitions into
+  account over the whole storyboard (rounded to 0.25 s, 0.5–60 s per element;
+  the remainder goes to the last stretchable element). A **video clip stays
+  untouched**: its length is its trim window, and stretching it would change
+  your cut. If the music cannot be reached — because the stretchable elements
+  would have to leave that range, or because the storyboard has nothing to
+  stretch at all — a dialog names the reachable duration and nothing changes.
+  The item is disabled without music or without elements.
 
 **Preview and export.** The preview player plays the music with Web Audio in
 sync with pictures and transitions: while music is scheduled, the audio clock
