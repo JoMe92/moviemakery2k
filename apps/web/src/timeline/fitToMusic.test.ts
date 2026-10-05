@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { canFitToMusic, fitToMusic, movieDurationWith } from "./fitToMusic";
-import { buildTimeline, formatTime, type TimelineSlide } from "./timeline";
+import {
+  canFitToMusic,
+  type FitSlide,
+  fitToMusic,
+  isStretchable,
+  movieDurationWith,
+} from "./fitToMusic";
+import { buildTimeline, formatTime } from "./timeline";
 
-function slides(count: number, transition = 0, duration = 5): TimelineSlide[] {
+function slides(count: number, transition = 0, duration = 5): FitSlide[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `s${i}`,
     mediaId: `m${i}`,
@@ -11,7 +17,7 @@ function slides(count: number, transition = 0, duration = 5): TimelineSlide[] {
   }));
 }
 
-function applied(input: TimelineSlide[], durations: number[]): TimelineSlide[] {
+function applied(input: readonly FitSlide[], durations: readonly number[]): FitSlide[] {
   return input.map((s, i) => ({ ...s, duration: durations[i] ?? s.duration }));
 }
 
@@ -103,5 +109,159 @@ describe("fitToMusic (add-music-track D8)", () => {
     expect(canFitToMusic(0, 60)).toBe(false);
     expect(canFitToMusic(3, 0)).toBe(false);
     expect(canFitToMusic(3, 60)).toBe(true);
+  });
+});
+
+describe("fitToMusic with fixed video clips (fit-to-music-with-video-clips D1–D3)", () => {
+  /** A picture or title element: the fit owns its display duration (D1). */
+  function picture(id: string, duration = 5, transition = 0): FitSlide {
+    return {
+      id,
+      mediaId: `m-${id}`,
+      duration,
+      transitionIn: transition > 0 ? { transitionId: "fade", duration: transition } : null,
+    };
+  }
+
+  /** A title element — no medium of its own, but a display duration (D1). */
+  function title(id: string, duration = 5, transition = 0): FitSlide {
+    return { ...picture(id, duration, transition), mediaId: null };
+  }
+
+  /** A video clip: `duration` is its trim window and MUST stay unchanged (D1). */
+  function clip(id: string, duration: number, transition = 0): FitSlide {
+    return { ...picture(id, duration, transition), stretchable: false };
+  }
+
+  it("Spec: Mit einem Videoclip — 60 s music, three pictures and a 7.5 s clip → 17.5 s each", () => {
+    const input = [picture("a"), picture("b"), picture("c"), clip("v", 7.5)];
+    const result = fitToMusic(input, 60);
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    // The clip keeps its trim window, the pictures carry the whole target.
+    expect(result.durations).toEqual([17.5, 17.5, 17.5, 7.5]);
+    expect(formatTime(buildTimeline(applied(input, result.durations)).duration)).toBe("0:01:00,00");
+    expect(result.total).toBeCloseTo(60, 9);
+  });
+
+  it("hits the music exactly wherever the fixed clip sits in the storyboard", () => {
+    for (const at of [0, 1, 2, 3]) {
+      const input = [picture("a"), picture("b"), picture("c")];
+      input.splice(at, 0, clip("v", 7.5));
+      const result = fitToMusic(input, 60);
+      expect(result.kind).toBe("ok");
+      if (result.kind !== "ok") return;
+      // The clip's own length comes back untouched at its own position.
+      expect(result.durations[at]).toBe(7.5);
+      expect(buildTimeline(applied(input, result.durations)).duration).toBeCloseTo(60, 9);
+    }
+  });
+
+  it("Spec: Mit einem Titel-Element — 30 s music, a title and two pictures → 10 s each", () => {
+    const input = [title("t"), picture("a"), picture("b")];
+    const result = fitToMusic(input, 30);
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    // A title element has a display duration, so it is stretched along (D1).
+    expect(result.durations).toEqual([10, 10, 10]);
+    expect(formatTime(buildTimeline(applied(input, result.durations)).duration)).toBe("0:00:30,00");
+  });
+
+  it("measures a transition on the border to a fixed clip over both neighbours (D2)", () => {
+    // A 1 s clip between two pictures, 1 s transitions: the clip's own half
+    // length caps each overlap at 0.5 s, so total = 2d + 1 − 0.5 − 0.5 = 2d.
+    // "Music length minus clip length" would target 19 s for the pictures and
+    // land on 19 s instead of 20 s — the overlap depends on both neighbours.
+    const input = [picture("a"), clip("v", 1, 1), picture("b", 5, 1)];
+    const result = fitToMusic(input, 20);
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(result.durations).toEqual([10, 1, 10]);
+    const fitted = applied(input, result.durations);
+    expect(formatTime(buildTimeline(fitted).duration)).toBe("0:00:20,00");
+    // Transitions stay unchanged.
+    expect(fitted.map((s) => s.transitionIn)).toEqual(input.map((s) => s.transitionIn));
+  });
+
+  it("Spec: Nichts zu dehnen — two clips of 20 s and 60 s music → at most 20 s", () => {
+    const input = [clip("v1", 12.5), clip("v2", 7.5)];
+    expect(fitToMusic(input, 60)).toEqual({ kind: "tooLong", reachable: 20 });
+    // The other direction out of the same branch: nothing can get shorter either.
+    expect(fitToMusic(input, 5)).toEqual({ kind: "tooShort", reachable: 20 });
+  });
+
+  it("leaves a storyboard of only clips alone when it already matches the music", () => {
+    const input = [clip("v1", 12.5), clip("v2", 7.5)];
+    const result = fitToMusic(input, 20);
+    expect(result).toEqual({ kind: "ok", durations: [12.5, 7.5], total: 20 });
+  });
+
+  it("counts the fixed clips into the reachable minimum and maximum (D3)", () => {
+    // 30 s of fixed clip plus one picture: at least 30.5 s, at most 90 s.
+    const input = [clip("v", 30), picture("a")];
+    expect(fitToMusic(input, 20)).toEqual({ kind: "tooShort", reachable: 30.5 });
+    expect(fitToMusic(input, 200)).toEqual({ kind: "tooLong", reachable: 90 });
+  });
+
+  it("puts the remainder on the last stretchable element, not the last clip", () => {
+    // 10 s target, a 1 s clip last: 9 s over three pictures = 3 s each, exact.
+    // 10.5 s target: 3.1666 → 3.25 s, and the last *picture* carries the rest.
+    const input = [picture("a"), picture("b"), picture("c"), clip("v", 1)];
+    const result = fitToMusic(input, 10.5);
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(result.durations[3]).toBe(1);
+    expect(result.durations.slice(0, 2)).toEqual([3.25, 3.25]);
+    expect(result.durations[2]).toBe(3);
+    expect(result.total).toBeCloseTo(10.5, 9);
+  });
+
+  it("keeps every fitted duration on the grid and within the limits", () => {
+    for (const clipLength of [0.4, 7.5, 30]) {
+      for (const transition of [0, 1]) {
+        const input = [
+          picture("a", 5, transition),
+          clip("v", clipLength, transition),
+          title("t", 5, transition),
+          picture("b", 5, transition),
+        ];
+        for (const target of [12, 33.3, 150]) {
+          const result = fitToMusic(input, target);
+          if (result.kind !== "ok") continue;
+          expect(result.durations[1]).toBe(clipLength);
+          expect(Math.abs(result.total - target)).toBeLessThanOrEqual(0.125 + 1e-9);
+          for (const [i, d] of result.durations.entries()) {
+            if (!isStretchable(input[i] as FitSlide)) continue;
+            expect(onGrid(d)).toBe(true);
+            expect(d).toBeGreaterThanOrEqual(0.5);
+            expect(d).toBeLessThanOrEqual(60);
+          }
+        }
+      }
+    }
+  });
+
+  it("is character for character the old result without a video clip (D2)", () => {
+    // Marking everything stretchable explicitly must not change a thing, so a
+    // storyboard without a clip keeps the results the existing cases pin down.
+    for (const count of [1, 3, 10]) {
+      for (const transition of [0, 1]) {
+        for (const target of [10, 20, 61.3, 600]) {
+          const bare = slides(count, transition);
+          const flagged = bare.map((s) => ({ ...s, stretchable: true }));
+          expect(fitToMusic(flagged, target)).toEqual(fitToMusic(bare, target));
+        }
+      }
+    }
+  });
+
+  it("treats an element without the flag as stretchable", () => {
+    expect(isStretchable({ id: "a", mediaId: "m", duration: 5, transitionIn: null })).toBe(true);
+    expect(
+      isStretchable({ id: "a", mediaId: "m", duration: 5, transitionIn: null, stretchable: true }),
+    ).toBe(true);
+    expect(
+      isStretchable({ id: "a", mediaId: "m", duration: 5, transitionIn: null, stretchable: false }),
+    ).toBe(false);
   });
 });
