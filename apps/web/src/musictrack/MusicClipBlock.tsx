@@ -1,12 +1,12 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef } from "react";
+import { type KeyboardEvent, type MouseEvent, useRef } from "react";
 import { formatClipDuration } from "../i18n/format";
 import { useT } from "../i18n/useT";
 import type { AudioItem, MusicClip } from "../lib/apiClient";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { type DragItem, musicClipSortableId } from "../storyboard/dropLogic";
-import { chain, useLongPress } from "../ui/useLongPress";
+import { useHoldGesture } from "../ui/useLongPress";
 import styles from "./MusicTrack.module.css";
 import { Waveform } from "./Waveform";
 
@@ -63,10 +63,17 @@ export function MusicClipBlock({
     const rect = el.getBoundingClientRect();
     onMenu(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
-  // Long press opens the action sheet (add-mobile-layout design.md D6).
-  const longPress = useLongPress(() => blockEl.current && openMenuAt(blockEl.current), {
+  /**
+   * Tap selects, hold opens the action sheet (design.md D6) - the same gesture
+   * as a filmstrip picture, with the same HOLD_MS hold, so a deliberate 400 to
+   * 700 ms tap selects the clip instead of opening its menu (mmy-c4r). The
+   * touch sensor's reorder drag arms at that same moment and vibrates then
+   * (design.md D13).
+   */
+  const hold = useHoldGesture(() => blockEl.current && openMenuAt(blockEl.current), {
     enabled: touch,
-    // The touch sensor activates at the same moment and vibrates (design.md D13).
+    onTap: onSelect,
+    listeners,
     haptic: false,
   });
 
@@ -114,22 +121,16 @@ export function MusicClipBlock({
         }}
         {...dragAttributes}
         {...listeners}
-        onPointerDown={chain(
-          listeners?.onPointerDown as ((event: PointerEvent<HTMLElement>) => void) | undefined,
-          longPress.onPointerDown,
-        )}
-        onPointerMove={longPress.onPointerMove}
-        onPointerUp={longPress.onPointerUp}
-        onPointerCancel={longPress.onPointerCancel}
-        onTouchMove={longPress.onTouchMove}
-        onTouchEnd={longPress.onTouchEnd}
+        {...hold.pointer}
         className={styles.block}
         style={{ width: `${width}px` }}
+        data-armed={hold.armed || undefined}
         aria-pressed={selected}
         aria-label={t("musicTrack.clip", { number, name, duration })}
         title={`${name} (${duration})`}
         onKeyDown={onKeyDown}
-        onClick={onSelect}
+        // A touch tap already selected via `onTap`; only a mouse gets here.
+        onClick={() => hold.guardClick(onSelect)}
         onContextMenu={onContextMenu}
       >
         {item ? (

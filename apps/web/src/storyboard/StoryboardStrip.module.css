@@ -59,6 +59,27 @@
   outline-offset: -1px;
 }
 
+/*
+ * Armed hold (mmy-c4r): the press has been held HOLD_MS, so it now belongs to
+ * the hold - moving from here reorders, lifting opens the action sheet. A
+ * shorter press selects. Saying which of the two the release will do while the
+ * finger is still down is what makes the gesture legible, the same
+ * announcement the collection sheet's tiles make (mmy-43e).
+ */
+.tile[data-armed] {
+  outline: 2px solid var(--y2k-select);
+  outline-offset: -2px;
+  transform: scale(0.94);
+  transition: transform 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile[data-armed] {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Picture currently being played. */
 .tile[data-playing="true"] {
   border-color: var(--y2k-focus);

@@ -9,6 +9,7 @@ import { AppStoreContext } from "../store/useAppStore";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 import { HAPTICS, VIBRATION_STORAGE_KEY, vibrate } from "./haptics";
+import { HOLD_MS } from "./useLongPress";
 
 const slides: Slide[] = [
   {
@@ -58,10 +59,10 @@ async function setup() {
   return { ...view, user: userEvent.setup() };
 }
 
-/** Long press as on a phone: the touch sensor activates the drag after 400 ms. */
+/** Long press as on a phone: the touch sensor activates the drag after HOLD_MS. */
 async function longPress(el: HTMLElement) {
   fireEvent.touchStart(el, { touches: [{ clientX: 5, clientY: 5 }] });
-  await act(() => new Promise((r) => setTimeout(r, 450)));
+  await act(() => new Promise((r) => setTimeout(r, HOLD_MS + 50)));
   fireEvent.touchEnd(el, { changedTouches: [{ clientX: 5, clientY: 5 }], touches: [] });
 }
 

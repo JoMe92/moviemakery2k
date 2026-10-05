@@ -5,6 +5,7 @@ import { slideMediaId } from "../store/projectOps";
 import { mockApi } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
+import { HOLD_MS } from "../ui/useLongPress";
 
 const slide = (id: string, mediaId: string): Slide => ({
   kind: "image",
@@ -94,7 +95,7 @@ describe("medium layout (add-mobile-layout design.md D3)", () => {
     const tile = within(screen.getByRole("list", { name: "Bilder" })).getAllByRole("button")[1];
     if (!tile) throw new Error("tile missing");
     fireEvent.touchStart(tile, touch(170, 140));
-    await wait(450);
+    await wait(HOLD_MS + 50);
     fireEvent.touchMove(tile, touch(160, 860));
     await wait(20);
     fireEvent.touchMove(tile, touch(150, 870));
@@ -109,7 +110,7 @@ describe("medium layout (add-mobile-layout design.md D3)", () => {
     if (!tile) throw new Error("tile missing");
     fireEvent.touchStart(tile, touch(170, 140));
     fireEvent.touchMove(tile, touch(170, 180));
-    await wait(450);
+    await wait(HOLD_MS + 50);
     fireEvent.touchMove(tile, touch(150, 870));
     fireEvent.touchEnd(tile, { changedTouches: [{ clientX: 150, clientY: 870 }], touches: [] });
     expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a"]);

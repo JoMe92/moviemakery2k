@@ -6,6 +6,7 @@ import { moveSlide } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
+import { HOLD_MS } from "../ui/useLongPress";
 
 const slides: Slide[] = [
   {
@@ -88,7 +89,7 @@ function longPress(el: HTMLElement, move = 0) {
         clientX: 50 + move,
         clientY: 50,
       });
-    act(() => vi.advanceTimersByTime(400));
+    act(() => vi.advanceTimersByTime(HOLD_MS));
     fireEvent.pointerUp(el, {
       pointerId: 7,
       pointerType: "touch",
@@ -178,7 +179,7 @@ describe("action bar (add-mobile-layout design.md D6)", () => {
 });
 
 describe("action sheets (long press and ⋯)", () => {
-  it("opens the music clip's context menu as a sheet after a 400 ms press", async () => {
+  it("opens the music clip's context menu as a sheet after a held press", async () => {
     await setup();
     longPress(clipBlock(1));
     const sheet = screen.getByRole("dialog", { name: "Musikstück 1 der Musikleiste" });

@@ -657,16 +657,21 @@ logic:
   `musicSelection`). `ActionBar` offers the element's actions; they call the
   store functions the desktop uses (`moveSlide`, `removeSlide`,
   `updateMusicClip` …) or raise an **edit request** (`requestEdit`, like
-  `requestImport`): the storyboard strip, music track and narration bar own their dialogs
-  and context menus and open them for a request, a long press
-  (`ui/useLongPress`, 400 ms within 8 px) or the *⋯* button.
+  `requestImport`): the storyboard strip, music track and narration bar own
+  their dialogs and context menus and open them for a request, a hold
+  (`ui/useHoldGesture`, `HOLD_MS` = 1000 ms within 8 px) or the *⋯* button.
+  The hold is that long because a deliberate finger tap lasts 400 to 700 ms
+  and must still select, not open a menu (mmy-43e, mmy-c4r); while it is armed
+  the element renders `data-armed`, so the release is unambiguous.
 - **Picking.** `media/CollectionSheet` hosts `MediaCollection` in picking
   mode (tap toggles, order kept, no draggable) and inserts the picks with
   `addSlide`/`addMusicClip`.
 - **Dragging.** `StoryboardDnd` uses two sensors: the pointer sensor for
-  mouse and pen (5 px) and a `TouchSensor` that activates after a 400 ms press
-  within 8 px, so a swipe scrolls the strip. Both release dnd-kit's click
-  guard at the next press (mmy-fa5). Only the dragged item switches to
+  mouse and pen (5 px) and a `TouchSensor` that activates after a `HOLD_MS`
+  press within 8 px, so a swipe scrolls the strip. That is the same hold that
+  opens an element's action sheet, on purpose: one press arms one gesture at
+  one moment - moving from there reorders, lifting opens the sheet (mmy-c4r).
+  Both release dnd-kit's click guard at the next press (mmy-fa5). Only the dragged item switches to
   `touch-action: none`; the strips contain their overscroll.
 - **Transitions** are set in `transitions/TransitionSheet` (catalog list,
   stepper); `playTransitionOnce` plays the slot once in the monitor by

@@ -1,12 +1,12 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type KeyboardEvent, type MouseEvent, type PointerEvent, useRef } from "react";
+import { type KeyboardEvent, type MouseEvent, useRef } from "react";
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { slideDuration, slideEffectId } from "../store/projectOps";
 import { titleLabel, titleLines } from "../titles/titleRender";
-import { chain, useLongPress } from "../ui/useLongPress";
+import { useHoldGesture } from "../ui/useLongPress";
 import { type DragItem, formatDuration } from "./dropLogic";
 import { EffectSlot } from "./EffectSlot";
 import styles from "./StoryboardStrip.module.css";
@@ -82,10 +82,17 @@ export function SlideTile({
     onMenu(rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
   const tileEl = useRef<HTMLButtonElement | null>(null);
-  // Long press opens the action sheet (add-mobile-layout design.md D6).
-  const longPress = useLongPress(() => tileEl.current && openMenuAt(tileEl.current), {
+  /**
+   * Tap selects, hold opens the action sheet (design.md D6). The hold is
+   * HOLD_MS, because a deliberate tap on a phone lasts 400 to 700 ms and used
+   * to open the menu instead of selecting the picture (mmy-c4r); the touch
+   * sensor's reorder drag arms at the same moment and vibrates then
+   * (design.md D13), so the one press announces itself once.
+   */
+  const hold = useHoldGesture(() => tileEl.current && openMenuAt(tileEl.current), {
     enabled: touch,
-    // The touch sensor activates at the same moment and vibrates (design.md D13).
+    onTap: onSelect,
+    listeners,
     haptic: false,
   });
 
@@ -150,16 +157,9 @@ export function SlideTile({
         }}
         {...dragAttributes}
         {...listeners}
-        onPointerDown={chain(
-          listeners?.onPointerDown as ((event: PointerEvent<HTMLElement>) => void) | undefined,
-          longPress.onPointerDown,
-        )}
-        onPointerMove={longPress.onPointerMove}
-        onPointerUp={longPress.onPointerUp}
-        onPointerCancel={longPress.onPointerCancel}
-        onTouchMove={longPress.onTouchMove}
-        onTouchEnd={longPress.onTouchEnd}
+        {...hold.pointer}
         className={styles.tile}
+        data-armed={hold.armed || undefined}
         aria-pressed={selected}
         aria-current={playing ? "true" : undefined}
         data-playing={playing || undefined}
@@ -171,7 +171,8 @@ export function SlideTile({
         }
         title={name}
         onKeyDown={onKeyDown}
-        onClick={onSelect}
+        // A touch tap already selected via `onTap`; only a mouse gets here.
+        onClick={() => hold.guardClick(onSelect)}
         onDoubleClick={() => {
           onSelect();
           onProperties();

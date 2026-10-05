@@ -1,20 +1,32 @@
-import { type PointerEvent, type TouchEvent, useEffect, useRef } from "react";
+import { type PointerEvent, type TouchEvent, useEffect, useRef, useState } from "react";
 import { vibrate } from "./haptics";
 
-/** Long press (add-mobile-layout design.md D6): 400 ms without moving more than 8 px. */
-export const LONG_PRESS_MS = 400;
+/**
+ * How far the finger may travel from the press origin and still be a *hold*
+ * (add-mobile-layout design.md D6). Past it the press is no longer a candidate
+ * for the action sheet - but it is still a tap up to TAP_SLOP below.
+ */
 export const LONG_PRESS_TOLERANCE = 8;
 
 /**
- * Long press where a plain press has its own meaning and the press itself is
- * the primary action - the collection sheet, where a tap picks the tile
- * (design.md D7). A deliberate finger tap on a phone routinely lasts 400 to
- * 700 ms (measured, mmy-43e), so at LONG_PRESS_MS such a tap was classified as
- * a long press on release: it opened the tile's action sheet instead of picking
- * the tile, and the storyboard stayed empty. Here the press must be an
- * unmistakable hold, well past the longest deliberate tap, and the hook
+ * The hold that opens an element's action sheet, everywhere a plain tap has its
+ * own meaning - which is every tile the user can touch: the collection sheet
+ * where a tap picks (design.md D7, mmy-43e), and the filmstrip and the music
+ * bar where a tap selects (design.md D6, mmy-c4r).
+ *
+ * A deliberate finger tap on a phone routinely lasts 400 to 700 ms (measured
+ * on the Product Owner's device, mmy-43e), so at the 400 ms design.md names as
+ * a default such a tap was classified as a long press on release: it opened the
+ * tile's action sheet instead of picking or selecting it. The hold therefore
+ * has to be unmistakable, well past the longest deliberate tap, and the hook
  * announces the arm (`onArmed`/`onDisarmed`) so the user sees what the release
  * will do before lifting the finger.
+ *
+ * design.md's 400 ms is one of the defaults it marks "im PR änderbar"; this is
+ * that change, and it is the only hold in the app - the dnd-kit touch sensor's
+ * activation delay follows it (`TOUCH_ACTIVATION` in
+ * storyboard/pointerSensor.ts), so one press announces one armed gesture at one
+ * moment instead of a drag at 400 ms and a menu at 1000 ms.
  */
 export const HOLD_MS = 1000;
 
@@ -51,6 +63,50 @@ export const TAP_SLOP = 32;
  * more within the same press.
  */
 export const TAP_SCROLL_SLOP = 32;
+
+/**
+ * How long the click that follows a handled touch gesture may take to arrive.
+ * It normally comes within a frame of `touchend`; the window only has to be
+ * wide enough that a loaded phone still lands inside it.
+ */
+const CLICK_GUARD_MS = 400;
+
+/**
+ * Swallows the click the browser fires after a touch gesture this hook has
+ * already handled - at the document, not at the element.
+ *
+ * The element is not enough (mmy-c4r). The click is dispatched against
+ * whatever lies under the lift point *at that moment*, and handling the tap on
+ * `pointerup` can move something else there in between: selecting a music clip
+ * makes the action bar appear right where the finger is, so the click activated
+ * its "Kürzen…" button and a plain tap on a clip opened the trim dialog by
+ * itself - the gesture's own element never saw that click, so `guardClick`
+ * could not refuse it.
+ *
+ * The guard ends at the first click (swallowed), at the next `pointerdown` (a
+ * new gesture, whose own click must get through - this is also what keeps a
+ * later mouse click safe) or after `CLICK_GUARD_MS`, whichever comes first.
+ * dnd-kit guards its drags the same way, on the same document
+ * (`storyboard/pointerSensor.ts`).
+ */
+function swallowNextClick(onRelease: () => void): () => void {
+  const release = () => {
+    document.removeEventListener("click", onClick, true);
+    document.removeEventListener("pointerdown", onPointerDown, true);
+    clearTimeout(timer);
+    onRelease();
+  };
+  const onClick = (event: MouseEvent) => {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+    release();
+  };
+  const onPointerDown = () => release();
+  const timer = setTimeout(release, CLICK_GUARD_MS);
+  document.addEventListener("click", onClick, true);
+  document.addEventListener("pointerdown", onPointerDown, true);
+  return release;
+}
 
 export interface LongPressHandlers {
   onPointerDown: (event: PointerEvent<HTMLElement>) => void;
@@ -132,14 +188,14 @@ export function useLongPress(
   onLongPress: () => void,
   {
     enabled = true,
-    delay = LONG_PRESS_MS,
+    delay = HOLD_MS,
     onArmed,
     onDisarmed,
     onTap,
     haptic = true,
   }: {
     enabled?: boolean;
-    /** Hold needed for the long press; HOLD_MS where a tap means something. */
+    /** Hold needed for the long press; HOLD_MS everywhere in the app today. */
     delay?: number;
     onArmed?: () => void;
     /**
@@ -163,6 +219,8 @@ export function useLongPress(
   const state = useRef<Gesture | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
+  /** Releases the document-level click guard, if one is armed. */
+  const releaseClick = useRef<(() => void) | null>(null);
   const callbacks = useRef({ onLongPress, onArmed, onDisarmed, onTap, haptic });
   callbacks.current = { onLongPress, onArmed, onDisarmed, onTap, haptic };
 
@@ -180,9 +238,20 @@ export function useLongPress(
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
+      releaseClick.current?.();
     },
     [],
   );
+
+  /** The gesture was handled here, so the click that follows must not run. */
+  const guardTheClick = () => {
+    releaseClick.current?.();
+    suppressClick.current = true;
+    releaseClick.current = swallowNextClick(() => {
+      suppressClick.current = false;
+      releaseClick.current = null;
+    });
+  };
 
   return {
     onPointerDown(event) {
@@ -226,12 +295,16 @@ export function useLongPress(
       if (armed) callbacks.current.onDisarmed?.();
       const moved = track(s, event.clientX, event.clientY);
       if (!armed && moved > TAP_SLOP) return; // a drag, not a tap: nothing to do
-      // The native click that follows on real hardware must not also fire:
-      // guardClick() below swallows it. Only set when the gesture was handled
-      // here, so a later mouse click is never swallowed instead.
-      suppressClick.current = true;
+      const onTapHere = callbacks.current.onTap;
+      // The native click that follows on real hardware must not also fire -
+      // but only where this hook really did take the gesture over. A caller
+      // without `onTap` still *wants* that click: it is how its tap works
+      // (narrationtrack/NarrationClipBlock), and swallowing it would leave the
+      // element unselectable. Guarding only what was handled here also keeps a
+      // later mouse click safe.
+      if (armed || onTapHere) guardTheClick();
       if (armed) callbacks.current.onLongPress();
-      else callbacks.current.onTap?.();
+      else onTapHere?.();
     },
     onPointerCancel(event) {
       const s = state.current;
@@ -283,6 +356,83 @@ export function useLongPress(
       }
       onClick();
     },
+  };
+}
+
+/** A dnd-kit listener bundle (`useSortable`/`useDraggable`), untyped by dnd-kit. */
+type DragListeners = Record<string, unknown> | undefined;
+
+export interface HoldGesture {
+  /**
+   * The hold is armed: lifting the finger now opens the action sheet. Render it
+   * (`data-armed`) - saying so while the finger is still down is what keeps the
+   * release unambiguous (mmy-43e).
+   */
+  armed: boolean;
+  /** Spread onto the element, after the dnd-kit listeners it already chains. */
+  pointer: {
+    onPointerDown: (event: PointerEvent<HTMLElement>) => void;
+    onPointerMove: (event: PointerEvent<HTMLElement>) => void;
+    onPointerUp: (event: PointerEvent<HTMLElement>) => void;
+    onPointerCancel: (event: PointerEvent<HTMLElement>) => void;
+    onTouchMove: (event: TouchEvent<HTMLElement>) => void;
+    onTouchEnd: (event: TouchEvent<HTMLElement>) => void;
+  };
+  /** Wrap the element's `onClick`, so a handled touch gesture does not run twice. */
+  guardClick: (onClick: () => void) => void;
+}
+
+/**
+ * The whole touch gesture of a tile whose tap has its own meaning and whose
+ * hold opens an action sheet - the collection sheet, the filmstrip and the
+ * music bar. One mechanism for all three (mmy-c4r): a tap takes over from the
+ * native click (mmy-edq), it survives a drifting thumb (mmy-bmh), the action
+ * sheet needs an unmistakable HOLD_MS hold (mmy-43e), and the armed hold is
+ * reported so the element can show it.
+ */
+export function useHoldGesture(
+  onHold: () => void,
+  {
+    enabled = true,
+    onTap,
+    listeners,
+    delay = HOLD_MS,
+    haptic = true,
+  }: {
+    enabled?: boolean;
+    /** A plain tap; takes the gesture over from the native click on touch. */
+    onTap?: () => void;
+    /** dnd-kit's listeners, so `onPointerDown` reaches the sensor as well. */
+    listeners?: DragListeners;
+    delay?: number;
+    /** Vibrate when armed; off where the touch sensor's drag start vibrates already. */
+    haptic?: boolean;
+  } = {},
+): HoldGesture {
+  const [armed, setArmed] = useState(false);
+  const longPress = useLongPress(onHold, {
+    enabled,
+    delay,
+    onTap,
+    haptic,
+    onArmed: () => setArmed(true),
+    onDisarmed: () => setArmed(false),
+  });
+  return {
+    armed,
+    pointer: {
+      onPointerDown: chain(
+        listeners?.onPointerDown as ((event: PointerEvent<HTMLElement>) => void) | undefined,
+        longPress.onPointerDown,
+      ),
+      onPointerMove: longPress.onPointerMove,
+      onPointerUp: longPress.onPointerUp,
+      onPointerCancel: longPress.onPointerCancel,
+      // The touch stream decides the tap the browser revoked (mmy-bmh).
+      onTouchMove: longPress.onTouchMove,
+      onTouchEnd: longPress.onTouchEnd,
+    },
+    guardClick: longPress.guardClick,
   };
 }
 

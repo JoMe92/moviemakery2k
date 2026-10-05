@@ -13,6 +13,7 @@ The desktop tests in the other modules keep their 1280 px viewport unchanged.
 """
 
 import math
+import re
 import struct
 import time
 import wave
@@ -552,3 +553,248 @@ def test_tablet_shows_monitor_and_collection_side_by_side(open_device: Any) -> N
     assert abs(collection["y"] - monitor["y"]) < 2
     assert storyboard["y"] >= monitor["y"] + monitor["height"] - 1
     assert small_targets(page) == []
+
+
+# mmy-c4r: the same gesture outside picking mode - a picture in the filmstrip
+# and a clip in the music bar. Both kept the 400 ms default, so a deliberate
+# tap opened the element's action sheet instead of selecting it; and because
+# that sheet's first entries are useful ones, nothing looked broken and the
+# user blamed themselves.
+STRIP_TARGETS = [
+    ("Bildstreifen", "Bild {n}: rot.png, 5,00 s", "Bild {n} des Storyboards"),
+    ("Musikleiste", "Musikstück {n}: ton.wav, 0:02", "Musikstück {n} der Musikleiste"),
+]
+STRIP_IDS = ["picture", "clip"]
+
+
+HIT_JS = """
+(node) => {
+  const r = node.getBoundingClientRect();
+  // The centre first - that is where a finger aims - then inwards, so a box
+  // whose middle is clipped away still yields a point the element really owns.
+  const fractions = [0.5, 0.35, 0.65, 0.2, 0.8];
+  for (const fy of fractions) {
+    for (const fx of fractions) {
+      const x = r.x + r.width * fx;
+      const y = r.y + r.height * fy;
+      const hit = document.elementFromPoint(x, y);
+      if (hit !== null && node.contains(hit)) return [x, y];
+    }
+  }
+  return null;
+}
+"""
+
+NAME_JS = """
+(node) => {
+  const r = node.getBoundingClientRect();
+  const el = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+  const owner = el === null ? null : (el.closest("[aria-label]") ?? el);
+  const over = owner === null
+    ? "nothing"
+    : `${el.tagName} in ${owner.getAttribute("aria-label") ?? owner.className}`;
+  return `box ${r.x.toFixed(0)},${r.y.toFixed(0)} ${r.width.toFixed(0)}x${r.height.toFixed(0)}`
+    + ` has ${over} at its centre`;
+}
+"""
+
+
+def hit_report(el: Locator) -> str:
+    """Where `el` claims to be and what is painted there - for an assertion."""
+    return str(el.evaluate(NAME_JS))
+
+
+def touch_point(el: Locator) -> tuple[float, float]:
+    """A viewport coordinate that provably belongs to `el`.
+
+    Unlike `tile_centre` above, which reads a tile of a sheet that always fits,
+    this cannot just halve a bounding box. CDP dispatches touch events at
+    absolute viewport coordinates, and in the compact layout the filmstrip and
+    the music bar are the lowest things on the screen, inside strips that clip
+    their overflow - so once the action bar of the first selection appears above
+    the taskbar, an element's layout box can reach outside the band its strip
+    actually paints. Its geometric centre is then a point the element does not
+    own: the touch lands on the container instead, and the sweep reports a lost
+    tap or a menu that opened by itself - a failure that looks exactly like the
+    bug under test.
+
+    So the point is not merely computed, it is verified against
+    `elementFromPoint` and moved inwards until it really hits (`HIT_JS`). The
+    message names what was painted there if no point ever does."""
+    expect(el).to_be_visible()
+    el.scroll_into_view_if_needed()
+    el.page.wait_for_function("document.getAnimations().every((a) => a.playState !== 'running')")
+    for _ in range(100):
+        point = el.evaluate(HIT_JS)
+        if point is not None:
+            return (point[0], point[1])
+        time.sleep(0.05)
+    raise AssertionError(f"no point of {el} is touchable: {hit_report(el)}")
+
+
+def fill_storyboard(page: Page, images: dict[str, Path], tune: Path) -> None:
+    """The same picture twice in the filmstrip and the same tune twice in the
+    music bar.
+
+    Two of each on purpose: selecting is not a toggle here, so one element
+    cannot tell a second successful tap from a tap that did nothing. Alternating
+    between two identical elements makes every tap of a sweep visible on its
+    own, and keeps one label per list."""
+    for _ in range(2):
+        tap_import(page, "Bilder importieren", [images["rot.png"]])
+        sheet = page.get_by_role("dialog", name="Sammlungen")
+        sheet.get_by_role("list", name="Bilder").get_by_role("button", name="rot.png").tap()
+        sheet.get_by_role("button", name="Zum Bildstreifen hinzufügen (1)").tap()
+        expect(sheet).to_be_hidden()
+    for _ in range(2):
+        tap_import(page, "Audio oder Musik importieren", [tune])
+        sheet = page.get_by_role("dialog", name="Sammlungen")
+        music = sheet.get_by_role("list", name="Musik", exact=True)
+        music.get_by_role("button", name="ton.wav, 0:02").tap()
+        sheet.get_by_role("button", name="Zur Musikleiste hinzufügen (1)").tap()
+        expect(sheet).to_be_hidden()
+    # Each add leaves a short notice above the taskbar, over the two bars a
+    # sweep is about to touch. It goes away by itself (NOTICE_DURATION); wait
+    # for that here rather than letting the first tap of every sweep race it.
+    expect(page.get_by_text(re.compile(r"hinzugefügt"))).to_have_count(0, timeout=10_000)
+
+
+def strip_element(page: Page, list_name: str, label: str, n: int) -> Locator:
+    """Element `n` of the filmstrip or of the music bar."""
+    return page.get_by_role("list", name=list_name).get_by_role("button", name=label.format(n=n))
+
+
+def no_action_sheet(page: Page) -> None:
+    """No element's action sheet is open (its entries are menu items; the
+    action bar's are plain buttons, so this does not see those)."""
+    expect(page.get_by_role("menuitem", name="Entfernen")).to_have_count(0)
+
+
+@pytest.mark.parametrize(("list_name", "label", "_sheet"), STRIP_TARGETS, ids=STRIP_IDS)
+def test_tap_selects_despite_a_deliberate_hold(
+    open_device: Any,
+    images: dict[str, Path],
+    tune: Path,
+    list_name: str,
+    label: str,
+    _sheet: str,
+) -> None:
+    """mmy-c4r, the duration axis: a deliberate finger tap on a phone routinely
+    lasts 400 to 700 ms (measured on the Product Owner's device under mmy-43e).
+    Every one of those durations has to select the element; none of them may be
+    reclassified as a hold on release and open the action sheet instead.
+
+    Measured with real dispatched touch events, because `.tap()`/`.click()` are
+    instantaneous and pass even with the bug present - which is exactly what let
+    this survive the two earlier fixes of the same gesture."""
+    page = open_device("Pixel 7")
+    fill_storyboard(page, images, tune)
+    cdp = page.context.new_cdp_session(page)
+
+    for hold_ms in (120, 300, 450, 700):
+        for n in (1, 2):
+            element = strip_element(page, list_name, label, n)
+            other = strip_element(page, list_name, label, 2 if n == 1 else 1)
+            where = touch_point(element)
+            realistic_tap(cdp, *where, hold_ms=hold_ms)
+            # Playwright names the failing locator; the duration is in the message.
+            expect(
+                element, f"a {hold_ms} ms tap at {where} must select it ({hit_report(element)})"
+            ).to_have_attribute("aria-pressed", "true", timeout=2000)
+            expect(other).to_have_attribute("aria-pressed", "false")
+            no_action_sheet(page)
+
+
+@pytest.mark.parametrize(
+    ("axis", "vector"),
+    [("horizontal", (1.0, 0.0)), ("vertical", (0.0, 1.0))],
+)
+@pytest.mark.parametrize(("list_name", "label", "_sheet"), STRIP_TARGETS, ids=STRIP_IDS)
+def test_tap_selects_with_a_drifting_finger(
+    open_device: Any,
+    images: dict[str, Path],
+    tune: Path,
+    list_name: str,
+    label: str,
+    _sheet: str,
+    axis: str,
+    vector: tuple[float, float],
+) -> None:
+    """mmy-c4r, the drift axis (mmy-bmh's half of the same gesture): a thumb
+    does not land and lift on one pixel, and past about 16 px Chrome revokes the
+    pointer and fires no click at all. Every drift up to the tap slop has to
+    select the element, in both axes."""
+    page = open_device("Pixel 7")
+    fill_storyboard(page, images, tune)
+    cdp = page.context.new_cdp_session(page)
+    ux, uy = vector
+
+    for drift in (0, 8, 10, 12, 16, 20, 25, TAP_SLOP):
+        for n in (1, 2):
+            element = strip_element(page, list_name, label, n)
+            other = strip_element(page, list_name, label, 2 if n == 1 else 1)
+            where = touch_point(element)
+            drift_tap(cdp, *where, dx=drift * ux, dy=drift * uy)
+            expect(
+                element,
+                f"{drift} px of {axis} drift at {where} must select it ({hit_report(element)})",
+            ).to_have_attribute("aria-pressed", "true", timeout=2000)
+            expect(other).to_have_attribute("aria-pressed", "false")
+            no_action_sheet(page)
+
+
+def hold(cdp: CDPSession, element: Locator, sheet: Locator) -> None:
+    """Presses `element` until it says it is armed, then lifts the finger."""
+    x, y = touch_point(element)
+    point = {"x": x, "y": y, "radiusX": 12, "radiusY": 12, "force": 1}
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [point]})
+    try:
+        # Armed while the finger is down, and nothing decided yet.
+        expect(element).to_have_attribute("data-armed", "true")
+        expect(sheet).to_have_count(0)
+    finally:
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+
+
+@pytest.mark.parametrize(
+    ("list_name", "label", "sheet", "entry", "dialog"),
+    [
+        (*STRIP_TARGETS[0], "Eigenschaften…", "Eigenschaften von Bild 1"),
+        (*STRIP_TARGETS[1], "Lautstärke…", "Lautstärke von Musikstück 1"),
+    ],
+    ids=STRIP_IDS,
+)
+def test_a_real_hold_announces_itself_and_opens_the_action_sheet(
+    open_device: Any,
+    images: dict[str, Path],
+    tune: Path,
+    list_name: str,
+    label: str,
+    sheet: str,
+    entry: str,
+    dialog: str,
+) -> None:
+    """mmy-c4r/design.md D6: the element's actions stay reachable by holding it,
+    but only for a hold no deliberate tap reaches, and the element marks itself
+    armed while the finger is still down - the same announcement the collection
+    sheet makes (mmy-43e), and the moment the reorder drag arms too (D13), so
+    one press announces one armed gesture at one moment."""
+    page = open_device("Pixel 7")
+    fill_storyboard(page, images, tune)
+    cdp = page.context.new_cdp_session(page)
+    element = strip_element(page, list_name, label, 1)
+    opened = page.get_by_role("dialog", name=sheet.format(n=1))
+
+    hold(cdp, element, opened)
+    expect(opened).to_be_visible()
+    expect(element).not_to_have_attribute("data-armed", "true")
+    opened.get_by_role("menuitem", name=entry).tap()
+    expect(page.get_by_role("dialog", name=dialog)).to_be_visible()
+    page.get_by_role("dialog", name=dialog).get_by_role("button", name="Dialog schließen").tap()
+
+    # ... and the sheet's Remove really removes the element.
+    hold(cdp, element, page.get_by_role("dialog", name=sheet.format(n=1)))
+    page.get_by_role("dialog", name=sheet.format(n=1)).get_by_role(
+        "menuitem", name="Entfernen"
+    ).tap()
+    expect(strip_element(page, list_name, label, 2)).to_have_count(0)
