@@ -26,7 +26,7 @@ Render-Technik) und die achte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-025 E2E und Doku: Playwright-Smoke erweitert um AutoMovie
+- [x] TASK-INFRA-025 E2E und Doku: Playwright-Smoke erweitert um AutoMovie
   mit dem Stil „Klassisch“ auf eine gefüllte Mediensammlung; Export des
   Ergebnisses funktioniert unverändert; README/CHANGELOG „Unreleased“
   (nach TASK-WEB-069). Erledigt, wenn `pixi run test-e2e` grün ist.
