@@ -54,7 +54,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from mmy_backend.ffmpeg import ffmpeg_binary, ffprobe_binary
-from mmy_backend.render.audio import AudioSegment, at_gain, audio_balance_gains
+from mmy_backend.render.audio import AudioSegment, audio_balance_gains
 from mmy_backend.render.encode import (
     AudioInput,
     ExportCancelled,
@@ -121,7 +121,10 @@ class AudioMix:
             (self.music_and_narration, gains.music_and_narration),
             (self.clip_audio, gains.clip),
         )
-        object.__setattr__(self, "_sides", tuple((s, g) for s, g in sides if s and at_gain(s, g)))
+        # A side with no segments, or one the level has turned all the way down,
+        # is not a side at all: it never reaches the graph.
+        audible = tuple((side, gain) for side, gain in sides if side and gain > 0)
+        object.__setattr__(self, "_sides", audible)
 
     @property
     def sides(self) -> tuple[tuple[tuple[AudioSegment, ...], float], ...]:
