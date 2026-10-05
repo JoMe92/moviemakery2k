@@ -37,7 +37,15 @@ const SLIDES: Slide[] = [
 
 async function setup(slides: Slide[] = SLIDES) {
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
+    mockApi({
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [],
+      })),
+    }),
   );
   await act(() => view.ready);
   const monitor = screen.getByRole("region", { name: "Vorschau" });
@@ -135,7 +143,13 @@ describe("Player", () => {
     localStorage.setItem("mmy.locale", "en");
     const view = renderApp(
       mockApi({
-        getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides: SLIDES, music: [] })),
+        getProject: vi.fn(async () => ({
+          schemaVersion: 6 as const,
+          narration: [],
+          clipAudioBalance: 50,
+          slides: SLIDES,
+          music: [],
+        })),
       }),
     );
     await act(() => view.ready);

@@ -44,7 +44,15 @@ afterEach(() => {
 async function setup() {
   mockLayout("compact");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
+    mockApi({
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [],
+      })),
+    }),
   );
   await act(() => view.ready);
   return { ...view, user: userEvent.setup() };

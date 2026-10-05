@@ -72,7 +72,13 @@ describe("menu sheet (add-mobile-layout design.md D11)", () => {
 
   it("creates a new project on the phone", async () => {
     const api = mockApi({
-      getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [],
+      })),
     });
     const { user, group, store } = await openMenu(api);
     const media = store.getState().media;
@@ -101,7 +107,13 @@ describe("menu sheet (add-mobile-layout design.md D11)", () => {
 
   it("opens 'Film speichern…' when the storyboard has pictures", async () => {
     const api = mockApi({
-      getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [],
+      })),
     });
     const { user, group, store } = await openMenu(api);
     const file = await group("Datei");
@@ -112,7 +124,13 @@ describe("menu sheet (add-mobile-layout design.md D11)", () => {
   it("fits the movie to the music via Clip", async () => {
     const api = mockApi({
       listMedia: async () => [mediaItem("a"), mediaItem("b"), audioItem("song", 20)],
-      getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [clip] })),
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [clip],
+      })),
     });
     const { user, group, store } = await openMenu(api);
     const clipMenu = await group("Clip");

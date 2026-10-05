@@ -19,6 +19,7 @@ import {
   isAuthRequired,
   type MediaItem,
   type MusicClip,
+  type NarrationClip,
   type Project,
   type Slide,
   type TitleOverlay,
@@ -68,6 +69,7 @@ import {
   updateMusicClip as updateMusicClipOp,
 } from "./musicOps";
 import {
+  CLIP_AUDIO_BALANCE,
   insertSlide,
   isValidSlideDuration,
   isValidTransitionDuration,
@@ -102,10 +104,15 @@ export type CollectionId = "media" | "music" | "video" | "transitions" | "effect
 export type ImportKind = "any" | "pictures" | "audio" | "video";
 export type Selection = { kind: "slide"; slideId: string } | null;
 
-/** Snapshot of the undoable project state (design.md D1): `slides` and `music`. */
+/**
+ * Snapshot of the undoable project state (design.md D1): the storyboard, both
+ * audio tracks and the one global audio level.
+ */
 export interface HistoryEntry {
   slides: Slide[];
   music: MusicClip[];
+  narration: NarrationClip[];
+  clipAudioBalance: number;
 }
 
 /** Undo history keeps at most this many steps (spec edit-commands, design.md D1). */
@@ -199,6 +206,17 @@ export interface AppState {
   slides: Slide[];
   /** Music track (add-music-track D3); kept and saved with the project. */
   music: MusicClip[];
+  /**
+   * Narration track (add-narration-and-audio-levels D2); kept and saved with
+   * the project. Unlike `music` the clips carry their own absolute `at`, so
+   * their order in the list says nothing about when they play.
+   */
+  narration: NarrationClip[];
+  /**
+   * The one global level between video-clip sound (100) and music plus
+   * narration (0), 0 to 100 (D4); 50 plays both at full gain.
+   */
+  clipAudioBalance: number;
   saveState: SaveState;
   collection: CollectionId;
   /**
@@ -447,9 +465,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
   const store = createStore<AppState>()((set, get) => {
     const toProject = (): Project => ({
-      schemaVersion: 5,
+      schemaVersion: 6,
       slides: get().slides,
       music: get().music,
+      narration: get().narration,
+      clipAudioBalance: get().clipAudioBalance,
     });
 
     async function save(): Promise<void> {
@@ -507,9 +527,15 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       set({ undoStack: next, redoStack: [] });
     }
 
+    /** The undoable project state as it is right now (design.md D1). */
+    function snapshot(): HistoryEntry {
+      const { slides, music, narration, clipAudioBalance } = get();
+      return { slides, music, narration, clipAudioBalance };
+    }
+
     function commit(slides: Slide[]): void {
-      const { selection, music, slides: prevSlides } = get();
-      pushHistory({ slides: prevSlides, music });
+      const { selection } = get();
+      pushHistory(snapshot());
       const stillThere = selection && slides.some((s) => s.id === selection.slideId);
       set({ slides, selection: stillThere ? selection : null, playback: playbackFor(slides) });
       scheduleSave();
@@ -517,8 +543,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
     /** Store a changed music track; keeps the music selection if the clip is still there. */
     function commitMusic(music: MusicClip[]): void {
-      const { musicSelection, slides, music: prevMusic } = get();
-      pushHistory({ slides, music: prevMusic });
+      const { musicSelection } = get();
+      pushHistory(snapshot());
       const stillThere = musicSelection !== null && music.some((c) => c.id === musicSelection);
       set({ music, musicSelection: stillThere ? musicSelection : null });
       scheduleSave();
@@ -533,6 +559,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       set({
         slides: entry.slides,
         music: entry.music,
+        narration: entry.narration,
+        clipAudioBalance: entry.clipAudioBalance,
         selection: stillSlide ? selection : null,
         musicSelection: stillMusic ? musicSelection : null,
         playback: playbackFor(entry.slides),
@@ -581,6 +609,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       automovieStyles: [],
       slides: [],
       music: [],
+      narration: [],
+      clipAudioBalance: CLIP_AUDIO_BALANCE.default,
       saveState: "idle",
       collection: "media",
       collectionVisible: true,
@@ -638,6 +668,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             media,
             slides: project.slides,
             music: project.music,
+            narration: project.narration,
+            clipAudioBalance: project.clipAudioBalance,
             saveState: "saved",
             loaded: true,
           });
@@ -902,6 +934,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           media: get().media.filter((m) => m.id !== id),
           slides: project.slides,
           music: project.music,
+          narration: project.narration,
           selection: stillThere ? selection : null,
           musicSelection: musicStillThere ? musicSelection : null,
           playback: playbackFor(project.slides),
@@ -1154,29 +1187,36 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         return true;
       },
       newProject() {
-        const { slides, music } = get();
-        pushHistory({ slides, music });
-        set({ music: [], musicSelection: null, slides: [], selection: null, playback: STOPPED });
+        pushHistory(snapshot());
+        set({
+          music: [],
+          narration: [],
+          clipAudioBalance: CLIP_AUDIO_BALANCE.default,
+          musicSelection: null,
+          slides: [],
+          selection: null,
+          playback: STOPPED,
+        });
         scheduleSave();
       },
 
       undo() {
-        const { undoStack, slides, music } = get();
+        const { undoStack } = get();
         const top = undoStack[undoStack.length - 1];
         if (!top) return;
         set({
           undoStack: undoStack.slice(0, -1),
-          redoStack: [...get().redoStack, { slides, music }],
+          redoStack: [...get().redoStack, snapshot()],
         });
         restore(top);
       },
       redo() {
-        const { redoStack, slides, music } = get();
+        const { redoStack } = get();
         const top = redoStack[redoStack.length - 1];
         if (!top) return;
         set({
           redoStack: redoStack.slice(0, -1),
-          undoStack: [...get().undoStack, { slides, music }],
+          undoStack: [...get().undoStack, snapshot()],
         });
         restore(top);
       },

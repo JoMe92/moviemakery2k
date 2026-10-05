@@ -138,12 +138,16 @@ describe("appStore", () => {
     });
     const api = mockApi({
       getProject: vi.fn(async () => ({
-        schemaVersion: 5 as const,
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
         slides: [],
         music: [clip("m1", "x"), clip("m2", "y")],
       })),
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 5 as const,
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
         slides: [],
         music: [clip("m2", "y")],
       })),
@@ -162,7 +166,13 @@ describe("appStore", () => {
     store.getState().newProject();
     await store.getState().flushSave();
     expect(store.getState().music).toEqual([]);
-    expect(api.saved.at(-1)).toEqual({ schemaVersion: 5, slides: [], music: [] });
+    expect(api.saved.at(-1)).toEqual({
+      schemaVersion: 6,
+      slides: [],
+      music: [],
+      narration: [],
+      clipAudioBalance: 50,
+    });
   });
 
   it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
@@ -285,6 +295,88 @@ describe("appStore", () => {
     st().setEffect(first, "sepia");
     await st().flushSave();
     expect(slideEffectIdOf(api.saved.at(-1)?.slides[0])).toBe("sepia");
+  });
+
+  it("keeps the narration track and the audio level across load, save and undo (D2, D4)", async () => {
+    // Schema v6 carries both; no UI edits them yet (TASK-WEB-067/068), but the
+    // store must not drop what the backend sent on the next autosave.
+    const narration = [
+      {
+        id: "n1",
+        mediaId: "x",
+        at: 4.25,
+        trimStart: 0,
+        trimEnd: null,
+        volume: 1,
+        fadeIn: false,
+        fadeOut: false,
+      },
+    ];
+    const api = mockApi({
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        slides: [],
+        music: [],
+        narration,
+        clipAudioBalance: 75,
+      })),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    expect(store.getState().narration).toEqual(narration);
+    expect(store.getState().clipAudioBalance).toBe(75);
+
+    store.getState().addSlide("a");
+    await store.getState().flushSave();
+    expect(api.saved.at(-1)?.narration).toEqual(narration);
+    expect(api.saved.at(-1)?.clipAudioBalance).toBe(75);
+
+    // A new project clears the track and returns the level to its default; undo
+    // brings both back, so they are part of the undoable snapshot.
+    store.getState().newProject();
+    expect(store.getState().narration).toEqual([]);
+    expect(store.getState().clipAudioBalance).toBe(50);
+    store.getState().undo();
+    expect(store.getState().narration).toEqual(narration);
+    expect(store.getState().clipAudioBalance).toBe(75);
+    store.getState().redo();
+    expect(store.getState().narration).toEqual([]);
+    expect(store.getState().clipAudioBalance).toBe(50);
+  });
+
+  it("drops narration clips of a deleted medium through the backend cascade", async () => {
+    const api = mockApi({
+      deleteMedia: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        slides: [],
+        music: [],
+        narration: [],
+        clipAudioBalance: 50,
+      })),
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        slides: [],
+        music: [],
+        narration: [
+          {
+            id: "n1",
+            mediaId: "a",
+            at: 0,
+            trimStart: 0,
+            trimEnd: null,
+            volume: 1,
+            fadeIn: false,
+            fadeOut: false,
+          },
+        ],
+        clipAudioBalance: 50,
+      })),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    expect(store.getState().narration).toHaveLength(1);
+    await store.getState().deleteMedia("a");
+    expect(store.getState().narration).toEqual([]);
   });
 
   describe("history (undo/redo, spec edit-commands)", () => {
@@ -582,7 +674,9 @@ describe("appStore", () => {
       const store = createAppStore(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 5 as const,
+            schemaVersion: 6 as const,
+            narration: [],
+            clipAudioBalance: 50,
             music: [],
             slides: [
               {

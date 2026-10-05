@@ -1,9 +1,10 @@
 """Project model and project store (spec slideshow-project "Projektmodell", design.md D3 and D7;
 music track: add-music-track design.md D3, spec music-track;
 video clips: add-timeline-editing design.md D1, spec slideshow-project;
-titles: add-titles-and-credits design.md D5, spec titles-and-credits).
+titles: add-titles-and-credits design.md D5, spec titles-and-credits;
+narration: add-narration-and-audio-levels design.md D2 and D4, spec narration-track).
 
-`<data_dir>/project.json` contains a `Project` with `schemaVersion: 5`. Every
+`<data_dir>/project.json` contains a `Project` with `schemaVersion: 6`. Every
 element (slide) is either an **image slide** (`kind: "image"`, a display
 `duration`), a **video slide** (`kind: "video"`, `trimIn`/`trimOut` in
 seconds into the referenced video; its length follows only from
@@ -16,29 +17,36 @@ catalog, or `null` for no effect) and a `title` (an **overlay title**
 never hold an overlay title of its own. Every kind MAY carry one incoming
 transition from the previous element; the first element has none. The music
 track (`music`) is a list of music clips that play one after the other from 0;
-each refers to an audio medium.
+each refers to an audio medium. The narration track (`narration`) is a list of
+narration clips, each with its own **absolute** start time `at` on the movie
+timeline instead of a place in a chain; they MAY overlap and are then mixed
+together. `clipAudioBalance` is the one global level between the sound of video
+clips and music plus narration (design.md D4).
 
 Older files are raised to the current version on load, one step at a time: a
 file with `schemaVersion: 1` (written before the music track existed) gains an
 empty music track, one with `schemaVersion: 2` (written before video slides
 existed) gets every slide as an image slide with its duration unchanged, one
 with `schemaVersion: 3` (written before effects existed) gets
-`effectId: null` on every slide, and one with `schemaVersion: 4` (written
-before titles existed) gets `title: null` on every slide. Each is written at
+`effectId: null` on every slide, one with `schemaVersion: 4` (written
+before titles existed) gets `title: null` on every slide, and one with
+`schemaVersion: 5` (written before the narration track existed) gains an empty
+narration track and `clipAudioBalance: 50`. Each is written at
 the current schema version on the next save. The API only accepts the current
 schema version.
 
 Validation runs in two stages:
 
 1. Structure (Pydantic): fields, types, ID format, duration ranges and 0.25 s
-   grid, music volume and trim values, title colour format, list lengths, and
+   grid, music and narration volume and trim values, narration start times,
+   `clipAudioBalance`, title colour format, list lengths, and
    the rule that a title slide carries exactly one of `lines`/`creditEntries`.
    An overlay title on a title slide is rejected here too: the field does not
    exist on that kind and the models forbid extra fields.
 2. References (`ProjectStore.save`): media, transition, effect and title-style
    IDs exist, image slides refer to images, video slides to videos and music
-   clips to audio, slide and clip IDs are unique, the first element has no
-   transition, every clip's range lies within its file
+   and narration clips to audio, slide and clip IDs are unique (per track), the
+   first element has no transition, every clip's range lies within its file
    (`0 <= trimStart < end <= duration`, played length >= 0.5 s), and every
    video slide's trim lies within its video (`0 <= trimIn < trimOut <= duration`).
 
@@ -85,7 +93,7 @@ from mmy_backend.storage import write_bytes_atomic
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION: Literal[5] = 5
+SCHEMA_VERSION: Literal[6] = 6
 MAX_SLIDES = 1000
 MAX_MUSIC_CLIPS = 100
 MUSIC_VOLUME_MIN = 0.0
@@ -94,6 +102,19 @@ MUSIC_CLIP_MIN_LENGTH = 0.5
 DURATION_STEP = 0.25
 SLIDE_DURATION_MIN = 0.5
 SLIDE_DURATION_MAX = 60.0
+# Narration (add-narration-and-audio-levels design.md D2): the same limits as
+# music, plus a stored absolute start time. `at` is not on the duration grid -
+# it is the playback position at which the recording started.
+MAX_NARRATION_CLIPS = MAX_MUSIC_CLIPS
+NARRATION_AT_MIN = 0.0
+# The longest movie the slide limits allow; a start time beyond it can never be
+# reached, so it is out of range.
+NARRATION_AT_MAX = MAX_SLIDES * SLIDE_DURATION_MAX
+# The one global level between video-clip sound (100) and music plus narration
+# (0); 50 plays both at full gain (design.md D4).
+CLIP_AUDIO_BALANCE_MIN = 0
+CLIP_AUDIO_BALANCE_MAX = 100
+CLIP_AUDIO_BALANCE_DEFAULT = 50
 TRANSITION_DURATION_MIN = 0.25
 TRANSITION_DURATION_MAX = 5.0
 SLIDE_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
@@ -172,6 +193,45 @@ def _trim_check(value: float) -> float:
     return value
 
 
+def _narration_volume_check(value: float) -> float:
+    if not math.isfinite(value) or not MUSIC_VOLUME_MIN <= value <= MUSIC_VOLUME_MAX:
+        raise validation_error(
+            "project.narrationVolume.outOfRange",
+            min=MUSIC_VOLUME_MIN,
+            max=MUSIC_VOLUME_MAX,
+            value=value,
+        )
+    return value
+
+
+def _narration_trim_check(value: float) -> float:
+    if not math.isfinite(value) or value < 0:
+        raise validation_error("project.narrationTrim.negative", value=value)
+    return value
+
+
+def _narration_at_check(value: float) -> float:
+    if not math.isfinite(value) or not NARRATION_AT_MIN <= value <= NARRATION_AT_MAX:
+        raise validation_error(
+            "project.narrationAt.outOfRange",
+            min=NARRATION_AT_MIN,
+            max=NARRATION_AT_MAX,
+            value=value,
+        )
+    return value
+
+
+def _clip_audio_balance_check(value: int) -> int:
+    if not CLIP_AUDIO_BALANCE_MIN <= value <= CLIP_AUDIO_BALANCE_MAX:
+        raise validation_error(
+            "project.clipAudioBalance.outOfRange",
+            min=CLIP_AUDIO_BALANCE_MIN,
+            max=CLIP_AUDIO_BALANCE_MAX,
+            value=value,
+        )
+    return value
+
+
 def _slide_trim_check(value: float) -> float:
     if not math.isfinite(value) or value < 0:
         raise validation_error("project.slideTrim.negative", value=value)
@@ -192,6 +252,49 @@ TrimTime = Annotated[
 ]
 SlideTrimTime = Annotated[
     float, Strict(), AfterValidator(_slide_trim_check), Field(json_schema_extra={"minimum": 0})
+]
+NarrationVolume = Annotated[
+    float,
+    Strict(),
+    AfterValidator(_narration_volume_check),
+    Field(
+        description="Volume as linear gain (1 = 100 %, new clip: 1)",
+        json_schema_extra={"minimum": MUSIC_VOLUME_MIN, "maximum": MUSIC_VOLUME_MAX},
+    ),
+]
+NarrationTrimTime = Annotated[
+    float,
+    Strict(),
+    AfterValidator(_narration_trim_check),
+    Field(json_schema_extra={"minimum": 0}),
+]
+NarrationAt = Annotated[
+    float,
+    Strict(),
+    AfterValidator(_narration_at_check),
+    Field(
+        description=(
+            "Absolute start time on the movie timeline in seconds; not on the "
+            "duration grid, and clips may overlap"
+        ),
+        json_schema_extra={"minimum": NARRATION_AT_MIN, "maximum": NARRATION_AT_MAX},
+    ),
+]
+ClipAudioBalance = Annotated[
+    int,
+    Strict(),
+    AfterValidator(_clip_audio_balance_check),
+    Field(
+        description=(
+            "The one global level between the sound of video clips (100: only "
+            "clip sound) and music plus narration (0: no clip sound); 50 plays "
+            "both at full gain (new project: 50)"
+        ),
+        json_schema_extra={
+            "minimum": CLIP_AUDIO_BALANCE_MIN,
+            "maximum": CLIP_AUDIO_BALANCE_MAX,
+        },
+    ),
 ]
 TitleLine = Annotated[str, Field(max_length=TITLE_LINE_MAX_LENGTH)]
 TitleColor = Annotated[
@@ -347,14 +450,54 @@ class MusicClip(_ProjectModel):
     fade_out: Annotated[bool, Strict()] = Field(description="Fade out over 1 s (new clip: false)")
 
 
+class NarrationClip(_ProjectModel):
+    """A clip of the narration track (add-narration-and-audio-levels design.md
+    D2). Same fields as a music clip, but with a stored **absolute** start time
+    `at` on the movie timeline instead of a place in a chain: a recording sits
+    where it was spoken, whatever the storyboard shows there. Clips may overlap;
+    overlapping stretches are mixed together, neither replaces the other."""
+
+    id: Annotated[
+        str,
+        Field(
+            pattern=SLIDE_ID_PATTERN,
+            description="Assigned by the client, unique within the narration track",
+        ),
+    ]
+    media_id: str = Field(description="ID of an audio medium from /api/media")
+    at: NarrationAt
+    trim_start: NarrationTrimTime = Field(
+        description="Start within the recording in seconds (new clip: 0)"
+    )
+    trim_end: NarrationTrimTime | None = Field(
+        description="End within the recording in seconds; null = end of the file (new clip: null)"
+    )
+    volume: NarrationVolume
+    fade_in: Annotated[bool, Strict()] = Field(description="Fade in over 1 s (new clip: false)")
+    fade_out: Annotated[bool, Strict()] = Field(description="Fade out over 1 s (new clip: false)")
+
+
+type AudioClip = MusicClip | NarrationClip
+"""A clip on one of the two audio tracks; both carry the same media reference,
+trim, volume and fades, so the reference checks treat them alike."""
+
+
 class Project(_ProjectModel):
-    schema_version: Literal[5]
+    schema_version: Literal[6]
     slides: Annotated[list[Slide], Field(max_length=MAX_SLIDES)]
     music: Annotated[list[MusicClip], Field(max_length=MAX_MUSIC_CLIPS)]
+    narration: Annotated[list[NarrationClip], Field(max_length=MAX_NARRATION_CLIPS)]
+    clip_audio_balance: ClipAudioBalance
 
 
 def empty_project() -> Project:
-    return Project(schema_version=SCHEMA_VERSION, slides=[], music=[])
+    return Project(
+        schema_version=SCHEMA_VERSION,
+        slides=[],
+        music=[],
+        narration=[],
+        clip_audio_balance=CLIP_AUDIO_BALANCE_DEFAULT,
+    )
 
 
 def _migrate_slides(
@@ -376,8 +519,10 @@ def migrate_project_data(raw: Any) -> Any:
     effects, add-effects-catalog design.md D3) gets `effectId: null` on every
     slide. Version 4 (before titles, add-titles-and-credits design.md D5) gets
     `title: null` on every slide — a version-4 file has only image and video
-    slides, both of which carry the overlay field. A newer or unknown version is
-    returned unchanged and validated as is.
+    slides, both of which carry the overlay field. Version 5 (before the
+    narration track, add-narration-and-audio-levels design.md D2 and D4) gains
+    an empty narration track and `clipAudioBalance: 50`. A newer or unknown
+    version is returned unchanged and validated as is.
     """
     if not isinstance(raw, dict):
         return raw
@@ -410,13 +555,21 @@ def migrate_project_data(raw: Any) -> Any:
     if version == 4:
         raw = _migrate_slides(
             raw,
-            SCHEMA_VERSION,
+            5,
             lambda slide: (
                 {**slide, "title": None}
                 if isinstance(slide, dict) and "title" not in slide
                 else slide
             ),
         )
+        version = 5
+    if version == 5 and "narration" not in raw and "clipAudioBalance" not in raw:
+        raw = {
+            **raw,
+            "schemaVersion": SCHEMA_VERSION,
+            "narration": [],
+            "clipAudioBalance": CLIP_AUDIO_BALANCE_DEFAULT,
+        }
     return raw
 
 
@@ -459,7 +612,8 @@ def check_references(
     """Checks the references of a structurally valid project; empty list = valid."""
     items = {item.id: item for item in media}
     issues = _check_slides(project, items, transition_ids, effect_ids, title_style_ids)
-    issues.extend(_check_music(project, items))
+    issues.extend(_check_audio_track("music", project.music, items))
+    issues.extend(_check_audio_track("narration", project.narration, items))
     return issues
 
 
@@ -600,18 +754,27 @@ def _check_slide_trim(
     return None
 
 
-def _check_music(
-    project: Project, items: dict[str, ImageItem | AudioItem | VideoItem]
+def _check_audio_track(
+    track: Literal["music", "narration"],
+    clips: Iterable[AudioClip],
+    items: dict[str, ImageItem | AudioItem | VideoItem],
 ) -> list[ApiErrorIssue]:
+    """The reference checks of one audio track: unique IDs within the track, a
+    known audio medium per clip, and a range inside the file.
+
+    Both tracks are checked the same way; only the error codes and the location
+    differ. A narration clip's `at` needs no check against its neighbours:
+    overlap is allowed by design (design.md D2).
+    """
     issues: list[ApiErrorIssue] = []
     seen: dict[str, int] = {}
-    for index, clip in enumerate(project.music):
+    for index, clip in enumerate(clips):
         where: Params = {"clip": index + 1, "clipId": clip.id}
         if clip.id in seen:
             issues.append(
                 _issue(
-                    ("music", index, "id"),
-                    "project.music.duplicateId",
+                    (track, index, "id"),
+                    f"project.{track}.duplicateId",
                     **where,
                     firstClip=seen[clip.id] + 1,
                 )
@@ -622,8 +785,8 @@ def _check_music(
         if item is None:
             issues.append(
                 _issue(
-                    ("music", index, "mediaId"),
-                    "project.music.unknownMedia",
+                    (track, index, "mediaId"),
+                    f"project.{track}.unknownMedia",
                     **where,
                     mediaId=clip.media_id,
                 )
@@ -632,27 +795,32 @@ def _check_music(
         if not isinstance(item, AudioItem):
             issues.append(
                 _issue(
-                    ("music", index, "mediaId"),
-                    "project.music.notAudio",
+                    (track, index, "mediaId"),
+                    f"project.{track}.notAudio",
                     **where,
                     mediaId=clip.media_id,
                 )
             )
             continue
-        issue = _check_trim(index, clip, item.duration, where)
+        issue = _check_trim(track, index, clip, item.duration, where)
         if issue is not None:
             issues.append(issue)
     return issues
 
 
 def _check_trim(
-    index: int, clip: MusicClip, duration: float, where: Params
+    track: Literal["music", "narration"],
+    index: int,
+    clip: AudioClip,
+    duration: float,
+    where: Params,
 ) -> ApiErrorIssue | None:
-    """`0 <= trimStart < end <= duration` and played length >= 0.5 s (spec music-track)."""
+    """`0 <= trimStart < end <= duration` and played length >= 0.5 s (spec
+    music-track, spec narration-track)."""
     if clip.trim_end is not None and clip.trim_end > duration + _TRIM_EPSILON:
         return _issue(
-            ("music", index, "trimEnd"),
-            "project.music.trimEndBeyondFile",
+            (track, index, "trimEnd"),
+            f"project.{track}.trimEndBeyondFile",
             **where,
             trimEnd=clip.trim_end,
             duration=duration,
@@ -660,8 +828,8 @@ def _check_trim(
     end = duration if clip.trim_end is None else min(clip.trim_end, duration)
     if clip.trim_start >= end:
         return _issue(
-            ("music", index, "trimStart"),
-            "project.music.trimStartNotBeforeEnd",
+            (track, index, "trimStart"),
+            f"project.{track}.trimStartNotBeforeEnd",
             **where,
             trimStart=clip.trim_start,
             end=end,
@@ -669,8 +837,8 @@ def _check_trim(
     length = end - clip.trim_start
     if length < MUSIC_CLIP_MIN_LENGTH - _TRIM_EPSILON:
         return _issue(
-            ("music", index),
-            "project.music.tooShort",
+            (track, index),
+            f"project.{track}.tooShort",
             **where,
             min=MUSIC_CLIP_MIN_LENGTH,
             length=length,
@@ -680,7 +848,8 @@ def _check_trim(
 
 def remove_media_slides(project: Project, media_id: str) -> Project:
     """Removes all elements with `media_id` together with their incoming transitions,
-    and all music clips with `media_id` (the following clips move up).
+    and all music and narration clips with `media_id` (the following music clips
+    move up; narration clips keep their own `at`, so the others do not move).
 
     Afterwards the (new) first element no longer has a transition.
     """
@@ -688,7 +857,8 @@ def remove_media_slides(project: Project, media_id: str) -> Project:
     if slides and slides[0].transition_in is not None:
         slides[0] = slides[0].model_copy(update={"transition_in": None})
     music = [c for c in project.music if c.media_id != media_id]
-    return project.model_copy(update={"slides": slides, "music": music})
+    narration = [c for c in project.narration if c.media_id != media_id]
+    return project.model_copy(update={"slides": slides, "music": music, "narration": narration})
 
 
 # --- Store -------------------------------------------------------------------

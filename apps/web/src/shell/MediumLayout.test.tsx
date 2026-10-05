@@ -57,7 +57,15 @@ const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
 async function setup(slides: Slide[] = []) {
   mockLayout("medium");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
+    mockApi({
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [],
+      })),
+    }),
   );
   await act(() => view.ready);
   return view;

@@ -113,12 +113,12 @@ flowchart LR
 
 ### 2. Project
 
-- The project is one versioned JSON document (`schemaVersion: 5`); `slides`
+- The project is one versioned JSON document (`schemaVersion: 6`); `slides`
   is a discriminated union on `kind`:
 
   ```json
   {
-    "schemaVersion": 5,
+    "schemaVersion": 6,
     "slides": [
       { "kind": "image", "id": "s1", "mediaId": "…", "duration": 5,
         "effectId": null, "title": null, "transitionIn": null },
@@ -134,7 +134,12 @@ flowchart LR
     "music": [
       { "id": "m1", "mediaId": "…", "trimStart": 0, "trimEnd": null,
         "volume": 1, "fadeIn": false, "fadeOut": false }
-    ]
+    ],
+    "narration": [
+      { "id": "n1", "mediaId": "…", "at": 4.25, "trimStart": 0,
+        "trimEnd": null, "volume": 1, "fadeIn": false, "fadeOut": false }
+    ],
+    "clipAudioBalance": 50
   }
   ```
 
@@ -145,7 +150,15 @@ flowchart LR
   a `title` slide refers to no medium at all and has a display `duration` like
   an image slide; music clips refer to audio, and each clip's range must
   satisfy `0 ≤ trimStart < end ≤ duration` with a played length of at least
-  0.5 s (`trimEnd: null` = end of the file). An `image` or `video` slide
+  0.5 s (`trimEnd: null` = end of the file). `narration` (at most 100 clips)
+  is the other way round: every clip stores its own absolute `at` on the movie
+  timeline, so the list order says nothing about when a clip plays and two
+  clips may overlap — overlapping stretches are mixed, neither replaces the
+  other. Its clips refer to audio and are trimmed exactly like music clips.
+  `clipAudioBalance` (0–100, an integer, default 50) is the one global level
+  between the sound of video clips (100) and music plus narration (0); 50
+  plays both at full gain, and there is no volume per video clip. An `image`
+  or `video` slide
   carries an `effectId` — an ID from the effect catalog or `null` for no
   effect, one effect per element, all parameters from the catalog entry — and
   a `title`: an overlay title `{lines, styleId, color}` over that picture, or
@@ -158,9 +171,10 @@ flowchart LR
   (before the music track) gains `music: []`, a version-2 project (before
   video slides) has every slide read as `kind: "image"` with its `duration`
   unchanged, a version-3 project (before effects) gets `effectId: null` on
-  every slide, and a version-4 project (before titles) gets `title: null`.
-  Each is written at version 5 on the next save, and the API accepts
-  version 5 only.
+  every slide, a version-4 project (before titles) gets `title: null`, and a
+  version-5 project (before the narration track) gains `narration: []` and
+  `clipAudioBalance: 50`. Each is written at version 6 on the next save, and
+  the API accepts version 6 only.
 
 - A transition belongs to its **target** slide (`transitionIn`) and moves with
   it when slides are reordered. The first slide never has one.
@@ -506,7 +520,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/media/{id}/peaks` | Waveform data `{rate: 50, peaks}` (`Cache-Control: immutable`) |
 | `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
-| `PUT` | `/api/project` | Replace the project (`schemaVersion` 5 with `slides` and `music`); `422` leaves the stored state unchanged |
+| `PUT` | `/api/project` | Replace the project (`schemaVersion` 6 with `slides`, `music`, `narration` and `clipAudioBalance`); `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
 | `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |

@@ -532,6 +532,20 @@ export const de = {
       musicTrim: {
         negative: "Anfang und Ende eines Musikstücks dürfen nicht vor 0 s liegen (ist {value} s).",
       },
+      narrationVolume: {
+        outOfRange: "Die Lautstärke muss zwischen {min} und {max} liegen (ist {value}).",
+      },
+      narrationTrim: {
+        negative:
+          "Anfang und Ende eines Erzählungs-Clips dürfen nicht vor 0 s liegen (ist {value} s).",
+      },
+      narrationAt: {
+        outOfRange:
+          "Die Startzeit eines Erzählungs-Clips muss zwischen {min} und {max} s liegen (ist {value} s).",
+      },
+      clipAudioBalance: {
+        outOfRange: "Der Audio-Pegel muss zwischen {min} und {max} liegen (ist {value}).",
+      },
       slideTrim: {
         negative: "Anfang und Ende eines Videoclips dürfen nicht vor 0 s liegen (ist {value} s).",
       },
@@ -568,6 +582,19 @@ export const de = {
           "Musikstück {clip} (ID „{clipId}“): Der Anfang ({trimStart} s) muss vor dem Ende ({end} s) liegen.",
         tooShort:
           "Musikstück {clip} (ID „{clipId}“): Das Stück muss mindestens {min} s lang sein (ist {length} s).",
+      },
+      narration: {
+        duplicateId:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Die ID wird bereits von Erzählungs-Clip {firstClip} verwendet.",
+        unknownMedia: "Erzählungs-Clip {clip} (ID „{clipId}“): unbekanntes Medium „{mediaId}“.",
+        notAudio:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Das Medium „{mediaId}“ ist keine Audiodatei.",
+        trimEndBeyondFile:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Das Ende ({trimEnd} s) liegt hinter dem Ende der Datei ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Der Anfang ({trimStart} s) muss vor dem Ende ({end} s) liegen.",
+        tooShort:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Der Clip muss mindestens {min} s lang sein (ist {length} s).",
       },
     },
     export: {

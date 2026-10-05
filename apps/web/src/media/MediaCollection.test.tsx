@@ -206,7 +206,9 @@ describe("media collection", () => {
     const user = userEvent.setup();
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 5 as const,
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
         music: [],
         slides: [
           {
@@ -256,7 +258,9 @@ describe("media collection", () => {
       const user = userEvent.setup();
       const api = mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 5 as const,
+          schemaVersion: 6 as const,
+          narration: [],
+          clipAudioBalance: 50,
           music: [],
           slides: [
             {

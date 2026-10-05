@@ -505,6 +505,10 @@
           "project.transitionDuration.offGrid",
           "project.musicVolume.outOfRange",
           "project.musicTrim.negative",
+          "project.narrationVolume.outOfRange",
+          "project.narrationTrim.negative",
+          "project.narrationAt.outOfRange",
+          "project.clipAudioBalance.outOfRange",
           "project.slideTrim.negative",
           "project.titleText.missing",
           "project.titleText.ambiguous",
@@ -525,6 +529,12 @@
           "project.music.trimEndBeyondFile",
           "project.music.trimStartNotBeforeEnd",
           "project.music.tooShort",
+          "project.narration.duplicateId",
+          "project.narration.unknownMedia",
+          "project.narration.notAudio",
+          "project.narration.trimEndBeyondFile",
+          "project.narration.trimStartNotBeforeEnd",
+          "project.narration.tooShort",
           "export.notFound",
           "export.emptyProject",
           "export.missingMedia",
@@ -1120,6 +1130,78 @@
         "title": "MusicClip",
         "type": "object"
       },
+      "NarrationClip": {
+        "additionalProperties": false,
+        "description": "A clip of the narration track (add-narration-and-audio-levels design.md\nD2). Same fields as a music clip, but with a stored **absolute** start time\n`at` on the movie timeline instead of a place in a chain: a recording sits\nwhere it was spoken, whatever the storyboard shows there. Clips may overlap;\noverlapping stretches are mixed together, neither replaces the other.",
+        "properties": {
+          "at": {
+            "description": "Absolute start time on the movie timeline in seconds; not on the duration grid, and clips may overlap",
+            "maximum": 60000.0,
+            "minimum": 0.0,
+            "title": "At",
+            "type": "number"
+          },
+          "fadeIn": {
+            "description": "Fade in over 1 s (new clip: false)",
+            "title": "Fadein",
+            "type": "boolean"
+          },
+          "fadeOut": {
+            "description": "Fade out over 1 s (new clip: false)",
+            "title": "Fadeout",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Assigned by the client, unique within the narration track",
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "mediaId": {
+            "description": "ID of an audio medium from /api/media",
+            "title": "Mediaid",
+            "type": "string"
+          },
+          "trimEnd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "End within the recording in seconds; null = end of the file (new clip: null)",
+            "title": "Trimend"
+          },
+          "trimStart": {
+            "description": "Start within the recording in seconds (new clip: 0)",
+            "minimum": 0.0,
+            "title": "Trimstart",
+            "type": "number"
+          },
+          "volume": {
+            "description": "Volume as linear gain (1 = 100 %, new clip: 1)",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Volume",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "mediaId",
+          "at",
+          "trimStart",
+          "trimEnd",
+          "volume",
+          "fadeIn",
+          "fadeOut"
+        ],
+        "title": "NarrationClip",
+        "type": "object"
+      },
       "Phases": {
         "additionalProperties": false,
         "properties": {
@@ -1224,6 +1306,13 @@
       "Project": {
         "additionalProperties": false,
         "properties": {
+          "clipAudioBalance": {
+            "description": "The one global level between the sound of video clips (100: only clip sound) and music plus narration (0: no clip sound); 50 plays both at full gain (new project: 50)",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Clipaudiobalance",
+            "type": "integer"
+          },
           "music": {
             "items": {
               "$ref": "#/components/schemas/MusicClip"
@@ -1232,8 +1321,16 @@
             "title": "Music",
             "type": "array"
           },
+          "narration": {
+            "items": {
+              "$ref": "#/components/schemas/NarrationClip"
+            },
+            "maxItems": 100,
+            "title": "Narration",
+            "type": "array"
+          },
           "schemaVersion": {
-            "const": 5,
+            "const": 6,
             "title": "Schemaversion",
             "type": "integer"
           },
@@ -1249,7 +1346,9 @@
         "required": [
           "schemaVersion",
           "slides",
-          "music"
+          "music",
+          "narration",
+          "clipAudioBalance"
         ],
         "title": "Project",
         "type": "object"

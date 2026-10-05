@@ -16,6 +16,7 @@ from mmy_backend.config import Settings
 from mmy_backend.main import create_app
 from mmy_backend.media import MediaStore
 from mmy_backend.project import (
+    CLIP_AUDIO_BALANCE_DEFAULT,
     MAX_CREDIT_ENTRIES,
     SCHEMA_VERSION,
     TITLE_DURATION_DEFAULT,
@@ -76,7 +77,13 @@ def _overlay(**fields: Any) -> dict[str, Any]:
 
 
 def _project(slides: list[dict[str, Any]]) -> dict[str, Any]:
-    return {"schemaVersion": SCHEMA_VERSION, "slides": slides, "music": []}
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "slides": slides,
+        "music": [],
+        "narration": [],
+        "clipAudioBalance": CLIP_AUDIO_BALANCE_DEFAULT,
+    }
 
 
 # --- A title element ----------------------------------------------------------

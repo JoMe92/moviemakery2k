@@ -67,7 +67,13 @@ const MUSIC = [audioItem("m1"), audioItem("m2")];
 function api(slides: Slide[] = [], music: MusicClip[] = []) {
   return mockApi({
     listMedia: vi.fn(async () => [...PICTURES, ...MUSIC]),
-    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music })),
+    getProject: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      slides,
+      music,
+    })),
   });
 }
 

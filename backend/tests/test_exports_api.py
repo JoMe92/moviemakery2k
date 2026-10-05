@@ -100,7 +100,16 @@ def _save_project(client: TestClient, media_ids: list[str], duration: float = 1.
         }
         for i, media_id in enumerate(media_ids)
     ]
-    res = client.put("/api/project", json={"schemaVersion": 5, "slides": slides, "music": []})
+    res = client.put(
+        "/api/project",
+        json={
+            "schemaVersion": 6,
+            "slides": slides,
+            "music": [],
+            "narration": [],
+            "clipAudioBalance": 50,
+        },
+    )
     assert res.status_code == 200, res.text
 
 

@@ -528,6 +528,19 @@ export const en = {
       musicTrim: {
         negative: "The start and end of a music clip must be 0 s or later (is {value} s).",
       },
+      narrationVolume: {
+        outOfRange: "The narration volume must be between {min} and {max} (is {value}).",
+      },
+      narrationTrim: {
+        negative: "The start and end of a narration clip must be 0 s or later (is {value} s).",
+      },
+      narrationAt: {
+        outOfRange:
+          "The start time of a narration clip must be between {min} and {max} s (is {value} s).",
+      },
+      clipAudioBalance: {
+        outOfRange: "The audio level must be between {min} and {max} (is {value}).",
+      },
       slideTrim: {
         negative: "The start and end of a video clip must be 0 s or later (is {value} s).",
       },
@@ -563,6 +576,19 @@ export const en = {
           "Music clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before the end ({end} s).",
         tooShort:
           "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s (plays {length} s).",
+      },
+      narration: {
+        duplicateId:
+          "Narration clip {clip} (ID “{clipId}”): the ID is already used by narration clip {firstClip}.",
+        unknownMedia: "Narration clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        notAudio:
+          "Narration clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        trimEndBeyondFile:
+          "Narration clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond the end of the file ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Narration clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before the end ({end} s).",
+        tooShort:
+          "Narration clip {clip} (ID “{clipId}”): the clip must play at least {min} s (plays {length} s).",
       },
     },
     export: {

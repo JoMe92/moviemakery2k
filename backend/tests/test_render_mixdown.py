@@ -421,7 +421,13 @@ def _music_project(
             "fadeOut": False,
         }
     ]
-    project = {"schemaVersion": 5, "slides": slides, "music": clips if music else []}
+    project = {
+        "schemaVersion": 6,
+        "slides": slides,
+        "music": clips if music else [],
+        "narration": [],
+        "clipAudioBalance": 50,
+    }
     res = client.put("/api/project", json=project)
     assert res.status_code == 200, res.text
     return images, audio

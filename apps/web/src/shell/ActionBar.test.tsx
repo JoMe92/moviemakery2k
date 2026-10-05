@@ -57,7 +57,13 @@ async function setup(layout: "compact" | "wide" = "compact") {
       audioItem("song", 60),
       audioItem("tune", 30),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music })),
+    getProject: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      slides,
+      music,
+    })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);

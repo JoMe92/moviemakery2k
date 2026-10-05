@@ -144,8 +144,10 @@ save_project() {
   local code
   cat >"$WORK/project.json" <<JSON
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "music": [],
+  "narration": [],
+  "clipAudioBalance": 50,
   "slides": [
     {"kind": "image", "id": "smoke-1", "mediaId": "$RED_ID", "duration": $SLIDE_SECONDS,
      "effectId": null, "title": null, "transitionIn": null},

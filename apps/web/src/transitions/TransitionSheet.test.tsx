@@ -19,7 +19,13 @@ const slide = (id: string, mediaId: string, t: string | null = null, d = 1.25): 
 async function setup(slides: Slide[], locale: "de" | "en" = "de") {
   mockLayout("compact");
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      slides,
+      music: [],
+    })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);

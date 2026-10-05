@@ -56,6 +56,10 @@ class ErrorCode(StrEnum):
     PROJECT_TRANSITION_DURATION_OFF_GRID = "project.transitionDuration.offGrid"
     PROJECT_MUSIC_VOLUME_OUT_OF_RANGE = "project.musicVolume.outOfRange"
     PROJECT_MUSIC_TRIM_NEGATIVE = "project.musicTrim.negative"
+    PROJECT_NARRATION_VOLUME_OUT_OF_RANGE = "project.narrationVolume.outOfRange"
+    PROJECT_NARRATION_TRIM_NEGATIVE = "project.narrationTrim.negative"
+    PROJECT_NARRATION_AT_OUT_OF_RANGE = "project.narrationAt.outOfRange"
+    PROJECT_CLIP_AUDIO_BALANCE_OUT_OF_RANGE = "project.clipAudioBalance.outOfRange"
     PROJECT_SLIDE_TRIM_NEGATIVE = "project.slideTrim.negative"
     PROJECT_TITLE_TEXT_MISSING = "project.titleText.missing"
     PROJECT_TITLE_TEXT_AMBIGUOUS = "project.titleText.ambiguous"
@@ -76,6 +80,12 @@ class ErrorCode(StrEnum):
     PROJECT_MUSIC_TRIM_END_BEYOND_FILE = "project.music.trimEndBeyondFile"
     PROJECT_MUSIC_TRIM_START_NOT_BEFORE_END = "project.music.trimStartNotBeforeEnd"
     PROJECT_MUSIC_TOO_SHORT = "project.music.tooShort"
+    PROJECT_NARRATION_DUPLICATE_ID = "project.narration.duplicateId"
+    PROJECT_NARRATION_UNKNOWN_MEDIA = "project.narration.unknownMedia"
+    PROJECT_NARRATION_NOT_AUDIO = "project.narration.notAudio"
+    PROJECT_NARRATION_TRIM_END_BEYOND_FILE = "project.narration.trimEndBeyondFile"
+    PROJECT_NARRATION_TRIM_START_NOT_BEFORE_END = "project.narration.trimStartNotBeforeEnd"
+    PROJECT_NARRATION_TOO_SHORT = "project.narration.tooShort"
     EXPORT_NOT_FOUND = "export.notFound"
     EXPORT_EMPTY_PROJECT = "export.emptyProject"
     EXPORT_MISSING_MEDIA = "export.missingMedia"
@@ -180,6 +190,23 @@ _SPECS: dict[str, ErrorSpec] = {
     "project.slideTrim.negative": ErrorSpec(
         "The start and end of a video clip must be 0 s or later (is {value} s).", ("value",)
     ),
+    # Narration (spec narration-track): same limits as music, plus the stored
+    # absolute start time and the one global level.
+    "project.narrationVolume.outOfRange": ErrorSpec(
+        "The narration volume must be between {min} and {max} (is {value}).",
+        ("min", "max", "value"),
+    ),
+    "project.narrationTrim.negative": ErrorSpec(
+        "The start and end of a narration clip must be 0 s or later (is {value} s).", ("value",)
+    ),
+    "project.narrationAt.outOfRange": ErrorSpec(
+        "The start time of a narration clip must be between {min} and {max} s (is {value} s).",
+        ("min", "max", "value"),
+    ),
+    "project.clipAudioBalance.outOfRange": ErrorSpec(
+        "The audio level must be between {min} and {max} (is {value}).",
+        ("min", "max", "value"),
+    ),
     # Title element: exactly one of `lines`/`creditEntries` is set.
     "project.titleText.missing": ErrorSpec(
         "Title “{slideId}”: either lines or credit entries must be set.", ("slideId",)
@@ -259,6 +286,36 @@ _SPECS: dict[str, ErrorSpec] = {
     ),
     "project.music.tooShort": ErrorSpec(
         "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s "
+        "(plays {length} s).",
+        ("clip", "clipId", "min", "length"),
+    ),
+    # Narration issues: `clip` is the 1-based position, `clipId` the clip's id.
+    "project.narration.duplicateId": ErrorSpec(
+        "Narration clip {clip} (ID “{clipId}”): the ID is already used by "
+        "narration clip {firstClip}.",
+        ("clip", "clipId", "firstClip"),
+    ),
+    "project.narration.unknownMedia": ErrorSpec(
+        "Narration clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        ("clip", "clipId", "mediaId"),
+    ),
+    "project.narration.notAudio": ErrorSpec(
+        "Narration clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        ("clip", "clipId", "mediaId"),
+    ),
+    "project.narration.trimEndBeyondFile": ErrorSpec(
+        "Narration clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond "
+        "the end of the file ({duration} s).",
+        ("clip", "clipId", "trimEnd", "duration"),
+    ),
+    # `end`: the effective end (trimEnd, or the file duration if trimEnd is null).
+    "project.narration.trimStartNotBeforeEnd": ErrorSpec(
+        "Narration clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie "
+        "before the end ({end} s).",
+        ("clip", "clipId", "trimStart", "end"),
+    ),
+    "project.narration.tooShort": ErrorSpec(
+        "Narration clip {clip} (ID “{clipId}”): the clip must play at least {min} s "
         "(plays {length} s).",
         ("clip", "clipId", "min", "length"),
     ),
