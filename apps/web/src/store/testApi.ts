@@ -90,8 +90,10 @@ export const CATALOG: Transition[] = [
 
 /**
  * Title catalog stand-in (add-titles-and-credits D4): one static one-line
- * style, one animated one-line style, a smaller-font one and a credits
- * style - enough to cover every layout and phase effect in tests.
+ * style, two animated one-line styles, a smaller-font one, a two-line and a
+ * credits style - enough to cover every layout and phase effect in tests.
+ * Every `titleStyleId` of `AUTOMOVIE_CATALOG` is in here, as it is in the real
+ * catalog pair (the backend checks that at startup).
  */
 export const TITLE_CATALOG: TitleStyle[] = [
   {
@@ -117,6 +119,23 @@ export const TITLE_CATALOG: TitleStyle[] = [
       entrance: {
         effect: "position",
         start: { x: -1, y: 0, scale: 1 },
+        end: { x: 0, y: 0, scale: 1 },
+      },
+      main: { effect: "static" },
+      exit: { effect: "fade" },
+    },
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+  {
+    id: "zoom-in",
+    names: { de: "Vergrößern", en: "Zoom In" },
+    layout: "one-line",
+    anchor: { x: 0, y: 0, scale: 1 },
+    fontScale: 1,
+    phases: {
+      entrance: {
+        effect: "position",
+        start: { x: 0, y: 0, scale: 0.3 },
         end: { x: 0, y: 0, scale: 1 },
       },
       main: { effect: "static" },

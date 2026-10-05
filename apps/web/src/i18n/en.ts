@@ -162,6 +162,7 @@ export const en = {
     needsMusic: "Needs a music track.",
     create: "Create",
     created: "AutoMovie created",
+    endTitle: "The End",
     replaceTitle: "AutoMovie",
     replaceMessage:
       "AutoMovie replaces the whole storyboard. Do you want to continue? The pictures in the collection are kept.",

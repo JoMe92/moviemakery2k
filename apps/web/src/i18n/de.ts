@@ -161,6 +161,7 @@ export const de = {
     needsMusic: "Benötigt eine Musikspur.",
     create: "Erstellen",
     created: "AutoMovie erstellt",
+    endTitle: "Ende",
     replaceTitle: "AutoMovie",
     replaceMessage:
       "AutoMovie ersetzt den gesamten Bildstreifen. Möchten Sie fortfahren? Die Bilder in der Sammlung bleiben erhalten.",

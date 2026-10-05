@@ -2,14 +2,10 @@
 (TASK-INFRA-025, add-automovie design.md D2/D3).
 
 Extras → "AutoMovie…" with the style "Klassisch" on a filled media collection:
-every picture lands on the filmstrip in import order with "Überblenden"
-between all of them, and the "Film speichern" wizard exports that result like
-any hand-built project - the first picture is still pure red in the downloaded
-MP4.
-
-Deferred (Bead mmy-0pz): AutoMovie does not yet insert the opening and closing
-title elements, so the filmstrip holds exactly the pictures of the collection.
-When the title slide kind lands, the counts and the frame time below move.
+a title element with the entered film title opens the filmstrip, every picture
+follows in import order, an "Ende" title closes it, with "Überblenden" between
+all of them; the "Film speichern" wizard exports that result like any
+hand-built project - the red picture is still pure red in the downloaded MP4.
 """
 
 import io
@@ -23,8 +19,12 @@ from PIL import Image, ImageStat
 from playwright.sync_api import Locator, Page, expect
 
 EXPORT_TIMEOUT_MS = 180_000
-# Three pictures of 5 s with two 1.25 s transitions overlapping: 15 - 2 * 1.25.
-MOVIE_SECONDS = "0:00:12,50"
+# Two titles and three pictures of 5 s with four 1.25 s transitions
+# overlapping: 25 - 4 * 1.25.
+MOVIE_SECONDS = "0:00:20,00"
+# The red picture is the second element: it starts at 5 - 1.25 s, its still
+# runs from 5,00 s to 7,50 s (where the transition into green begins).
+RED_STILL_SECONDS = 6.0
 CHANNEL_TOLERANCE = 24
 
 
@@ -84,14 +84,18 @@ def test_automovie_classic_builds_the_movie_and_exports_it(
     dialog.get_by_role("button", name="Erstellen").click()
     expect(dialog).to_be_hidden()
 
-    # The whole collection is on the filmstrip, in import order.
-    for number, name in enumerate(("rot.png", "gruen.png", "blau.png"), start=1):
+    # The film title opens the filmstrip, "Ende" closes it, and the whole
+    # collection sits between them in import order (design.md D2 step 4).
+    expect(strip.get_by_role("button", name="Titel 1: Urlaub, 5,00 s")).to_be_visible()
+    for number, name in enumerate(("rot.png", "gruen.png", "blau.png"), start=2):
         expect(strip.get_by_role("button", name=f"Bild {number}: {name}, 5,00 s")).to_be_visible()
+    expect(strip.get_by_role("button", name="Titel 5: Ende, 5,00 s")).to_be_visible()
     expect(strip.get_by_role("button", name=re.compile(r"^Bild \d+: "))).to_have_count(3)
+    expect(strip.get_by_role("button", name=re.compile(r"^Titel \d+: "))).to_have_count(2)
 
-    # "Überblenden" between all neighbours; the first picture has no slot at all.
-    expect(strip.get_by_role("button", name=re.compile(r"^Übergang vor Bild "))).to_have_count(2)
-    for number in (2, 3):
+    # "Überblenden" between all neighbours; the opening title has no slot at all.
+    expect(strip.get_by_role("button", name=re.compile(r"^Übergang vor Bild "))).to_have_count(4)
+    for number in (2, 3, 4, 5):
         expect(
             strip.get_by_role("button", name=f"Übergang vor Bild {number}: Überblenden, 1,25 s")
         ).to_be_visible()
@@ -119,8 +123,8 @@ def test_automovie_classic_builds_the_movie_and_exports_it(
     download.save_as(movie)
     assert movie.stat().st_size > 0
 
-    # 2 s in, well before the first transition starts (3,75 s): the red picture.
-    red = mean_rgb(frame(movie, 2.0, tmp_path))
+    # 6 s in: the red picture stands still, both transitions around it are over.
+    red = mean_rgb(frame(movie, RED_STILL_SECONDS, tmp_path))
     assert red[0] > 255 - CHANNEL_TOLERANCE and red[1] < CHANNEL_TOLERANCE, (
-        f"the exported AutoMovie should open on the red picture: {red}"
+        f"the exported AutoMovie should show the red picture after the title: {red}"
     )
