@@ -2,14 +2,13 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MusicClip, Slide } from "../lib/apiClient";
-import { audioItem, mediaItem, mockApi } from "../store/testApi";
+import { slideMediaId } from "../store/projectOps";
+import { audioItem, mediaItem, mockApi, slideMediaIdOf } from "../store/testApi";
 import { AppStoreContext } from "../store/useAppStore";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 import { setVibrationEnabled } from "../ui/haptics";
 import { useAddFromCollection } from "./useAddFromCollection";
-import { slideMediaId } from "../store/projectOps";
-import { slideMediaIdOf } from "../store/testApi";
 
 /*
  * Confirming an add from the collection (app-shell design.md D6): the short
