@@ -37,6 +37,43 @@ If you change a backend model or route, regenerate the API types with
 `pixi run gen-api` and commit the result; CI fails when
 `apps/web/src/generated/` is out of date.
 
+### Known host limitations
+
+CI (x86_64 Linux) is the authority for the gate. Two things are worth
+knowing if you develop somewhere else:
+
+- **A 16 KB-page kernel (for example a Raspberry Pi 5 running the 64-bit
+  Raspberry Pi OS) cannot run Pixi's Biome binary.** It aborts immediately,
+  on any input, with `jemalloc: Unsupported system page size`, which stops
+  `pixi run check` at its first step. Run the same version by hand instead
+  and the rest of the gate individually:
+
+  ```bash
+  npx -y @biomejs/biome@2.5.15 check .   # the version pinned in pixi.toml
+  ```
+
+  Use the full package name. A bare `npx biome` installs an unrelated npm
+  package called `biome` and reports success without checking anything.
+- **Headless WebGL needs software rendering.** `pixi.toml` sets
+  `LIBGL_ALWAYS_SOFTWARE=1` for Linux, which pins Mesa llvmpipe instead of
+  letting Mesa look for a GPU driver it may not find; `pixi run
+  check-render-env` prints the renderer it ended up with. Without it the
+  backend renderer has no EGL context and every export test fails.
+
+### Writing browser tests
+
+`e2e/` has two traps that cost a session each; both are easy to avoid:
+
+- **A React controlled `<input>` ignores a plain `el.value = …`
+  assignment.** Seeking the playhead or filling a field from Playwright has
+  to go through the native `HTMLInputElement` value setter, or the component
+  never sees the change.
+- **A dnd-kit keyboard drag needs a pause after the pickup key.** The
+  `KeyboardSensor` attaches its move/drop listener via `setTimeout(0)`, so a
+  key dispatched immediately after `Enter` can arrive before that listener
+  exists and silently does nothing. Wait ~50 ms between pickup, move and
+  drop.
+
 ## Commits
 
 - **Conventional Commits:** `type(scope): subject`, with type one of `build`,
@@ -46,8 +83,10 @@ If you change a backend model or route, regenerate the API types with
   build and pass the tests on its own. Do not mix refactorings, formatting
   and behaviour changes.
 - **Issue token:** commits for planned work name their Beads issue in the
-  subject, upper-cased, e.g. `feat(web): seek bar [MMY-1na]` for issue
-  `mmy-1na`.
+  subject, with the prefix upper-cased and the id left exactly as Beads
+  wrote it, e.g. `feat(web): seek bar [MMY-1na]` for issue `mmy-1na`. The
+  hook requires the upper-case prefix; upper-casing the id as well
+  (`[MMY-1NA]`) is rejected.
 
 ## Branches
 
@@ -71,7 +110,9 @@ specifications are currently written in German) and broken down into
 with the **Nogging** operating model for AI agents and humans: planning
 sessions own `openspec/`, implementation works on one claimed issue at a time.
 Read [`AGENTS.md`](AGENTS.md) and [`docs/nogging/`](docs/nogging/operating-model.md)
-before working on planned changes. Small fixes and documentation improvements
+before working on planned changes. What planning sessions decided about the
+findings reported from implementation is logged in
+[`docs/maintainers/discovery-triage.md`](docs/maintainers/discovery-triage.md). Small fixes and documentation improvements
 are welcome as plain pull requests.
 
 ## No Microsoft assets
