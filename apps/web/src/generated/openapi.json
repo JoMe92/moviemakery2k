@@ -283,6 +283,88 @@
         "title": "AudioPeaks",
         "type": "object"
       },
+      "AutoMovieCatalog": {
+        "additionalProperties": false,
+        "properties": {
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "styles": {
+            "items": {
+              "$ref": "#/components/schemas/AutoMovieStyle"
+            },
+            "minItems": 1,
+            "title": "Styles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "styles"
+        ],
+        "title": "AutoMovieCatalog",
+        "type": "object"
+      },
+      "AutoMovieStyle": {
+        "additionalProperties": false,
+        "properties": {
+          "descriptions": {
+            "$ref": "#/components/schemas/LocalizedText",
+            "description": "One short sentence shown on the style tile in the AutoMovie dialog"
+          },
+          "effectId": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ID from the effect catalog applied to every image and video clip element, or null for no effect",
+            "title": "Effectid"
+          },
+          "id": {
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "names": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "requiresMusic": {
+            "description": "The style is only selectable while the project has a music track",
+            "title": "Requiresmusic",
+            "type": "boolean"
+          },
+          "titleStyleId": {
+            "description": "ID from the title catalog, used for the opening and the closing title",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Titlestyleid",
+            "type": "string"
+          },
+          "transitionId": {
+            "description": "ID from the transition catalog, used between all adjacent elements",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "title": "Transitionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "names",
+          "descriptions",
+          "transitionId",
+          "effectId",
+          "titleStyleId",
+          "requiresMusic"
+        ],
+        "title": "AutoMovieStyle",
+        "type": "object"
+      },
       "Body_upload_media_api_media_post": {
         "properties": {
           "files": {
@@ -800,6 +882,28 @@
           "transitionIn"
         ],
         "title": "ImageSlide",
+        "type": "object"
+      },
+      "LocalizedText": {
+        "additionalProperties": false,
+        "description": "Text per UI language; both languages are required.",
+        "properties": {
+          "de": {
+            "minLength": 1,
+            "title": "De",
+            "type": "string"
+          },
+          "en": {
+            "minLength": 1,
+            "title": "En",
+            "type": "string"
+          }
+        },
+        "required": [
+          "de",
+          "en"
+        ],
+        "title": "LocalizedText",
         "type": "object"
       },
       "MediaDeleteResponse": {
@@ -1905,6 +2009,27 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/catalog/automovie": {
+      "get": {
+        "operationId": "list_automovie_styles_api_catalog_automovie_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutoMovieCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Automovie Styles",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/catalog/effects": {
       "get": {
         "operationId": "list_effects_api_catalog_effects_get",

@@ -5,7 +5,7 @@ Render-Technik) und die achte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 1. Katalog
 
-- [ ] TASK-CAT-008 AutoMovie-Katalog: 3 Einträge in
+- [x] TASK-CAT-008 AutoMovie-Katalog: 3 Einträge in
   `packages/catalog/automovie.json` (Klassisch, Alter Film, Musikvideo),
   Start-Validierung (design.md D1). Erledigt, wenn ein Test alle drei
   Einträge, ihre Übergangs-/Effekt-/Titel-Stil-Referenzen gegen die
@@ -13,7 +13,7 @@ Render-Technik) und die achte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 2. Oberfläche
 
-- [ ] TASK-WEB-069 AutoMovie-Dialog und Algorithmus: Extras → „AutoMovie…“
+- [x] TASK-WEB-069 AutoMovie-Dialog und Algorithmus: Extras → „AutoMovie…“
   öffnet den Dialog (Filmtitel, Stil-Auswahl mit deaktiviertem
   musikpflichtigem Stil ohne Musikspur, Rückfrage bei nicht leerem
   Bildstreifen); „Erstellen“ baut den Bildstreifen aus der
@@ -26,7 +26,7 @@ Render-Technik) und die achte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-025 E2E und Doku: Playwright-Smoke erweitert um AutoMovie
+- [x] TASK-INFRA-025 E2E und Doku: Playwright-Smoke erweitert um AutoMovie
   mit dem Stil „Klassisch“ auf eine gefüllte Mediensammlung; Export des
   Ergebnisses funktioniert unverändert; README/CHANGELOG „Unreleased“
   (nach TASK-WEB-069). Erledigt, wenn `pixi run test-e2e` grün ist.

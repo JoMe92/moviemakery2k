@@ -155,6 +155,17 @@ export const en = {
     tooShort:
       "The music lasts {music}. With the current pictures the movie must last at least {reachable}. The picture durations were not changed.",
   },
+  autoMovie: {
+    title: "AutoMovie",
+    filmTitle: "Movie title:",
+    styleLegend: "Style",
+    needsMusic: "Needs a music track.",
+    create: "Create",
+    created: "AutoMovie created",
+    replaceTitle: "AutoMovie",
+    replaceMessage:
+      "AutoMovie replaces the whole storyboard. Do you want to continue? The pictures in the collection are kept.",
+  },
   newProject: {
     title: "New Project",
     message:

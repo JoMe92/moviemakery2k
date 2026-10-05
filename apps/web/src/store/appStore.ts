@@ -3,12 +3,14 @@
  * Project changes are saved debounced (autosave, 500 ms).
  */
 import { createStore, type StoreApi } from "zustand/vanilla";
+import { buildAutoMovie, isStyleAvailable } from "../automovie/autoMovie";
 import { uploadFailureInfo } from "../i18n/errors";
 import { applyDocumentLocale, initialLocale, type Locale, writeStoredLocale } from "../i18n/locale";
 import {
   ApiError,
   type ApiErrorInfo,
   type AppApi,
+  type AutoMovieStyle,
   type Effect,
   type ExportApi,
   type Health,
@@ -191,6 +193,8 @@ export interface AppState {
   effects: Effect[];
   /** Title catalog (add-titles-and-credits D4); like `catalog`, loaded once at start. */
   titles: TitleStyle[];
+  /** The AutoMovie styles (add-automovie design.md D1); empty while offline. */
+  automovieStyles: AutoMovieStyle[];
   slides: Slide[];
   /** Music track (add-music-track D3); kept and saved with the project. */
   music: MusicClip[];
@@ -389,6 +393,20 @@ export interface AppState {
    * length is unreachable or there are no pictures/music; the result says why.
    */
   fitToMusic(): FitToMusicResult;
+  /**
+   * Extras → "AutoMovie…" (add-automovie design.md D2): replaces the whole
+   * filmstrip with the media collection in import order in the chosen style —
+   * the style's transition between all adjacent elements, its effect on every
+   * element — and, if the project has music, runs "Fit movie to music" on the
+   * result. The collection itself stays untouched. One undo step for the whole
+   * operation. `false` = nothing done (unknown style, a style that needs music
+   * without a music track, or no pictures and videos at all).
+   *
+   * Deferred: the opening and closing title elements (Bead mmy-0pz); the
+   * `filmTitle` is already passed in but has nowhere to go until the slide
+   * model knows a title element.
+   */
+  autoMovie(styleId: string, filmTitle: string): boolean;
   newProject(): void;
 
   /** Undo the last storyboard/music change (spec edit-commands); no effect if there is none. */
@@ -560,6 +578,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       catalog: [],
       effects: [],
       titles: [],
+      automovieStyles: [],
       slides: [],
       music: [],
       saveState: "idle",
@@ -600,19 +619,22 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       async init() {
         try {
-          const [health, catalog, effects, titles, media, project] = await Promise.all([
-            api.health(),
-            api.catalog(),
-            api.effectCatalog(),
-            api.titleCatalog(),
-            api.listMedia(),
-            api.getProject(),
-          ]);
+          const [health, catalog, effects, titles, automovieStyles, media, project] =
+            await Promise.all([
+              api.health(),
+              api.catalog(),
+              api.effectCatalog(),
+              api.titleCatalog(),
+              api.automovieCatalog(),
+              api.listMedia(),
+              api.getProject(),
+            ]);
           set({
             backend: { kind: "ok", health },
             catalog,
             effects,
             titles,
+            automovieStyles,
             media,
             slides: project.slides,
             music: project.music,
@@ -1097,6 +1119,30 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           );
         }
         return result;
+      },
+      autoMovie(styleId, _filmTitle) {
+        const { automovieStyles, media, music } = get();
+        const style = automovieStyles.find((entry) => entry.id === styleId);
+        if (!style) return false;
+        const musicLength = projectMusicDuration(music, media);
+        if (!isStyleAvailable(style, musicLength > 0)) return false;
+        const built = buildAutoMovie(media, style, defaultTransitionDuration(style.transitionId));
+        if (built.length === 0) return false;
+        // "Fit movie to music" is applied here rather than through the store
+        // action, so the whole AutoMovie is a single undo step (design.md D2:
+        // the result is an ordinary project and stays editable like any other).
+        const fit = fitToMusic(toTimelineSlides(built), musicLength);
+        const slides =
+          fit.kind === "ok"
+            ? built.map((slide, index) =>
+                // A video clip's length is its trim, not a duration to stretch.
+                slide.kind === "video"
+                  ? slide
+                  : { ...slide, duration: fit.durations[index] ?? slide.duration },
+              )
+            : built;
+        commit(slides);
+        return true;
       },
       newProject() {
         const { slides, music } = get();

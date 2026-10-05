@@ -38,6 +38,11 @@ export interface MenuHandlers {
   /** Tools → Options (language setting). */
   options?: () => void;
   /**
+   * Tools → "AutoMovie…" (spec automovie); absent while the media collection
+   * holds no picture and no video, so there is nothing to build a movie from.
+   */
+  autoMovie?: () => void;
+  /**
    * Tools → "Install as app…"; absent outside a secure context or when running
    * installed — then the item is absent, not disabled (add-mobile-delivery D7).
    */
@@ -104,7 +109,7 @@ export function buildMenus(h: MenuHandlers, t: Translate): MenuDef[] {
         item("transitions", t("menu.tools.transitions")),
         item("effects", t("menu.tools.effects")),
         separator,
-        item("automovie", t("menu.tools.autoMovie")),
+        item("automovie", t("menu.tools.autoMovie"), h.autoMovie),
         item("options", t("menu.tools.options"), h.options),
         ...(h.install ? [item("install", t("menu.tools.install"), h.install)] : []),
       ],

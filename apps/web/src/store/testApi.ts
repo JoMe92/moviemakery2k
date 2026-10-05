@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import type {
   AppApi,
   AudioItem,
+  AutoMovieStyle,
   Effect,
   ExportJob,
   ImageItem,
@@ -185,6 +186,36 @@ export const EFFECT_CATALOG: Effect[] = [
   },
 ];
 
+export const AUTOMOVIE_CATALOG: AutoMovieStyle[] = [
+  {
+    id: "classic",
+    names: { de: "Klassisch", en: "Classic" },
+    descriptions: { de: "Überblenden zwischen allen Elementen.", en: "Fade between all." },
+    transitionId: "fade",
+    effectId: null,
+    titleStyleId: "basic-title",
+    requiresMusic: false,
+  },
+  {
+    id: "old-movie",
+    names: { de: "Alter Film", en: "Old Movie" },
+    descriptions: { de: "Auflösen, gealtert.", en: "Dissolve, aged." },
+    transitionId: "dissolve",
+    effectId: "film-age-older",
+    titleStyleId: "basic-title",
+    requiresMusic: false,
+  },
+  {
+    id: "music-video",
+    names: { de: "Musikvideo", en: "Music Video" },
+    descriptions: { de: "Kreis, an die Musik angepasst.", en: "Circle, fitted to the music." },
+    transitionId: "circle",
+    effectId: null,
+    titleStyleId: "zoom-in",
+    requiresMusic: true,
+  },
+];
+
 export function exportJob(overrides: Partial<ExportJob> = {}): ExportJob {
   return {
     id: "job1",
@@ -208,6 +239,7 @@ export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Proj
     catalog: vi.fn(async () => CATALOG),
     effectCatalog: vi.fn(async () => EFFECT_CATALOG),
     titleCatalog: vi.fn(async () => TITLE_CATALOG),
+    automovieCatalog: vi.fn(async () => AUTOMOVIE_CATALOG),
     listMedia: vi.fn(async () => [mediaItem("a"), mediaItem("b")]),
     uploadMedia: vi.fn(async (file: File) => ({
       ok: true as const,

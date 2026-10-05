@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/catalog/automovie": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Automovie Styles */
+        get: operations["list_automovie_styles_api_catalog_automovie_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/effects": {
         parameters: {
             query?: never;
@@ -517,6 +534,44 @@ export interface components {
              */
             rate: number;
         };
+        /** AutoMovieCatalog */
+        AutoMovieCatalog: {
+            /**
+             * Schemaversion
+             * @constant
+             */
+            schemaVersion: 1;
+            /** Styles */
+            styles: components["schemas"]["AutoMovieStyle"][];
+        };
+        /** AutoMovieStyle */
+        AutoMovieStyle: {
+            /** @description One short sentence shown on the style tile in the AutoMovie dialog */
+            descriptions: components["schemas"]["LocalizedText"];
+            /**
+             * Effectid
+             * @description ID from the effect catalog applied to every image and video clip element, or null for no effect
+             */
+            effectId: string | null;
+            /** Id */
+            id: string;
+            names: components["schemas"]["LocalizedText"];
+            /**
+             * Requiresmusic
+             * @description The style is only selectable while the project has a music track
+             */
+            requiresMusic: boolean;
+            /**
+             * Titlestyleid
+             * @description ID from the title catalog, used for the opening and the closing title
+             */
+            titleStyleId: string;
+            /**
+             * Transitionid
+             * @description ID from the transition catalog, used between all adjacent elements
+             */
+            transitionId: string;
+        };
         /** Body_upload_media_api_media_post */
         Body_upload_media_api_media_post: {
             /**
@@ -738,6 +793,16 @@ export interface components {
             title: components["schemas"]["TitleOverlay"] | null;
             /** @description Incoming transition from the previous element; always null for the first */
             transitionIn: components["schemas"]["TransitionRef"] | null;
+        };
+        /**
+         * LocalizedText
+         * @description Text per UI language; both languages are required.
+         */
+        LocalizedText: {
+            /** De */
+            de: string;
+            /** En */
+            en: string;
         };
         /** MediaDeleteResponse */
         MediaDeleteResponse: {
@@ -1226,6 +1291,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_automovie_styles_api_catalog_automovie_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutoMovieCatalog"];
+                };
+            };
+        };
+    };
     list_effects_api_catalog_effects_get: {
         parameters: {
             query?: never;

@@ -53,6 +53,24 @@ All notable changes to this project are documented here. The format follows
   `PUT /api/project` accepts version 4 only and rejects an unknown effect ID
   as `project.slide.unknownEffect`. `GET /api/catalog/effects` serves the new
   catalog, validated at startup like the transition catalog.
+- **AutoMovie** (OpenSpec change `add-automovie`): *Tools → AutoMovie…* was a
+  visible but dead menu entry; it now opens a dialog that builds a whole movie
+  from the media collection. Enter a film title, pick one of three styles —
+  *Classic* (Fade, no effect), *Old Movie* (Dissolve plus *Film Age, Older* on
+  every element) or *Music Video* (Circle, fitted to the music and selectable
+  only with a music track) — and *Create* puts every picture and video clip on
+  the filmstrip in import order, with the style's transition at its catalog
+  duration between all neighbours and the style's effect on every element.
+  With music, *Fit movie to music* runs on the result. A filmstrip that is not
+  empty is only replaced after a confirmation, the collection is never
+  touched, and the whole AutoMovie is a single undo step. The new style
+  catalog [`packages/catalog/automovie.json`](packages/catalog/automovie.json)
+  is the single source of truth; its transition, effect and title references
+  are checked against the other catalogs at startup and it is served at
+  `GET /api/catalog/automovie` ([MMY-um6], [MMY-46b], [MMY-1f3]).
+  **Not yet title-complete:** the opening title with the entered film title
+  and the closing *Ende*/*The End* are still missing, because the slide model
+  has no title element yet; they follow with `add-titles-and-credits`.
 - **A *Collections* toggle in the toolbar.** The collection pane sat fixed in
   the middle of the workspace, so whoever worked on the filmstrip or the
   monitor could not reclaim its space. One toolbar button now hides and shows
