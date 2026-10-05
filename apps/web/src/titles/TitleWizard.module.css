@@ -1,0 +1,88 @@
+/* Title wizard: fixed width so the four steps do not jump. */
+.step {
+  width: 420px;
+  max-width: 100%;
+  min-height: 170px;
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: 13px;
+}
+
+.stepNumber {
+  margin: 2px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--y2k-separator);
+  color: var(--y2k-text-muted);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.options legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  column-gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.option[aria-disabled="true"] {
+  color: var(--y2k-text-muted);
+  cursor: default;
+}
+
+.optionLabel {
+  grid-column: 2 / -1;
+  font-weight: bold;
+}
+
+.option .swatch {
+  grid-column: 2;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--y2k-edge-dark);
+}
+
+.option .swatch + .optionLabel {
+  grid-column: 3;
+}
+
+.hint {
+  grid-column: 2 / -1;
+  margin: 0;
+  color: var(--y2k-text-muted);
+  font-size: 0.9em;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.input,
+.textarea {
+  flex: 1;
+  padding: 2px 4px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+  font: inherit;
+}
+
+.textarea {
+  resize: vertical;
+}

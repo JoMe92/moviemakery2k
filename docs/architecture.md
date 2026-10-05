@@ -60,7 +60,8 @@ flowchart LR
 | Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with music mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
 | Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition and per effect plus the shared preludes/epilogues/vertex shader; used by preview and export |
 | Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
-| Catalog | `packages/catalog/` | Transition and effect metadata and parameters (single source of truth), JSON Schema |
+| Fonts | `packages/fonts/` | The bundled title font (Liberation Sans): the same file rasterises titles in the preview and in the export |
+| Catalog | `packages/catalog/` | Transition, effect and title metadata and parameters (single source of truth), JSON Schema |
 | E2E tests | `e2e/` | Playwright tests against the real backend and the built web app |
 | Scripts | `scripts/` | Dev launcher (`dev.py`), shader check, render-environment check, export benchmark, Docker export smoke test, Git hooks, Nogging tooling |
 
@@ -112,18 +113,23 @@ flowchart LR
 
 ### 2. Project
 
-- The project is one versioned JSON document (`schemaVersion: 4`); `slides`
+- The project is one versioned JSON document (`schemaVersion: 5`); `slides`
   is a discriminated union on `kind`:
 
   ```json
   {
-    "schemaVersion": 4,
+    "schemaVersion": 5,
     "slides": [
       { "kind": "image", "id": "s1", "mediaId": "…", "duration": 5,
-        "effectId": null, "transitionIn": null },
+        "effectId": null, "title": null, "transitionIn": null },
       { "kind": "video", "id": "s2", "mediaId": "…",
         "trimIn": 0, "trimOut": 8.5, "effectId": "sepia",
-        "transitionIn": { "transitionId": "circle", "duration": 1.25 } }
+        "title": { "lines": ["Urlaub"], "styleId": "subtitle",
+                   "color": "#ffffff" },
+        "transitionIn": { "transitionId": "circle", "duration": 1.25 } },
+      { "kind": "title", "id": "s3", "lines": null,
+        "creditEntries": ["Regie: Ich"], "styleId": "scroll-up-stacked",
+        "color": "#ffffff", "duration": 10, "transitionIn": null }
     ],
     "music": [
       { "id": "m1", "mediaId": "…", "trimStart": 0, "trimEnd": null,
@@ -136,18 +142,25 @@ flowchart LR
   slide refers to an image and has a display `duration`; a `video` slide
   refers to a video and has no separate duration — its length is always
   `trimOut - trimIn` (`0 ≤ trimIn < trimOut ≤` the video's decoded duration);
-  music clips refer to audio, and each clip's range must satisfy
-  `0 ≤ trimStart < end ≤ duration` with a played length of at least 0.5 s
-  (`trimEnd: null` = end of the file). Either kind of slide carries an
-  `effectId` — an ID from the effect catalog or `null` for no effect, one
-  effect per element, all parameters from the catalog entry.
+  a `title` slide refers to no medium at all and has a display `duration` like
+  an image slide; music clips refer to audio, and each clip's range must
+  satisfy `0 ≤ trimStart < end ≤ duration` with a played length of at least
+  0.5 s (`trimEnd: null` = end of the file). An `image` or `video` slide
+  carries an `effectId` — an ID from the effect catalog or `null` for no
+  effect, one effect per element, all parameters from the catalog entry — and
+  a `title`: an overlay title `{lines, styleId, color}` over that picture, or
+  `null`. A `title` slide carries exactly one of `lines` and `creditEntries`,
+  a `styleId` from the title catalog and a `color`, and has no `title` field
+  of its own, so it can never hold an overlay title (the models forbid extra
+  fields, so one is rejected as `extra_forbidden`).
 
 - Older files are raised one version at a time on read: a version-1 project
   (before the music track) gains `music: []`, a version-2 project (before
   video slides) has every slide read as `kind: "image"` with its `duration`
-  unchanged, and a version-3 project (before effects) gets `effectId: null`
-  on every slide. Each is written at version 4 on the next save, and the API
-  accepts version 4 only.
+  unchanged, a version-3 project (before effects) gets `effectId: null` on
+  every slide, and a version-4 project (before titles) gets `title: null`.
+  Each is written at version 5 on the next save, and the API accepts
+  version 5 only.
 
 - A transition belongs to its **target** slide (`transitionIn`) and moves with
   it when slides are reordered. The first slide never has one.
@@ -464,6 +477,14 @@ transition IDs a project may use. Details:
 [`packages/catalog/README.md`](../packages/catalog/README.md) and the
 [research notes](research/movie-maker-reference.md).
 
+`effects.json` and `titles.json` follow the same pattern with their own
+schemas: an effect adds `shader` and `params` for its single-texture pass, a
+title adds a `layout` (`one-line`/`two-line`/`credits`), a resting `anchor`
+and `fontScale`, and one effect per phase (`entrance`, `main`, `exit`) — a
+`fade`, a `static` hold, or a `position` move between two transforms. All
+three are validated at startup, and all three are the authority on which IDs
+a project may use.
+
 ## API
 
 All routes live under `/api` (see `backend/src/mmy_backend/api/`). The
@@ -476,6 +497,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/health` | Liveness check, including the FFmpeg version found |
 | `GET` | `/api/catalog/transitions` | The transition catalog validated at startup |
 | `GET` | `/api/catalog/effects` | The effect catalog validated at startup |
+| `GET` | `/api/catalog/titles` | The title and credits catalog validated at startup |
 | `GET` | `/api/media` | All imported media in import order |
 | `POST` | `/api/media` | Upload pictures and audio (multipart field `files`; JPEG, PNG, WebP, MP3, WAV, M4A/AAC, OGG, FLAC); per-file result |
 | `GET` | `/api/media/{id}/thumbnail` | Thumbnail JPEG (`Cache-Control: immutable`) |
@@ -484,7 +506,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/media/{id}/peaks` | Waveform data `{rate: 50, peaks}` (`Cache-Control: immutable`) |
 | `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
-| `PUT` | `/api/project` | Replace the project (`schemaVersion` 4 with `slides` and `music`); `422` leaves the stored state unchanged |
+| `PUT` | `/api/project` | Replace the project (`schemaVersion` 5 with `slides` and `music`); `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
 | `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |
@@ -512,7 +534,8 @@ FastAPI's interactive docs are available at `/docs` while the backend runs.
 |---|---|---|
 | `MMY_API_PORT` | `8000` | Port of the backend (and the Vite `/api` proxy target) |
 | `MMY_DATA_DIR` | `backend/.data/` | Uploaded media, `media.json`, `project.json`, `exports/` |
-| `MMY_CATALOG_DIR` | `packages/catalog/` | Where `transitions.json` and `effects.json` are loaded from |
+| `MMY_CATALOG_DIR` | `packages/catalog/` | Where `transitions.json`, `effects.json` and `titles.json` are loaded from |
+| `MMY_FONTS_DIR` | `packages/fonts/` | The bundled title font (Liberation Sans) read by the export renderer |
 | `MMY_WEB_DIST` | `apps/web/dist/` | Built web app served at `/` if present |
 | `MMY_SHADERS_DIR` | `packages/shaders/` | Shader files read by the export renderer |
 

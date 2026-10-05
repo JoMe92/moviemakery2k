@@ -6,7 +6,7 @@ wieder, ohne deren Kataloge zu ändern.
 
 ## 1. Datenmodell
 
-- [ ] TASK-API-020 Slide-Datenmodell Version 5: neue Slide-Art `title`
+- [x] TASK-API-020 Slide-Datenmodell Version 5: neue Slide-Art `title`
   (`lines`/`creditEntries`, `styleId`, Anzeigedauer), Overlay-Feld `title`
   auf Bild-/Videoclip-Elementen, Validierung (keine Doppelbelegung, nur
   Overlay auf Bild/Video), Migration von Version 4, `gen-api` (design.md
@@ -39,7 +39,7 @@ wieder, ohne deren Kataloge zu ändern.
   (Nachspann)), Start-Validierung (nach TASK-FX-010, TASK-RENDER-008;
   design.md D4). Erledigt, wenn ein Test alle 8 Einträge, ihr Layout und
   ihre Phasen-Effekte gegen die Katalog-Validierung prüft.
-- [ ] TASK-WEB-066 Titel-Assistent: Schritte Platzierung/Text/Stil/Farbe,
+- [x] TASK-WEB-066 Titel-Assistent: Schritte Platzierung/Text/Stil/Farbe,
   Platzierungs-Optionen je nach aktueller Auswahl, Live-Vorschau im
   Schritt „Stil“, erzeugt ein Titel-Element oder setzt das Overlay-Feld
   (nach TASK-API-020, TASK-CAT-007; design.md D6). Erledigt, wenn
@@ -49,7 +49,7 @@ wieder, ohne deren Kataloge zu ändern.
 
 ## 4. Abschluss
 
-- [ ] TASK-INFRA-023 E2E und Doku: Playwright-Smoke erweitert um einen
+- [x] TASK-INFRA-023 E2E und Doku: Playwright-Smoke erweitert um einen
   Titel am Filmanfang, einen Overlay-Titel auf einem Bild und einen
   Nachspann mit Scroll; Export enthält an diesen Stellen denselben Text
   und dieselbe Animation wie die Vorschau; README/CHANGELOG „Unreleased“

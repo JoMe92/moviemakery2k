@@ -46,6 +46,7 @@ from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.media import MediaStore, VideoItem
 from mmy_backend.project import Slide
+from mmy_backend.render import titles as title_render
 from mmy_backend.render.effects import IMAGE_TEXTURE_UNIT, EffectLibrary
 from mmy_backend.render.geometry import contain_rect
 from mmy_backend.render.shaders import (
@@ -65,6 +66,7 @@ from mmy_backend.render.timeline import (
     frame_count,
     frame_time,
 )
+from mmy_backend.title_catalog import Title, TitleCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +244,8 @@ def _cache_key(slide: TimelineSlide) -> str:
 
 @dataclass(eq=False)
 class _SlideImage:
-    media_id: str
+    media_id: str | None
+    """None for a title element, which refers to no medium."""
     canvas: Image.Image | None
     """Fitted current frame at output size; None if the source is missing or unreadable."""
     pixels: bytes | None = None
@@ -285,6 +288,8 @@ class FrameRenderer:
         project_slides: Sequence[Slide] = (),
         effect_library: EffectLibrary | None = None,
         effects: EffectCatalog | None = None,
+        titles: TitleCatalog | None = None,
+        title_font_file: Path | None = None,
     ) -> None:
         if width <= 0 or height <= 0:
             raise ValueError(f"Invalid output size {width}x{height}")
@@ -299,6 +304,12 @@ class FrameRenderer:
         """Effect catalog and its compiled programs (add-effects-catalog design.md
         D2/D3). Without both, an element's `effectId` is ignored and the export
         renders exactly as before this change."""
+        self.titles = titles
+        self.title_font_file = title_font_file
+        """Title catalog and the bundled font (add-titles-and-credits design.md
+        D1/D4). Without both, a title element renders as a black frame and an
+        overlay title is ignored - the export then behaves as before this change."""
+        self._title_rasters: dict[str, Image.Image] = {}
         self.project_slides = project_slides
         """Original project slides, aligned 1:1 with `Timeline.slides` by index
         (add-timeline-editing design.md D6): tells `_entry` whether a timeline
@@ -359,7 +370,18 @@ class FrameRenderer:
             _, oldest = self._images.popitem(last=False)
             oldest.release()
         project_slide = self.project_slides[index] if index < len(self.project_slides) else None
-        if project_slide is not None and project_slide.kind == "video":
+        if media_id is None:
+            # A title element (add-titles-and-credits design.md D5) has no medium:
+            # its own raster is the image source, so a transition into or out of
+            # it cross-fades like any picture. Its still segment is drawn by the
+            # title path instead, which also animates its phases.
+            found = self._title_of(index)
+            source = (
+                None if found is None or found[2] else self._title_raster(found[0], found[1], False)
+            )
+            canvas = None if source is None else letterbox(source, self.width, self.height)
+            entry = _SlideImage(media_id=None, canvas=canvas)
+        elif project_slide is not None and project_slide.kind == "video":
             entry = self._open_video(media_id, project_slide.trim_in, placed.start, time, fps)
         else:
             source = self.load_image(media_id)
@@ -407,6 +429,67 @@ class FrameRenderer:
             entry.dirty = False
         return entry.texture
 
+    # --- Titles (add-titles-and-credits design.md D1-D4) -----------------------
+
+    def _title_of(self, index: int) -> tuple[title_render.AnyTitle, Title, bool] | None:
+        """The title of element `index` with its catalog style, or None."""
+        if self.titles is None or self.title_font_file is None:
+            return None
+        slide = self.project_slides[index] if index < len(self.project_slides) else None
+        found = title_render.title_of_slide(slide) if slide is not None else None
+        if found is None:
+            return None
+        title, overlay = found
+        style = next((t for t in self.titles.titles if t.id == title.style_id), None)
+        # An ID outside the catalog cannot reach a saved project (the API
+        # rejects it), so a miss here means the catalog changed under us: skip.
+        return None if style is None else (title, style, overlay)
+
+    def _title_raster(
+        self, title: title_render.AnyTitle, style: Title, overlay: bool
+    ) -> Image.Image:
+        """Rasterises once per distinct title content and keeps the result."""
+        assert self.title_font_file is not None
+        key = "\x00".join(
+            ["o" if overlay else "s", style.id, title.color, *title_render.title_lines(title)]
+        )
+        cached = self._title_rasters.get(key)
+        if cached is not None:
+            return cached
+        raster = title_render.rasterize_for(
+            title,
+            style,
+            width=self.width,
+            height=self.height,
+            font_file=self.title_font_file,
+            overlay=overlay,
+        )
+        self._title_rasters[key] = raster
+        return raster
+
+    def _draw_title_of(self, index: int, timeline: Timeline, time: float) -> None:
+        """Draws element `index`'s title into the bound framebuffer, if it has one."""
+        found = self._title_of(index)
+        if found is None:
+            return
+        title, style, overlay = found
+        placed = timeline.slides[index]
+        draw = title_render.title_draw_at(
+            style, placed.slide.duration, time - placed.start, overlay=overlay
+        )
+        raster = self._title_raster(title, style, overlay)
+        # A credits list is rasterised to its content height (D3): draw it at
+        # its real aspect so the scroll moves it through at the right speed.
+        height_ratio = raster.height / self.height if self.height > 0 else 1.0
+        scale = draw.transform.scale
+        self.draw_title(
+            raster,
+            translate=(draw.transform.translate.x, draw.transform.translate.y),
+            scale=(scale, scale * height_ratio),
+            blend=draw.blend,
+            alpha=draw.alpha,
+        )
+
     # --- Effect pass (design.md D2) --------------------------------------------
 
     def _effect_of(self, index: int) -> tuple[str, Mapping[str, float]] | None:
@@ -415,7 +498,8 @@ class FrameRenderer:
         if self.effects is None or self.effect_library is None:
             return None
         slide = self.project_slides[index] if index < len(self.project_slides) else None
-        effect_id = None if slide is None else slide.effect_id
+        # A title element carries no `effectId` (add-titles-and-credits design.md D5).
+        effect_id = None if slide is None or slide.kind == "title" else slide.effect_id
         if not effect_id:
             return None
         params = next((e.params for e in self.effects.effects if e.id == effect_id), None)
@@ -472,29 +556,65 @@ class FrameRenderer:
         if isinstance(frame, EmptyFrame):
             return self._black
         if isinstance(frame, StillFrame):
+            found = self._title_of(frame.slide_index)
+            if found is not None and not found[2]:
+                # A freestanding title element (design.md D1): a black frame and
+                # the title itself; no picture and no effect pass is involved.
+                return self._render_titles_only((frame.slide_index,), timeline, time)
+            overlays: tuple[int, ...] = (frame.slide_index,) if found is not None else ()
             entry = self._entry(frame.slide_index, timeline, time, fps)
             effect = self._effect_of(frame.slide_index)
-            if effect is None or entry.canvas is None:
+            if not overlays and (effect is None or entry.canvas is None):
                 # Stills without shaders (design.md D4) whenever no effect is set.
                 return self._pixels(entry)
+            if entry.canvas is None:
+                # No picture behind the overlay title: black, then the title.
+                return self._render_titles_only(overlays, timeline, time)
             # With an effect the still goes through GL as well: the effect pass
             # feeds the fade program at progress 0, which is the still case of
             # the preview (`drawStill`).
             return self._render_transition(
-                entry, entry, FALLBACK_TRANSITION_ID, 0.0, {}, effect, effect
+                entry,
+                entry,
+                FALLBACK_TRANSITION_ID,
+                0.0,
+                {},
+                effect,
+                effect,
+                overlays=overlays,
+                timeline=timeline,
+                time=time,
             )
 
         source = self._entry(frame.from_index, timeline, time, fps)
         target = self._entry(frame.to_index, timeline, time, fps)
+        # An overlay title stays visible for the whole transition and moves by
+        # its own phases, independent of it (spec titles-and-credits).
+        overlays = tuple(
+            index
+            for index in (frame.from_index, frame.to_index)
+            if (found := self._title_of(index)) is not None and found[2]
+        )
         if source.canvas is None or target.canvas is None:
             # Like PreviewCanvas: only one image → still, none → black.
             present = source if source.canvas is not None else target
             index = frame.from_index if source.canvas is not None else frame.to_index
             effect = self._effect_of(index)
-            if effect is None or present.canvas is None:
+            if present.canvas is None:
+                return self._render_titles_only(overlays, timeline, time)
+            if effect is None and not overlays:
                 return self._pixels(present)
             return self._render_transition(
-                present, present, FALLBACK_TRANSITION_ID, 0.0, {}, effect, effect
+                present,
+                present,
+                FALLBACK_TRANSITION_ID,
+                0.0,
+                {},
+                effect,
+                effect,
+                overlays=overlays,
+                timeline=timeline,
+                time=time,
             )
         params = next((t.params for t in catalog.transitions if t.id == frame.transition_id), {})
         return self._render_transition(
@@ -505,7 +625,19 @@ class FrameRenderer:
             params,
             self._effect_of(frame.from_index),
             self._effect_of(frame.to_index),
+            overlays=overlays,
+            timeline=timeline,
+            time=time,
         )
+
+    def _render_titles_only(self, indices: Sequence[int], timeline: Timeline, time: float) -> bytes:
+        """A black frame with the titles of `indices` drawn on it: a freestanding
+        title element, or an overlay title whose picture is missing."""
+        self._fbo.use()
+        self._fbo.clear(0.0, 0.0, 0.0, 1.0)
+        for index in indices:
+            self._draw_title_of(index, timeline, time)
+        return flip_rows(self._fbo.read(components=4, alignment=1), self.width, self.height)
 
     def _render_transition(
         self,
@@ -516,6 +648,10 @@ class FrameRenderer:
         params: Mapping[str, float],
         from_effect: tuple[str, Mapping[str, float]] | None = None,
         to_effect: tuple[str, Mapping[str, float]] | None = None,
+        *,
+        overlays: Sequence[int] = (),
+        timeline: Timeline | None = None,
+        time: float = 0.0,
     ) -> bytes:
         program = self.library.get(transition_id)
         from_texture = self._texture(source)
@@ -537,6 +673,10 @@ class FrameRenderer:
         to_texture.use(location=TO_TEXTURE_UNIT)
         program.set_uniforms(progress=progress, resolution=(self.width, self.height), params=params)
         program.draw()
+        # Overlay titles go over the finished frame (design.md D2).
+        if timeline is not None:
+            for index in overlays:
+                self._draw_title_of(index, timeline, time)
         data = self._fbo.read(components=4, alignment=1)
         return flip_rows(data, self.width, self.height)
 
@@ -563,13 +703,16 @@ class FrameRenderer:
         translate: tuple[float, float] = (0.0, 0.0),
         scale: tuple[float, float] | float = 1.0,
         blend: bool,
+        alpha: float = 1.0,
     ) -> None:
         """Draws a title/credits texture into the currently bound framebuffer
         at `translate`/`scale` (design.md D3), either opaque (`blend=False`,
         a freestanding title element already fully covering the black
         background it was rasterised onto, design.md D1) or alpha-blended
         over whatever was drawn before it (`blend=True`, an overlay title,
-        design.md D2). `gl.BLEND` is always left disabled afterwards.
+        design.md D2). `alpha` is the phase opacity of the catalog's `fade`
+        effect (design.md D4), which only shows with `blend=True`.
+        `gl.BLEND` is always left disabled afterwards.
         """
         scale_xy = (scale, scale) if isinstance(scale, int | float) else scale
         program = self.library.title_program()
@@ -579,7 +722,7 @@ class FrameRenderer:
             if blend:
                 self.ctx.enable(moderngl.BLEND)
                 self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
-            program.set_transform(translate, scale_xy)
+            program.set_transform(translate, scale_xy, alpha)
             program.draw()
             if blend:
                 self.ctx.disable(moderngl.BLEND)

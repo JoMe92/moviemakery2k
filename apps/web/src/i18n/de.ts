@@ -361,6 +361,57 @@ export const de = {
   duration: {
     range: "Erlaubt sind {min} bis {max} Sekunden in Schritten von {step}.",
   },
+  titles: {
+    title: "Titel oder Nachspann erstellen",
+    steps: {
+      placement: "Platzierung",
+      text: "Text",
+      style: "Stil",
+      color: "Farbe",
+    },
+    stepOf: "Schritt {step} von {total}",
+    placementPrompt: "Wo soll der Titel erscheinen?",
+    placements: {
+      start: "Am Filmanfang",
+      before: "Vor dem gewählten Element",
+      on: "Auf dem gewählten Element",
+      end: "Am Filmende",
+    },
+    placementHints: {
+      start: "Der Titel läuft vor dem ersten Element.",
+      before: "Der Titel läuft unmittelbar vor dem ausgewählten Element.",
+      on: "Der Titel liegt als Überlagerung auf dem ausgewählten Element.",
+      end: "Der Nachspann läuft nach dem letzten Element.",
+    },
+    needsSelection: "Wählen Sie zuerst ein Element im Bildstreifen aus.",
+    needsClipSelection: "Wählen Sie zuerst ein Bild oder einen Videoclip aus.",
+    textPrompt: "Geben Sie den Text für den Titel ein.",
+    creditsPrompt: "Geben Sie die Einträge für den Nachspann ein, einen pro Zeile.",
+    lineLabel: "Zeile {number}:",
+    creditsLabel: "Einträge:",
+    stylePrompt: "Wählen Sie eine Vorlage; der Monitor zeigt eine Vorschau.",
+    styleLegend: "Titelstil:",
+    layouts: {
+      "one-line": "einzeilig",
+      "two-line": "zweizeilig",
+      credits: "Nachspann",
+    },
+    colorPrompt: "Wählen Sie die Textfarbe.",
+    colorLegend: "Textfarbe:",
+    colorNames: {
+      "#ffffff": "Weiß",
+      "#ffff00": "Gelb",
+      "#00ffff": "Türkis",
+      "#ff80c0": "Rosa",
+      "#80ff80": "Hellgrün",
+    },
+    fontHint: "Die Schriftart ist „Liberation Sans“.",
+    back: "Zurück",
+    next: "Weiter",
+    finish: "Fertig",
+    noText: "(ohne Text)",
+    tile: "Titel {number}: {text}, {duration}",
+  },
   export: {
     title: "Film speichern",
     cancelTitle: "Export abbrechen",
@@ -472,6 +523,11 @@ export const de = {
       slideTrim: {
         negative: "Anfang und Ende eines Videoclips dürfen nicht vor 0 s liegen (ist {value} s).",
       },
+      titleText: {
+        missing: "Titel „{slideId}“: Es muss entweder Zeilen oder Nachspann-Einträge geben.",
+        ambiguous:
+          "Titel „{slideId}“: Zeilen und Nachspann-Einträge dürfen nicht beide gesetzt sein.",
+      },
       invalid: "Das Projekt ist ungültig: {summary}",
       slide: {
         duplicateId:
@@ -481,6 +537,7 @@ export const de = {
           "Bild {slide} (ID „{slideId}“): Das erste Bild kann keinen eingehenden Übergang haben.",
         unknownTransition: "Bild {slide} (ID „{slideId}“): unbekannter Übergang „{transitionId}“.",
         unknownEffect: "Bild {slide} (ID „{slideId}“): unbekannter Effekt „{effectId}“.",
+        unknownTitleStyle: "Bild {slide} (ID „{slideId}“): unbekannter Titel-Stil „{styleId}“.",
         notImage: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Bild.",
         notVideo: "Bild {slide} (ID „{slideId}“): Das Medium „{mediaId}“ ist kein Video.",
         trimOutBeyondFile:

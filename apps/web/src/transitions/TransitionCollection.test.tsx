@@ -9,7 +9,7 @@ import { renderApp } from "../test/renderApp";
 async function setup() {
   const api = mockApi({
     getProject: vi.fn(async () => ({
-      schemaVersion: 4 as const,
+      schemaVersion: 5 as const,
       music: [],
       slides: [
         {
@@ -18,6 +18,7 @@ async function setup() {
           mediaId: "a",
           duration: 5,
           effectId: null,
+          title: null,
           transitionIn: null,
         },
         {
@@ -26,6 +27,7 @@ async function setup() {
           mediaId: "b",
           duration: 5,
           effectId: null,
+          title: null,
           transitionIn: null,
         },
       ],
@@ -66,7 +68,7 @@ describe("'Video Transitions' collection", () => {
       const view = renderApp(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 4 as const,
+            schemaVersion: 5 as const,
             music: [],
             slides: [
               {
@@ -75,6 +77,7 @@ describe("'Video Transitions' collection", () => {
                 mediaId: "a",
                 duration: 5,
                 effectId: null,
+                title: null,
                 transitionIn: null,
               },
               {
@@ -83,6 +86,7 @@ describe("'Video Transitions' collection", () => {
                 mediaId: "b",
                 duration: 5,
                 effectId: null,
+                title: null,
                 transitionIn: null,
               },
             ],
@@ -220,7 +224,7 @@ describe("'Video Transitions' collection with many entries (TASK-WEB-064, design
     const api = mockApi({
       catalog: vi.fn(async () => catalog.transitions as Transition[]),
       getProject: vi.fn(async () => ({
-        schemaVersion: 4 as const,
+        schemaVersion: 5 as const,
         music: [],
         slides: [
           {
@@ -229,6 +233,7 @@ describe("'Video Transitions' collection with many entries (TASK-WEB-064, design
             mediaId: "a",
             duration: 5,
             effectId: null,
+            title: null,
             transitionIn: null,
           },
           {
@@ -237,6 +242,7 @@ describe("'Video Transitions' collection with many entries (TASK-WEB-064, design
             mediaId: "b",
             duration: 5,
             effectId: null,
+            title: null,
             transitionIn: null,
           },
         ],

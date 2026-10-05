@@ -1,35 +1,46 @@
 """Project model and project store (spec slideshow-project "Projektmodell", design.md D3 and D7;
 music track: add-music-track design.md D3, spec music-track;
-video clips: add-timeline-editing design.md D1, spec slideshow-project).
+video clips: add-timeline-editing design.md D1, spec slideshow-project;
+titles: add-titles-and-credits design.md D5, spec titles-and-credits).
 
-`<data_dir>/project.json` contains a `Project` with `schemaVersion: 4`. Every
+`<data_dir>/project.json` contains a `Project` with `schemaVersion: 5`. Every
 element (slide) is either an **image slide** (`kind: "image"`, a display
-`duration`) or a **video slide** (`kind: "video"`, `trimIn`/`trimOut` in
+`duration`), a **video slide** (`kind: "video"`, `trimIn`/`trimOut` in
 seconds into the referenced video; its length follows only from
-`trimOut - trimIn`, there is no separate duration field). Either kind carries
-an `effectId` (an ID from the effect catalog, or `null` for no effect) and MAY
-carry one incoming transition from the previous element; the first element has
-none. The music track (`music`) is a list of music clips that play one after
-the other from 0; each refers to an audio medium.
+`trimOut - trimIn`, there is no separate duration field) or a **title slide**
+(`kind: "title"`, exactly one of `lines`/`creditEntries`, a `styleId` from the
+title catalog and a display `duration` like an image slide; it refers to no
+medium). An image or video slide carries an `effectId` (an ID from the effect
+catalog, or `null` for no effect) and a `title` (an **overlay title**
+`{lines, styleId, color}`, or `null`); a title slide carries neither, so it can
+never hold an overlay title of its own. Every kind MAY carry one incoming
+transition from the previous element; the first element has none. The music
+track (`music`) is a list of music clips that play one after the other from 0;
+each refers to an audio medium.
 
 Older files are raised to the current version on load, one step at a time: a
 file with `schemaVersion: 1` (written before the music track existed) gains an
 empty music track, one with `schemaVersion: 2` (written before video slides
-existed) gets every slide as an image slide with its duration unchanged, and
-one with `schemaVersion: 3` (written before effects existed) gets
-`effectId: null` on every slide. Each is written at the current schema version
-on the next save. The API only accepts the current schema version.
+existed) gets every slide as an image slide with its duration unchanged, one
+with `schemaVersion: 3` (written before effects existed) gets
+`effectId: null` on every slide, and one with `schemaVersion: 4` (written
+before titles existed) gets `title: null` on every slide. Each is written at
+the current schema version on the next save. The API only accepts the current
+schema version.
 
 Validation runs in two stages:
 
 1. Structure (Pydantic): fields, types, ID format, duration ranges and 0.25 s
-   grid, music volume and trim values, list lengths.
-2. References (`ProjectStore.save`): media, transition and effect IDs exist,
-   image slides refer to images, video slides to videos and music clips to audio,
-   slide and clip IDs are unique, the first element has no transition, every
-   clip's range lies within its file (`0 <= trimStart < end <= duration`,
-   played length >= 0.5 s), and every video slide's trim lies within its video
-   (`0 <= trimIn < trimOut <= duration`).
+   grid, music volume and trim values, title colour format, list lengths, and
+   the rule that a title slide carries exactly one of `lines`/`creditEntries`.
+   An overlay title on a title slide is rejected here too: the field does not
+   exist on that kind and the models forbid extra fields.
+2. References (`ProjectStore.save`): media, transition, effect and title-style
+   IDs exist, image slides refer to images, video slides to videos and music
+   clips to audio, slide and clip IDs are unique, the first element has no
+   transition, every clip's range lies within its file
+   (`0 <= trimStart < end <= duration`, played length >= 0.5 s), and every
+   video slide's trim lies within its video (`0 <= trimIn < trimOut <= duration`).
 
 Errors of stage 1 are FastAPI's native 422 list; rule violations there carry an
 error code as `type` (design.md D5). Errors of stage 2 are `ApiErrorIssue`s,
@@ -56,6 +67,7 @@ from pydantic import (
     Field,
     Strict,
     ValidationError,
+    model_validator,
 )
 from pydantic.alias_generators import to_camel
 
@@ -73,7 +85,7 @@ from mmy_backend.storage import write_bytes_atomic
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_VERSION: Literal[4] = 4
+SCHEMA_VERSION: Literal[5] = 5
 MAX_SLIDES = 1000
 MAX_MUSIC_CLIPS = 100
 MUSIC_VOLUME_MIN = 0.0
@@ -85,6 +97,13 @@ SLIDE_DURATION_MAX = 60.0
 TRANSITION_DURATION_MIN = 0.25
 TRANSITION_DURATION_MAX = 5.0
 SLIDE_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+# Titles (add-titles-and-credits design.md D5): one or two lines for the
+# `one-line`/`two-line` layouts, a list of entries for `credits`.
+MAX_TITLE_LINES = 2
+MAX_CREDIT_ENTRIES = 50
+TITLE_LINE_MAX_LENGTH = 200
+TITLE_COLOR_PATTERN = r"^#[0-9a-fA-F]{6}$"
+TITLE_DURATION_DEFAULT = 5.0
 
 _GRID_EPSILON = 1e-9
 # Tolerance when comparing trim values (music clips, video slides) with the
@@ -174,6 +193,16 @@ TrimTime = Annotated[
 SlideTrimTime = Annotated[
     float, Strict(), AfterValidator(_slide_trim_check), Field(json_schema_extra={"minimum": 0})
 ]
+TitleLine = Annotated[str, Field(max_length=TITLE_LINE_MAX_LENGTH)]
+TitleColor = Annotated[
+    str,
+    Field(
+        pattern=TITLE_COLOR_PATTERN,
+        description="Text colour as a six-digit hex triplet, e.g. `#ffffff`",
+    ),
+]
+TitleLines = Annotated[list[TitleLine], Field(min_length=1, max_length=MAX_TITLE_LINES)]
+CreditEntries = Annotated[list[TitleLine], Field(min_length=1, max_length=MAX_CREDIT_ENTRIES)]
 
 
 class _ProjectModel(BaseModel):
@@ -192,6 +221,16 @@ class TransitionRef(_ProjectModel):
     duration: TransitionDuration
 
 
+class TitleOverlay(_ProjectModel):
+    """A title drawn over an image or video element (add-titles-and-credits
+    design.md D5). Like `effectId` it has no duration of its own: it follows the
+    duration of the element that hosts it."""
+
+    lines: TitleLines = Field(description="One or two lines, as the style's layout expects")
+    style_id: str = Field(description="ID from the title catalog")
+    color: TitleColor
+
+
 class ImageSlide(_ProjectModel):
     kind: Literal["image"]
     id: Annotated[
@@ -204,6 +243,7 @@ class ImageSlide(_ProjectModel):
     media_id: str = Field(description="ID of an image from /api/media")
     duration: SlideDuration
     effect_id: str | None = Field(description="ID from the effect catalog, or null for no effect")
+    title: TitleOverlay | None = Field(description="Overlay title, or null for none")
     transition_in: TransitionRef | None = Field(
         description="Incoming transition from the previous element; always null for the first"
     )
@@ -227,13 +267,63 @@ class VideoSlide(_ProjectModel):
         description="End within the video in seconds (new clip: the video's full duration)"
     )
     effect_id: str | None = Field(description="ID from the effect catalog, or null for no effect")
+    title: TitleOverlay | None = Field(description="Overlay title, or null for none")
     transition_in: TransitionRef | None = Field(
         description="Incoming transition from the previous element; always null for the first"
     )
 
 
-type Slide = Annotated[ImageSlide | VideoSlide, Field(discriminator="kind")]
-"""A storyboard element; `kind` tells whether it is an image or a video clip."""
+class TitleSlide(_ProjectModel):
+    """A freestanding title or credits element (add-titles-and-credits design.md
+    D5) for the placements "at the start of the movie", "before an element" and
+    "at the end": it refers to no medium and has its own display duration, like
+    an image element (default `TITLE_DURATION_DEFAULT`).
+
+    Exactly one of `lines` (layouts `one-line`/`two-line`) and `creditEntries`
+    (layout `credits`) is set; the other is null. There is no `title` field: a
+    title element can never hold an overlay title of its own (spec
+    slideshow-project), and `extra="forbid"` rejects one.
+    """
+
+    kind: Literal["title"]
+    id: Annotated[
+        str,
+        Field(
+            pattern=SLIDE_ID_PATTERN,
+            description="Assigned by the client, unique within the project",
+        ),
+    ]
+    lines: TitleLines | None = Field(
+        description="One or two lines for a one-line/two-line style; null for credits"
+    )
+    credit_entries: CreditEntries | None = Field(
+        description="The list of entries for a credits style; null for a normal title"
+    )
+    style_id: str = Field(description="ID from the title catalog")
+    color: TitleColor
+    duration: SlideDuration
+    transition_in: TransitionRef | None = Field(
+        description="Incoming transition from the previous element; always null for the first"
+    )
+
+    @model_validator(mode="after")
+    def _exactly_one_text(self) -> "TitleSlide":
+        """`lines` xor `creditEntries` — a title element carries one of the two."""
+        if self.lines is None and self.credit_entries is None:
+            raise validation_error("project.titleText.missing", slideId=self.id)
+        if self.lines is not None and self.credit_entries is not None:
+            raise validation_error("project.titleText.ambiguous", slideId=self.id)
+        return self
+
+
+type Slide = Annotated[ImageSlide | VideoSlide | TitleSlide, Field(discriminator="kind")]
+"""A storyboard element; `kind` tells whether it is an image, a video clip or a title."""
+
+
+def slide_media_id(slide: Slide) -> str | None:
+    """The medium an element refers to, or None for a title element — which has
+    none of its own (add-titles-and-credits design.md D5)."""
+    return None if slide.kind == "title" else slide.media_id
 
 
 class MusicClip(_ProjectModel):
@@ -258,7 +348,7 @@ class MusicClip(_ProjectModel):
 
 
 class Project(_ProjectModel):
-    schema_version: Literal[4]
+    schema_version: Literal[5]
     slides: Annotated[list[Slide], Field(max_length=MAX_SLIDES)]
     music: Annotated[list[MusicClip], Field(max_length=MAX_MUSIC_CLIPS)]
 
@@ -284,7 +374,10 @@ def migrate_project_data(raw: Any) -> Any:
     track. Version 2 (before video slides) has no `kind` on its slides; each
     becomes `kind: "image"` with its duration unchanged. Version 3 (before
     effects, add-effects-catalog design.md D3) gets `effectId: null` on every
-    slide. A newer or unknown version is returned unchanged and validated as is.
+    slide. Version 4 (before titles, add-titles-and-credits design.md D5) gets
+    `title: null` on every slide — a version-4 file has only image and video
+    slides, both of which carry the overlay field. A newer or unknown version is
+    returned unchanged and validated as is.
     """
     if not isinstance(raw, dict):
         return raw
@@ -306,10 +399,21 @@ def migrate_project_data(raw: Any) -> Any:
     if version == 3:
         raw = _migrate_slides(
             raw,
-            SCHEMA_VERSION,
+            4,
             lambda slide: (
                 {**slide, "effectId": None}
                 if isinstance(slide, dict) and "effectId" not in slide
+                else slide
+            ),
+        )
+        version = 4
+    if version == 4:
+        raw = _migrate_slides(
+            raw,
+            SCHEMA_VERSION,
+            lambda slide: (
+                {**slide, "title": None}
+                if isinstance(slide, dict) and "title" not in slide
                 else slide
             ),
         )
@@ -350,10 +454,11 @@ def check_references(
     media: Iterable[ImageItem | AudioItem | VideoItem],
     transition_ids: Collection[str],
     effect_ids: Collection[str],
+    title_style_ids: Collection[str] = (),
 ) -> list[ApiErrorIssue]:
     """Checks the references of a structurally valid project; empty list = valid."""
     items = {item.id: item for item in media}
-    issues = _check_slides(project, items, transition_ids, effect_ids)
+    issues = _check_slides(project, items, transition_ids, effect_ids, title_style_ids)
     issues.extend(_check_music(project, items))
     return issues
 
@@ -363,6 +468,7 @@ def _check_slides(
     items: dict[str, ImageItem | AudioItem | VideoItem],
     transition_ids: Collection[str],
     effect_ids: Collection[str],
+    title_style_ids: Collection[str],
 ) -> list[ApiErrorIssue]:
     issues: list[ApiErrorIssue] = []
     seen: dict[str, int] = {}
@@ -379,6 +485,11 @@ def _check_slides(
             )
         else:
             seen[slide.id] = index
+        issues.extend(_check_title_styles(index, slide, title_style_ids, where))
+        if slide.kind == "title":
+            # A title element refers to no medium; only its style is a reference.
+            issues.extend(_check_transition(index, slide, transition_ids, where))
+            continue
         item = items.get(slide.media_id)
         if item is None:
             issues.append(
@@ -421,25 +532,49 @@ def _check_slides(
                     effectId=slide.effect_id,
                 )
             )
-        transition = slide.transition_in
-        if transition is None:
-            continue
-        if index == 0:
-            issues.append(
-                _issue(
-                    ("slides", index, "transitionIn"), "project.slide.firstHasTransition", **where
-                )
-            )
-        if transition.transition_id not in transition_ids:
-            issues.append(
-                _issue(
-                    ("slides", index, "transitionIn", "transitionId"),
-                    "project.slide.unknownTransition",
-                    **where,
-                    transitionId=transition.transition_id,
-                )
-            )
+        issues.extend(_check_transition(index, slide, transition_ids, where))
     return issues
+
+
+def _check_transition(
+    index: int, slide: Slide, transition_ids: Collection[str], where: Params
+) -> list[ApiErrorIssue]:
+    """The incoming transition of any element kind: not on the first, ID known."""
+    transition = slide.transition_in
+    if transition is None:
+        return []
+    issues: list[ApiErrorIssue] = []
+    if index == 0:
+        issues.append(
+            _issue(("slides", index, "transitionIn"), "project.slide.firstHasTransition", **where)
+        )
+    if transition.transition_id not in transition_ids:
+        issues.append(
+            _issue(
+                ("slides", index, "transitionIn", "transitionId"),
+                "project.slide.unknownTransition",
+                **where,
+                transitionId=transition.transition_id,
+            )
+        )
+    return issues
+
+
+def _check_title_styles(
+    index: int, slide: Slide, title_style_ids: Collection[str], where: Params
+) -> list[ApiErrorIssue]:
+    """The title catalog IDs of an element: its own (title element) or its
+    overlay title's (image/video element), spec titles-and-credits."""
+    loc: tuple[str | int, ...]
+    if slide.kind == "title":
+        style_id, loc = slide.style_id, ("slides", index, "styleId")
+    elif slide.title is not None:
+        style_id, loc = slide.title.style_id, ("slides", index, "title", "styleId")
+    else:
+        return []
+    if style_id in title_style_ids:
+        return []
+    return [_issue(loc, "project.slide.unknownTitleStyle", **where, styleId=style_id)]
 
 
 def _check_slide_trim(
@@ -549,7 +684,7 @@ def remove_media_slides(project: Project, media_id: str) -> Project:
 
     Afterwards the (new) first element no longer has a transition.
     """
-    slides = [s for s in project.slides if s.media_id != media_id]
+    slides = [s for s in project.slides if slide_media_id(s) != media_id]
     if slides and slides[0].transition_in is not None:
         slides[0] = slides[0].model_copy(update={"transition_in": None})
     music = [c for c in project.music if c.media_id != media_id]
@@ -605,10 +740,11 @@ class ProjectStore:
         media: Iterable[ImageItem | AudioItem | VideoItem],
         transition_ids: Collection[str],
         effect_ids: Collection[str],
+        title_style_ids: Collection[str] = (),
     ) -> Project:
         """Checks the references and writes atomically; on errors everything stays unchanged."""
         async with self._lock:
-            issues = check_references(project, media, transition_ids, effect_ids)
+            issues = check_references(project, media, transition_ids, effect_ids, title_style_ids)
             if issues:
                 raise ProjectValidationError(issues)
             await asyncio.to_thread(self._write, project)

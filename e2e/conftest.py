@@ -65,7 +65,11 @@ def server(tmp_path: Path) -> Iterator[str]:
     )
     base = f"http://127.0.0.1:{port}"
     try:
-        for _ in range(100):
+        # 30 s, not 10: on a loaded machine (a parallel test run, a CI runner
+        # sharing cores) uvicorn's import of the app plus the catalog
+        # validation can take well over a second, and losing that race made
+        # the whole test error at setup with "Backend did not start".
+        for _ in range(300):
             try:
                 with urllib.request.urlopen(f"{base}/api/health", timeout=1):
                     break

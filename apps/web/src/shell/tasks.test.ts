@@ -9,6 +9,7 @@ function context(patch: Partial<TaskContext> = {}): TaskContext {
     requestImport: vi.fn(),
     setCollection: vi.fn(),
     openExportWizard: vi.fn(),
+    openTitleWizard: vi.fn(),
     ...patch,
   };
 }

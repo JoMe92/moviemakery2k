@@ -20,7 +20,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from mmy_backend.project import Project, Slide
+from mmy_backend.project import Project, Slide, slide_media_id
 
 # Relative tolerance for `frame_count`: a product that is integral up to rounding
 # errors counts as integral (otherwise ceil would yield one frame too many).
@@ -38,7 +38,8 @@ class TransitionIn:
 @dataclass(frozen=True, slots=True)
 class TimelineSlide:
     id: str
-    media_id: str
+    media_id: str | None
+    """None for a title element, which refers to no medium."""
     duration: float
     """Seconds"""
     transition_in: TransitionIn | None
@@ -210,12 +211,13 @@ def frame_time(n: int, fps: float) -> float:
 
 def timeline_slide_from_project(slide: Slide) -> TimelineSlide:
     """A project element as input to the time model; a video slide's duration is
-    always `trimOut - trimIn` (add-timeline-editing design.md D1)."""
+    always `trimOut - trimIn` (add-timeline-editing design.md D1), an image or
+    title element's is its own `duration` field (add-titles-and-credits D5)."""
     ref = slide.transition_in
-    duration = slide.duration if slide.kind == "image" else slide.trim_out - slide.trim_in
+    duration = slide.trim_out - slide.trim_in if slide.kind == "video" else slide.duration
     return TimelineSlide(
         id=slide.id,
-        media_id=slide.media_id,
+        media_id=slide_media_id(slide),
         duration=duration,
         transition_in=(
             TransitionIn(transition_id=ref.transition_id, duration=ref.duration)

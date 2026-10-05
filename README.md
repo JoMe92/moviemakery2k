@@ -78,6 +78,18 @@ What works today:
   context menu removes it again. The effect runs as an extra rendering pass
   before the transition, so the preview and the exported movie show the same
   pixels.
+- **Titles and credits** — *Make titles or credits* in the task pane opens a
+  Movie Maker-style wizard: choose where the title goes (at the beginning of
+  the movie, before or on the selected element, or at the end), type one or
+  two lines — or a list of entries for the credits — pick one of eight styles
+  and a text colour. A title at the beginning, before an element or at the
+  end becomes an element of its own with its own duration; *on the selected
+  element* lays it over that picture or clip as an overlay without changing
+  the element list or its duration. Every style animates in three phases
+  (Entrance → Main → Exit): fade, fly in, zoom in, or the credits scrolling
+  up. The monitor previews the style live while you choose it, and the
+  exported movie shows the same text, the same bundled font (Liberation Sans)
+  and the same animation. See [Titles and credits](#titles-and-credits).
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
   toggles playback.
@@ -111,7 +123,10 @@ What works today:
 - The effects the stateless image pass cannot express: the time-dependent
   Fade/Ease at an element's edge and the two clip-speed effects (Speed Up
   Double, Slow Down Half)
-- Titles and credits with the Entrance → Main → Exit animation model
+- The remaining title and credits styles beyond the eight-style MVP —
+  TypeWriter, Perspective, Outline Explode, Multi and the other ~35 names of
+  the original, plus the title effects that need more than a fade, a position
+  or a zoom per phase
 - Clip sound mixed with the music track, narration recording
 
 ## Screenshots
@@ -268,6 +283,57 @@ without music keeps a silent track.
 Not included (yet): a timeline with freely placed audio clips, sound of video
 clips, narration, adjustable fade lengths, cross-fades between pieces, audio
 effects and loudness normalisation.
+
+## Titles and credits
+
+**The wizard.** *Make titles or credits* under *2. Edit Movie* in the task
+pane (*Titel oder Nachspann erstellen*) opens a modal wizard with four steps
+and the original's *Back* / *Next* / *Cancel* buttons; it is fully operable
+from the keyboard.
+
+1. **Placement.** *At the beginning of the movie* and *At the end of the
+   movie* are always available. *Before the selected element* needs a
+   selected storyboard element, and *On the selected element* a selected
+   picture or video clip — a title element cannot carry a title of its own,
+   so that option stays unavailable for one. Unavailable options say why.
+2. **Text.** Two lines for a title; a style with the *credits* layout asks
+   for a list instead, one entry per line, and carries whatever the two
+   lines already held into it.
+3. **Style.** One of the eight styles, with a live preview in the monitor.
+4. **Colour.** A text colour from a fixed palette. The font is always the
+   bundled **Liberation Sans**, shipped with the app so the preview and the
+   export use the very same glyphs.
+
+After *Finish* the title appears at the chosen place and is selected.
+
+**The eight styles.** Four single-line (*Basic Title*, *Fly In*, *Zoom In*,
+*Subtitle*), two two-line (*Fade In and Out*, *Fly In Fades*) and two credits
+styles (*Scroll Up Stacked*, *Fade In and Out*). Each one animates in the
+original's three phases — **Entrance → Main → Exit**, one second for the
+entrance and the exit each, the rest in between — where a phase either fades
+the text, holds it still, or moves and scales it. The credits scroll is that
+same movement during *Main*, not a separate mechanism: *Scroll Up Stacked*
+moves its list from below the frame to above it while the static credits
+style just fades the whole list in and out.
+
+**Element or overlay.** A title at the beginning, before an element or at the
+end is an **element of its own**: it refers to no medium, shows white text on
+black and has its own display duration (5 s, 10 s for credits), which you can
+change like a picture's. It can carry an incoming transition like any other
+element. *On the selected element* instead sets that picture's or clip's
+**overlay title**: the text is composited over the picture, follows the
+element's own duration and stays visible for a whole transition into the next
+element, moving by its own phases while the transition runs.
+
+**Preview and export.** Both draw the title the same way — the text is
+rasterised to a canvas with the bundled font, then drawn through the same
+GLSL program with the same position, zoom and opacity for a given moment, so
+the exported movie shows the same text, font and animation as the monitor.
+
+Not included (yet): the original's remaining ~35 style names and the title
+effects that need more than a fade, a position or a zoom per phase
+(TypeWriter, Perspective, Outline Explode, Multi …) — see
+[Roadmap](#roadmap).
 
 ## Languages
 
@@ -446,9 +512,10 @@ instead.
 | Path | Contents |
 |---|---|
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
-| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition and effect catalogs, project, MP4 export with music mixdown (moderngl + FFmpeg) |
+| [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition, effect and title catalogs, project, MP4 export with music mixdown (moderngl + FFmpeg) |
 | [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition and effect shaders, shared by preview and export |
-| [`packages/catalog/`](packages/catalog) | Transition and effect catalogs with the documented parameters (single source of truth) |
+| [`packages/catalog/`](packages/catalog) | Transition, effect and title catalogs with the documented parameters (single source of truth) |
+| [`packages/fonts/`](packages/fonts) | The bundled title font (Liberation Sans), shared by preview and export |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |
 | [`scripts/`](scripts) | Dev launcher, shader and render-environment checks, export benchmark and Docker smoke test, Git hooks |
 | [`docs/`](docs) | [Architecture](docs/architecture.md), [ADRs](docs/adr/README.md), [research on the original](docs/research/movie-maker-reference.md) |

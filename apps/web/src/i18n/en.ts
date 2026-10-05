@@ -358,6 +358,57 @@ export const en = {
   duration: {
     range: "Allowed are {min} to {max} seconds in steps of {step}.",
   },
+  titles: {
+    title: "Make titles or credits",
+    steps: {
+      placement: "Placement",
+      text: "Text",
+      style: "Style",
+      color: "Colour",
+    },
+    stepOf: "Step {step} of {total}",
+    placementPrompt: "Where should the title appear?",
+    placements: {
+      start: "At the beginning of the movie",
+      before: "Before the selected element",
+      on: "On the selected element",
+      end: "At the end of the movie",
+    },
+    placementHints: {
+      start: "The title plays before the first element.",
+      before: "The title plays immediately before the selected element.",
+      on: "The title lies over the selected element as an overlay.",
+      end: "The credits play after the last element.",
+    },
+    needsSelection: "Select an element in the storyboard first.",
+    needsClipSelection: "Select a picture or a video clip first.",
+    textPrompt: "Enter the text for the title.",
+    creditsPrompt: "Enter the credits entries, one per line.",
+    lineLabel: "Line {number}:",
+    creditsLabel: "Entries:",
+    stylePrompt: "Choose a template; the monitor shows a preview.",
+    styleLegend: "Title style:",
+    layouts: {
+      "one-line": "one line",
+      "two-line": "two lines",
+      credits: "credits",
+    },
+    colorPrompt: "Choose the text colour.",
+    colorLegend: "Text colour:",
+    colorNames: {
+      "#ffffff": "White",
+      "#ffff00": "Yellow",
+      "#00ffff": "Cyan",
+      "#ff80c0": "Pink",
+      "#80ff80": "Light green",
+    },
+    fontHint: "The font is “Liberation Sans”.",
+    back: "Back",
+    next: "Next",
+    finish: "Finish",
+    noText: "(no text)",
+    tile: "Title {number}: {text}, {duration}",
+  },
   export: {
     title: "Save Movie",
     cancelTitle: "Cancel Export",
@@ -468,6 +519,10 @@ export const en = {
       slideTrim: {
         negative: "The start and end of a video clip must be 0 s or later (is {value} s).",
       },
+      titleText: {
+        missing: "Title “{slideId}”: either lines or credit entries must be set.",
+        ambiguous: "Title “{slideId}”: lines and credit entries must not both be set.",
+      },
       invalid: "The project is invalid: {summary}",
       slide: {
         duplicateId:
@@ -477,6 +532,7 @@ export const en = {
           "Picture {slide} (ID “{slideId}”): the first picture cannot have an incoming transition.",
         unknownTransition: "Picture {slide} (ID “{slideId}”): unknown transition “{transitionId}”.",
         unknownEffect: "Picture {slide} (ID “{slideId}”): unknown effect “{effectId}”.",
+        unknownTitleStyle: "Picture {slide} (ID “{slideId}”): unknown title style “{styleId}”.",
         notImage: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not an image.",
         notVideo: "Picture {slide} (ID “{slideId}”): media item “{mediaId}” is not a video.",
         trimOutBeyondFile:

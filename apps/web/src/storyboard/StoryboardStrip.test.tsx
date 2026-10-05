@@ -2,7 +2,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MediaItem, Slide } from "../lib/apiClient";
-import { slideDuration } from "../store/projectOps";
+import { slideDuration, slideMediaId } from "../store/projectOps";
 import { mockApi, videoItem } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
@@ -12,6 +12,7 @@ const slide = (id: string, mediaId: string, duration = 5, t: string | null = nul
   mediaId,
   duration,
   effectId: null,
+  title: null,
   transitionIn: t ? { transitionId: t, duration: 1.25 } : null,
 });
 
@@ -22,6 +23,7 @@ const videoSlide = (id: string, mediaId: string, trimIn = 0, trimOut = 10): Slid
   trimIn,
   trimOut,
   effectId: null,
+  title: null,
   transitionIn: null,
 });
 
@@ -32,7 +34,7 @@ function durationAt(slides: readonly Slide[], index: number): number | undefined
 
 async function setup(slides: Slide[]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -42,7 +44,7 @@ async function setup(slides: Slide[]) {
 async function setupWithMedia(slides: Slide[], media: MediaItem[]) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -243,7 +245,7 @@ describe("Storyboard", () => {
     await tick();
     await user.keyboard("[Space]");
     await tick();
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a", "b", "a"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a", "b", "a"]);
     expect(screen.queryByTestId("insert-marker")).toBeNull();
   });
 
@@ -258,7 +260,7 @@ describe("Storyboard", () => {
     await tick();
     await user.keyboard("[Space]");
     await tick();
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a"]);
     expect(durationAt(store.getState().slides, 0)).toBe(5);
   });
 

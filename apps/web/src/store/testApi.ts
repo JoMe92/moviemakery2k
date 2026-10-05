@@ -6,9 +6,24 @@ import type {
   ExportJob,
   ImageItem,
   Project,
+  Slide,
+  TitleStyle,
   Transition,
   VideoItem,
 } from "../lib/apiClient";
+import { slideEffectId, slideMediaId } from "./projectOps";
+
+/**
+ * `slideMediaId`/`slideEffectId` for a possibly-absent element, so tests can
+ * assert on `slides[0]` without narrowing the `Slide` union by hand.
+ */
+export function slideMediaIdOf(slide: Slide | undefined): string | null | undefined {
+  return slide ? slideMediaId(slide) : undefined;
+}
+
+export function slideEffectIdOf(slide: Slide | undefined): string | null | undefined {
+  return slide ? slideEffectId(slide) : undefined;
+}
 
 export function mediaItem(id: string): ImageItem {
   return {
@@ -72,6 +87,87 @@ export const CATALOG: Transition[] = [
   },
 ];
 
+/**
+ * Title catalog stand-in (add-titles-and-credits D4): one static one-line
+ * style, one animated one-line style, a smaller-font one and a credits
+ * style - enough to cover every layout and phase effect in tests.
+ */
+export const TITLE_CATALOG: TitleStyle[] = [
+  {
+    id: "basic-title",
+    names: { de: "Einfacher Titel", en: "Basic Title" },
+    layout: "one-line",
+    anchor: { x: 0, y: 0, scale: 1 },
+    fontScale: 1,
+    phases: {
+      entrance: { effect: "fade" },
+      main: { effect: "static" },
+      exit: { effect: "fade" },
+    },
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+  {
+    id: "fly-in",
+    names: { de: "Einfliegen", en: "Fly In" },
+    layout: "one-line",
+    anchor: { x: 0, y: 0, scale: 1 },
+    fontScale: 1,
+    phases: {
+      entrance: {
+        effect: "position",
+        start: { x: -1, y: 0, scale: 1 },
+        end: { x: 0, y: 0, scale: 1 },
+      },
+      main: { effect: "static" },
+      exit: { effect: "fade" },
+    },
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+  {
+    id: "subtitle",
+    names: { de: "Untertitel", en: "Subtitle" },
+    layout: "one-line",
+    anchor: { x: 0, y: -0.7, scale: 1 },
+    fontScale: 0.7,
+    phases: {
+      entrance: { effect: "fade" },
+      main: { effect: "static" },
+      exit: { effect: "fade" },
+    },
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+  {
+    id: "fade-in-and-out",
+    names: { de: "Ein- und Ausblenden", en: "Fade In and Out" },
+    layout: "two-line",
+    anchor: { x: 0, y: 0, scale: 1 },
+    fontScale: 1,
+    phases: {
+      entrance: { effect: "fade" },
+      main: { effect: "static" },
+      exit: { effect: "fade" },
+    },
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+  {
+    id: "scroll-up-stacked",
+    names: { de: "Nach oben rollen, gestapelt", en: "Scroll Up Stacked" },
+    layout: "credits",
+    anchor: { x: 0, y: 0, scale: 1 },
+    fontScale: 1,
+    phases: {
+      entrance: { effect: "fade" },
+      main: {
+        effect: "position",
+        start: { x: 0, y: -1, scale: 1 },
+        end: { x: 0, y: 1, scale: 1 },
+      },
+      exit: { effect: "fade" },
+    },
+    source: { kind: "wmm2x-xml", ref: "x" },
+  },
+];
+
 export const EFFECT_CATALOG: Effect[] = [
   {
     id: "sepia",
@@ -111,14 +207,15 @@ export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Proj
     health: vi.fn(async () => ({ status: "ok" as const, ffmpeg: "9.0" })),
     catalog: vi.fn(async () => CATALOG),
     effectCatalog: vi.fn(async () => EFFECT_CATALOG),
+    titleCatalog: vi.fn(async () => TITLE_CATALOG),
     listMedia: vi.fn(async () => [mediaItem("a"), mediaItem("b")]),
     uploadMedia: vi.fn(async (file: File) => ({
       ok: true as const,
       filename: file.name,
       item: mediaItem(file.name),
     })),
-    deleteMedia: vi.fn(async () => ({ schemaVersion: 4 as const, slides: [], music: [] })),
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides: [], music: [] })),
+    deleteMedia: vi.fn(async () => ({ schemaVersion: 5 as const, slides: [], music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides: [], music: [] })),
     putProject: vi.fn(async (p: Project) => {
       saved.push(structuredClone(p));
       return p;

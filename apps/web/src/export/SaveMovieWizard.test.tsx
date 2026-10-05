@@ -513,7 +513,7 @@ describe("wizard via the app store", () => {
     const store = createAppStore(
       mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 4 as const,
+          schemaVersion: 5 as const,
           music: [],
           slides: [
             {
@@ -522,6 +522,7 @@ describe("wizard via the app store", () => {
               mediaId: "a",
               duration: 30,
               effectId: null,
+              title: null,
               transitionIn: null,
             },
             {
@@ -530,6 +531,7 @@ describe("wizard via the app store", () => {
               mediaId: "b",
               duration: 15,
               effectId: null,
+              title: null,
               transitionIn: null,
             },
           ],

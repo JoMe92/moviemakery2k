@@ -2,9 +2,10 @@ import { type PointerEvent as ReactPointerEvent, useState } from "react";
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { timelineOf } from "../player/controls";
-import { slideDuration } from "../store/projectOps";
+import { slideDuration, slideMediaId } from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import type { PlacedSlide } from "../timeline/timeline";
+import { titleLabel } from "../titles/titleRender";
 import { catalogName } from "../transitions/transitionName";
 import { formatDuration } from "./dropLogic";
 import styles from "./TimelineView.module.css";
@@ -88,11 +89,18 @@ function TimelineClip({
   onDragEdge,
 }: TimelineClipProps) {
   const { t, locale } = useT();
-  const name = media?.filename ?? t("storyboard.missingImage");
+  const name =
+    slide.kind === "title"
+      ? titleLabel(slide, t("titles.noText"))
+      : (media?.filename ?? t("storyboard.missingImage"));
   const duration = formatDuration(slideDuration(slide), locale);
   const left = placed.start * pxPerSecond;
   const width = Math.max(0, placed.end - placed.start) * pxPerSecond;
-  const canTrim = slide.kind === "image" ? media?.kind === "image" : media?.kind === "video";
+  // A title element has a display duration like a picture, so it drags the same way.
+  const canTrim =
+    slide.kind === "video"
+      ? media?.kind === "video"
+      : slide.kind === "title" || media?.kind === "image";
 
   return (
     <button
@@ -207,7 +215,7 @@ export function TimelineView() {
                   <TimelineClip
                     slide={slide}
                     number={placed.index + 1}
-                    media={media.find((m) => m.id === slide.mediaId)}
+                    media={media.find((m) => m.id === slideMediaId(slide))}
                     placed={placed}
                     pxPerSecond={pxPerSecond}
                     selected={selection?.slideId === slide.id}

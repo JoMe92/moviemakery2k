@@ -15,6 +15,14 @@ export type Project = Schemas["Project"];
 export type Slide = Schemas["Slide"];
 export type ImageSlide = Schemas["ImageSlide"];
 export type VideoSlide = Schemas["VideoSlide"];
+/** A freestanding title or credits element (add-titles-and-credits D5). */
+export type TitleSlide = Schemas["TitleSlide"];
+/** An overlay title on an image or video element (add-titles-and-credits D5). */
+export type TitleOverlay = Schemas["TitleOverlay"];
+/** One entry of the title catalog (add-titles-and-credits D4). */
+export type TitleStyle = Schemas["Title"];
+/** Layout of a title style: one line, two lines or a credits list. */
+export type TitleLayout = TitleStyle["layout"];
 export type MusicClip = Schemas["MusicClip"];
 export type TransitionRef = Schemas["TransitionRef"];
 export type Transition = Schemas["Transition"];
@@ -44,6 +52,8 @@ export interface Api {
   catalog(): Promise<Transition[]>;
   /** The effect catalog (add-effects-catalog design.md D1). */
   effectCatalog(): Promise<Effect[]>;
+  /** The title and credits catalog (add-titles-and-credits design.md D4). */
+  titleCatalog(): Promise<TitleStyle[]>;
   listMedia(): Promise<MediaItem[]>;
   /** Uploads exactly one file and returns its result. */
   uploadMedia(file: File): Promise<UploadResult>;
@@ -206,6 +216,9 @@ export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetc
     },
     async effectCatalog() {
       return unwrap(await client.GET("/api/catalog/effects"), "Loading the effect catalog").effects;
+    },
+    async titleCatalog() {
+      return unwrap(await client.GET("/api/catalog/titles"), "Loading the title catalog").titles;
     },
     async listMedia() {
       return unwrap(await client.GET("/api/media"), "Loading the media list").items;

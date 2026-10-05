@@ -46,6 +46,7 @@ from mmy_backend.render.effects import EffectLibrary, EffectSources
 from mmy_backend.render.frames import FrameRenderer, ImageLoader, VideoLoader
 from mmy_backend.render.shaders import ShaderError, ShaderLibrary, ShaderSources
 from mmy_backend.render.timeline import Timeline, frame_count
+from mmy_backend.title_catalog import TitleCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +256,8 @@ def export_movie(
     load_video: VideoLoader | None = None,
     project_slides: Sequence[Slide] = (),
     effects: EffectCatalog | None = None,
+    titles: TitleCatalog | None = None,
+    title_font_file: Path | None = None,
 ) -> Path:
     """Renders and encodes the slideshow to `out_path` (MP4); returns `out_path`.
 
@@ -306,6 +309,8 @@ def export_movie(
                     project_slides=project_slides,
                     effect_library=effect_library,
                     effects=effects,
+                    titles=titles,
+                    title_font_file=title_font_file,
                 ) as renderer:
                     command = build_ffmpeg_command(
                         binary, spec, part, audio_input(total / spec.fps)

@@ -30,13 +30,15 @@ TIMEOUT=${TIMEOUT:-300}
 CONTAINER=""
 WORK=$(mktemp -d)
 
-# Two slides of 3 s with a 1 s fade: 3 + 3 - 1 = 5 s, 150 frames at 30 fps.
+# Two picture slides of 3 s with a 1 s fade plus a 3 s title element (hard
+# cut): 3 + 3 - 1 + 3 = 8 s, 240 frames at 30 fps. The title is part of the
+# smoke test so that a missing bundled font in the image fails the build.
 SLIDE_SECONDS=3
 TRANSITION_SECONDS=1
-EXPECTED_SECONDS=5
+EXPECTED_SECONDS=8
 EXPECTED_WIDTH=640
 EXPECTED_HEIGHT=480
-EXPECTED_FRAMES=150
+EXPECTED_FRAMES=240
 
 log() { printf '[export-smoke] %s\n' "$*" >&2; }
 fail() {
@@ -142,13 +144,16 @@ save_project() {
   local code
   cat >"$WORK/project.json" <<JSON
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "music": [],
   "slides": [
     {"kind": "image", "id": "smoke-1", "mediaId": "$RED_ID", "duration": $SLIDE_SECONDS,
-     "effectId": null, "transitionIn": null},
+     "effectId": null, "title": null, "transitionIn": null},
     {"kind": "image", "id": "smoke-2", "mediaId": "$BLUE_ID", "duration": $SLIDE_SECONDS,
-     "effectId": null, "transitionIn": {"transitionId": "fade", "duration": $TRANSITION_SECONDS}}
+     "effectId": null, "title": null, "transitionIn": {"transitionId": "fade", "duration": $TRANSITION_SECONDS}},
+    {"kind": "title", "id": "smoke-3", "lines": ["SMOKE"], "creditEntries": null,
+     "styleId": "basic-title", "color": "#ffffff", "duration": $SLIDE_SECONDS,
+     "transitionIn": null}
   ]
 }
 JSON

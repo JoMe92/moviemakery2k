@@ -33,6 +33,7 @@ import { effectName } from "../effects/effectName";
 import { translator } from "../i18n/t";
 import { useT } from "../i18n/useT";
 import type { AppState } from "../store/appStore";
+import { slideMediaId } from "../store/projectOps";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { TransitionIcon } from "../transitions/TransitionIcon";
 import { catalogName } from "../transitions/transitionName";
@@ -451,7 +452,10 @@ export function StoryboardDnd({ children }: { children: ReactNode }) {
     active?.type === "media" || active?.type === "video"
       ? media.find((m) => m.id === active.mediaId)
       : active?.type === "slide"
-        ? media.find((m) => m.id === slides.find((s) => s.id === active.slideId)?.mediaId)
+        ? media.find((m) => {
+            const slide = slides.find((s) => s.id === active.slideId);
+            return slide ? m.id === slideMediaId(slide) : false;
+          })
         : undefined;
   const overlayAudio = active?.type === "audio" || active?.type === "music";
 

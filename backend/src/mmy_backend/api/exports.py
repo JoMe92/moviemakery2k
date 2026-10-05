@@ -26,7 +26,7 @@ from mmy_backend.exports import (
     is_export_id,
 )
 from mmy_backend.media import MediaStore
-from mmy_backend.project import Project, ProjectStore
+from mmy_backend.project import Project, ProjectStore, slide_media_id
 
 _NOT_FOUND: dict[int | str, dict[str, Any]] = {
     status.HTTP_404_NOT_FOUND: error_response("Unknown or deleted export (`export.notFound`)")
@@ -57,9 +57,10 @@ def _check_exportable(project: Project, media: MediaStore) -> None:
         raise api_exception(status.HTTP_422_UNPROCESSABLE_CONTENT, "export.emptyProject")
     known = {item.id for item in media.list()}
     missing = [
-        (index + 1, slide.media_id)
+        (index + 1, media_id)
         for index, slide in enumerate(project.slides)
-        if slide.media_id not in known
+        # A title element refers to no medium (add-titles-and-credits design.md D5).
+        if (media_id := slide_media_id(slide)) is not None and media_id not in known
     ]
     if missing:
         raise api_exception(

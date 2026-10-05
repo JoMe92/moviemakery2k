@@ -62,7 +62,7 @@ from pydantic.alias_generators import to_camel
 from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.errors import ErrorCode, Params, error_message, validation_error
 from mmy_backend.media import AudioItem, MediaStore
-from mmy_backend.project import Project
+from mmy_backend.project import Project, slide_media_id
 from mmy_backend.render.context import RenderContextError
 from mmy_backend.render.encode import (
     DEFAULT_PROFILE,
@@ -79,6 +79,7 @@ from mmy_backend.render.mixdown import MIX_FILENAME, file_audio_input, mix_music
 from mmy_backend.render.music import MusicClipInput, music_schedule
 from mmy_backend.render.timeline import Timeline, build_timeline, timeline_slides_from_project
 from mmy_backend.storage import write_bytes_atomic
+from mmy_backend.title_catalog import TitleCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +272,8 @@ class ExportManager:
         catalog: TransitionCatalog,
         shaders_dir: Path,
         effects: EffectCatalog | None = None,
+        titles: TitleCatalog | None = None,
+        title_font_file: Path | None = None,
     ) -> None:
         self.exports_dir = data_dir / EXPORTS_DIRNAME
         self.index_file = self.exports_dir / INDEX_FILENAME
@@ -279,6 +282,11 @@ class ExportManager:
         self._effects = effects
         """Effect catalog (add-effects-catalog design.md D2); None means an
         element's `effectId` is ignored by the export."""
+        self._titles = titles
+        self._title_font_file = title_font_file
+        """Title catalog and the bundled font (add-titles-and-credits design.md
+        D1/D4); without both, a title element exports as a black frame and an
+        overlay title is ignored."""
         self._shaders_dir = shaders_dir
         self._lock = threading.Lock()
         self._jobs: dict[str, _Job] = {}
@@ -454,7 +462,7 @@ class ExportManager:
                 if job.project is None or not job.status.active:
                     continue
                 project = job.project
-                if any(s.media_id == media_id for s in project.slides) or any(
+                if any(slide_media_id(s) == media_id for s in project.slides) or any(
                     c.media_id == media_id for c in project.music
                 ):
                     return job.id
@@ -551,6 +559,8 @@ class ExportManager:
                     load_video=video_loader(self._media),
                     project_slides=job.project.slides,
                     effects=self._effects,
+                    titles=self._titles,
+                    title_font_file=self._title_font_file,
                 )
             finally:
                 (job.directory / MIX_FILENAME).unlink(missing_ok=True)

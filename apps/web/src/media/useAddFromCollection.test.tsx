@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MusicClip, Slide } from "../lib/apiClient";
-import { audioItem, mediaItem, mockApi } from "../store/testApi";
+import { slideMediaId } from "../store/projectOps";
+import { audioItem, mediaItem, mockApi, slideMediaIdOf } from "../store/testApi";
 import { AppStoreContext } from "../store/useAppStore";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
@@ -22,6 +23,7 @@ const slide = (id: string, mediaId: string): Slide => ({
   id,
   mediaId,
   duration: 5,
+  title: null,
   transitionIn: null,
   effectId: null,
 });
@@ -65,7 +67,7 @@ const MUSIC = [audioItem("m1"), audioItem("m2")];
 function api(slides: Slide[] = [], music: MusicClip[] = []) {
   return mockApi({
     listMedia: vi.fn(async () => [...PICTURES, ...MUSIC]),
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music })),
   });
 }
 
@@ -121,7 +123,7 @@ describe("confirming an add from the collection", () => {
       within(sheet).getByRole("button", { name: "Zum Bildstreifen hinzufügen (3)" }),
     );
 
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["c", "a", "b"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["c", "a", "b"]);
     expect(notice()).toBe("3 Bilder hinzugefügt");
     // The picture added last is the one brought into view.
     const last = store.getState().slides.at(-1);
@@ -130,7 +132,7 @@ describe("confirming an add from the collection", () => {
         true,
       ),
     );
-    expect(last?.mediaId).toBe("b");
+    expect(slideMediaIdOf(last)).toBe("b");
     expect(vibrate).toHaveBeenCalledWith(15);
   });
 
@@ -140,7 +142,7 @@ describe("confirming an add from the collection", () => {
 
     await user.dblClick(tile("b.jpg"));
 
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a", "b"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a", "b"]);
     expect(notice()).toBe("1 Bild hinzugefügt");
     // The insertion point for the next add stays where the user put it.
     expect(store.getState().selection).toEqual({ kind: "slide", slideId: "s1" });
@@ -230,7 +232,7 @@ describe("confirming an add from the collection", () => {
     // picture that landed is what the notice may claim.
     await userEvent.setup().click(screen.getByRole("button", { name: "add" }));
 
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a"]);
     expect(store.getState().notice?.text).toBe("1 Bild hinzugefügt");
   });
 });

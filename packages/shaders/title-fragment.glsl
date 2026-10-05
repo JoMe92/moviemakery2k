@@ -5,6 +5,11 @@
 precision highp float;
 
 uniform sampler2D uTitle;
+// Phase opacity for the catalog's `fade` phase effect (design.md D4): 1.0 =
+// fully visible. A freestanding title is rasterised onto its own opaque black
+// background, so fading it in over a black-cleared frame yields exactly the
+// original's fade; an overlay title fades over the picture beneath it.
+uniform float uAlpha;
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -19,4 +24,5 @@ void main() {
     discard;
   }
   fragColor = texture(uTitle, vUv);
+  fragColor.a *= uAlpha;
 }

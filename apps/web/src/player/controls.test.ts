@@ -23,6 +23,7 @@ const slide = (id: string, duration = 5, t: number | null = null) => ({
   mediaId: `m${id}`,
   duration,
   effectId: null,
+  title: null,
   transitionIn: t === null ? null : { transitionId: "fade", duration: t },
 });
 // spec preview-player "Gesamtdauer": three images of 5 s, two transitions of 1.25 s → 12.5 s;

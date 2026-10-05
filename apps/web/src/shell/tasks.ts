@@ -49,6 +49,8 @@ export interface TaskContext {
   requestImport: (kind: ImportKind) => void;
   setCollection: (id: CollectionId) => void;
   openExportWizard: () => void;
+  /** Opens the title wizard (add-titles-and-credits design.md D6). */
+  openTitleWizard: () => void;
   /**
    * Compact layout only: the collection sheet replaces the collection pane, so
    * importing and showing a collection also open it (design.md D7).
@@ -150,7 +152,8 @@ export function buildTaskGroups(ctx: TaskContext, t: Translate): TaskGroupData[]
           id: "makeTitles",
           label: t("tasks.edit.makeTitles"),
           icon: TitleIcon,
-          disabled: true,
+          disabled: false,
+          run: ctx.openTitleWizard,
         },
       ],
     },
@@ -195,6 +198,7 @@ export function useTaskGroups(): TaskGroupData[] {
   const requestImport = useAppStore((s) => s.requestImport);
   const setCollection = useAppStore((s) => s.setCollection);
   const openExportWizard = useAppStore((s) => s.openExportWizard);
+  const openTitleWizard = useAppStore((s) => s.openTitleWizard);
   const setSheetOpen = useAppStore((s) => s.setCollectionSheetOpen);
   const compact = useLayoutMode().mode === "compact";
   const install = useInstallAction();
@@ -206,6 +210,7 @@ export function useTaskGroups(): TaskGroupData[] {
       requestImport,
       setCollection,
       openExportWizard,
+      openTitleWizard,
       openCollectionSheet: compact ? () => setSheetOpen(true) : undefined,
       install,
     },

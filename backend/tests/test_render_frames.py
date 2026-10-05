@@ -411,6 +411,7 @@ def test_video_slide_decodes_frames_instead_of_a_static_image(
             trim_in=0.0,
             trim_out=2.0,
             effect_id=None,
+            title=None,
             transition_in=None,
         )
     ]
@@ -450,6 +451,7 @@ def test_transition_at_a_video_boundary_blends_decoded_frames(
             trim_in=0.0,
             trim_out=1.0,
             effect_id=None,
+            title=None,
             transition_in=None,
         ),
         VideoSlide(
@@ -459,6 +461,7 @@ def test_transition_at_a_video_boundary_blends_decoded_frames(
             trim_in=1.0,
             trim_out=2.0,
             effect_id=None,
+            title=None,
             transition_in=TransitionRef(transition_id="fade", duration=0.5),
         ),
     ]
@@ -506,6 +509,7 @@ def test_trimmed_video_clip_exports_from_its_own_start_not_second_0(
             trim_in=1.0,
             trim_out=1.5,
             effect_id=None,
+            title=None,
             transition_in=None,
         )
     ]
@@ -537,6 +541,7 @@ def _effect_project_slides(*effect_ids: str | None) -> list[ImageSlide]:
             media_id="red" if i == 0 else "blue",
             duration=2.0,
             effect_id=effect_id,
+            title=None,
             transition_in=TransitionRef(transition_id="fade", duration=1.0) if i > 0 else None,
         )
         for i, effect_id in enumerate(effect_ids)

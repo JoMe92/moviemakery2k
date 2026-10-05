@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type Slide } from "../lib/apiClient";
 import { AUTOSAVE_DELAY_MS, createAppStore } from "./appStore";
-import { slideDuration } from "./projectOps";
-import { audioItem, mediaItem, mockApi } from "./testApi";
+import { slideDuration, slideMediaId } from "./projectOps";
+import { audioItem, mediaItem, mockApi, slideEffectIdOf } from "./testApi";
 
 describe("appStore", () => {
   beforeEach(() => {
@@ -47,7 +47,7 @@ describe("appStore", () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(api.putProject).toHaveBeenCalledTimes(1);
     const saved = api.saved[0];
-    expect(saved?.slides.map((s) => s.mediaId)).toEqual(["a", "b"]);
+    expect(saved?.slides.map((s) => slideMediaId(s))).toEqual(["a", "b"]);
     expect(saved?.slides[1]?.transitionIn).toEqual({ transitionId: "circle", duration: 1.5 });
     expect(store.getState().saveState).toBe("saved");
   });
@@ -138,12 +138,12 @@ describe("appStore", () => {
     });
     const api = mockApi({
       getProject: vi.fn(async () => ({
-        schemaVersion: 4 as const,
+        schemaVersion: 5 as const,
         slides: [],
         music: [clip("m1", "x"), clip("m2", "y")],
       })),
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 4 as const,
+        schemaVersion: 5 as const,
         slides: [],
         music: [clip("m2", "y")],
       })),
@@ -162,7 +162,7 @@ describe("appStore", () => {
     store.getState().newProject();
     await store.getState().flushSave();
     expect(store.getState().music).toEqual([]);
-    expect(api.saved.at(-1)).toEqual({ schemaVersion: 4, slides: [], music: [] });
+    expect(api.saved.at(-1)).toEqual({ schemaVersion: 5, slides: [], music: [] });
   });
 
   it("a rejected delete (409 media.inUseByExport) keeps media and storyboard", async () => {
@@ -199,7 +199,7 @@ describe("appStore", () => {
     const store = createAppStore(api);
     await store.getState().init();
     const st = () => store.getState();
-    const media = () => st().slides.map((x) => x.mediaId);
+    const media = () => st().slides.map((x) => slideMediaId(x));
 
     // Append by double-click: to the end with the default duration.
     st().addSlide("a");
@@ -267,7 +267,7 @@ describe("appStore", () => {
     const st = () => store.getState();
     st().addSlide("a");
     const first = st().slides[0]?.id ?? "";
-    const effectOf = () => st().slides[0]?.effectId;
+    const effectOf = () => slideEffectIdOf(st().slides[0]);
 
     expect(effectOf()).toBeNull();
     st().setEffect(first, "sepia");
@@ -284,7 +284,7 @@ describe("appStore", () => {
 
     st().setEffect(first, "sepia");
     await st().flushSave();
-    expect(api.saved.at(-1)?.slides[0]?.effectId).toBe("sepia");
+    expect(slideEffectIdOf(api.saved.at(-1)?.slides[0])).toBe("sepia");
   });
 
   describe("history (undo/redo, spec edit-commands)", () => {
@@ -355,7 +355,7 @@ describe("appStore", () => {
       expect(st().redoStack).toHaveLength(1);
       st().addSlide("b", 0);
       expect(st().redoStack).toEqual([]);
-      expect(st().slides.map((s) => s.mediaId)).toEqual(["b", "a"]);
+      expect(st().slides.map((s) => slideMediaId(s))).toEqual(["b", "a"]);
     });
 
     it("Rückgängig/Wiederholen are disabled (empty stacks) until there is history", async () => {
@@ -416,7 +416,7 @@ describe("appStore", () => {
       st().copy();
       expect(st().clipboard).toEqual({
         kind: "slide",
-        content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
+        content: { kind: "image", mediaId: "a", duration: 5, effectId: null, title: null },
       });
       // The original is still there and still selected.
       expect(st().slides.map((s) => s.id)).toEqual([first, second]);
@@ -450,14 +450,14 @@ describe("appStore", () => {
       expect(st().selection).toBeNull();
       expect(st().clipboard).toEqual({
         kind: "slide",
-        content: { kind: "image", mediaId: "a", duration: 5, effectId: null },
+        content: { kind: "image", mediaId: "a", duration: 5, effectId: null, title: null },
       });
       // Exactly one more undo step for the whole cut (not two for copy+remove).
       expect(st().undoStack.length).toBe(stepsBeforeCut + 1);
 
       st().select({ kind: "slide", slideId: second });
       st().paste();
-      expect(st().slides.map((s) => s.mediaId)).toEqual(["b", "a"]);
+      expect(st().slides.map((s) => slideMediaId(s))).toEqual(["b", "a"]);
 
       st().undo(); // undoes the paste only
       expect(st().slides.map((s) => s.id)).toEqual([second]);
@@ -475,7 +475,7 @@ describe("appStore", () => {
       st().select(null);
       st().addSlide("b");
       st().paste();
-      expect(st().slides.map((s) => s.mediaId)).toEqual(["a", "b", "a"]);
+      expect(st().slides.map((s) => slideMediaId(s))).toEqual(["a", "b", "a"]);
     });
 
     it("copies, then pastes a music clip, keeping trim, volume and fades, selected", async () => {
@@ -582,7 +582,7 @@ describe("appStore", () => {
       const store = createAppStore(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 4 as const,
+            schemaVersion: 5 as const,
             music: [],
             slides: [
               {
@@ -591,6 +591,7 @@ describe("appStore", () => {
                 mediaId: "a",
                 duration: 5,
                 effectId: null,
+                title: null,
                 transitionIn: null,
               },
               {
@@ -599,6 +600,7 @@ describe("appStore", () => {
                 mediaId: "b",
                 duration: 5,
                 effectId: null,
+                title: null,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
               {
@@ -607,6 +609,7 @@ describe("appStore", () => {
                 mediaId: "a",
                 duration: 5,
                 effectId: null,
+                title: null,
                 transitionIn: { transitionId: "fade", duration: 1.25 },
               },
             ],

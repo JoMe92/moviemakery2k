@@ -1,7 +1,7 @@
 import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { mockApi } from "../store/testApi";
+import { mockApi, slideEffectIdOf } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 const slide = (id: string, mediaId: string, effectId: string | null = null) => ({
@@ -10,12 +10,13 @@ const slide = (id: string, mediaId: string, effectId: string | null = null) => (
   mediaId,
   duration: 5,
   effectId,
+  title: null,
   transitionIn: null,
 });
 
 async function setup(slides = [slide("s1", "a"), slide("s2", "b")]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, music: [], slides })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, music: [], slides })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -131,7 +132,7 @@ describe("Effect slot on a storyboard tile (TASK-WEB-065, design.md D4)", () => 
   it("setEffect ignores an ID outside the catalog and keeps the project valid", async () => {
     const { store } = await setup();
     act(() => store.getState().setEffect("s1", "gibt-es-nicht"));
-    expect(store.getState().slides[0]?.effectId).toBeNull();
+    expect(slideEffectIdOf(store.getState().slides[0])).toBeNull();
   });
 
   it("'Keinen Effekt' in the context menu removes the effect", async () => {
@@ -141,7 +142,7 @@ describe("Effect slot on a storyboard tile (TASK-WEB-065, design.md D4)", () => 
     const menu = screen.getByRole("menu", { name: "Effekt-Platz für Bild 1" });
     await user.click(within(menu).getByRole("menuitem", { name: "Keinen Effekt" }));
 
-    expect(store.getState().slides[0]?.effectId).toBeNull();
+    expect(slideEffectIdOf(store.getState().slides[0])).toBeNull();
     expect(slotOf(1)).toHaveAccessibleName("Effekt-Platz für Bild 1: kein Effekt");
   });
 
@@ -161,7 +162,7 @@ describe("Effect slot on a storyboard tile (TASK-WEB-065, design.md D4)", () => 
     const { store } = await setup([slide("s1", "a", "negative"), slide("s2", "b")]);
     slotOf(1).focus();
     await user.keyboard("{Delete}");
-    expect(store.getState().slides[0]?.effectId).toBeNull();
+    expect(slideEffectIdOf(store.getState().slides[0])).toBeNull();
   });
 
   it("the slide context menu offers 'Keinen Effekt' too (touch layout has no slot)", async () => {
@@ -173,6 +174,6 @@ describe("Effect slot on a storyboard tile (TASK-WEB-065, design.md D4)", () => 
     });
     const menu = screen.getByRole("menu", { name: "Bild 1 des Storyboards" });
     await user.click(within(menu).getByRole("menuitem", { name: "Keinen Effekt" }));
-    expect(store.getState().slides[0]?.effectId).toBeNull();
+    expect(slideEffectIdOf(store.getState().slides[0])).toBeNull();
   });
 });
