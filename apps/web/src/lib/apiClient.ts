@@ -27,6 +27,8 @@ export type MusicClip = Schemas["MusicClip"];
 export type TransitionRef = Schemas["TransitionRef"];
 export type Transition = Schemas["Transition"];
 export type Effect = Schemas["Effect"];
+/** One AutoMovie style (add-automovie design.md D1): a combination of catalog entries. */
+export type AutoMovieStyle = Schemas["AutoMovieStyle"];
 export type UploadResult = Schemas["MediaUploadSuccess"] | Schemas["MediaUploadFailure"];
 export type ExportJob = Schemas["ExportJob"];
 export type ExportProfile = Schemas["ExportProfile"];
@@ -54,6 +56,8 @@ export interface Api {
   effectCatalog(): Promise<Effect[]>;
   /** The title and credits catalog (add-titles-and-credits design.md D4). */
   titleCatalog(): Promise<TitleStyle[]>;
+  /** The AutoMovie style catalog (add-automovie design.md D1). */
+  automovieCatalog(): Promise<AutoMovieStyle[]>;
   listMedia(): Promise<MediaItem[]>;
   /** Uploads exactly one file and returns its result. */
   uploadMedia(file: File): Promise<UploadResult>;
@@ -219,6 +223,10 @@ export function createApi(baseUrl = "", fetchImpl: typeof fetch = (...a) => fetc
     },
     async titleCatalog() {
       return unwrap(await client.GET("/api/catalog/titles"), "Loading the title catalog").titles;
+    },
+    async automovieCatalog() {
+      return unwrap(await client.GET("/api/catalog/automovie"), "Loading the AutoMovie catalog")
+        .styles;
     },
     async listMedia() {
       return unwrap(await client.GET("/api/media"), "Loading the media list").items;

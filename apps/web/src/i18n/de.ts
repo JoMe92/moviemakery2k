@@ -154,6 +154,17 @@ export const de = {
     tooShort:
       "Die Musik dauert {music}. Mit den vorhandenen Bildern ist mindestens {reachable} erreichbar. Die Bilddauern bleiben unverändert.",
   },
+  autoMovie: {
+    title: "AutoMovie",
+    filmTitle: "Filmtitel:",
+    styleLegend: "Stil",
+    needsMusic: "Benötigt eine Musikspur.",
+    create: "Erstellen",
+    created: "AutoMovie erstellt",
+    replaceTitle: "AutoMovie",
+    replaceMessage:
+      "AutoMovie ersetzt den gesamten Bildstreifen. Möchten Sie fortfahren? Die Bilder in der Sammlung bleiben erhalten.",
+  },
   newProject: {
     title: "Neues Projekt",
     message:

@@ -1,5 +1,7 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AutoMovieDialog } from "../automovie/AutoMovieDialog";
+import { canAutoMovie } from "../automovie/autoMovie";
 import { useT } from "../i18n/useT";
 import { videoSplitPoint } from "../player/controls";
 import { useInstallAction } from "../pwa/install";
@@ -25,6 +27,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const [about, setAbout] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [options, setOptions] = useState(false);
+  const [autoMovieOpen, setAutoMovieOpen] = useState(false);
   const newProject = useAppStore((s) => s.newProject);
   const removeSlide = useAppStore((s) => s.removeSlide);
   const selection = useAppStore((s) => s.selection);
@@ -50,6 +53,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const cut = useAppStore((s) => s.cut);
   const copy = useAppStore((s) => s.copy);
   const paste = useAppStore((s) => s.paste);
+  const hasAutoMovieMedia = useAppStore((s) => canAutoMovie(s.media));
   const installApp = useInstallAction();
   const { t } = useT();
 
@@ -61,6 +65,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
           newProject: () => setConfirmNew(true),
           about: () => setAbout(true),
           options: () => setOptions(true),
+          autoMovie: hasAutoMovieMedia ? () => setAutoMovieOpen(true) : undefined,
           install: installApp,
           importImages: () => requestImport("any"),
           saveMovie: hasSlides ? openExportWizard : undefined,
@@ -113,6 +118,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
       cut,
       copy,
       paste,
+      hasAutoMovieMedia,
       installApp,
       t,
     ],
@@ -149,6 +155,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
       {variant === "sheet" ? <MenuSheet menus={menus} /> : <MenuBar menus={menus} />}
       <AboutDialog open={about} onClose={() => setAbout(false)} />
       <OptionsDialog open={options} onClose={() => setOptions(false)} />
+      <AutoMovieDialog open={autoMovieOpen} onClose={() => setAutoMovieOpen(false)} />
       <FitToMusicDialog notice={fitNotice} onClose={() => setFitNotice(null)} />
       <ConfirmDialog
         open={confirmNew}

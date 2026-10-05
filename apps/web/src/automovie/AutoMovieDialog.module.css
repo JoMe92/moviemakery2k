@@ -1,0 +1,59 @@
+/* AutoMovie dialog: fixed width so the style tiles do not reflow. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 380px;
+  max-width: 100%;
+}
+
+.input {
+  flex: 1;
+  padding: 2px 4px;
+  border: 1px solid var(--y2k-border);
+  background: var(--y2k-pane);
+}
+
+.styles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.styles legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.style {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 4px;
+  border: 1px solid var(--y2k-separator);
+  background: var(--y2k-pane);
+  cursor: pointer;
+}
+
+.style[data-disabled] {
+  color: var(--y2k-text-muted);
+  cursor: default;
+}
+
+.styleText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.styleName {
+  font-weight: bold;
+}
+
+.styleDescription,
+.styleHint {
+  color: var(--y2k-text-muted);
+}
