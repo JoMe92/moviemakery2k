@@ -136,7 +136,7 @@ _SPECS: dict[str, ErrorSpec] = {
     "media.unsupportedType": ErrorSpec(
         "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, "
         "MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), "
-        "MP3, WAV, M4A/AAC, OGG and FLAC)."
+        "MP3, WAV, M4A/AAC, OGG, FLAC and WebM/Opus)."
     ),
     # `maxMegabytes` depends on the kind: 25 for images, 100 for audio, 500 for video.
     "media.tooLarge": ErrorSpec(

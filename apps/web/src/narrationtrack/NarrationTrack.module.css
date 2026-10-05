@@ -8,36 +8,37 @@
   background: var(--y2k-storyboard-bg);
 }
 
-.head {
+/* Same width as the music bar's label, so the two bars line up. */
+.label {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 4px;
   width: 84px;
-  padding: 0 4px;
+  margin: 0;
+  padding: 0 6px;
   border-right: 1px solid var(--y2k-separator);
   background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-face));
-}
-
-.label {
-  margin: 0;
   font-size: inherit;
   font-weight: bold;
   white-space: nowrap;
 }
 
+/* The record button sits at the far end, past the time axis: the axis must
+   keep the full width it shares with the music bar. */
 .record {
-  min-width: var(--y2k-touch-target);
-  padding: 0 4px;
+  flex: none;
+  align-self: center;
+  margin: 0 6px;
+  white-space: nowrap;
 }
 
 .record[aria-pressed="true"] {
+  border-color: var(--y2k-icon-red);
   background: var(--y2k-icon-red);
   color: var(--y2k-face-light);
   font-weight: bold;
 }
 
-/* Time axis: scrolls horizontally on its own, like the music lane. */
 .lane {
   display: flex;
   flex: 1;

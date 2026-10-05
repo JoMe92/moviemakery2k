@@ -28,15 +28,55 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+FAKE_MICROPHONE_HZ = 1500
+"""Tone of the simulated microphone; far from the 440 Hz test melody, so a mix
+of the two can be told apart by frequency."""
+FAKE_MICROPHONE_SECONDS = 20.0
+"""Chromium loops the file, but a long one keeps the recording a steady tone."""
+
+
 @pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[str, Any]:
+def fake_microphone(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A WAV that Chromium plays back as the microphone input.
+
+    `--use-file-for-fake-audio-capture` needs 16-bit PCM; a steady sine makes a
+    narration recording measurable in the exported file.
+    """
+    binary = ffmpeg_binary()
+    if binary is None:
+        pytest.fail("ffmpeg not found (Pixi environment or MMY_FFMPEG)")
+    path = tmp_path_factory.mktemp("microphone") / "stimme.wav"
+    subprocess.run(
+        [
+            binary,
+            *("-v", "error", "-y", "-f", "lavfi"),
+            "-i",
+            f"aevalsrc=0.5*sin(2*PI*{FAKE_MICROPHONE_HZ}*t):s=48000:d={FAKE_MICROPHONE_SECONDS}",
+            *("-ac", "1", "-c:a", "pcm_s16le"),
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return path
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(
+    browser_type_launch_args: dict[str, Any], fake_microphone: Path
+) -> dict[str, Any]:
     # WebGL2 without a GPU: SwiftShader (design.md, risks).
+    # The fake microphone is always on: only the narration flow asks for one,
+    # and a browser that never prompts is one less thing to time out on.
     return {
         **browser_type_launch_args,
         "args": [
             "--use-angle=swiftshader",
             "--enable-unsafe-swiftshader",
             "--ignore-gpu-blocklist",
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+            f"--use-file-for-fake-audio-capture={fake_microphone}",
         ],
     }
 
@@ -44,7 +84,9 @@ def browser_type_launch_args(browser_type_launch_args: dict[str, Any]) -> dict[s
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args: dict[str, Any]) -> dict[str, Any]:
     # The UI follows the browser language; the flows assert the German UI.
-    return {**browser_context_args, "locale": "de-DE"}
+    # `microphone`: granted up front, so the narration flow records without a
+    # permission prompt (add-narration-and-audio-levels design.md D3).
+    return {**browser_context_args, "locale": "de-DE", "permissions": ["microphone"]}
 
 
 @pytest.fixture

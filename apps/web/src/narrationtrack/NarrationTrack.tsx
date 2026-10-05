@@ -167,20 +167,9 @@ export function NarrationTrack({ recorderDeps }: NarrationTrackProps = {}) {
 
   return (
     <section className={styles.track} aria-labelledby={headingId}>
-      <div className={styles.head}>
-        <h3 id={headingId} className={styles.label}>
-          {t("narrationTrack.label")}
-        </h3>
-        <Button
-          variant="toolbar"
-          className={styles.record}
-          aria-pressed={recorder.recording}
-          disabled={full && !recorder.recording}
-          onClick={record}
-        >
-          {t(recorder.recording ? "narrationTrack.stopRecording" : "narrationTrack.record")}
-        </Button>
-      </div>
+      <h3 id={headingId} className={styles.label}>
+        {t("narrationTrack.label")}
+      </h3>
       <div className={styles.lane} data-testid="narration-strip">
         {narration.length === 0 && !recorder.recording ? (
           <p className={styles.hint}>{t("narrationTrack.emptyHint")}</p>
@@ -220,6 +209,15 @@ export function NarrationTrack({ recorderDeps }: NarrationTrackProps = {}) {
               ? t("narrationTrack.fullHint", { max: NARRATION_TRACK_MAX })
               : null}
       </p>
+      <Button
+        variant="toolbar"
+        className={styles.record}
+        aria-pressed={recorder.recording}
+        disabled={full && !recorder.recording}
+        onClick={record}
+      >
+        {t(recorder.recording ? "narrationTrack.stopRecording" : "narrationTrack.record")}
+      </Button>
       {menu && menuClip ? (
         <ContextMenu
           label={t("narrationTrack.clipMenu", { number: narration.indexOf(menuClip) + 1 })}

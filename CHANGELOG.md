@@ -8,6 +8,40 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Narration and audio levels** (OpenSpec change
+  `add-narration-and-audio-levels`): a *Narration* bar below the music bar,
+  and the sound of video clips is finally mixed into the movie.
+  *Record* on the narration bar opens the microphone and starts playback in
+  the same click and records until *Stop recording* (or Esc); the recording is
+  stored like any other audio import and becomes a clip at the playback
+  position where it started. Unlike a music clip a narration clip carries its
+  **own absolute start time**, so the bar is a time axis: a clip sits where it
+  was spoken, moving one (drag, arrow keys, *Move to the playback position*)
+  moves nothing else, and two clips may overlap — both are then heard, neither
+  is cut back. Each clip has the music clip's volume, fades and trim, and
+  removing one asks first and keeps its recording in *My Music*.
+  The original sound of a video element plays too, through the same Web Audio
+  clock as the music rather than through the `<video>` element, so the
+  preview still has exactly one clock and video scrubbing is unchanged. One
+  global level, *Clip → Audio Levels…* — a single slider as in Movie Maker
+  2.x, not a volume per clip — sets the ratio between the clip sound on one
+  side and music plus narration on the other, for the preview and the export
+  alike. The export mixes in two stages accordingly, so a movie sounds the
+  way it did in the preview.
+- **BREAKING (API):** project **schema version 6**: a project carries a
+  `narration` track (up to 100 clips, each with `mediaId`, an absolute `at`,
+  `trimStart`/`trimEnd`, `volume` and the two fade switches; clips may
+  overlap) and a required `clipAudioBalance` (an integer 0–100, default 50).
+  A stored version-5 project is migrated on read (empty narration track,
+  `clipAudioBalance: 50`) and written at version 6 on the next save; `PUT
+  /api/project` accepts version 6 only. New validation codes
+  `project.narration.*`, `project.narrationAt.outOfRange`,
+  `project.narrationVolume.outOfRange`, `project.narrationTrim.negative` and
+  `project.clipAudioBalance.outOfRange`, plus
+  `export.missingNarrationMedia` when a narration clip's medium is gone.
+- **Audio-only WebM/Opus is an accepted audio import.** It is what
+  `MediaRecorder` produces, so a narration recording needs no media kind of
+  its own; a WebM *with* a video stream is still imported as video, as before.
 - **21 video effects** (OpenSpec change `add-effects-catalog`): a second
   catalog beside the transitions — Sepia, Negative, Posterize, Threshold,
   Grayscale, Brightness up/down, Blur, Pixelate, Film Age (Old/Older/Oldest),

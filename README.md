@@ -41,8 +41,9 @@ What works today:
   transitions. Trim its start and end in a properties dialog with a live
   poster preview at each edge, or split it at the playhead (*Clip → Split*)
   into two clips that keep the original's incoming transition on the first
-  half. Clip sound and narration are not mixed with the movie yet — see
-  [Roadmap](#roadmap).
+  half. Its original sound plays along in the preview and in the export, at
+  the ratio of the one global audio level — see
+  [Narration and audio levels](#narration-and-audio-levels).
 - **Timeline view** — *View → Timeline* (or the storyboard pane's own toggle)
   switches to a second, proportional-width track view with a time ruler, a
   zoom slider and drag handles at each clip's edges for the same trimming;
@@ -52,6 +53,13 @@ What works today:
   their volume and fades, and fit the movie to the music. The preview plays
   the music in sync with pictures and transitions; the exported movie
   contains the mix. See [Music](#music).
+- **Narration and audio levels** — record a narration through the microphone
+  while the movie plays; it lands as a clip on the *Narration* bar at exactly
+  the position where you started speaking, and can be moved, trimmed, faded
+  and removed from there. One global level (*Clip → Audio Levels…*) sets the
+  ratio between the sound of the video clips and music plus narration, in the
+  preview and in the export alike. See
+  [Narration and audio levels](#narration-and-audio-levels).
 - **Storyboard** — drag pictures into the storyboard, reorder them, remove
   them and set a duration per picture (0.5–60 s). Adding from a collection —
   by double-click, through the tile's context menu or with the collection
@@ -137,7 +145,6 @@ What works today:
   TypeWriter, Perspective, Outline Explode, Multi and the other ~35 names of
   the original, plus the title effects that need more than a fade, a position
   or a zoom per phase
-- Clip sound mixed with the music track, narration recording
 
 ## Screenshots
 
@@ -290,9 +297,43 @@ music. The export mixes the music from the original files (not the preview
 version) into the movie's AAC track, exactly as long as the video; a movie
 without music keeps a silent track.
 
-Not included (yet): a timeline with freely placed audio clips, sound of video
-clips, narration, adjustable fade lengths, cross-fades between pieces, audio
-effects and loudness normalisation.
+Not included (yet): a timeline with freely placed audio clips, adjustable fade
+lengths, cross-fades between pieces, audio effects and loudness normalisation.
+
+## Narration and audio levels
+
+**The narration bar.** Below the *Audio/Music* bar sits a second audio bar,
+*Narration*. It differs from the music bar in one way that changes everything
+about it: a narration clip stores its **own absolute start time**, instead of
+following the clip before it. So the bar is a time axis, a clip sits where it
+was spoken whatever the storyboard shows there, and two clips may overlap —
+both are then heard, and neither is shortened or dropped.
+
+A clip is moved by dragging it sideways, with the arrow keys (0.25 s, 1 s with
+Shift) or with *Move to the playback position* from its context menu. The rest
+of its menu is the music clip's: *Remove* (with a confirmation — a recording is
+work), *Volume…* (0–200 %), *Fade In*, *Fade Out* and *Trim…*. Removing a clip
+keeps its recording in *My Music*.
+
+**Recording.** *Record* on the narration bar opens the microphone and starts
+playback in the same click, because both need a user action, and starts
+recording immediately: the clip's start time is the playback position at that
+moment, not a separate timestamp. *Stop recording* (or Esc) ends it; the
+recording is stored like any other audio import (WebM/Opus, so it also appears
+in *My Music*) and becomes a clip at the remembered position. A denied
+microphone, a missing device and a failed recording each say so, and none of
+them leaves a clip behind.
+
+**One audio level.** *Clip → Audio Levels…* opens a single slider between
+*Audio from video clips* and *Music and narration* — exactly the one global
+control Movie Maker 2.x had, not a volume per video clip. At 50 (the default)
+both sides play at full volume; towards 0 the clip sound fades out, towards 100
+music and narration do. The preview and the export use the same ratio, so what
+you hear is what the file gets.
+
+Not included (yet): noise reduction, normalisation or any other processing of
+the recording; more than one narration bar; and automatic shifting or replacing
+of overlapping clips — overlap is allowed, and the clips stay yours to manage.
 
 ## Titles and credits
 
