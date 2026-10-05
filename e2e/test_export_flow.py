@@ -11,6 +11,7 @@ after which no partial file is left.
 import json
 import re
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -49,6 +50,26 @@ def ffprobe(path: Path) -> dict[str, Any]:
 def api_json(base: str, path: str) -> Any:
     with urllib.request.urlopen(f"{base}{path}", timeout=5) as response:
         return json.loads(response.read())
+
+
+def wait_for_export(base: str, timeout: float = 10.0) -> list[dict[str, Any]]:
+    """The export list once it holds a job, or still empty after `timeout`.
+
+    The wizard shows its progress view from the moment the export is requested:
+    `useExportRun.start` sets the phase to `starting` *before* it awaits
+    `POST /api/exports`, and `SaveMovieWizard` renders every phase that is
+    neither `idle` nor `done` as progress. So "Film wird gespeichert" on screen
+    does not yet mean the backend knows the job - on a loaded runner the POST
+    can still be in flight. Wait for the job instead of racing it; the caller
+    still asserts what it finds, and an export that never appears comes back as
+    an empty list and fails there.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        items: list[dict[str, Any]] = api_json(base, "/api/exports")["items"]
+        if items or time.monotonic() >= deadline:
+            return items
+        time.sleep(0.05)
 
 
 def build_project(page: Page, server: str, images: dict[str, Path], copies: int = 1) -> Locator:
@@ -183,8 +204,8 @@ def test_cancel_export_leaves_no_file(
     wizard.get_by_role("button", name="Abbrechen").click()
     confirm = page.get_by_role("dialog", name="Export abbrechen")
     expect(confirm.get_by_text("Export wirklich abbrechen?")).to_be_visible()
-    # Before the confirmation the export is still running.
-    items = api_json(server, "/api/exports")["items"]
+    # Before the confirmation is answered the export is still running.
+    items = wait_for_export(server)
     assert [i["status"] for i in items] in (["queued"], ["running"]), items
     confirm.get_by_role("button", name="Ja").click()
 
