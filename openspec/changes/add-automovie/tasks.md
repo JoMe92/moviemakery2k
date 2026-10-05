@@ -5,7 +5,7 @@ Render-Technik) und die achte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 1. Katalog
 
-- [ ] TASK-CAT-008 AutoMovie-Katalog: 3 Einträge in
+- [x] TASK-CAT-008 AutoMovie-Katalog: 3 Einträge in
   `packages/catalog/automovie.json` (Klassisch, Alter Film, Musikvideo),
   Start-Validierung (design.md D1). Erledigt, wenn ein Test alle drei
   Einträge, ihre Übergangs-/Effekt-/Titel-Stil-Referenzen gegen die
