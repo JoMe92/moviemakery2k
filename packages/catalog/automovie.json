@@ -1,0 +1,42 @@
+{
+  "$schema": "./automovie.schema.json",
+  "schemaVersion": 1,
+  "styles": [
+    {
+      "id": "classic",
+      "names": { "de": "Klassisch", "en": "Classic" },
+      "descriptions": {
+        "de": "Überblenden zwischen allen Elementen, Titel am Anfang und am Ende.",
+        "en": "Fade between all elements, a title at the start and one at the end."
+      },
+      "transitionId": "fade",
+      "effectId": null,
+      "titleStyleId": "basic-title",
+      "requiresMusic": false
+    },
+    {
+      "id": "old-movie",
+      "names": { "de": "Alter Film", "en": "Old Movie" },
+      "descriptions": {
+        "de": "Auflösen zwischen allen Elementen, jede Aufnahme gealtert wie ein alter Film.",
+        "en": "Dissolve between all elements, every shot aged like an old film."
+      },
+      "transitionId": "dissolve",
+      "effectId": "film-age-older",
+      "titleStyleId": "basic-title",
+      "requiresMusic": false
+    },
+    {
+      "id": "music-video",
+      "names": { "de": "Musikvideo", "en": "Music Video" },
+      "descriptions": {
+        "de": "Kreis-Übergänge, an die Länge der Musik angepasst; braucht eine Musikspur.",
+        "en": "Circle transitions, fitted to the length of the music; needs a music track."
+      },
+      "transitionId": "circle",
+      "effectId": null,
+      "titleStyleId": "zoom-in",
+      "requiresMusic": true
+    }
+  ]
+}

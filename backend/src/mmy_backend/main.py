@@ -1,6 +1,6 @@
-"""FastAPI app. `create_app` loads the transition and title catalogs
-immediately: if either is invalid, importing `mmy_backend.main:app` (and
-therefore uvicorn) already fails."""
+"""FastAPI app. `create_app` loads the transition, title, effect and AutoMovie
+catalogs immediately: if one of them is invalid, importing
+`mmy_backend.main:app` (and therefore uvicorn) already fails."""
 
 import asyncio
 import logging
@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from mmy_backend.access import AccessTokenMiddleware
 from mmy_backend.api import router
+from mmy_backend.automovie_catalog import load_automovie_catalog
 from mmy_backend.catalog import load_catalog, load_effect_catalog
 from mmy_backend.config import Settings
 from mmy_backend.exports import ExportManager
@@ -39,6 +40,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.title_font_file,
             settings.title_font_file.name,
         )
+    # Last: its entries are references into the three catalogs above.
+    automovie_catalog = load_automovie_catalog(
+        settings.automovie_catalog_file, catalog, effect_catalog, title_catalog
+    )
     media = MediaStore(settings.data_dir)
     exports = ExportManager(
         settings.data_dir,
@@ -66,6 +71,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.catalog = catalog
     app.state.title_catalog = title_catalog
     app.state.effect_catalog = effect_catalog
+    app.state.automovie_catalog = automovie_catalog
     app.state.media = media
     app.state.project = ProjectStore(settings.data_dir)
     app.state.exports = exports

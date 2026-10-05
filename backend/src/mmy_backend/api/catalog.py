@@ -1,9 +1,10 @@
-"""GET /api/catalog/{transitions,effects,titles} - the catalogs validated at startup."""
+"""GET /api/catalog/{transitions,effects,titles,automovie} - the catalogs validated at startup."""
 
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Request
 
+from mmy_backend.automovie_catalog import AutoMovieCatalog
 from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.title_catalog import TitleCatalog
 
@@ -20,6 +21,10 @@ def get_title_catalog(request: Request) -> TitleCatalog:
 
 def get_effect_catalog(request: Request) -> EffectCatalog:
     return cast(EffectCatalog, request.app.state.effect_catalog)
+
+
+def get_automovie_catalog(request: Request) -> AutoMovieCatalog:
+    return cast(AutoMovieCatalog, request.app.state.automovie_catalog)
 
 
 @router.get("/transitions")
@@ -40,4 +45,11 @@ def list_effects(
 def list_titles(
     catalog: Annotated[TitleCatalog, Depends(get_title_catalog)],
 ) -> TitleCatalog:
+    return catalog
+
+
+@router.get("/automovie")
+def list_automovie_styles(
+    catalog: Annotated[AutoMovieCatalog, Depends(get_automovie_catalog)],
+) -> AutoMovieCatalog:
     return catalog

@@ -1,6 +1,7 @@
-# @mmy/catalog – transition, effect and title catalog
+# @mmy/catalog – transition, effect, title and AutoMovie catalog
 
-The **single source of truth** for transitions, effects and titles.
+The **single source of truth** for transitions, effects, titles and AutoMovie
+styles.
 
 - `transitions.json` is the transition catalog, validated by
   `transitions.schema.json`; `effects.json` is the (stateless, single-image)
@@ -21,10 +22,16 @@ The **single source of truth** for transitions, effects and titles.
   [the research notes](../../docs/research/movie-maker-reference.md)).
   `estimated` lists values that cannot be verified against the original
   (**[E]**, estimated). They can be re-tuned here without any code change.
-- The backend loads and validates all three catalogs at startup and serves
-  them at `GET /api/catalog/transitions`, `GET /api/catalog/effects` and
-  `GET /api/catalog/titles`. The reference XML files themselves are never
-  served or shipped.
+- `automovie.json` is the AutoMovie style catalog, validated by
+  `automovie.schema.json`. A style adds no render technique of its own: it only
+  names one `transitionId`, one optional `effectId`, one `titleStyleId` and
+  whether it needs a music track. Those IDs are checked against the three
+  catalogs above at startup, so a typo stops the backend instead of producing a
+  broken AutoMovie.
+- The backend loads and validates all four catalogs at startup and serves
+  them at `GET /api/catalog/transitions`, `GET /api/catalog/effects`,
+  `GET /api/catalog/titles` and `GET /api/catalog/automovie`. The reference
+  XML files themselves are never served or shipped.
 - `names` holds the display name per UI language; both `de` and `en` are
   required (e.g. `{ "de": "Überblenden", "en": "Fade" }`). A missing name stops
   the backend at startup.

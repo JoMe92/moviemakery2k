@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JoMe92/moviemakery2k/packages/catalog/automovie.schema.json",
+  "title": "moviemakerY2K – AutoMovie style catalog",
+  "type": "object",
+  "required": ["schemaVersion", "styles"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "styles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/style" }
+    }
+  },
+  "$defs": {
+    "localizedText": {
+      "description": "Text per UI language; both are required",
+      "type": "object",
+      "required": ["de", "en"],
+      "additionalProperties": false,
+      "properties": {
+        "de": { "type": "string", "minLength": 1 },
+        "en": { "type": "string", "minLength": 1 }
+      }
+    },
+    "catalogId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "style": {
+      "description": "One AutoMovie style (design.md D1 of add-automovie): it only combines entries of the other catalogs, it adds no render technique of its own.",
+      "type": "object",
+      "required": [
+        "id",
+        "names",
+        "descriptions",
+        "transitionId",
+        "effectId",
+        "titleStyleId",
+        "requiresMusic"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/catalogId" },
+        "names": { "$ref": "#/$defs/localizedText" },
+        "descriptions": {
+          "description": "One short sentence shown on the style tile in the AutoMovie dialog",
+          "$ref": "#/$defs/localizedText"
+        },
+        "transitionId": {
+          "description": "ID from transitions.json, used between all adjacent elements",
+          "$ref": "#/$defs/catalogId"
+        },
+        "effectId": {
+          "description": "ID from effects.json applied to every image and video clip element, or null for no effect",
+          "oneOf": [{ "$ref": "#/$defs/catalogId" }, { "type": "null" }]
+        },
+        "titleStyleId": {
+          "description": "ID from titles.json, used for the opening and the closing title",
+          "$ref": "#/$defs/catalogId"
+        },
+        "requiresMusic": {
+          "description": "The style is only selectable while the project has a music track",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
