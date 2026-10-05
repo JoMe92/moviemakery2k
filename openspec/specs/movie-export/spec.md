@@ -11,7 +11,13 @@ Schritten „Dateiname“, „Qualität“, „Film wird gespeichert“ und „F
 anbieten. Er MUST die Schaltflächen „Zurück“, „Weiter“ und „Abbrechen“ haben
 und sich vollständig per Tastatur bedienen lassen. Der Dateiname MUST mit
 „Mein Film“ vorbelegt sein, MUST die Zeichen `/ \ : * ? " < > |` ablehnen und
-MUST beim Herunterladen die Endung `.mp4` tragen.
+MUST beim Herunterladen die Endung `.mp4` tragen. Im Schritt „Fertig“ MUST
+neben „Herunterladen“ die Schaltfläche „Teilen…“ erscheinen, wenn der Kontext
+sicher ist, das Gerät das Teilen von Dateien unterstützt und die Datei
+höchstens 200 MB groß ist. „Teilen…“ MUST bis zum vollständigen Laden der
+Datei deaktiviert sein und dann den Teilen-Dialog des Geräts mit der Datei
+`<Dateiname>.mp4` öffnen. Bricht der Benutzer das Teilen ab, MUST das ohne
+Fehlermeldung bleiben; „Herunterladen“ MUST immer verfügbar bleiben.
 
 #### Scenario: Film mit Standardwerten speichern
 - **WHEN** ein Benutzer mit mindestens einem Bild im Bildstreifen den
@@ -29,20 +35,42 @@ MUST beim Herunterladen die Endung `.mp4` tragen.
 - **WHEN** ein Benutzer im Schritt „Qualität“ „Abbrechen“ wählt
 - **THEN** schließt sich der Assistent, und es wird kein Export gestartet
 
+#### Scenario: Film am Handy teilen
+- **WHEN** ein Export von 40 MB über HTTPS auf einem Handy mit Web Share API
+  fertig ist und der Benutzer nach dem Laden „Teilen…“ wählt
+- **THEN** öffnet sich der Teilen-Dialog des Geräts mit der Datei
+  „Mein Film.mp4“
+
+#### Scenario: Teilen nicht verfügbar
+- **WHEN** der Export über HTTP oder in einem Browser ohne Teilen von Dateien
+  fertig ist
+- **THEN** zeigt der Schritt „Fertig“ nur „Herunterladen“
+
+#### Scenario: Datei zu groß zum Teilen
+- **WHEN** ein fertiger Export größer als 200 MB ist
+- **THEN** zeigt der Schritt „Fertig“ nur „Herunterladen“
+
 ### Requirement: Qualitätsprofile
-Der Export MUST die Profile „Hohe Qualität“ (960×720) und „Kleine Datei“
-(640×480) anbieten, beide im Seitenverhältnis 4:3 mit 30 Bildern pro Sekunde.
-Die Datei MUST ein MP4 mit einer H.264-Videospur (yuv420p) und einer
-AAC-Tonspur (48 kHz, Stereo) sein. Die Videospur MUST nach BT.709 umgerechnet
-und als BT.709 (Matrix, Primärfarben, Übertragungsfunktion, begrenzter
-Wertebereich) gekennzeichnet sein. Die Tonspur MUST die Musikspur des
-Projekts nach Spec music-track enthalten, aus den Originaldateien gemischt
-und so lang wie die Videospur; ohne Musik MUST sie stumm sein. Der Schritt
-„Qualität“ MUST für jedes Profil eine geschätzte Dateigröße anzeigen.
+Der Export MUST die Profile „Hohe Qualität“ (960×720), „Kleine Datei“
+(640×480) und „Für E-Mail/Web“ (320×240) anbieten, alle im
+Seitenverhältnis 4:3 mit 30 Bildern pro Sekunde. Die Datei MUST ein MP4
+mit einer H.264-Videospur (yuv420p) und einer AAC-Tonspur (48 kHz,
+Stereo) sein. Die Videospur MUST nach BT.709 umgerechnet und als BT.709
+(Matrix, Primärfarben, Übertragungsfunktion, begrenzter Wertebereich)
+gekennzeichnet sein. Die Tonspur MUST die Musikspur (Spec music-track) und
+die Erzählungsspur (Spec narration-track) sowie, soweit vorhanden, den Ton
+der Videoclips enthalten, im Verhältnis des globalen Pegels
+`clipAudioBalance`, aus den Originaldateien gemischt und so lang wie die
+Videospur; ohne jede dieser Tonquellen MUST sie stumm sein. Der Schritt
+„Qualität“ MUST für jedes Profil, in der Reihenfolge groß zu klein, eine
+geschätzte Dateigröße und einen kurzen Empfehlungstext anzeigen: „Hohe
+Qualität“ — zum Ansehen auf einem großen Bildschirm; „Kleine Datei“ — zum
+Weitergeben, etwa per USB-Stick; „Für E-Mail/Web“ — kleinste Datei, zum
+Versenden oder Hochladen.
 
 #### Scenario: Kleine Datei
-- **WHEN** ein Benutzer ohne Musik das Profil „Kleine Datei (640×480)“ wählt
-  und den Export abschließt
+- **WHEN** ein Benutzer ohne Musik, Erzählung oder Videoclip-Ton das Profil
+  „Kleine Datei (640×480)“ wählt und den Export abschließt
 - **THEN** hat die Datei eine H.264-Videospur mit 640×480 Pixeln und 30 fps
   sowie eine stumme AAC-Tonspur
 
@@ -62,6 +90,29 @@ und so lang wie die Videospur; ohne Musik MUST sie stumm sein. Der Schritt
 - **THEN** meldet die Videospur `color_space`, `color_primaries` und
   `color_transfer` als `bt709` und `color_range` als `tv`, und ein reines Rot
   aus der Vorschau ist im dekodierten Film innerhalb der Toleranz rot
+
+#### Scenario: Für E-Mail/Web exportieren
+- **WHEN** ein Benutzer das Profil „Für E-Mail/Web (320×240)“ wählt und
+  den Export abschließt
+- **THEN** hat die Datei eine H.264-Videospur mit 320×240 Pixeln und
+  30 fps, kleiner als bei den beiden anderen Profilen bei gleichem Projekt
+
+#### Scenario: Empfehlungstext je Profil
+- **WHEN** ein Benutzer den Schritt „Qualität“ öffnet
+- **THEN** zeigt jedes der drei Profile neben der geschätzten Dateigröße
+  seinen Empfehlungstext in der gewählten Sprache
+
+#### Scenario: Clip-Ton und Erzählung im Export
+- **WHEN** ein Projekt mit einem Videoclip mit Tonspur, einem
+  Erzählungs-Clip und `clipAudioBalance` 50 exportiert wird
+- **THEN** enthält die Tonspur der Datei beide Quellen gemischt, hörbar
+  etwa gleich laut
+
+#### Scenario: Reiner Clip-Ton
+- **WHEN** `clipAudioBalance` auf 100 steht und das Projekt Musik, aber
+  keine Videoclips mit Tonspur enthält
+- **THEN** ist die Tonspur der exportierten Datei stumm (Musik ist bei
+  diesem Pegel nicht hörbar, und es gibt keinen Clip-Ton)
 
 ### Requirement: Export entspricht der Vorschau
 Der Export MUST dasselbe Zeitmodell wie die Vorschau verwenden (Spec

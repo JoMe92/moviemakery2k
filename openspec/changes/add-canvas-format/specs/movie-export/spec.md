@@ -57,7 +57,7 @@ E-Mail/Web“ — kleinste Datei, zum Versenden oder Hochladen.
 - **THEN** hat die Datei eine H.264-Videospur mit 320×180 Pixeln und 30 fps,
   kleiner als bei den beiden anderen Profilen bei gleichem Projekt
 
-#### Scenario: Pixelgröße und Empfehlungstext je Profil
+#### Scenario: Empfehlungstext je Profil
 - **WHEN** ein Benutzer in einem Projekt mit Hochformat 9:16 den Schritt
   „Qualität“ öffnet
 - **THEN** zeigt jedes der drei Profile seine Pixelgröße für das Hochformat

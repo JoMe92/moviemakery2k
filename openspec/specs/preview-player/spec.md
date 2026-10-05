@@ -1,8 +1,9 @@
 # preview-player Specification
 
 ## Purpose
-Wiedergabe der Diashow im Vorschaumonitor in Echtzeit: Bilder mit ihren
-Dauern und Übergängen, mit Steuerung, Suchleiste und Zeitanzeige.
+Wiedergabe des Films im Vorschaumonitor in Echtzeit: Bilder, Videoclips und
+Titel mit ihren Dauern, Effekten und Übergängen, dazu Musik und Erzählung,
+mit Steuerung, Suchleiste und Zeitanzeige.
 
 ## Requirements
 
@@ -115,3 +116,57 @@ Demo eines Übergangs MUST die Musik stumm sein.
 - **WHEN** ein Benutzer während der Wiedergabe Pause drückt
 - **THEN** verstummt die Musik sofort, und Wiedergabe setzt sie an derselben
   Stelle fort
+
+### Requirement: Videoclips in der Wiedergabe
+Ein Videoclip-Element MUST im Monitor sein Frame an der Stelle `trimIn +
+(Wiedergabezeit − Segmentanfang)` zeigen, mit derselben
+seitenverhältnistreuen Einpassung wie ein Bild (Requirement „Darstellung im
+Monitor“). Die Wiedergabe eines Videoclips MUST stumm sein; er hat keinen
+eigenen Wiedergabe-Takt — die bestehende Zeitachse bleibt maßgebend. Bei
+gestoppter Wiedergabe und Auswahl eines Videoclip-Elements MUST der Monitor
+dessen Frame an der aktuellen Suchleisten-Position zeigen.
+
+#### Scenario: Videoclip in der Übergangs-Mitte
+- **WHEN** die Wiedergabe mitten in einem Übergang von einem Bild zu einem
+  Videoclip steht
+- **THEN** zeigt der Monitor die Überblendung zwischen dem Bild und dem
+  Video-Frame an der passenden Stelle des Videoclips, genauso wie zwischen
+  zwei Bildern
+
+#### Scenario: Stummer Videoclip
+- **WHEN** ein Projekt mit einem Videoclip und Musik abgespielt wird
+- **THEN** ist nur die Musik hörbar, der Ton des Videoclips bleibt stumm
+
+#### Scenario: Suchen in einen Videoclip
+- **WHEN** ein Benutzer die Suchleiste auf eine Stelle innerhalb eines
+  gekürzten Videoclips zieht
+- **THEN** zeigt der Monitor sofort das passende Frame aus dem Original
+  zwischen `trimIn` und `trimOut`
+
+### Requirement: Clip-Ton und Erzählung in der Wiedergabe
+Hat ein Videoclip-Element eine Tonspur im Original, MUST diese während
+seiner Anzeigedauer über dieselbe Audiouhr wie die Musik hörbar sein
+(nicht über das `<video>`-Element selbst, das reines Bild-Scrubbing
+bleibt). Erzählungs-Clips MUST an ihrer absoluten Startzeit hörbar sein,
+unabhängig vom aktuellen Bildstreifen-Element. Der globale Pegel
+`clipAudioBalance` MUST das Lautstärkeverhältnis zwischen Videoclip-Ton
+und der Summe aus Musik und Erzählung bestimmen. Pause, Stopp, Suchen und
+Projektänderungen MUST Clip-Ton und Erzählung wie Musik sofort an der
+aktuellen Zeit fortsetzen bzw. anhalten.
+
+#### Scenario: Clip-Ton bei vollem Pegel
+- **WHEN** `clipAudioBalance` auf 100 steht und ein Videoclip mit Tonspur
+  abgespielt wird
+- **THEN** ist nur der Videoclip-Ton hörbar, Musik und Erzählung bleiben
+  stumm
+
+#### Scenario: Gemischter Pegel
+- **WHEN** `clipAudioBalance` auf 50 steht und sowohl ein Videoclip mit
+  Tonspur als auch Musik gleichzeitig laufen
+- **THEN** sind beide gleichzeitig und etwa gleich laut hörbar
+
+#### Scenario: Suchen in einen Bereich mit Erzählung
+- **WHEN** ein Benutzer die Suchleiste auf eine Stelle mit einem
+  Erzählungs-Clip zieht
+- **THEN** setzt die Erzählung an der passenden Stelle innerhalb des Clips
+  fort
