@@ -6,7 +6,7 @@ wieder, ohne deren Kataloge zu ändern.
 
 ## 1. Datenmodell
 
-- [ ] TASK-API-020 Slide-Datenmodell Version 5: neue Slide-Art `title`
+- [x] TASK-API-020 Slide-Datenmodell Version 5: neue Slide-Art `title`
   (`lines`/`creditEntries`, `styleId`, Anzeigedauer), Overlay-Feld `title`
   auf Bild-/Videoclip-Elementen, Validierung (keine Doppelbelegung, nur
   Overlay auf Bild/Video), Migration von Version 4, `gen-api` (design.md
