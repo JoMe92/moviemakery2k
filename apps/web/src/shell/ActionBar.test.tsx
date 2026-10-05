@@ -8,13 +8,22 @@ import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slides: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 3, effectId: null, transitionIn: null },
+  {
+    kind: "image",
+    id: "s1",
+    mediaId: "a",
+    duration: 3,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
   {
     kind: "image",
     id: "s2",
     mediaId: "b",
     duration: 4,
     effectId: null,
+    title: null,
     transitionIn: { transitionId: "fade", duration: 1.25 },
   },
   {
@@ -23,6 +32,7 @@ const slides: Slide[] = [
     mediaId: "c",
     duration: 5,
     effectId: null,
+    title: null,
     transitionIn: { transitionId: "circle", duration: 1.5 },
   },
 ];
@@ -47,7 +57,7 @@ async function setup(layout: "compact" | "wide" = "compact") {
       audioItem("song", 60),
       audioItem("tune", 30),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);

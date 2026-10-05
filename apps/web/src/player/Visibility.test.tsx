@@ -6,8 +6,24 @@ import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
 
 const slides: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 3, effectId: null, transitionIn: null },
-  { kind: "image", id: "s2", mediaId: "b", duration: 3, effectId: null, transitionIn: null },
+  {
+    kind: "image",
+    id: "s1",
+    mediaId: "a",
+    duration: 3,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
+  {
+    kind: "image",
+    id: "s2",
+    mediaId: "b",
+    duration: 3,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
 ];
 
 function setVisibility(state: "hidden" | "visible") {
@@ -27,7 +43,7 @@ describe("tab in the background (add-mobile-layout design.md D14)", () => {
     const cancel = vi.spyOn(window, "cancelAnimationFrame");
     const { store, ready } = renderApp(
       mockApi({
-        getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
+        getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
       }),
     );
     await act(() => ready);

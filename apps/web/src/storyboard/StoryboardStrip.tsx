@@ -5,7 +5,12 @@ import { useT } from "../i18n/useT";
 import { timelineOf } from "../player/controls";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { scrollIntoView, useRevealRequest } from "../shell/reveal";
-import { SLIDE_DURATION, TRANSITION_DURATION } from "../store/projectOps";
+import {
+  SLIDE_DURATION,
+  slideEffectId,
+  slideMediaId,
+  TRANSITION_DURATION,
+} from "../store/projectOps";
 import { useAppStore } from "../store/useAppStore";
 import { slideIndexAt } from "../timeline/timeline";
 import { TransitionSheet } from "../transitions/TransitionSheet";
@@ -109,7 +114,10 @@ export function StoryboardStrip() {
     dialogSlide?.kind === "video" ? media.find((m) => m.id === dialogSlide.mediaId) : undefined;
   const transitionName = (id: string) => catalogName(catalog, id, locale);
 
-  const hasEffect = (slideId: string) => Boolean(slides.find((s) => s.id === slideId)?.effectId);
+  const hasEffect = (slideId: string) => {
+    const slide = slides.find((s) => s.id === slideId);
+    return Boolean(slide && slideEffectId(slide));
+  };
 
   const menuItems = (m: MenuState): ContextMenuItem[] => {
     if (m.kind === "effect") {
@@ -183,7 +191,7 @@ export function StoryboardStrip() {
                 key={slide.id}
                 slide={slide}
                 number={i + 1}
-                media={media.find((m) => m.id === slide.mediaId)}
+                media={media.find((m) => m.id === slideMediaId(slide))}
                 selected={selection?.slideId === slide.id}
                 playing={playingId === slide.id}
                 marker={

@@ -8,14 +8,30 @@ import { renderApp } from "../test/renderApp";
 import { resetTileSize, TILE_SIZE_STORAGE_KEY } from "./tileSize";
 
 const slides: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 3, effectId: null, transitionIn: null },
-  { kind: "image", id: "s2", mediaId: "b", duration: 3, effectId: null, transitionIn: null },
+  {
+    kind: "image",
+    id: "s1",
+    mediaId: "a",
+    duration: 3,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
+  {
+    kind: "image",
+    id: "s2",
+    mediaId: "b",
+    duration: 3,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
 ];
 
 async function setup(layout: "compact" | "wide" = "compact") {
   if (layout === "compact") mockLayout("compact");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   return { ...view, user: userEvent.setup() };

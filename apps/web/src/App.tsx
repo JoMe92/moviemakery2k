@@ -30,6 +30,7 @@ import { useAppStore } from "./store/useAppStore";
 import { StoryboardDnd } from "./storyboard/StoryboardDnd";
 import { StoryboardStrip } from "./storyboard/StoryboardStrip";
 import { TimelineView } from "./storyboard/TimelineView";
+import { TitleWizardFromStore } from "./titles/TitleWizard";
 import { TransitionCollection } from "./transitions/TransitionCollection";
 
 const COLLECTION_IDS: readonly CollectionId[] = [
@@ -105,6 +106,7 @@ export function App() {
         <ImportInput />
         <CollectionSheet />
         <SaveMovieWizardFromStore />
+        <TitleWizardFromStore />
         <AccessDialog />
         <InstallInstructionsDialog />
       </StoryboardDnd>
@@ -172,6 +174,7 @@ export function App() {
       />
       <ImportInput />
       <SaveMovieWizardFromStore />
+      <TitleWizardFromStore />
       <AccessDialog />
       <InstallInstructionsDialog />
     </StoryboardDnd>

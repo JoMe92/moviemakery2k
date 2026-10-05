@@ -3,7 +3,7 @@
  * No clock, no DOM: the store calls these functions, the rAF clock supplies dt.
  */
 import type { Slide } from "../lib/apiClient";
-import { slideDuration } from "../store/projectOps";
+import { slideDuration, slideMediaId } from "../store/projectOps";
 import {
   buildTimeline,
   type Frame,
@@ -30,12 +30,13 @@ const EPS = 1e-6;
 
 /**
  * A project element as input to the time model; a video slide's duration is
- * always `trimOut - trimIn` (add-timeline-editing design.md D1).
+ * always `trimOut - trimIn` (add-timeline-editing design.md D1), and a title
+ * element refers to no medium at all (add-titles-and-credits D5).
  */
 export function toTimelineSlide(slide: Slide): TimelineSlide {
   return {
     id: slide.id,
-    mediaId: slide.mediaId,
+    mediaId: slideMediaId(slide),
     duration: slideDuration(slide),
     transitionIn: slide.transitionIn,
   };

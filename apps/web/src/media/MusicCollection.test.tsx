@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { MediaItem } from "../lib/apiClient";
+import { slideMediaId } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 import { AUDIO_ACCEPT, IMPORT_ACCEPT, importCollection, looksLikeAudio } from "./useImport";
@@ -264,7 +265,7 @@ describe("“My Music” collection", () => {
 
     // Pictures still work.
     act(() => store.getState().addSlide("a"));
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a"]);
   });
 
   it.each(LOCALES)("deletes an audio tile after confirmation (%s)", async (locale) => {

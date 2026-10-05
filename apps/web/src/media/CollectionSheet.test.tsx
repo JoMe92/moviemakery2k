@@ -2,7 +2,7 @@ import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
-import { SLIDE_DURATION, slideDuration } from "../store/projectOps";
+import { SLIDE_DURATION, slideDuration, slideMediaId } from "../store/projectOps";
 import { audioItem, mediaItem, mockApi, videoItem } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
@@ -65,6 +65,7 @@ const slide = (id: string, mediaId: string): Slide => ({
   mediaId,
   duration: 3,
   effectId: null,
+  title: null,
   transitionIn: null,
 });
 
@@ -79,7 +80,7 @@ async function setup(slides: Slide[] = [], locale: "de" | "en" = "de") {
       audioItem("tune", 30),
       videoItem("clip", 12),
     ],
-    getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })),
+    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
   });
   const user = userEvent.setup();
   const view = renderApp(api);
@@ -140,7 +141,7 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
       "aria-roledescription",
     );
     await user.click(add());
-    expect(store.getState().slides.map((s) => [s.mediaId, slideDuration(s)])).toEqual([
+    expect(store.getState().slides.map((s) => [slideMediaId(s), slideDuration(s)])).toEqual([
       ["c", SLIDE_DURATION.default],
       ["a", SLIDE_DURATION.default],
       ["b", SLIDE_DURATION.default],
@@ -164,7 +165,7 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     await user.click(sheet.getByRole("button", { name: "c.jpg" }));
     await user.click(sheet.getByRole("button", { name: "b.jpg" }));
     await user.click(sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (2)" }));
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a", "c", "b", "b"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a", "c", "b", "b"]);
   });
 
   it("adds music at the end of the music track in pick order", async () => {
@@ -254,7 +255,7 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     const { sheet, user, store } = await setup();
     driftTile(sheet.getByRole("button", { name: "b.jpg" }), 16, "y");
     await user.click(sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (1)" }));
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["b"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["b"]);
   });
 
   it("marks the tile armed before the held press opens the menu", async () => {
@@ -306,7 +307,9 @@ describe("collection sheet (add-mobile-layout design.md D7)", () => {
     await user.click(tile);
     expect(tile).toHaveAttribute("aria-pressed", "true");
     await user.click(sheet.getByRole("button", { name: "Zum Bildstreifen hinzufügen (1)" }));
-    expect(store.getState().slides.map((s) => [s.kind, s.mediaId])).toEqual([["video", "clip"]]);
+    expect(store.getState().slides.map((s) => [s.kind, slideMediaId(s)])).toEqual([
+      ["video", "clip"],
+    ]);
   });
 
   it("shows a video's Properties and Delete in the long-press menu", async () => {

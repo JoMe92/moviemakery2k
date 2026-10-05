@@ -6,13 +6,22 @@ import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 const SLIDES: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 5, effectId: null, transitionIn: null },
+  {
+    kind: "image",
+    id: "s1",
+    mediaId: "a",
+    duration: 5,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
   {
     kind: "image",
     id: "s2",
     mediaId: "b",
     duration: 5,
     effectId: null,
+    title: null,
     transitionIn: { transitionId: "fade", duration: 1.25 },
   },
   {
@@ -21,13 +30,14 @@ const SLIDES: Slide[] = [
     mediaId: "a",
     duration: 5,
     effectId: null,
+    title: null,
     transitionIn: { transitionId: "fade", duration: 1.25 },
   },
 ];
 
 async function setup(slides: Slide[] = SLIDES) {
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   const monitor = screen.getByRole("region", { name: "Vorschau" });
@@ -125,7 +135,7 @@ describe("Player", () => {
     localStorage.setItem("mmy.locale", "en");
     const view = renderApp(
       mockApi({
-        getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides: SLIDES, music: [] })),
+        getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides: SLIDES, music: [] })),
       }),
     );
     await act(() => view.ready);

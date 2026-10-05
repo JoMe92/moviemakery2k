@@ -37,11 +37,28 @@ export function newSlideId(): string {
 
 /**
  * A slide's length in the time model: a video clip's trim window
- * (`trimOut - trimIn`), a picture's display duration (add-timeline-editing
- * design.md D1).
+ * (`trimOut - trimIn`), a picture's or title's display duration
+ * (add-timeline-editing design.md D1, add-titles-and-credits D5).
  */
 export function slideDuration(slide: Slide): number {
   return slide.kind === "video" ? slide.trimOut - slide.trimIn : slide.duration;
+}
+
+/**
+ * The medium an element refers to, or null for a title element - which has
+ * none of its own (add-titles-and-credits design.md D5). Mirrors the
+ * backend's `slide_media_id`.
+ */
+export function slideMediaId(slide: Slide): string | null {
+  return slide.kind === "title" ? null : slide.mediaId;
+}
+
+/**
+ * The effect of an element, or null for a title element - which carries no
+ * `effectId` (add-titles-and-credits design.md D5).
+ */
+export function slideEffectId(slide: Slide): string | null {
+  return slide.kind === "title" ? null : slide.effectId;
 }
 
 /** First item without an incoming transition. */
@@ -95,6 +112,7 @@ export function splitSlide(slides: readonly Slide[], id: string, splitPoint: num
     trimIn: splitPoint,
     trimOut: slide.trimOut,
     effectId: slide.effectId,
+    title: slide.title,
     transitionIn: null,
   };
   return normalize([...slides.slice(0, index), first, second, ...slides.slice(index + 1)]);

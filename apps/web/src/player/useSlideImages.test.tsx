@@ -18,7 +18,15 @@ import { useSlideImages } from "./Player";
  * [5, 8).
  */
 const SLIDES: Slide[] = [
-  { kind: "image", id: "s1", mediaId: "a", duration: 5, effectId: null, transitionIn: null },
+  {
+    kind: "image",
+    id: "s1",
+    mediaId: "a",
+    duration: 5,
+    effectId: null,
+    title: null,
+    transitionIn: null,
+  },
   {
     kind: "video",
     id: "s2",
@@ -26,6 +34,7 @@ const SLIDES: Slide[] = [
     trimIn: 2,
     trimOut: 6,
     effectId: null,
+    title: null,
     transitionIn: { transitionId: "fade", duration: 1 },
   },
 ];
@@ -116,6 +125,7 @@ describe("useSlideImages: video texture", () => {
         trimIn: 0,
         trimOut: 2,
         effectId: null,
+        title: null,
         transitionIn: null,
       },
     ];

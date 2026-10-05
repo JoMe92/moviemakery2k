@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Slide } from "../lib/apiClient";
+import { slideMediaId } from "../store/projectOps";
 import { mockApi } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
@@ -11,6 +12,7 @@ const slide = (id: string, mediaId: string): Slide => ({
   mediaId,
   duration: 5,
   effectId: null,
+  title: null,
   transitionIn: null,
 });
 
@@ -55,7 +57,7 @@ const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
 async function setup(slides: Slide[] = []) {
   mockLayout("medium");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 4 as const, slides, music: [] })) }),
+    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
   );
   await act(() => view.ready);
   return view;
@@ -90,7 +92,7 @@ describe("medium layout (add-mobile-layout design.md D3)", () => {
     fireEvent.touchMove(tile, touch(150, 870));
     await wait(20);
     fireEvent.touchEnd(tile, { changedTouches: [{ clientX: 150, clientY: 870 }], touches: [] });
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a", "b"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a", "b"]);
   });
 
   it("does not drag when the finger moves right away (the collection scrolls)", async () => {
@@ -102,6 +104,6 @@ describe("medium layout (add-mobile-layout design.md D3)", () => {
     await wait(450);
     fireEvent.touchMove(tile, touch(150, 870));
     fireEvent.touchEnd(tile, { changedTouches: [{ clientX: 150, clientY: 870 }], touches: [] });
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["a"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["a"]);
   });
 });

@@ -6,7 +6,7 @@ import { renderApp } from "../test/renderApp";
 import { NOTICE_DURATION } from "./StatusNotices";
 
 const project = {
-  schemaVersion: 4 as const,
+  schemaVersion: 5 as const,
   slides: [
     {
       kind: "image" as const,
@@ -14,6 +14,7 @@ const project = {
       mediaId: "a",
       duration: 3,
       effectId: null,
+      title: null,
       transitionIn: null,
     },
     {
@@ -22,6 +23,7 @@ const project = {
       mediaId: "b",
       duration: 3,
       effectId: null,
+      title: null,
       transitionIn: null,
     },
   ],

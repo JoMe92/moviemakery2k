@@ -18,6 +18,9 @@ import {
   type MusicClip,
   type Project,
   type Slide,
+  type TitleOverlay,
+  type TitleSlide,
+  type TitleStyle,
   type Transition,
   type VideoSlide,
 } from "../lib/apiClient";
@@ -30,6 +33,7 @@ import {
   prevSlideTime,
   STOPPED,
   startPlayback,
+  MAX_STEP as TICK_MAX_STEP,
   timelineOf,
   toTimelineSlides,
   videoSplitPoint,
@@ -37,6 +41,18 @@ import {
 import { type FitToMusicResult, fitToMusic } from "../timeline/fitToMusic";
 import { musicDuration } from "../timeline/music";
 import { slideStartTime } from "../timeline/timeline";
+import {
+  CREDITS_DURATION_DEFAULT,
+  insertIndexFor,
+  isCredits,
+  isPlacementAvailable,
+  newTitleOverlay,
+  newTitleSlide,
+  TITLE_DURATION_DEFAULT,
+  type TitleDraft,
+  type TitlePlacement,
+  titleStyleById,
+} from "../titles/titleStyle";
 import {
   insertMusicClip,
   isValidMusicTrim,
@@ -101,7 +117,10 @@ export const UNDO_LIMIT = 50;
 export type ClipboardEntry =
   | {
       kind: "slide";
-      content: Omit<ImageSlide, "id" | "transitionIn"> | Omit<VideoSlide, "id" | "transitionIn">;
+      content:
+        | Omit<ImageSlide, "id" | "transitionIn">
+        | Omit<VideoSlide, "id" | "transitionIn">
+        | Omit<TitleSlide, "id" | "transitionIn">;
     }
   | {
       kind: "musicClip";
@@ -170,6 +189,8 @@ export interface AppState {
   catalog: Transition[];
   /** Effect catalog (add-effects-catalog D1); like `catalog`, loaded once at start. */
   effects: Effect[];
+  /** Title catalog (add-titles-and-credits D4); like `catalog`, loaded once at start. */
+  titles: TitleStyle[];
   slides: Slide[];
   /** Music track (add-music-track D3); kept and saved with the project. */
   music: MusicClip[];
@@ -226,6 +247,14 @@ export interface AppState {
   revealRequest: RevealRequest | null;
   /** "Save Movie" wizard open (design.md D6). */
   exportWizardOpen: boolean;
+  /** Title wizard open (add-titles-and-credits design.md D6). */
+  titleWizardOpen: boolean;
+  /**
+   * Live preview of the wizard's "Stil" step (add-titles-and-credits D6): the
+   * monitor shows this draft title instead of the project, the same way
+   * `previewEffectId` shows the sample image with one effect.
+   */
+  titlePreview: TitleDraft | null;
   /** Export interface for the wizard (same API as the store). */
   exportApi: ExportApi;
   /** UI language (localization design.md D2). */
@@ -277,6 +306,21 @@ export interface AppState {
   /** Open the "Save Movie" wizard; no effect with an empty storyboard. */
   openExportWizard(): void;
   closeExportWizard(): void;
+  /** Task pane "Titel oder Nachspann erstellen" (add-titles-and-credits D6). */
+  openTitleWizard(): void;
+  closeTitleWizard(): void;
+  /** Show a draft title in the monitor (null ends the preview). */
+  setTitlePreview(draft: TitleDraft | null): void;
+  /**
+   * Finish the title wizard (add-titles-and-credits D6): inserts a title
+   * element at the chosen placement, or sets the overlay `title` field of the
+   * selected image/video element for "on the selected element". The result is
+   * selected afterwards. `false` = refused (unknown style, or a placement the
+   * current selection does not allow).
+   */
+  applyTitle(placement: TitlePlacement, draft: TitleDraft): boolean;
+  /** Remove an element's overlay title (`null`), or replace it. */
+  setTitleOverlay(slideId: string, overlay: TitleOverlay | null): boolean;
   clearUploads(): void;
   deleteMedia(id: string): Promise<void>;
 
@@ -385,7 +429,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
   const store = createStore<AppState>()((set, get) => {
     const toProject = (): Project => ({
-      schemaVersion: 4,
+      schemaVersion: 5,
       slides: get().slides,
       music: get().music,
     });
@@ -479,7 +523,12 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
     }
 
     const duration = () => timelineOf(get().slides).duration;
-    const noDemo = { previewTransitionId: null, previewEffectId: null, demo: null } as const;
+    const noDemo = {
+      previewTransitionId: null,
+      previewEffectId: null,
+      titlePreview: null,
+      demo: null,
+    } as const;
 
     /** Clipboard content copied from a slide (design.md D4): never its id or transition. */
     function clipboardOfSlide(slide: Slide): ClipboardEntry {
@@ -510,6 +559,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       media: [],
       catalog: [],
       effects: [],
+      titles: [],
       slides: [],
       music: [],
       saveState: "idle",
@@ -533,6 +583,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       revealRequest: null,
       collectionSheetOpen: false,
       exportWizardOpen: false,
+      titleWizardOpen: false,
+      titlePreview: null,
       locale,
       setLocale(next) {
         writeStoredLocale(next);
@@ -548,10 +600,11 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       async init() {
         try {
-          const [health, catalog, effects, media, project] = await Promise.all([
+          const [health, catalog, effects, titles, media, project] = await Promise.all([
             api.health(),
             api.catalog(),
             api.effectCatalog(),
+            api.titleCatalog(),
             api.listMedia(),
             api.getProject(),
           ]);
@@ -559,6 +612,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
             backend: { kind: "ok", health },
             catalog,
             effects,
+            titles,
             media,
             slides: project.slides,
             music: project.music,
@@ -663,7 +717,17 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         });
       },
       tick(dt) {
-        const { demo, playback, previewTransitionId, catalog } = get();
+        const { demo, playback, previewTransitionId, catalog, titlePreview, titles } = get();
+        if (demo && titlePreview) {
+          // The title preview loops over the duration its style would get.
+          if (!demo.playing) return;
+          const style = titleStyleById(titles, titlePreview.styleId);
+          const total =
+            style && isCredits(style.layout) ? CREDITS_DURATION_DEFAULT : TITLE_DURATION_DEFAULT;
+          const next = demo.time + Math.min(Math.max(dt, 0), TICK_MAX_STEP);
+          set({ demo: { playing: true, time: next % total } });
+          return;
+        }
         if (demo && previewTransitionId) {
           if (!demo.playing) return;
           const t = catalog.find((c) => c.id === previewTransitionId)?.defaultDuration ?? 1.25;
@@ -733,6 +797,70 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       closeExportWizard() {
         set({ exportWizardOpen: false });
       },
+      openTitleWizard() {
+        set({ titleWizardOpen: true });
+      },
+      closeTitleWizard() {
+        // Leaving the wizard always ends its live preview.
+        set({ titleWizardOpen: false, titlePreview: null });
+      },
+      setTitlePreview(draft) {
+        if (draft === null) {
+          set({ titlePreview: null });
+          return;
+        }
+        // A draft style outside the catalog has nothing to preview.
+        const style = titleStyleById(get().titles, draft.styleId);
+        if (!style) return;
+        // The preview animates on the demo clock (as the transition demo does);
+        // an already-running preview keeps its position while the draft changes.
+        const demo = get().titlePreview ? get().demo : null;
+        set({
+          titlePreview: draft,
+          previewTransitionId: null,
+          previewEffectId: null,
+          demo: demo ?? { playing: true, time: 0 },
+        });
+      },
+      applyTitle(placement, draft) {
+        const { slides, selection, titles } = get();
+        const style = titleStyleById(titles, draft.styleId);
+        if (!style) return false;
+        const selected = selection ? slides.find((sl) => sl.id === selection.slideId) : null;
+        if (!isPlacementAvailable(placement, selected)) return false;
+        if (placement === "on") {
+          // An overlay title never changes the element list or its duration.
+          if (!selected || selected.kind === "title") return false;
+          commit(
+            updateSlide(slides, selected.id, (sl) =>
+              sl.kind === "title" ? sl : { ...sl, title: newTitleOverlay(draft, style.layout) },
+            ),
+          );
+          set({ titlePreview: null });
+          get().select({ kind: "slide", slideId: selected.id });
+          return true;
+        }
+        const slide = newTitleSlide(draft, style.layout);
+        commit(insertSlide(slides, slide, insertIndexFor(placement, slides, selected?.id ?? null)));
+        set({ titlePreview: null });
+        // The new title is selected afterwards (spec titles-and-credits).
+        get().select({ kind: "slide", slideId: slide.id });
+        return true;
+      },
+      setTitleOverlay(slideId, overlay) {
+        const { slides, titles } = get();
+        const slide = slides.find((sl) => sl.id === slideId);
+        // A title element cannot host an overlay title (spec slideshow-project),
+        // and a style outside the catalog would be refused by the backend.
+        if (!slide || slide.kind === "title") return false;
+        if (overlay && !titleStyleById(titles, overlay.styleId)) return false;
+        commit(
+          updateSlide(slides, slideId, (sl) =>
+            sl.kind === "title" ? sl : { ...sl, title: overlay },
+          ),
+        );
+        return true;
+      },
 
       clearUploads() {
         set({
@@ -773,6 +901,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
                 trimIn: 0,
                 trimOut: item.duration,
                 effectId: null,
+                title: null,
                 transitionIn: null,
               }
             : {
@@ -781,6 +910,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
                 mediaId,
                 duration: SLIDE_DURATION.default,
                 effectId: null,
+                title: null,
                 transitionIn: null,
               };
         const { slides } = get();

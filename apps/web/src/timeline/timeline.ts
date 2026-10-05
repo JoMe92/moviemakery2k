@@ -13,7 +13,8 @@ import { formatTime as formatLocalizedTime } from "../i18n/format";
 
 export interface TimelineSlide {
   id: string;
-  mediaId: string;
+  /** null for a title element, which refers to no medium. */
+  mediaId: string | null;
   /** Seconds */
   duration: number;
   transitionIn: { transitionId: string; duration: number } | null;

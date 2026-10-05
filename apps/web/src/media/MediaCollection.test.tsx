@@ -2,7 +2,8 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../lib/apiClient";
-import { mediaItem, mockApi } from "../store/testApi";
+import { slideMediaId } from "../store/projectOps";
+import { mediaItem, mockApi, slideMediaIdOf } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 
 const file = (name: string, type = "image/jpeg") => new File(["x"], name, { type });
@@ -205,7 +206,7 @@ describe("media collection", () => {
     const user = userEvent.setup();
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 4 as const,
+        schemaVersion: 5 as const,
         music: [],
         slides: [
           {
@@ -214,6 +215,7 @@ describe("media collection", () => {
             mediaId: "b",
             duration: 4,
             effectId: null,
+            title: null,
             transitionIn: null,
           },
         ],
@@ -229,7 +231,7 @@ describe("media collection", () => {
     within(collection()).getByRole("button", { name: "a.jpg" }).focus();
     await user.keyboard("{Delete}");
     await user.click(screen.getByRole("button", { name: "Ja" }));
-    await waitFor(() => expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["b"]));
+    await waitFor(() => expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["b"]));
   });
 
   it.each([
@@ -254,7 +256,7 @@ describe("media collection", () => {
       const user = userEvent.setup();
       const api = mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 4 as const,
+          schemaVersion: 5 as const,
           music: [],
           slides: [
             {
@@ -263,6 +265,7 @@ describe("media collection", () => {
               mediaId: "a",
               duration: 4,
               effectId: null,
+              title: null,
               transitionIn: null,
             },
             {
@@ -271,6 +274,7 @@ describe("media collection", () => {
               mediaId: "b",
               duration: 4,
               effectId: null,
+              title: null,
               transitionIn: null,
             },
           ],
@@ -354,7 +358,7 @@ describe("media collection", () => {
     fireEvent.contextMenu(tile, { clientX: 20, clientY: 30 });
     menu = screen.getByRole("menu");
     await user.click(within(menu).getByRole("menuitem", { name: "Zum Storyboard hinzufügen" }));
-    expect(store.getState().slides.map((s) => s.mediaId)).toEqual(["b"]);
+    expect(store.getState().slides.map((s) => slideMediaId(s))).toEqual(["b"]);
 
     fireEvent.contextMenu(tile, { clientX: 20, clientY: 30 });
     await user.keyboard("{ArrowDown}{Enter}");
@@ -370,7 +374,7 @@ describe("media collection", () => {
     await act(() => ready);
     await user.dblClick(within(collection()).getByRole("button", { name: "a.jpg" }));
     expect(store.getState().slides).toHaveLength(1);
-    expect(store.getState().slides[0]?.mediaId).toBe("a");
+    expect(slideMediaIdOf(store.getState().slides[0])).toBe("a");
   });
 
   it("shows import texts and the offline error in English", async () => {

@@ -54,6 +54,7 @@ interface TitleProgramInfo {
   translate: WebGLUniformLocation | null;
   scale: WebGLUniformLocation | null;
   title: WebGLUniformLocation | null;
+  alpha: WebGLUniformLocation | null;
 }
 
 interface EffectProgramInfo {
@@ -68,9 +69,20 @@ export interface DrawTitleOptions {
   /**
    * `false` for a freestanding title element (already a fully opaque
    * image, design.md D1) — no blending. `true` for an overlay title: alpha
-   * blends over the already-drawn frame (design.md D2).
+   * blends over the already-drawn frame (design.md D2), and also for a
+   * freestanding one while its phase alpha is below 1 (a `fade` phase, which
+   * needs blending to show at all).
    */
   blend: boolean;
+  /** Phase opacity (`fade`, design.md D4); 1 = fully visible (the default). */
+  alpha?: number;
+  /**
+   * Vertical size relative to the horizontal one: the texture's own height
+   * divided by the frame height. 1 (the default) is a frame-shaped title; a
+   * credits list rasterised to its content height (design.md D3) passes its
+   * taller ratio so the scroll moves it through at the right speed.
+   */
+  heightRatio?: number;
 }
 
 /** Natural pixel size of an image source. */
@@ -318,7 +330,8 @@ export class Renderer {
     gl.bindTexture(gl.TEXTURE_2D, frame.texture);
     gl.uniform1i(info.title, 0);
     gl.uniform2f(info.translate, transform.translate.x, transform.translate.y);
-    gl.uniform2f(info.scale, transform.scale, transform.scale);
+    gl.uniform2f(info.scale, transform.scale, transform.scale * (options.heightRatio ?? 1));
+    gl.uniform1f(info.alpha, options.alpha ?? 1);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(null);
@@ -611,6 +624,7 @@ export class Renderer {
           translate: gl.getUniformLocation(program, "uTranslate"),
           scale: gl.getUniformLocation(program, "uScale"),
           title: gl.getUniformLocation(program, "uTitle"),
+          alpha: gl.getUniformLocation(program, "uAlpha"),
         };
       } else {
         console.error("Titel-Shader lässt sich nicht linken:", gl.getProgramInfoLog(program));

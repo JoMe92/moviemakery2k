@@ -5,12 +5,21 @@ import { entryName as effectEntryName } from "../effects/effectName";
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
 import { loadImage } from "../render/imageCache";
-import { PreviewCanvas } from "../render/PreviewCanvas";
+import { PreviewCanvas, type TitleDrawSpec } from "../render/PreviewCanvas";
 import type { EffectSpec, ImageSource } from "../render/Renderer";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { MonitorPane } from "../shell/MonitorPane";
+import { slideEffectId } from "../store/projectOps";
 import { useAppStore, useAppStoreApi } from "../store/useAppStore";
 import { frameAt, type Timeline } from "../timeline/timeline";
+import { titleDrawAt } from "../titles/titleRender";
+import {
+  CREDITS_DURATION_DEFAULT,
+  isCredits,
+  TITLE_DURATION_DEFAULT,
+  titleStyleById,
+} from "../titles/titleStyle";
+import { titleOfSlide, useTitleSources } from "../titles/useTitleSources";
 import { transitionName } from "../transitions/transitionName";
 import { Button } from "../ui/Button";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon, StopIcon } from "../ui/icons";
@@ -178,6 +187,7 @@ export function useSlideImages(
     (index: number): ImageSource | undefined => {
       const slide = slides[index];
       if (!slide) return undefined;
+      if (slide.kind === "title") return undefined;
       if (slide.kind === "image") return loadedImages.get(slide.mediaId);
       const video = videos.current.get(slide.mediaId);
       if (!video) return undefined;
@@ -213,6 +223,9 @@ export function Player() {
   const previewId = useAppStore((s) => s.previewTransitionId);
   const effectCatalog = useAppStore((s) => s.effects);
   const previewEffectId = useAppStore((s) => s.previewEffectId);
+  const titleCatalog = useAppStore((s) => s.titles);
+  const titlePreview = useAppStore((s) => s.titlePreview);
+  const titleSource = useTitleSources();
 
   const timeline = timelineOf(slides);
   const empty = slides.length === 0;
@@ -223,6 +236,28 @@ export function Player() {
     playback.time,
   );
 
+  // Live preview of the title wizard's "Stil" step (add-titles-and-credits
+  // design.md D6): the monitor shows the draft title instead of the project,
+  // looping over the duration its style would get.
+  const previewStyle = titlePreview
+    ? titleStyleById(titleCatalog, titlePreview.styleId)
+    : undefined;
+  const previewTitle =
+    titlePreview && previewStyle
+      ? ({
+          kind: "title",
+          id: "preview",
+          lines: isCredits(previewStyle.layout) ? null : titlePreview.lines,
+          creditEntries: isCredits(previewStyle.layout) ? titlePreview.lines : null,
+          styleId: titlePreview.styleId,
+          color: titlePreview.color,
+          duration: isCredits(previewStyle.layout)
+            ? CREDITS_DURATION_DEFAULT
+            : TITLE_DURATION_DEFAULT,
+          transitionIn: null,
+        } as const)
+      : null;
+
   const demoTransition = demo && previewId ? catalog.find((t) => t.id === previewId) : undefined;
   // Effect demo (add-effects-catalog D4): the sample image, held still, with
   // the double-clicked effect applied - no clock, unlike the transition demo.
@@ -230,11 +265,14 @@ export function Player() {
     ? effectCatalog.find((e) => e.id === previewEffectId)
     : undefined;
   const sample = Boolean(demoTransition || demoEffect);
-  const frame = demoTransition
-    ? demoFrame(demo?.time ?? 0, demoTransition.id, demoTransition.defaultDuration)
-    : demoEffect
+  const frame =
+    previewTitle !== null
       ? ({ kind: "still", slideIndex: 0 } as const)
-      : frameAt(timeline, playback.time);
+      : demoTransition
+        ? demoFrame(demo?.time ?? 0, demoTransition.id, demoTransition.defaultDuration)
+        : demoEffect
+          ? ({ kind: "still", slideIndex: 0 } as const)
+          : frameAt(timeline, playback.time);
   const images = useMemo(
     () => (sample ? (i: number) => sampleImages()[i] : slideImages),
     [sample, slideImages],
@@ -248,12 +286,61 @@ export function Player() {
   const effects = useCallback(
     (index: number): EffectSpec | null => {
       if (demoEffect) return { id: demoEffect.id, params: demoEffect.params };
-      const effectId = slides[index]?.effectId;
+      const slide = slides[index];
+      const effectId = slide ? slideEffectId(slide) : null;
       if (!effectId) return null;
       const entry = effectCatalog.find((e) => e.id === effectId);
       return entry ? { id: entry.id, params: entry.params } : null;
     },
     [demoEffect, slides, effectCatalog],
+  );
+  /**
+   * The title drawn on top of (or instead of) element `index`: the wizard's
+   * draft while it previews, otherwise the element's own title content or its
+   * overlay title. `null` for an element without any.
+   */
+  const titles = useCallback(
+    (index: number): TitleDrawSpec | null => {
+      const previewing = previewTitle !== null && previewStyle !== undefined;
+      const entry = previewing
+        ? { title: previewTitle, overlay: false, style: previewStyle }
+        : (() => {
+            const slide = slides[index];
+            const found = slide ? titleOfSlide(slide) : null;
+            if (!found) return null;
+            const style = titleStyleById(titleCatalog, found.title.styleId);
+            return style ? { ...found, style } : null;
+          })();
+      if (!entry) return null;
+      const source = titleSource(entry.title, entry.style, entry.overlay);
+      if (!source) return null;
+      const total = previewing
+        ? previewTitle.duration
+        : (timeline.slides[index]?.slide.duration ?? TITLE_DURATION_DEFAULT);
+      // Elapsed time inside this element's own span; the preview loops.
+      const elapsed = previewing
+        ? (demo?.time ?? 0) % Math.max(total, 0.001)
+        : playback.time - (timeline.slides[index]?.start ?? 0);
+      const draw = titleDrawAt(entry.style, total, elapsed, entry.overlay);
+      return {
+        source: source.canvas,
+        transform: draw.transform,
+        alpha: draw.alpha,
+        blend: draw.blend,
+        standalone: !entry.overlay,
+        heightRatio: source.heightRatio,
+      };
+    },
+    [
+      previewTitle,
+      previewStyle,
+      slides,
+      titleCatalog,
+      titleSource,
+      timeline,
+      playback.time,
+      demo?.time,
+    ],
   );
 
   // rAF clock only while something is playing. While music is scheduled, the
@@ -423,7 +510,13 @@ export function Player() {
         }
       >
         <div className={styles.gestures} data-testid="monitor-gestures" {...gestures}>
-          <PreviewCanvas frame={frame} images={images} params={params} effects={effects} />
+          <PreviewCanvas
+            frame={frame}
+            images={images}
+            params={params}
+            effects={effects}
+            titles={titles}
+          />
         </div>
         {videoElements}
         {demoTransition ? (

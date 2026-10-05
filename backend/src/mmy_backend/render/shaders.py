@@ -224,12 +224,18 @@ class TitleProgram:
         member = self.program.get(name, None)
         return member if isinstance(member, moderngl.Uniform) else None
 
-    def set_transform(self, translate: tuple[float, float], scale: tuple[float, float]) -> None:
-        """Sets `uTitle` (fixed texture unit), `uTranslate` and `uScale`."""
-        values: dict[str, int | tuple[float, float]] = {
+    def set_transform(
+        self,
+        translate: tuple[float, float],
+        scale: tuple[float, float],
+        alpha: float = 1.0,
+    ) -> None:
+        """Sets `uTitle` (fixed texture unit), `uTranslate`, `uScale` and `uAlpha`."""
+        values: dict[str, int | float | tuple[float, float]] = {
             "uTitle": TITLE_TEXTURE_UNIT,
             "uTranslate": (float(translate[0]), float(translate[1])),
             "uScale": (float(scale[0]), float(scale[1])),
+            "uAlpha": float(alpha),
         }
         for name, value in values.items():
             uniform = self._uniform(name)
