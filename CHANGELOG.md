@@ -98,6 +98,24 @@ All notable changes to this project are documented here. The format follows
   messages, so the autosave it triggers cannot overwrite the confirmation a
   fraction of a second later ([MMY-0yo]).
 
+### Fixed
+
+- **An over-long title text no longer breaks the autosave** (OpenSpec change
+  `limit-title-text-length`): the backend has always rejected a title line
+  longer than 200 characters, but no field of the web app limited its input.
+  Since AutoMovie turns its film title into a real title element, a longer
+  title produced a project the backend refused — the autosave failed and the
+  only feedback was the generic error, naming nothing. Every field for title
+  text now stops at the same limit: the two line fields and the credits
+  entries of the title wizard and the film-title field of the AutoMovie
+  dialog. The limit blocks rather than truncates — at the limit the field
+  takes no further character and existing text is never silently shortened,
+  while pasted longer text is cut to the limit — and the credits list applies
+  it per entry, so a full entry leaves its neighbours untouched. The web app
+  takes the number from a single constant that mirrors the backend and is
+  checked against the generated API contract, so the two sides can no longer
+  drift apart unnoticed ([MMY-dm5], [MMY-vul]).
+
 ## [0.2.1] – 2026-10-04
 
 ### Fixed

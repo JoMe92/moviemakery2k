@@ -5,7 +5,7 @@ klein.
 
 ## 1. Oberfläche
 
-- [ ] TASK-WEB-078 Titeltext in jedem Eingabefeld begrenzen
+- [x] TASK-WEB-078 Titeltext in jedem Eingabefeld begrenzen
   Eine gemeinsame Konstante in `apps/web/src/titles/`, die die Grenze des
   Backends spiegelt, und ein `maxLength` daraus an den Zeilenfeldern und
   den Nachspann-Einträgen des Titel-Assistenten sowie am Filmtitel-Feld
@@ -17,7 +17,7 @@ klein.
 
 ## 2. Abschluss
 
-- [ ] TASK-INFRA-029 E2E und Doku zum begrenzten Titeltext
+- [x] TASK-INFRA-029 E2E und Doku zum begrenzten Titeltext
   Playwright gibt im Titel-Assistenten und im AutoMovie-Dialog einen zu
   langen Text ein und prüft, dass der Film entsteht und das Projekt ohne
   Fehler gespeichert wird; dazu CHANGELOG „Unreleased“ (nach

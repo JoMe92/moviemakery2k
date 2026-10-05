@@ -5,6 +5,7 @@ import type { Slide, TitleSlide } from "../lib/apiClient";
 import { mockApi } from "../store/testApi";
 import { renderApp } from "../test/renderApp";
 import { CREDITS_DURATION_DEFAULT, TITLE_DURATION_DEFAULT } from "./titleStyle";
+import { TITLE_LINE_MAX_LENGTH } from "./titleText";
 
 const image = (id: string, mediaId: string): Slide => ({
   kind: "image",
@@ -245,6 +246,93 @@ describe("title wizard (TASK-WEB-066, design.md D6, spec titles-and-credits)", (
     await user.click(button("Abbrechen"));
     expect(store.getState().titleWizardOpen).toBe(false);
     expect(store.getState().titlePreview).toBeNull();
+  });
+
+  // --- The title text limit (TASK-WEB-078, spec titles-and-credits) ---------
+
+  it("stops a text line at the limit and inserts the element the backend accepts", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup();
+    await openWizard(user);
+    await user.click(button("Weiter"));
+    const line = within(wizard()).getByLabelText("Zeile 1:");
+    await user.click(line);
+    // A pasted over-long text is cut to the limit, not refused as a whole.
+    await user.paste("A".repeat(TITLE_LINE_MAX_LENGTH + 300));
+    expect(line).toHaveValue("A".repeat(TITLE_LINE_MAX_LENGTH));
+    // At the limit the field takes no further character.
+    await user.type(line, "weiter");
+    expect(line).toHaveValue("A".repeat(TITLE_LINE_MAX_LENGTH));
+
+    await user.click(button("Weiter"));
+    await user.click(option("Einfacher Titel"));
+    await user.click(button("Weiter"));
+    await user.click(button("Fertig"));
+    const title = store.getState().slides[0] as TitleSlide;
+    expect(title.lines).toEqual(["A".repeat(TITLE_LINE_MAX_LENGTH)]);
+  });
+
+  it("stops the second text line at the limit as well", async () => {
+    const user = userEvent.setup();
+    await setup();
+    await openWizard(user);
+    await user.click(button("Weiter"));
+    const second = within(wizard()).getByLabelText("Zeile 2:");
+    await user.click(second);
+    await user.paste("B".repeat(TITLE_LINE_MAX_LENGTH + 1));
+    expect(second).toHaveValue("B".repeat(TITLE_LINE_MAX_LENGTH));
+    // The first line keeps its own limit; neither field eats the other's.
+    expect(within(wizard()).getByLabelText("Zeile 1:")).toHaveValue("");
+  });
+
+  it("stops a credits entry at the limit and leaves the other entries alone", async () => {
+    const user = userEvent.setup();
+    const { store } = await setup();
+    await openWizard(user);
+    await user.click(option("Am Filmende"));
+    await user.click(button("Weiter"));
+    await user.type(within(wizard()).getByLabelText("Zeile 1:"), "Platzhalter");
+    await user.click(button("Weiter"));
+    await user.click(option("Nach oben rollen, gestapelt"));
+    await user.click(button("Zurück"));
+    const entries = within(wizard()).getByLabelText("Einträge:");
+    await user.clear(entries);
+    // The middle entry is already full, the ones around it are not.
+    const full = "b".repeat(TITLE_LINE_MAX_LENGTH);
+    const text = `Regie: Ich\n${full}\nKamera: Auch ich`;
+    await user.paste(text);
+    expect(entries).toHaveValue(text);
+
+    // Typing inside the full entry changes nothing - not even its neighbours.
+    const caret = "Regie: Ich\n".length + TITLE_LINE_MAX_LENGTH;
+    await user.type(entries, "x", {
+      skipClick: true,
+      initialSelectionStart: caret,
+      initialSelectionEnd: caret,
+    });
+    expect(entries).toHaveValue(text);
+
+    await user.click(button("Weiter"));
+    await user.click(button("Weiter"));
+    await user.click(button("Fertig"));
+    const title = store.getState().slides.at(-1) as TitleSlide;
+    expect(title.creditEntries).toEqual(["Regie: Ich", full, "Kamera: Auch ich"]);
+  });
+
+  it("cuts a pasted over-long credits entry to the limit", async () => {
+    const user = userEvent.setup();
+    await setup();
+    await openWizard(user);
+    await user.click(option("Am Filmende"));
+    await user.click(button("Weiter"));
+    await user.type(within(wizard()).getByLabelText("Zeile 1:"), "Platzhalter");
+    await user.click(button("Weiter"));
+    await user.click(option("Nach oben rollen, gestapelt"));
+    await user.click(button("Zurück"));
+    const entries = within(wizard()).getByLabelText("Einträge:");
+    await user.clear(entries);
+    await user.paste(`Regie: Ich\n${"c".repeat(TITLE_LINE_MAX_LENGTH + 50)}`);
+    expect(entries).toHaveValue(`Regie: Ich\n${"c".repeat(TITLE_LINE_MAX_LENGTH)}`);
   });
 
   // --- Inserting and setting (spec titles-and-credits) ----------------------

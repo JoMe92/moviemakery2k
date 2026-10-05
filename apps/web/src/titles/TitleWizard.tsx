@@ -26,6 +26,7 @@ import {
   type TitlePlacement,
   titleStyleById,
 } from "./titleStyle";
+import { limitCreditsText, limitTitleLine, TITLE_LINE_MAX_LENGTH } from "./titleText";
 
 type Step = "placement" | "text" | "style" | "color";
 
@@ -206,7 +207,7 @@ function Wizard({
             className={styles.textarea}
             rows={6}
             value={creditsValue}
-            onChange={(event) => setCreditsText(event.target.value)}
+            onChange={(event) => setCreditsText(limitCreditsText(event.target.value))}
           />
         </div>
       </>
@@ -224,9 +225,10 @@ function Wizard({
               className={styles.input}
               type="text"
               autoComplete="off"
+              maxLength={TITLE_LINE_MAX_LENGTH}
               value={lines[i] ?? ""}
               onChange={(event) => {
-                const value = event.target.value;
+                const value = limitTitleLine(event.target.value);
                 setLines((prev) => {
                   const nextLines = [...prev];
                   while (nextLines.length <= i) nextLines.push("");
