@@ -4,7 +4,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 1. Datenmodell
 
-- [ ] TASK-API-021 Projektmodell Version 6: `narration: list[NarrationClip]`
+- [x] TASK-API-021 Projektmodell Version 6: `narration: list[NarrationClip]`
   (`mediaId`, `at`, `trimStart`/`trimEnd`, Lautstärke, Fades), Feld
   `clipAudioBalance` (0–100, Standard 50), Validierung (Überlappung
   erlaubt, Grenzen, höchstens 100 Clips), Migration von Version 5,
