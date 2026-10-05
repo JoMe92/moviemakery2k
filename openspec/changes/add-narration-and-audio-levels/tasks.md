@@ -28,7 +28,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 3. Vorschau
 
-- [ ] TASK-WEB-067 Audio-Engine für mehrere Spuren: `MusicPlan` zu einem
+- [x] TASK-WEB-067 Audio-Engine für mehrere Spuren: `MusicPlan` zu einem
   spur-unabhängigen `AudioPlan` verallgemeinert, Clip-Ton als zusätzliche,
   aus `trimIn`/`trimOut` und Platzierung abgeleitete Tonquelle (D1, nicht
   über `<video>`), globaler Pegelregler-Dialog „Audio-Pegel…“ im
