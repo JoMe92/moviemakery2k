@@ -47,7 +47,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 4. Abschluss
 
-- [ ] TASK-INFRA-024 E2E und Doku: Playwright-Smoke erweitert um Erzählung
+- [x] TASK-INFRA-024 E2E und Doku: Playwright-Smoke erweitert um Erzählung
   aufnehmen (mit simuliertem Mikrofon-Stream) → Export enthält sie an der
   richtigen Stelle; Pegelregler verändert das Mischverhältnis im Export
   messbar; README/CHANGELOG „Unreleased“ (nach TASK-WEB-068,
