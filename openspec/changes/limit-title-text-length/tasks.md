@@ -17,7 +17,7 @@ klein.
 
 ## 2. Abschluss
 
-- [ ] TASK-INFRA-029 E2E und Doku zum begrenzten Titeltext
+- [x] TASK-INFRA-029 E2E und Doku zum begrenzten Titeltext
   Playwright gibt im Titel-Assistenten und im AutoMovie-Dialog einen zu
   langen Text ein und prüft, dass der Film entsteht und das Projekt ohne
   Fehler gespeichert wird; dazu CHANGELOG „Unreleased“ (nach
