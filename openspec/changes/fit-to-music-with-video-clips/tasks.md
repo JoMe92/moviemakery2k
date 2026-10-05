@@ -30,7 +30,7 @@ Datenmodell oder eine API-Änderung braucht sie nicht.
 
 ## 3. Abschluss
 
-- [ ] TASK-INFRA-030 E2E und Doku zur exakten Anpassung an die Musik
+- [x] TASK-INFRA-030 E2E und Doku zur exakten Anpassung an die Musik
   Playwright baut einen Bildstreifen aus Bildern und einem Videoclip,
   fügt Musik hinzu, wählt „Film an Musik anpassen“ und prüft die
   Gesamtdauer in der Statusleiste; dazu README und CHANGELOG „Unreleased“
