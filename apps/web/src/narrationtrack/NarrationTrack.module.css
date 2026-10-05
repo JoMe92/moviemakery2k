@@ -1,0 +1,153 @@
+/* Narration bar below the music bar (add-narration-and-audio-levels D2). */
+.track {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  height: 48px;
+  border-top: 1px solid var(--y2k-border);
+  background: var(--y2k-storyboard-bg);
+}
+
+.head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  width: 84px;
+  padding: 0 4px;
+  border-right: 1px solid var(--y2k-separator);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-face));
+}
+
+.label {
+  margin: 0;
+  font-size: inherit;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.record {
+  min-width: var(--y2k-touch-target);
+  padding: 0 4px;
+}
+
+.record[aria-pressed="true"] {
+  background: var(--y2k-icon-red);
+  color: var(--y2k-face-light);
+  font-weight: bold;
+}
+
+/* Time axis: scrolls horizontally on its own, like the music lane. */
+.lane {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  padding: 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.hint {
+  flex: 1;
+  margin: 0;
+  color: var(--y2k-text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The blocks are positioned on the axis, not laid out in a row: a clip sits at
+   its own `at`, and two clips may overlap. */
+.list {
+  position: relative;
+  height: 38px;
+  min-width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slot {
+  position: absolute;
+  top: 0;
+  display: flex;
+}
+
+.block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 4px;
+  height: 38px;
+  padding: 0 4px;
+  overflow: hidden;
+  border: 1px solid var(--y2k-border-strong);
+  border-radius: var(--y2k-radius);
+  background: linear-gradient(to bottom, var(--y2k-face-light), var(--y2k-storyboard-slot));
+  color: var(--y2k-text);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+}
+
+.block[aria-pressed="true"] {
+  border-color: var(--y2k-select);
+  outline: 2px solid var(--y2k-select);
+  outline-offset: -3px;
+}
+
+.block[data-dragging="true"] {
+  cursor: grabbing;
+  opacity: 0.8;
+}
+
+.block:focus-visible {
+  outline: 2px solid var(--y2k-focus);
+  outline-offset: -3px;
+}
+
+.name,
+.duration {
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.duration {
+  color: var(--y2k-text-muted);
+}
+
+.more {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--y2k-border-strong);
+  background: var(--y2k-face-light);
+  font: inherit;
+  line-height: 1;
+}
+
+/* Recording hint, microphone error or the clip limit; always in the DOM as a
+   live region, so a screen reader hears it change. */
+.status {
+  display: flex;
+  flex: none;
+  align-items: center;
+  max-width: 220px;
+  margin: 0;
+  padding: 0 6px;
+  border-left: 1px solid var(--y2k-separator);
+  color: var(--y2k-text-muted);
+}
+
+.status[data-error="true"] {
+  color: var(--y2k-icon-red);
+  font-weight: bold;
+}

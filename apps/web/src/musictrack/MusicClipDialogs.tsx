@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { formatNumber, parseDecimal } from "../i18n/format";
 import { useT } from "../i18n/useT";
-import type { MusicClip } from "../lib/apiClient";
+import type { MusicClip, NarrationClip } from "../lib/apiClient";
 import { isTouchLayout, useLayoutMode } from "../shell/layoutMode";
 import { MUSIC_CLIP_MIN_LENGTH, MUSIC_VOLUME } from "../store/musicOps";
 import { Button } from "../ui/Button";
@@ -27,8 +27,11 @@ export function parseVolumePercent(text: string): number | null {
 
 export interface VolumeDialogProps {
   open: boolean;
-  /** Position of the clip on the music track (1-based), for the title. */
+  /** Position of the clip on its track (1-based), for the title. */
   number: number;
+  /** Dialog title; defaults to the music track's. The narration track passes
+   * its own, because everything else about the dialog is track-neutral. */
+  title?: string;
   /** Linear gain, 1 = 100 %. */
   volume: number;
   /** Applies the gain; `false` = refused (the dialog stays open and states the range). */
@@ -37,7 +40,14 @@ export interface VolumeDialogProps {
 }
 
 /** "Volume…": slider and number field, 0–200 %. */
-export function VolumeDialog({ open, number, volume, onConfirm, onClose }: VolumeDialogProps) {
+export function VolumeDialog({
+  open,
+  number,
+  title,
+  volume,
+  onConfirm,
+  onClose,
+}: VolumeDialogProps) {
   const { t, locale } = useT();
   const sliderId = useId();
   const fieldId = useId();
@@ -73,7 +83,7 @@ export function VolumeDialog({ open, number, volume, onConfirm, onClose }: Volum
   return (
     <Dialog
       open={open}
-      title={t("musicTrack.volumeTitle", { number })}
+      title={title ?? t("musicTrack.volumeTitle", { number })}
       onClose={onClose}
       footer={
         <>
@@ -149,7 +159,9 @@ export function VolumeDialog({ open, number, volume, onConfirm, onClose }: Volum
 export interface TrimDialogProps {
   open: boolean;
   number: number;
-  clip: Pick<MusicClip, "trimStart" | "trimEnd">;
+  /** Dialog title; defaults to the music track's (see `VolumeDialogProps`). */
+  title?: string;
+  clip: Pick<MusicClip | NarrationClip, "trimStart" | "trimEnd">;
   /** Duration of the audio file in seconds. */
   fileDuration: number;
   /** Applies the range (`trimEnd` null = end of the file); `false` = refused. */
@@ -182,6 +194,7 @@ const DISPLAY_TOLERANCE = 0.005;
 export function TrimDialog({
   open,
   number,
+  title,
   clip,
   fileDuration,
   onConfirm,
@@ -320,7 +333,7 @@ export function TrimDialog({
   return (
     <Dialog
       open={open}
-      title={t("musicTrack.trimTitle", { number })}
+      title={title ?? t("musicTrack.trimTitle", { number })}
       onClose={onClose}
       footer={
         <>

@@ -69,6 +69,17 @@ import {
   updateMusicClip as updateMusicClipOp,
 } from "./musicOps";
 import {
+  insertNarrationClip,
+  isValidNarrationAt,
+  isValidNarrationTrim,
+  isValidNarrationVolume,
+  NARRATION_TRACK_MAX,
+  type NarrationClipPatch,
+  newNarrationClip,
+  removeNarrationClip as removeNarrationClipOp,
+  updateNarrationClip as updateNarrationClipOp,
+} from "./narrationOps";
+import {
   CLIP_AUDIO_BALANCE,
   insertSlide,
   isValidClipAudioBalance,
@@ -168,7 +179,8 @@ export type EditRequestInput = EditRequest extends infer R
  */
 export type RevealRequest =
   | { kind: "slide"; slideId: string; seq: number }
-  | { kind: "musicClip"; clipId: string; seq: number };
+  | { kind: "musicClip"; clipId: string; seq: number }
+  | { kind: "narrationClip"; clipId: string; seq: number };
 
 /** A reveal request before the store numbers it. */
 export type RevealRequestInput = RevealRequest extends infer R
@@ -233,6 +245,8 @@ export interface AppState {
   selection: Selection;
   /** Selected clip on the music track (exclusive with `selection`). */
   musicSelection: string | null;
+  /** Selected clip on the narration track (exclusive with the other two). */
+  narrationSelection: string | null;
   /** Undo history (design.md D1), most recent step last; tab-only, not persisted. */
   undoStack: HistoryEntry[];
   /** Redo history; cleared by any new change after an undo. */
@@ -414,6 +428,28 @@ export interface AppState {
    * returns whether the change was applied.
    */
   setClipAudioBalance(balance: number): boolean;
+  /** Select a clip on the narration track (null clears); ends the other selections. */
+  selectNarrationClip(clipId: string | null): void;
+  /**
+   * Put a recording on the narration track at `at` seconds (spec
+   * narration-track "Erzählung aufnehmen"); autosaved. Refuses a non-audio
+   * medium, a full track and an `at` outside 0–60000 s, and returns the new
+   * clip's id or null.
+   */
+  addNarrationClip(mediaId: string, at: number, length?: number): string | null;
+  /**
+   * Move a clip to a new start time (spec narration-track "Clip verschieben");
+   * an `at` outside the range changes nothing. Unlike the music track no other
+   * clip moves — every clip owns its own `at`.
+   */
+  moveNarrationClip(clipId: string, at: number): boolean;
+  removeNarrationClip(clipId: string): void;
+  /**
+   * Change the start time, trim, volume or fades of a narration clip
+   * (autosaved). An invalid value changes nothing; returns whether the change
+   * was applied.
+   */
+  updateNarrationClip(clipId: string, patch: NarrationClipPatch): boolean;
   /**
    * Clip → "Fit movie to music" (add-music-track D8): sets all picture
    * durations at once (one change, autosaved). Changes nothing if the music
@@ -558,12 +594,24 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       scheduleSave();
     }
 
+    /** Store a changed narration track; keeps the selection if the clip is still there. */
+    function commitNarration(narration: NarrationClip[]): void {
+      const { narrationSelection } = get();
+      pushHistory(snapshot());
+      const stillThere =
+        narrationSelection !== null && narration.some((c) => c.id === narrationSelection);
+      set({ narration, narrationSelection: stillThere ? narrationSelection : null });
+      scheduleSave();
+    }
+
     /** Jump to a history entry (undo/redo): restores selections if still valid. */
     function restore(entry: HistoryEntry): void {
-      const { selection, musicSelection } = get();
+      const { selection, musicSelection, narrationSelection } = get();
       const stillSlide = selection && entry.slides.some((s) => s.id === selection.slideId);
       const stillMusic =
         musicSelection !== null && entry.music.some((c) => c.id === musicSelection);
+      const stillNarration =
+        narrationSelection !== null && entry.narration.some((c) => c.id === narrationSelection);
       set({
         slides: entry.slides,
         music: entry.music,
@@ -571,6 +619,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         clipAudioBalance: entry.clipAudioBalance,
         selection: stillSlide ? selection : null,
         musicSelection: stillMusic ? musicSelection : null,
+        narrationSelection: stillNarration ? narrationSelection : null,
         playback: playbackFor(entry.slides),
       });
       scheduleSave();
@@ -625,6 +674,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       timelineView: false,
       selection: null,
       musicSelection: null,
+      narrationSelection: null,
       undoStack: [],
       redoStack: [],
       clipboard: null,
@@ -707,8 +757,8 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         // Selecting in the filmstrip always ends a transition demo (design.md D7).
         const { playback, slides } = get();
         const index = selection ? slides.findIndex((s) => s.id === selection.slideId) : -1;
-        // One selection at a time: a picture ends the music selection.
-        if (selection) set({ musicSelection: null });
+        // One selection at a time: a picture ends both clip selections.
+        if (selection) set({ musicSelection: null, narrationSelection: null });
         if (index >= 0 && !playback.playing) {
           set({
             selection,
@@ -936,8 +986,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
         const project = await api.deleteMedia(id);
         const { selection } = get();
         const stillThere = selection && project.slides.some((s) => s.id === selection.slideId);
-        const { musicSelection } = get();
+        const { musicSelection, narrationSelection } = get();
         const musicStillThere = project.music.some((c) => c.id === musicSelection);
+        const narrationStillThere = project.narration.some((c) => c.id === narrationSelection);
         set({
           media: get().media.filter((m) => m.id !== id),
           slides: project.slides,
@@ -945,6 +996,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           narration: project.narration,
           selection: stillThere ? selection : null,
           musicSelection: musicStillThere ? musicSelection : null,
+          narrationSelection: narrationStillThere ? narrationSelection : null,
           playback: playbackFor(project.slides),
         });
       },
@@ -1115,7 +1167,9 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
 
       selectMusicClip(clipId) {
         set(
-          clipId === null ? { musicSelection: null } : { musicSelection: clipId, selection: null },
+          clipId === null
+            ? { musicSelection: null }
+            : { musicSelection: clipId, selection: null, narrationSelection: null },
         );
       },
       addMusicClip(mediaId, index) {
@@ -1131,6 +1185,44 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
       },
       removeMusicClip(clipId) {
         commitMusic(removeMusicClipOp(get().music, clipId));
+      },
+      selectNarrationClip(clipId) {
+        set(
+          clipId === null
+            ? { narrationSelection: null }
+            : { narrationSelection: clipId, selection: null, musicSelection: null },
+        );
+      },
+      addNarrationClip(mediaId, at, length) {
+        // Only audio belongs on the narration track (spec narration-track).
+        const { media, narration } = get();
+        if (media.find((m) => m.id === mediaId)?.kind !== "audio") return null;
+        if (narration.length >= NARRATION_TRACK_MAX) return null;
+        if (!isValidNarrationAt(at)) return null;
+        const clip = newNarrationClip(mediaId, at, length ?? null);
+        commitNarration(insertNarrationClip(narration, clip));
+        return clip.id;
+      },
+      moveNarrationClip(clipId, at) {
+        return get().updateNarrationClip(clipId, { at });
+      },
+      removeNarrationClip(clipId) {
+        commitNarration(removeNarrationClipOp(get().narration, clipId));
+      },
+      updateNarrationClip(clipId, patch) {
+        const { narration, media } = get();
+        const clip = narration.find((c) => c.id === clipId);
+        if (!clip) return false;
+        const next = { ...clip, ...patch };
+        if (!isValidNarrationAt(next.at)) return false;
+        if (!isValidNarrationVolume(next.volume)) return false;
+        if (patch.trimStart !== undefined || patch.trimEnd !== undefined) {
+          const item = media.find((m) => m.id === clip.mediaId);
+          if (item?.kind !== "audio") return false;
+          if (!isValidNarrationTrim(next.trimStart, next.trimEnd, item.duration)) return false;
+        }
+        commitNarration(updateNarrationClipOp(narration, clipId, patch));
+        return true;
       },
       setClipAudioBalance(balance) {
         if (!isValidClipAudioBalance(balance)) return false;
@@ -1209,6 +1301,7 @@ export function createAppStore(api: AppApi, options: AppStoreOptions = {}): AppS
           narration: [],
           clipAudioBalance: CLIP_AUDIO_BALANCE.default,
           musicSelection: null,
+          narrationSelection: null,
           slides: [],
           selection: null,
           playback: STOPPED,

@@ -56,7 +56,7 @@ flowchart LR
 
 | Component | Path | Responsibility |
 |---|---|---|
-| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio for all three tracks (`audio/AudioEngine.ts`) |
+| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard, music track and narration bar with microphone recording, preview player, WebGL2 renderer, preview audio for all three tracks (`audio/AudioEngine.ts`) |
 | Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with the audio mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
 | Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition and per effect plus the shared preludes/epilogues/vertex shader; used by preview and export |
 | Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
@@ -249,6 +249,34 @@ pictures with the overlapping time model of section 3, rounds to 0.25 s,
 clamps to 0.5–60 s and gives the remainder to the last picture; if the target
 is out of reach, it reports the reachable minimum or maximum and changes
 nothing.
+
+### 4a. Narration bar and recording
+
+- The narration bar (`narrationtrack/`) sits below the music bar at the same
+  3 px per second, but it is a **time axis**, not a row: a block is positioned
+  at its clip's own `at`, so two overlapping clips stay where they are and are
+  drawn over each other. Hiding one would lie — both are audible.
+- Moving a clip means setting that number: drag the block sideways, nudge it
+  with the arrow keys (0.25 s, 1 s with Shift) or pick *Move to the playback
+  position* from its context menu. No other clip ever moves with it.
+- The rest of the context menu is the music clip's pattern — *Remove* (with a
+  confirmation, because a recording is work), *Volume…*, *Fade In/Out*,
+  *Trim…*. The volume and trim dialogs are the music track's, with their title
+  replaced: everything else about them is track-neutral.
+- **Recording** (`audio/useNarrationRecorder.ts`): the record button opens
+  `getUserMedia({audio: true})`, starts a `MediaRecorder` and starts playback,
+  all in the one click — `getUserMedia` and the `AudioContext` both need a user
+  gesture, and a recording that began a tick later would land in the wrong
+  place. Its start time is `playback.time`, which *is* the audio clock (the
+  player feeds `AudioEngine.clockTime()` back into it), so no second timestamp
+  exists to disagree with it.
+- On stop the recording is uploaded through the ordinary audio import (it
+  appears in *My Music* like any other file) and a clip is created at the
+  remembered start time, selected and scrolled into view. A denied microphone,
+  a missing device, a browser that cannot record and an empty recording each
+  get their own readable message; none of them creates a clip.
+- Everything the browser provides is injected (`RecorderDeps`), so the unit
+  tests drive a complete recording without a microphone.
 
 ### 5. Renderer
 
@@ -629,7 +657,7 @@ logic:
   `musicSelection`). `ActionBar` offers the element's actions; they call the
   store functions the desktop uses (`moveSlide`, `removeSlide`,
   `updateMusicClip` …) or raise an **edit request** (`requestEdit`, like
-  `requestImport`): the storyboard strip and music track own their dialogs
+  `requestImport`): the storyboard strip, music track and narration bar own their dialogs
   and context menus and open them for a request, a long press
   (`ui/useLongPress`, 400 ms within 8 px) or the *⋯* button.
 - **Picking.** `media/CollectionSheet` hosts `MediaCollection` in picking
@@ -706,7 +734,7 @@ covers the switch to English and the browser-language detection.
 |---|---|---|
 | Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, project schema v6 with the narration track and the global audio level (validation, migration from v5), the two-stage audio mixdown (narration at its own `at`, overlapping clips, video-clip sound, the level's ratio measured with `astats`, a video without an audio track), cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
 | Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
-| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), narration and video-clip-sound schedules, the global audio level, *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), clip sound through the store and the hook, music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
+| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), narration and video-clip-sound schedules, the global audio level, *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), clip sound through the store and the hook, music collection and music track, narration bar (recording, denied microphone, moving by drag and by keyboard, overlapping clips, remove with a confirmation), narration operations and validation, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
 | E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Device profiles iPhone 13, Pixel 7 and iPad (gen 7) with touch: no horizontal scroll, 44 px targets, the whole flow by tapping in portrait and landscape (`e2e/test_mobile.py`); slideshow flow in the real app; LAN mode with access token, token link, cookie and manifest (`e2e/test_lan_mode.py`); language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |

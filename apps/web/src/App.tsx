@@ -8,6 +8,7 @@ import { LibraryPane } from "./media/LibraryPane";
 import { MediaCollection } from "./media/MediaCollection";
 import { UploadPanel } from "./media/UploadPanel";
 import { MusicTrack } from "./musictrack/MusicTrack";
+import { NarrationTrack } from "./narrationtrack/NarrationTrack";
 import { Player } from "./player/Player";
 import { InstallInstructionsDialog } from "./pwa/InstallInstructionsDialog";
 import { AccessDialog } from "./shell/AccessDialog";
@@ -74,7 +75,7 @@ export function App() {
 
   const title = t("shell.windowTitle", { app: t("app.name") });
   const storyboard = (
-    <StoryboardPane musicTrack={<MusicTrack />}>
+    <StoryboardPane musicTrack={<MusicTrack />} narrationTrack={<NarrationTrack />}>
       {timelineView ? <TimelineView /> : <StoryboardStrip />}
     </StoryboardPane>
   );

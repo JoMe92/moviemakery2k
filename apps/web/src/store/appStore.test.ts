@@ -344,6 +344,89 @@ describe("appStore", () => {
     expect(store.getState().clipAudioBalance).toBe(50);
   });
 
+  it("keeps the narration track editable and undoable (D2)", async () => {
+    const api = mockApi({
+      listMedia: vi.fn(async () => [audioItem("rec", 10), mediaItem("a")]),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = () => store.getState();
+
+    const id = st().addNarrationClip("rec", 4.25);
+    expect(id).not.toBeNull();
+    expect(st().narration).toEqual([
+      {
+        id,
+        mediaId: "rec",
+        at: 4.25,
+        trimStart: 0,
+        trimEnd: null,
+        volume: 1,
+        fadeIn: false,
+        fadeOut: false,
+      },
+    ]);
+    await store.getState().flushSave();
+    expect(api.saved.at(-1)?.narration).toEqual(st().narration);
+
+    // Moving changes the one clip's own start time.
+    expect(st().moveNarrationClip(id as string, 7.5)).toBe(true);
+    expect(st().narration[0]?.at).toBe(7.5);
+    // Out of range, or a clip that is gone: nothing changes.
+    expect(st().moveNarrationClip(id as string, -1)).toBe(false);
+    expect(st().moveNarrationClip("missing", 1)).toBe(false);
+    expect(st().narration[0]?.at).toBe(7.5);
+
+    // Volume and trim are validated like a music clip's.
+    expect(st().updateNarrationClip(id as string, { volume: 2.5 })).toBe(false);
+    expect(st().updateNarrationClip(id as string, { volume: 1.5 })).toBe(true);
+    expect(st().updateNarrationClip(id as string, { trimStart: 0, trimEnd: 20 })).toBe(false);
+    expect(st().updateNarrationClip(id as string, { trimStart: 1, trimEnd: 4 })).toBe(true);
+    expect(st().narration[0]).toMatchObject({ volume: 1.5, trimStart: 1, trimEnd: 4 });
+
+    store.getState().undo();
+    expect(st().narration[0]).toMatchObject({ trimStart: 0, trimEnd: null });
+    store.getState().removeNarrationClip(id as string);
+    expect(st().narration).toEqual([]);
+    store.getState().undo();
+    expect(st().narration).toHaveLength(1);
+  });
+
+  it("refuses a non-audio medium and an `at` outside the range on the narration track", async () => {
+    const store = createAppStore(mockApi());
+    await store.getState().init();
+    // "a" is a picture (testApi's media list).
+    expect(store.getState().addNarrationClip("a", 0)).toBeNull();
+    expect(store.getState().addNarrationClip("gone", 0)).toBeNull();
+    expect(store.getState().narration).toEqual([]);
+  });
+
+  it("keeps the three selections exclusive", async () => {
+    const api = mockApi({
+      listMedia: vi.fn(async () => [audioItem("rec", 10), mediaItem("a")]),
+    });
+    const store = createAppStore(api);
+    await store.getState().init();
+    const st = () => store.getState();
+    store.getState().addSlide("a");
+    const slideId = st().slides[0]?.id as string;
+    const clipId = st().addNarrationClip("rec", 1) as string;
+
+    store.getState().selectNarrationClip(clipId);
+    expect([st().narrationSelection, st().musicSelection, st().selection]).toEqual([
+      clipId,
+      null,
+      null,
+    ]);
+    store.getState().select({ kind: "slide", slideId });
+    expect(st().narrationSelection).toBeNull();
+    store.getState().selectNarrationClip(clipId);
+    expect(st().selection).toBeNull();
+    store.getState().addMusicClip("rec");
+    store.getState().selectMusicClip(st().music[0]?.id as string);
+    expect(st().narrationSelection).toBeNull();
+  });
+
   it("setClipAudioBalance takes whole steps from 0 to 100 and autosaves (D4)", async () => {
     const api = mockApi();
     const store = createAppStore(api);

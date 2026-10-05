@@ -13,15 +13,18 @@ export interface StoryboardPaneProps {
   children?: ReactNode;
   /** Music track below the storyboard strip (add-music-track D7). */
   musicTrack?: ReactNode;
+  /** Narration bar below the music track (add-narration-and-audio-levels D2). */
+  narrationTrack?: ReactNode;
 }
 
 /**
- * Full-width storyboard with the music track below it. The toggle button
+ * Full-width storyboard with the music track and the narration bar below it, in
+ * that order (design.md D2). The toggle button
  * switches the body between the filmstrip and the timeline view (design.md
  * D7) - both read the same store fields, so neither selection nor the
  * playhead position change when switching.
  */
-export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
+export function StoryboardPane({ children, musicTrack, narrationTrack }: StoryboardPaneProps) {
   const { t } = useT();
   const headingId = useId();
   const timelineView = useAppStore((s) => s.timelineView);
@@ -74,6 +77,7 @@ export function StoryboardPane({ children, musicTrack }: StoryboardPaneProps) {
         {isEmpty ? <p className={styles.hint}>{t("shell.storyboardHint")}</p> : children}
       </div>
       {musicTrack}
+      {narrationTrack}
     </section>
   );
 }

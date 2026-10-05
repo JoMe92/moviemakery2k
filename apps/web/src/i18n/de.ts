@@ -329,6 +329,37 @@ export const de = {
     trimRange:
       "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen, die Länge mindestens {length} s betragen.",
   },
+  narrationTrack: {
+    label: "Erzählung",
+    list: "Erzählungsleiste",
+    emptyHint: "Nehmen Sie mit „Aufnehmen“ während der Wiedergabe eine Erzählung auf.",
+    record: "Aufnehmen",
+    stopRecording: "Aufnahme beenden",
+    recordingHint: "Aufnahme läuft – „Aufnahme beenden“ oder Esc stoppt sie.",
+    fullHint: "Die Erzählungsleiste ist voll (höchstens {max} Clips).",
+    clip: "Erzählungs-Clip {number}: {name}, ab {start}, {duration}",
+    clipMenu: "Erzählungs-Clip {number} der Erzählungsleiste",
+    clipMore: "Mehr zu Erzählungs-Clip {number}",
+    missingAudio: "fehlende Audiodatei",
+    remove: "Entfernen",
+    removeTitle: "Erzählungs-Clip entfernen",
+    removeMessage:
+      "Erzählungs-Clip {number} aus der Erzählungsleiste entfernen? Die Aufnahme bleibt in der Mediensammlung.",
+    moveToPlayhead: "An die Abspielposition verschieben",
+    volume: "Lautstärke…",
+    fadeIn: "Einblenden",
+    fadeOut: "Ausblenden",
+    trim: "Kürzen…",
+    volumeTitle: "Lautstärke von Erzählungs-Clip {number}",
+    trimTitle: "Erzählungs-Clip {number} kürzen",
+    error: {
+      denied:
+        "Kein Zugriff auf das Mikrofon. Erlauben Sie den Zugriff im Browser und versuchen Sie es erneut.",
+      unavailable: "Es wurde kein Mikrofon gefunden, das dieser Browser aufnehmen kann.",
+      failed: "Die Aufnahme ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      upload: "Die Aufnahme konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    },
+  },
   stepper: {
     decrease: "{label} verringern",
     increase: "{label} erhöhen",
