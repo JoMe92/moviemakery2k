@@ -30,11 +30,11 @@ Vorgaben des Product Owners (2026-10-03):
   acht auf (unabhängig), nutzt aber dieselbe Render-Pipeline wie
   `add-timeline-editing` (Videoclips) und `add-transition-catalog`
   (Shader-Katalog-Muster).
-- Scope auf die 22 zustandslosen Bild-Effekte begrenzt.
+- Scope auf die 21 zustandslosen Bild-Effekte begrenzt.
 
 ## Goals / Non-Goals
 
-**Goals:** Ein neuer, zu `transitions.json` analoger Katalog mit 22
+**Goals:** Ein neuer, zu `transitions.json` analoger Katalog mit 21
 Bild-Effekten; jedes Bildstreifen-Element kann genau einen davon tragen,
 sichtbar in Vorschau und Export identisch; der bestehende Übergangs-Pass
 bleibt unverändert, Effekte laufen als zusätzlicher, vorgeschalteter
@@ -49,12 +49,22 @@ Rendering-Durchgang.
 `id`, zweisprachigem Namen, `shader`, festen `params` und `source`
 (Movie-Maker-XML-GUID bzw. Hinweis auf Unsicherheit wie beim bestehenden
 Übergangskatalog). Dieselbe Validierung beim Start wie bei
-`transitions.json`. Die 22 Einträge: Sepia, Negative, Posterisieren,
+`transitions.json`. Die 21 Einträge: Sepia, Negative, Posterisieren,
 Schwellenwert, Schwarzweiß, Helligkeit+, Helligkeit−, Unschärfe, Verpixeln
 (als Effekt, eigener Eintrag von der gleichnamigen Übergangs-Form
 unterschieden), Film-Alterung Alt/Älter/Am ältesten (`Age` 30/60/90),
 Filmkörnung, Kohlestift, Federzeichnung, Aquarell, Spiegeln horizontal,
 Spiegeln vertikal, Rotieren 90°, Rotieren 180°, Rotieren 270°.
+
+Die Zahl 21 ist die Rechnung aus `docs/research/movie-maker-reference.md`
+§3: 30 Effekte in der Original-XML minus die neun ausdrücklich
+zurückgestellten zeitabhängigen (Hue Cycle, Fade In/Out von/zu
+Schwarz/Weiß, Ease In/Out) und Geschwindigkeits-Effekte (Speed Up Double,
+Slow Down Half). Die Aufzählung oben nennt genau 21 Einträge. Eine frühere
+Fassung dieser Change schrieb an mehreren Stellen „22“, ohne einen 22.
+Effekt zu nennen — ein Zählfehler aus der Planung, korrigiert in der
+Triage-Sitzung vom 2026-10-05 (Discovery auf mmy-9p8); `effects.json`
+wurde von Anfang an mit 21 Einträgen gebaut und getestet.
 
 ### D2 – Ein-Textur-Shader und zusätzlicher Rendering-Durchgang
 Ein Effekt-Shader hat genau eine Eingabetextur und ein Fortschritts-loses

@@ -71,9 +71,19 @@ Ein neuer Zeichenmodus (`gl.enable(gl.BLEND)`, `gl.blendFunc(gl.SRC_ALPHA,
 gl.ONE_MINUS_SRC_ALPHA)`) zeichnet die Titel-Textur **nach** dem
 bestehenden Still-/Übergangs-/Effekt-Durchgang über das Ergebnis, nur wenn
 ein Overlay-Titel gesetzt ist. Der Web-Renderer und der Backend-
-`FrameRenderer` bekommen diesen Modus gleich; kein Blend bei einem
-freistehenden Titel-Element (das ist bereits eine vollständige, opake
-Bildquelle).
+`FrameRenderer` bekommen diesen Modus gleich.
+
+Ein freistehendes Titel-Element wird im statischen Fall ohne Blend
+gezeichnet (es ist bereits eine vollständige, opake Bildquelle). Während
+seiner Entrance- oder Exit-Phase `fade` gilt das nicht: ein opaker
+Zeichendurchgang ignoriert Alpha, ein Ein- oder Ausblenden wäre also
+unsichtbar. Dort wird dasselbe Titel-Bild über ein auf Schwarz geleertes
+Bild geblendet, solange seine Phasen-Alpha unter 1 liegt — weil der
+Raster nach D1 seinen eigenen schwarzen Hintergrund trägt, ergibt das
+`Text·a + Schwarz·(1−a)`, also genau das Ergebnis von D1. An der
+Rasterisierung ändert sich nichts. Nachgetragen in der Triage-Sitzung vom
+2026-10-05: die Umsetzung (mmy-z5f) hat das so gelöst und gemeldet, dass
+die Formulierung oben enger war als nötig.
 
 ### D3 – Vertex-Transform für Position und Zoom
 Ein neuer Vertex-Shader-Uniform (Translation + Skalierung) ersetzt die

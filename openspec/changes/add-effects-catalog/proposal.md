@@ -8,7 +8,7 @@ sichtbar, aber ohne Funktion. Die Feature-Lückenanalyse (Orchestrator,
 Schwarzweiß, Helligkeit, Unschärfe, Film-Alterung, Spiegeln, Rotieren …) als
 nächste Lücke nach den Übergängen.
 
-Von den rund 30 Original-Effekten sind **22 zustandslose Bild-Effekte**:
+Von den rund 30 Original-Effekten sind **21 zustandslose Bild-Effekte**:
 eine Textur hinein, dieselbe Textur mit angewendetem Effekt heraus — genau
 das Muster, das die Übergangs-Shader bereits für zwei Texturen beherrschen,
 nur mit einer. Die übrigen sind entweder **zeitabhängig am Element-Rand**
@@ -16,14 +16,14 @@ nur mit einer. Die übrigen sind entweder **zeitabhängig am Element-Rand**
 animiert) oder **eine Zeitabbildung auf einem Videoclip** (Speed Up Double,
 Slow Down Half — ändert, wie schnell `trimIn..trimOut` abgespielt wird,
 keine Pixel-Operation). Der Product Owner hat entschieden, diese Change auf
-die 22 zustandslosen Bild-Effekte zu begrenzen; die zeitabhängigen Effekte
+die 21 zustandslosen Bild-Effekte zu begrenzen; die zeitabhängigen Effekte
 und die Geschwindigkeits-Effekte bleiben zurückgestellt (eigener,
 unterschiedlicher Mechanismus je Gruppe, siehe Nicht-Ziele).
 
 ## What Changes
 
 - **Neuer Effekt-Katalog** (`packages/catalog/effects.json`, analog
-  `transitions.json`): 22 Einträge (Sepia, Negative, Posterisieren,
+  `transitions.json`): 21 Einträge (Sepia, Negative, Posterisieren,
   Schwellenwert, Schwarzweiß, Helligkeit +/-, Unschärfe, Verpixeln,
   Film-Alterung ×3, Filmkörnung, Kohlestift, Federzeichnung, Aquarell,
   Spiegeln horizontal/vertikal, Rotieren 90°/180°/270°), jeweils mit

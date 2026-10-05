@@ -39,8 +39,10 @@ den Effekt des Stils (falls vorhanden) auf jedes Bild- und
 Videoclip-Element anwenden und ein Titel-Element mit dem eingegebenen
 Filmtitel am Anfang sowie eines mit „Ende“ (bzw. „The End“ auf Englisch)
 am Schluss einfügen, beide im Titel-Stil des gewählten AutoMovie-Stils.
-Hat das Projekt eine Musikspur, MUST anschließend „Film an Musik
-anpassen“ auf das Ergebnis angewendet werden. Das entstandene Projekt
+Ist das Filmtitel-Feld leer oder enthält es nur Leerzeichen, MUST der
+Titel am Anfang entfallen; der Titel am Schluss MUST in jedem Fall
+eingefügt werden. Hat das Projekt eine Musikspur, MUST anschließend „Film
+an Musik anpassen“ auf das Ergebnis angewendet werden. Das entstandene Projekt
 MUST sich danach wie jedes andere Projekt bearbeiten lassen.
 
 #### Scenario: Klassischer Stil ohne Musik
@@ -55,6 +57,12 @@ MUST sich danach wie jedes andere Projekt bearbeiten lassen.
 - **THEN** enthält der Bildstreifen danach „Kreis“-Übergänge zwischen
   allen Elementen, und die Gesamtlänge entspricht der Musik (Spec
   music-track, „Film an Musik anpassen“)
+
+#### Scenario: Ohne Filmtitel
+- **WHEN** ein Benutzer das Filmtitel-Feld leer lässt und einen Stil
+  wählt und bestätigt
+- **THEN** beginnt der Bildstreifen mit dem ersten Bild, ohne Titel-Element
+  und ohne eingehenden Übergang davor, und endet mit dem Titel „Ende“
 
 #### Scenario: Alter Film mit Effekt
 - **WHEN** ein Benutzer den Stil „Alter Film“ wählt

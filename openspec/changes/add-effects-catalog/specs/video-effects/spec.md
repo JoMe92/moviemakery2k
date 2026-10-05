@@ -8,7 +8,7 @@ englischen Anzeigenamen, seine Parameter mit festen Werten und die Quelle
 der Parameter enthalten. Die Oberfläche MUST den Namen in der gewählten
 Sprache zeigen. Das Backend MUST den Katalog über die API ausliefern und
 MUST beim Start abbrechen, wenn der Katalog ungültig ist. Der Katalog MUST
-genau diese 22 Einträge enthalten: Sepia, Negative, Posterisieren,
+genau diese 21 Einträge enthalten: Sepia, Negative, Posterisieren,
 Schwellenwert, Schwarzweiß, Helligkeit+, Helligkeit−, Unschärfe, Verpixeln,
 Film-Alterung Alt, Film-Alterung Älter, Film-Alterung Am ältesten,
 Filmkörnung, Kohlestift, Federzeichnung, Aquarell, Spiegeln horizontal,
@@ -16,7 +16,7 @@ Spiegeln vertikal, Rotieren 90°, Rotieren 180°, Rotieren 270°.
 
 #### Scenario: Katalog abrufen
 - **WHEN** ein Client den Effekt-Katalog abruft
-- **THEN** erhält er 22 Einträge mit ID, deutschem und englischem Namen,
+- **THEN** erhält er 21 Einträge mit ID, deutschem und englischem Namen,
   Parametern und Quelle
 
 #### Scenario: Ungültiger Katalog

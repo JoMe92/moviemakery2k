@@ -59,7 +59,16 @@ Einträge, jeder mit `id`, zweisprachigem Namen, Kurzbeschreibung,
    (falls gesetzt).
 4. Ein Titel-Element mit dem eingegebenen Filmtitel, Stil `titleStyleId`,
    am Anfang; ein Titel-Element mit „Ende“ (`de`) bzw. „The End“ (`en`),
-   derselbe Stil, am Schluss.
+   derselbe Stil, am Schluss. Ist das Filmtitel-Feld leer oder enthält es
+   nur Leerzeichen, entfällt der Titel am Anfang ganz — der Film beginnt
+   dann mit dem ersten Bild, das folglich auch keinen eingehenden Übergang
+   trägt. Der Titel am Schluss hat einen eigenen Text und wird immer
+   eingefügt. Die Alternative wäre ein stilles, leeres Titel-Element von
+   fünf Sekunden am Anfang jedes AutoMovie, dessen Benutzer das Feld
+   übersprungen hat: sichtbar fehlerhaft statt bloß unbestimmt. Der Dialog
+   verlangt den Filmtitel deshalb auch nicht („Erstellen“ hängt allein am
+   Stil). Entschieden in der Umsetzung (mmy-0pz) und hier nachgetragen,
+   weil weder dieser Schritt noch die Spec den leeren Fall nannte.
 5. Hat das Projekt eine Musikspur, wird `fitToMusic` (unverändert) auf das
    Ergebnis angewendet; bei `requiresMusic: true` ohne Musikspur ist der
    Stil im Dialog nicht wählbar.
