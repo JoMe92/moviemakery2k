@@ -32,6 +32,9 @@ FORMATS: dict[str, tuple[str, str, list[str], str]] = {
     "ogg-vorbis": ("ogg", "libvorbis", [], "vorbis"),
     "ogg-opus": ("ogg", "libopus", [], "opus"),
     "flac": ("flac", "flac", [], "flac"),
+    # An audio-only WebM: what MediaRecorder produces for a narration recording
+    # (add-narration-and-audio-levels design.md D3).
+    "webm-opus": ("webm", "libopus", [], "opus"),
 }
 
 

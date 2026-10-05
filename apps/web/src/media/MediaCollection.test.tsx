@@ -206,7 +206,9 @@ describe("media collection", () => {
     const user = userEvent.setup();
     const api = mockApi({
       deleteMedia: vi.fn(async () => ({
-        schemaVersion: 5 as const,
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
         music: [],
         slides: [
           {
@@ -256,7 +258,9 @@ describe("media collection", () => {
       const user = userEvent.setup();
       const api = mockApi({
         getProject: vi.fn(async () => ({
-          schemaVersion: 5 as const,
+          schemaVersion: 6 as const,
+          narration: [],
+          clipAudioBalance: 50,
           music: [],
           slides: [
             {
@@ -403,11 +407,11 @@ describe("media collection", () => {
   it.each([
     [
       "de",
-      "kaputt.gif: Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG und FLAC).",
+      "kaputt.gif: Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG, FLAC und WebM/Opus).",
     ],
     [
       "en",
-      "kaputt.gif: Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG and FLAC).",
+      "kaputt.gif: Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG, FLAC and WebM/Opus).",
     ],
   ])("translates the code media.unsupportedType per file (%s)", async (locale, text) => {
     localStorage.setItem("mmy.locale", locale);
@@ -418,7 +422,7 @@ describe("media collection", () => {
         errorParams: {},
         filename: f.name,
         message:
-          "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG and FLAC).",
+          "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG, FLAC and WebM/Opus).",
       })),
     });
     const user = userEvent.setup();

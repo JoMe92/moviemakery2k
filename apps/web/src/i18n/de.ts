@@ -80,6 +80,7 @@ export const de = {
       label: "Clip",
       addToStoryboard: "Zum Storyboard hinzufügen",
       split: "Teilen",
+      audioLevels: "Audio-Pegel…",
       fitToMusic: "Film an Musik anpassen",
     },
     play: {
@@ -146,6 +147,14 @@ export const de = {
     version: "Version {version}",
     text: "{app} ist vom klassischen Movie Maker inspiriert. Es ist kein Microsoft-Produkt und steht in keiner Verbindung zu Microsoft.",
     license: "Lizenz: {license}",
+  },
+  audioLevels: {
+    title: "Audio-Pegel",
+    slider: "Pegel",
+    clipAudio: "Ton von Videoclips",
+    musicAndNarration: "Musik und Erzählung",
+    hint: "Ein Pegel für den ganzen Film: links nur Musik und Erzählung, rechts nur der Ton der Videoclips, in der Mitte beides voll.",
+    value: "{clip} % Clip-Ton, {musicAndNarration} % Musik und Erzählung",
   },
   fitToMusic: {
     title: "Film an Musik anpassen",
@@ -319,6 +328,37 @@ export const de = {
     trimFormat: "Zeiten als m:ss,cc oder in Sekunden.",
     trimRange:
       "Erlaubt sind Anfang und Ende von {min} bis {max}; der Anfang muss vor dem Ende liegen, die Länge mindestens {length} s betragen.",
+  },
+  narrationTrack: {
+    label: "Erzählung",
+    list: "Erzählungsleiste",
+    emptyHint: "Nehmen Sie mit „Aufnehmen“ während der Wiedergabe eine Erzählung auf.",
+    record: "Aufnehmen",
+    stopRecording: "Aufnahme beenden",
+    recordingHint: "Aufnahme läuft – „Aufnahme beenden“ oder Esc stoppt sie.",
+    fullHint: "Die Erzählungsleiste ist voll (höchstens {max} Clips).",
+    clip: "Erzählungs-Clip {number}: {name}, ab {start}, {duration}",
+    clipMenu: "Erzählungs-Clip {number} der Erzählungsleiste",
+    clipMore: "Mehr zu Erzählungs-Clip {number}",
+    missingAudio: "fehlende Audiodatei",
+    remove: "Entfernen",
+    removeTitle: "Erzählungs-Clip entfernen",
+    removeMessage:
+      "Erzählungs-Clip {number} aus der Erzählungsleiste entfernen? Die Aufnahme bleibt in der Mediensammlung.",
+    moveToPlayhead: "An die Abspielposition verschieben",
+    volume: "Lautstärke…",
+    fadeIn: "Einblenden",
+    fadeOut: "Ausblenden",
+    trim: "Kürzen…",
+    volumeTitle: "Lautstärke von Erzählungs-Clip {number}",
+    trimTitle: "Erzählungs-Clip {number} kürzen",
+    error: {
+      denied:
+        "Kein Zugriff auf das Mikrofon. Erlauben Sie den Zugriff im Browser und versuchen Sie es erneut.",
+      unavailable: "Es wurde kein Mikrofon gefunden, das dieser Browser aufnehmen kann.",
+      failed: "Die Aufnahme ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+      upload: "Die Aufnahme konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    },
   },
   stepper: {
     decrease: "{label} verringern",
@@ -505,7 +545,7 @@ export const de = {
       notFound: "Das Medium wurde nicht gefunden.",
       tooManyFiles: "Zu viele Dateien: höchstens {max} je Import ({count} gesendet).",
       unsupportedType:
-        "Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG und FLAC).",
+        "Keine unterstützte Bild-, Video- oder Audiodatei (erlaubt sind JPEG, PNG, WebP, MP4/MOV und MKV/WebM (H.264, HEVC, VP9 oder AV1), MP3, WAV, M4A/AAC, OGG, FLAC und WebM/Opus).",
       tooLarge: "Die Datei ist zu groß (höchstens {maxMegabytes} MB).",
       tooManyPixels: "Das Bild hat zu viele Pixel (höchstens {maxMegapixels} Megapixel).",
       audioTooLong: "Die Audiodatei ist zu lang (höchstens {maxMinutes} Minuten).",
@@ -531,6 +571,20 @@ export const de = {
       },
       musicTrim: {
         negative: "Anfang und Ende eines Musikstücks dürfen nicht vor 0 s liegen (ist {value} s).",
+      },
+      narrationVolume: {
+        outOfRange: "Die Lautstärke muss zwischen {min} und {max} liegen (ist {value}).",
+      },
+      narrationTrim: {
+        negative:
+          "Anfang und Ende eines Erzählungs-Clips dürfen nicht vor 0 s liegen (ist {value} s).",
+      },
+      narrationAt: {
+        outOfRange:
+          "Die Startzeit eines Erzählungs-Clips muss zwischen {min} und {max} s liegen (ist {value} s).",
+      },
+      clipAudioBalance: {
+        outOfRange: "Der Audio-Pegel muss zwischen {min} und {max} liegen (ist {value}).",
       },
       slideTrim: {
         negative: "Anfang und Ende eines Videoclips dürfen nicht vor 0 s liegen (ist {value} s).",
@@ -569,12 +623,27 @@ export const de = {
         tooShort:
           "Musikstück {clip} (ID „{clipId}“): Das Stück muss mindestens {min} s lang sein (ist {length} s).",
       },
+      narration: {
+        duplicateId:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Die ID wird bereits von Erzählungs-Clip {firstClip} verwendet.",
+        unknownMedia: "Erzählungs-Clip {clip} (ID „{clipId}“): unbekanntes Medium „{mediaId}“.",
+        notAudio:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Das Medium „{mediaId}“ ist keine Audiodatei.",
+        trimEndBeyondFile:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Das Ende ({trimEnd} s) liegt hinter dem Ende der Datei ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Der Anfang ({trimStart} s) muss vor dem Ende ({end} s) liegen.",
+        tooShort:
+          "Erzählungs-Clip {clip} (ID „{clipId}“): Der Clip muss mindestens {min} s lang sein (ist {length} s).",
+      },
     },
     export: {
       notFound: "Der Export wurde nicht gefunden.",
       emptyProject: "Export nicht möglich: Der Bildstreifen ist leer.",
       missingMedia: "Export nicht möglich: Für Bild(er) {slides} fehlen die Medien.",
       missingMusicMedia: "Export nicht möglich: Für Musikstück(e) {clips} fehlen die Medien.",
+      missingNarrationMedia:
+        "Export nicht möglich: Für Erzählungs-Clip(s) {clips} fehlen die Medien.",
       busy: "Es läuft bereits ein Export. Bitte warten oder ihn zuerst abbrechen.",
       notReady: "Der Film ist nicht verfügbar: Der Export hat den Status „{status}“.",
       fileName: {

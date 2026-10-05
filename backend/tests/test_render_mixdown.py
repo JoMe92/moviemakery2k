@@ -26,15 +26,17 @@ from PIL import Image
 from mmy_backend.config import Settings
 from mmy_backend.ffmpeg import ffmpeg_binary, ffprobe_binary
 from mmy_backend.main import create_app
+from mmy_backend.render.audio import AudioSegment
 from mmy_backend.render.encode import ExportCancelled, ExportFailed, silent_audio_input
 from mmy_backend.render.mixdown import (
     MIX_FILENAME,
+    AudioMix,
+    audio_filter_graph,
     build_mix_command,
     file_audio_input,
-    mix_music,
-    music_filter_graph,
+    mix_audio,
 )
-from mmy_backend.render.music import MusicClipInput, MusicSegment, music_schedule
+from mmy_backend.render.music import MusicClipInput, music_schedule
 
 slow = pytest.mark.slow
 TIMEOUT = 120.0
@@ -144,7 +146,9 @@ def _mix(
     name: str = "music.wav",
 ) -> Path:
     segments = music_schedule(clips, durations, movie)
-    return mix_music(segments, sources, movie, tmp_path / "out" / name)
+    return mix_audio(
+        AudioMix(music_and_narration=segments), sources, movie, tmp_path / "out" / name
+    )
 
 
 @pytest.fixture(scope="module")
@@ -178,11 +182,11 @@ def levels(originals: dict[str, Path]) -> dict[str, float]:
 
 def test_filter_graph_places_each_segment_on_whole_samples() -> None:
     segments = (
-        MusicSegment("a", at=0.0, source_in=2.0, length=3.0, gain=0.5, fade_in=1.0, fade_out=0.0),
-        MusicSegment("b", at=3.0, source_in=0.0, length=9.5, gain=1.0, fade_in=0.0, fade_out=1.0),
+        AudioSegment("a", at=0.0, source_in=2.0, length=3.0, gain=0.5, fade_in=1.0, fade_out=0.0),
+        AudioSegment("b", at=3.0, source_in=0.0, length=9.5, gain=1.0, fade_in=0.0, fade_out=1.0),
     )
-    graph = music_filter_graph(segments, 12.5)
-    first, second, mix = graph.split(";")
+    graph = audio_filter_graph(AudioMix(music_and_narration=segments), 12.5)
+    first, second, side, mix = graph.split(";")
     assert first == (
         "[0:a:0]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
         "atrim=start_sample=96000:end_sample=240000,asetpts=PTS-STARTPTS,volume=0.5,"
@@ -192,19 +196,21 @@ def test_filter_graph_places_each_segment_on_whole_samples() -> None:
     assert "afade=t=out:st=8.5:d=1" in second
     assert second.endswith("adelay=delays=144000S:all=1[m1]")
     assert "afade=t=in" not in second
-    assert mix == (
-        "[m0][m1]amix=inputs=2:normalize=0:duration=longest,"
-        "apad=whole_len=600000,atrim=end_sample=600000[out]"
-    )
+    # One audible side: it mixes and takes the level gain, and the final amix is
+    # skipped - exactly the graph a music-only project produced before.
+    assert side == "[m0][m1]amix=inputs=2:normalize=0:duration=longest,volume=1[t0]"
+    assert mix == "[t0]apad=whole_len=600000,atrim=end_sample=600000[out]"
 
 
 def test_mix_command_reads_one_input_per_segment(tmp_path: Path) -> None:
     segments = (
-        MusicSegment("a", 0.0, 0.0, 1.0, 1.0, 0.0, 0.0),
-        MusicSegment("a", 1.0, 0.0, 1.0, 1.0, 0.0, 1.0),
+        AudioSegment("a", 0.0, 0.0, 1.0, 1.0, 0.0, 0.0),
+        AudioSegment("a", 1.0, 0.0, 1.0, 1.0, 0.0, 1.0),
     )
     sources = {"a": tmp_path / "original.mp3"}
-    cmd = build_mix_command("ffmpeg", segments, sources, 2.0, tmp_path / "music.wav")
+    cmd = build_mix_command(
+        "ffmpeg", AudioMix(music_and_narration=segments), sources, 2.0, tmp_path / "music.wav"
+    )
     assert cmd.count("-i") == 2
     assert cmd[cmd.index("-c:a") + 1] == "pcm_f32le"
     assert cmd[-1] == str(tmp_path / "music.wav")
@@ -217,7 +223,7 @@ def test_file_audio_input_limits_to_the_video_duration(tmp_path: Path) -> None:
 
 def test_empty_schedule_has_no_graph() -> None:
     with pytest.raises(ValueError):
-        music_filter_graph((), 1.0)
+        audio_filter_graph(AudioMix(), 1.0)
 
 
 # --- Mixdown with FFmpeg -----------------------------------------------------------------
@@ -302,7 +308,7 @@ def _fake_ffmpeg(tmp_path: Path, body: str, monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("MMY_FFMPEG", str(script))
 
 
-SEGMENT = (MusicSegment("long", 0.0, 0.0, 2.0, 1.0, 0.0, 1.0),)
+SEGMENT = (AudioSegment("long", 0.0, 0.0, 2.0, 1.0, 0.0, 1.0),)
 
 
 def test_cancel_while_mixing_stops_ffmpeg(
@@ -316,7 +322,7 @@ def test_cancel_while_mixing_stops_ffmpeg(
     timer.start()
     started = time.monotonic()
     with pytest.raises(ExportCancelled):
-        mix_music(SEGMENT, originals, 2.0, out, cancel=cancel)
+        mix_audio(AudioMix(music_and_narration=SEGMENT), originals, 2.0, out, cancel=cancel)
     timer.cancel()
     assert time.monotonic() - started < 5.0
     assert not out.exists()
@@ -327,7 +333,7 @@ def test_cancel_before_mixing_finishes(tmp_path: Path, originals: dict[str, Path
     cancel.set()
     out = tmp_path / "music.wav"
     with pytest.raises(ExportCancelled):
-        mix_music(SEGMENT, originals, 2.0, out, cancel=cancel)
+        mix_audio(AudioMix(music_and_narration=SEGMENT), originals, 2.0, out, cancel=cancel)
     assert not out.exists()
 
 
@@ -337,7 +343,7 @@ def test_ffmpeg_error_is_audio_failed(
     out = tmp_path / "music.wav"
     _fake_ffmpeg(tmp_path, f"echo partial > '{out}'\necho 'boom' >&2\nexit 3", monkeypatch)
     with pytest.raises(ExportFailed) as info:
-        mix_music(SEGMENT, originals, 2.0, out)
+        mix_audio(AudioMix(music_and_narration=SEGMENT), originals, 2.0, out)
     assert info.value.code == "export.audioFailed"
     assert info.value.params == {"reason": "FFmpeg exit code 3"}
     assert "boom" in info.value.stderr_tail
@@ -349,7 +355,7 @@ def test_damaged_original_is_audio_failed(tmp_path: Path) -> None:
     broken.write_bytes(b"not audio at all" * 100)
     out = tmp_path / "music.wav"
     with pytest.raises(ExportFailed) as info:
-        mix_music(SEGMENT, {"long": broken}, 2.0, out)
+        mix_audio(AudioMix(music_and_narration=SEGMENT), {"long": broken}, 2.0, out)
     assert info.value.code == "export.audioFailed"
     assert not out.exists()
 
@@ -357,10 +363,10 @@ def test_damaged_original_is_audio_failed(tmp_path: Path) -> None:
 def test_missing_original_is_audio_failed(tmp_path: Path) -> None:
     out = tmp_path / "music.wav"
     with pytest.raises(ExportFailed) as info:
-        mix_music(SEGMENT, {"long": tmp_path / "gone.mp3"}, 2.0, out)
+        mix_audio(AudioMix(music_and_narration=SEGMENT), {"long": tmp_path / "gone.mp3"}, 2.0, out)
     assert info.value.code == "export.audioFailed"
     with pytest.raises(ExportFailed) as info:
-        mix_music(SEGMENT, {}, 2.0, out)
+        mix_audio(AudioMix(music_and_narration=SEGMENT), {}, 2.0, out)
     assert info.value.code == "export.audioFailed"
     assert not out.exists()
 
@@ -421,7 +427,13 @@ def _music_project(
             "fadeOut": False,
         }
     ]
-    project = {"schemaVersion": 5, "slides": slides, "music": clips if music else []}
+    project = {
+        "schemaVersion": 6,
+        "slides": slides,
+        "music": clips if music else [],
+        "narration": [],
+        "clipAudioBalance": 50,
+    }
     res = client.put("/api/project", json=project)
     assert res.status_code == 200, res.text
     return images, audio

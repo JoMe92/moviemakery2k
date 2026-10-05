@@ -4,7 +4,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 1. Datenmodell
 
-- [ ] TASK-API-021 Projektmodell Version 6: `narration: list[NarrationClip]`
+- [x] TASK-API-021 Projektmodell Version 6: `narration: list[NarrationClip]`
   (`mediaId`, `at`, `trimStart`/`trimEnd`, Lautstärke, Fades), Feld
   `clipAudioBalance` (0–100, Standard 50), Validierung (Überlappung
   erlaubt, Grenzen, höchstens 100 Clips), Migration von Version 5,
@@ -14,7 +14,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 2. Export-Mischung
 
-- [ ] TASK-RENDER-009 Export-Mischung erweitert: `narration_schedule`
+- [x] TASK-RENDER-009 Export-Mischung erweitert: `narration_schedule`
   (`at` direkt übernommen, keine Verkettung, Überlappung erlaubt),
   `video_clip_audio_schedule` (aus Timeline-Platzierung und
   `trimIn`/`trimOut` abgeleitet), `music_filter_graph` generisch für eine
@@ -28,7 +28,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 3. Vorschau
 
-- [ ] TASK-WEB-067 Audio-Engine für mehrere Spuren: `MusicPlan` zu einem
+- [x] TASK-WEB-067 Audio-Engine für mehrere Spuren: `MusicPlan` zu einem
   spur-unabhängigen `AudioPlan` verallgemeinert, Clip-Ton als zusätzliche,
   aus `trimIn`/`trimOut` und Platzierung abgeleitete Tonquelle (D1, nicht
   über `<video>`), globaler Pegelregler-Dialog „Audio-Pegel…“ im
@@ -36,7 +36,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
   Komponententests Clip-Ton-Wiedergabe ohne zweiten Takt (Bild-Scrubbing
   unverändert über `video.currentTime`), den Pegelregler bei 0/50/100 und
   Pause/Suchen mit Clip-Ton abdecken.
-- [ ] TASK-WEB-068 Erzählungsleiste und Aufnahme: Aufnahme-Knopf
+- [x] TASK-WEB-068 Erzählungsleiste und Aufnahme: Aufnahme-Knopf
   (`getUserMedia`/`MediaRecorder`, Start im selben Benutzergesten-Klick
   wie die Wiedergabe), automatisches Anlegen eines `NarrationClip` nach
   dem Stoppen, Erzählungsleiste unter der Musikleiste mit Verschieben,
@@ -47,7 +47,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
 
 ## 4. Abschluss
 
-- [ ] TASK-INFRA-024 E2E und Doku: Playwright-Smoke erweitert um Erzählung
+- [x] TASK-INFRA-024 E2E und Doku: Playwright-Smoke erweitert um Erzählung
   aufnehmen (mit simuliertem Mikrofon-Stream) → Export enthält sie an der
   richtigen Stelle; Pegelregler verändert das Mischverhältnis im Export
   messbar; README/CHANGELOG „Unreleased“ (nach TASK-WEB-068,

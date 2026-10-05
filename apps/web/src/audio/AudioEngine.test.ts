@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import type { MusicSegment } from "../timeline/music";
+import type { AudioSegment } from "../timeline/audio";
 import {
   type AudioBufferLike,
   type AudioContextLike,
   AudioEngine,
-  type MusicPlan,
+  type AudioPlan,
   SCHEDULE_LEAD,
 } from "./AudioEngine";
 
@@ -69,11 +69,11 @@ class FakeContext implements AudioContextLike {
   }
 }
 
-function seg(partial: Partial<MusicSegment> & Pick<MusicSegment, "mediaId" | "at" | "length">) {
+function seg(partial: Partial<AudioSegment> & Pick<AudioSegment, "mediaId" | "at" | "length">) {
   return { sourceIn: 0, gain: 1, fadeIn: 0, fadeOut: 0, ...partial };
 }
 
-const SEGMENTS: MusicSegment[] = [
+const SEGMENTS: AudioSegment[] = [
   seg({ mediaId: "m1", at: 0, sourceIn: 2, length: 10 }),
   seg({ mediaId: "m2", at: 10, length: 5 }),
 ];
@@ -93,7 +93,7 @@ function setup(options: { state?: string } = {}) {
         if (!url.startsWith("slow:")) resolve({ duration: 60 });
       }),
   });
-  const plan = (p: Partial<MusicPlan>): MusicPlan => ({
+  const plan = (p: Partial<AudioPlan>): AudioPlan => ({
     playing: true,
     time: 0,
     segments: SEGMENTS,
@@ -303,13 +303,13 @@ describe("AudioEngine", () => {
     const { engine, ctx, plan, finishSlow } = setup();
     engine.preload("m1", "slow:m1");
     engine.unlock();
-    engine.update(plan({ time: 0, segments: [SEGMENTS[0] as MusicSegment] }));
+    engine.update(plan({ time: 0, segments: [SEGMENTS[0] as AudioSegment] }));
     expect(ctx.sources).toHaveLength(0);
     // The audio clock is already the master clock.
     ctx.currentTime = SCHEDULE_LEAD + 1;
     const t = engine.clockTime() ?? 0;
     expect(t).toBeCloseTo(1, 9);
-    engine.update(plan({ time: t, segments: [SEGMENTS[0] as MusicSegment] }));
+    engine.update(plan({ time: t, segments: [SEGMENTS[0] as AudioSegment] }));
     await finishSlow();
     await engine.whenLoaded();
     close(ctx.live[0]?.started ?? null, [ctx.currentTime + SCHEDULE_LEAD, 3, 9]);

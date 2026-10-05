@@ -16,7 +16,7 @@ flowchart LR
     TL["timeline.ts<br/>buildTimeline / frameAt"]
     MS["music.ts<br/>musicSchedule"]
     GL["WebGL2 renderer"]
-    AE["AudioEngine<br/>(Web Audio, audio clock)"]
+    AE["AudioEngine<br/>(Web Audio, audio clock,<br/>music + narration + clip sound)"]
   end
   subgraph Server["Python: backend/ (FastAPI)"]
     API["/api routes"]
@@ -25,7 +25,7 @@ flowchart LR
     Cat["Catalog loader"]
     Exp["ExportManager<br/>(jobs, one worker thread each)"]
     Rnd["render/<br/>timeline.py · frames.py<br/>moderngl (EGL, llvmpipe)"]
-    Mix["render/<br/>music.py · mixdown.py"]
+    Mix["render/<br/>music.py · audio.py · mixdown.py"]
     FF["FFmpeg (subprocess)"]
   end
   subgraph Shared["packages/"]
@@ -56,8 +56,8 @@ flowchart LR
 
 | Component | Path | Responsibility |
 |---|---|---|
-| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio (`audio/AudioEngine.ts`) |
-| Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with music mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
+| Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard, music track and narration bar with microphone recording, preview player, WebGL2 renderer, preview audio for all three tracks (`audio/AudioEngine.ts`) |
+| Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with the audio mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
 | Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition and per effect plus the shared preludes/epilogues/vertex shader; used by preview and export |
 | Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
 | Fonts | `packages/fonts/` | The bundled title font (Liberation Sans): the same file rasterises titles in the preview and in the export |
@@ -113,12 +113,12 @@ flowchart LR
 
 ### 2. Project
 
-- The project is one versioned JSON document (`schemaVersion: 5`); `slides`
+- The project is one versioned JSON document (`schemaVersion: 6`); `slides`
   is a discriminated union on `kind`:
 
   ```json
   {
-    "schemaVersion": 5,
+    "schemaVersion": 6,
     "slides": [
       { "kind": "image", "id": "s1", "mediaId": "…", "duration": 5,
         "effectId": null, "title": null, "transitionIn": null },
@@ -134,7 +134,12 @@ flowchart LR
     "music": [
       { "id": "m1", "mediaId": "…", "trimStart": 0, "trimEnd": null,
         "volume": 1, "fadeIn": false, "fadeOut": false }
-    ]
+    ],
+    "narration": [
+      { "id": "n1", "mediaId": "…", "at": 4.25, "trimStart": 0,
+        "trimEnd": null, "volume": 1, "fadeIn": false, "fadeOut": false }
+    ],
+    "clipAudioBalance": 50
   }
   ```
 
@@ -145,7 +150,15 @@ flowchart LR
   a `title` slide refers to no medium at all and has a display `duration` like
   an image slide; music clips refer to audio, and each clip's range must
   satisfy `0 ≤ trimStart < end ≤ duration` with a played length of at least
-  0.5 s (`trimEnd: null` = end of the file). An `image` or `video` slide
+  0.5 s (`trimEnd: null` = end of the file). `narration` (at most 100 clips)
+  is the other way round: every clip stores its own absolute `at` on the movie
+  timeline, so the list order says nothing about when a clip plays and two
+  clips may overlap — overlapping stretches are mixed, neither replaces the
+  other. Its clips refer to audio and are trimmed exactly like music clips.
+  `clipAudioBalance` (0–100, an integer, default 50) is the one global level
+  between the sound of video clips (100) and music plus narration (0); 50
+  plays both at full gain, and there is no volume per video clip. An `image`
+  or `video` slide
   carries an `effectId` — an ID from the effect catalog or `null` for no
   effect, one effect per element, all parameters from the catalog entry — and
   a `title`: an overlay title `{lines, styleId, color}` over that picture, or
@@ -158,9 +171,10 @@ flowchart LR
   (before the music track) gains `music: []`, a version-2 project (before
   video slides) has every slide read as `kind: "image"` with its `duration`
   unchanged, a version-3 project (before effects) gets `effectId: null` on
-  every slide, and a version-4 project (before titles) gets `title: null`.
-  Each is written at version 5 on the next save, and the API accepts
-  version 5 only.
+  every slide, a version-4 project (before titles) gets `title: null`, and a
+  version-5 project (before the narration track) gains `narration: []` and
+  `clipAudioBalance: 50`. Each is written at version 6 on the next save, and
+  the API accepts version 6 only.
 
 - A transition belongs to its **target** slide (`transitionIn`) and moves with
   it when slides are reordered. The first slide never has one.
@@ -236,6 +250,34 @@ clamps to 0.5–60 s and gives the remainder to the last picture; if the target
 is out of reach, it reports the reachable minimum or maximum and changes
 nothing.
 
+### 4a. Narration bar and recording
+
+- The narration bar (`narrationtrack/`) sits below the music bar at the same
+  3 px per second, but it is a **time axis**, not a row: a block is positioned
+  at its clip's own `at`, so two overlapping clips stay where they are and are
+  drawn over each other. Hiding one would lie — both are audible.
+- Moving a clip means setting that number: drag the block sideways, nudge it
+  with the arrow keys (0.25 s, 1 s with Shift) or pick *Move to the playback
+  position* from its context menu. No other clip ever moves with it.
+- The rest of the context menu is the music clip's pattern — *Remove* (with a
+  confirmation, because a recording is work), *Volume…*, *Fade In/Out*,
+  *Trim…*. The volume and trim dialogs are the music track's, with their title
+  replaced: everything else about them is track-neutral.
+- **Recording** (`audio/useNarrationRecorder.ts`): the record button opens
+  `getUserMedia({audio: true})`, starts a `MediaRecorder` and starts playback,
+  all in the one click — `getUserMedia` and the `AudioContext` both need a user
+  gesture, and a recording that began a tick later would land in the wrong
+  place. Its start time is `playback.time`, which *is* the audio clock (the
+  player feeds `AudioEngine.clockTime()` back into it), so no second timestamp
+  exists to disagree with it.
+- On stop the recording is uploaded through the ordinary audio import (it
+  appears in *My Music* like any other file) and a clip is created at the
+  remembered start time, selected and scrolled into view. A denied microphone,
+  a missing device, a browser that cannot record and an empty recording each
+  get their own readable message; none of them creates a clip.
+- Everything the browser provides is injected (`RecorderDeps`), so the unit
+  tests drive a complete recording without a microphone.
+
 ### 5. Renderer
 
 - The monitor's output format is fixed at 4:3 (640×480 logical, scaled by CSS,
@@ -257,26 +299,44 @@ nothing.
 
 ### 6. Preview audio
 
-`apps/web/src/audio/AudioEngine.ts` plays the music schedule with Web Audio;
-`useMusicAudio.ts` connects it to the store.
+`apps/web/src/audio/AudioEngine.ts` plays an audio schedule with Web Audio;
+`usePreviewAudio.ts` connects it to the store. The engine is
+**track-independent**: music, narration and the original sound of the video
+elements arrive as one flat list of segments (`timeline/audio.ts`), each
+already carrying the gain its side got from the global level.
 
-- **Decoding.** As soon as a medium is on the music track (clip added,
-  project loaded), its `preview.m4a` is fetched and decoded once in an
-  `OfflineAudioContext` (no user gesture needed) and cached per medium.
+- **Three schedules, one segment shape.** Music is sequential (section 4),
+  narration takes each clip's stored absolute `at` and allows overlap, and the
+  video-clip sound is derived from the timeline placement plus `trimIn`/
+  `trimOut` and has no volume or fades of its own. All three go through the
+  same movie-end rule (dropped past the end, cut at it, end-of-movie
+  fade-out).
+- **One global level.** `clipAudioBalance` (0–100) yields two gains: at 0 the
+  clip sound is silent, at 100 music and narration are, at 50 both play at
+  full gain, and in between the quieter side ramps linearly. A silent side is
+  not scheduled at all. Clip → *Audio-Pegel…* sets the value; it is undoable
+  and autosaved like every other project change.
+- **Decoding.** As soon as a medium is referenced (clip added, project
+  loaded), it is fetched and decoded once in an `OfflineAudioContext` (no user
+  gesture needed) and cached per medium — audio media from their
+  `preview.m4a`, video media from their `videoUrl`. A video without an audio
+  track simply fails to decode and stays silent; nothing has to ask first.
 - **Playback.** Each segment becomes an `AudioBufferSourceNode` → `GainNode`
   started at its movie time with `start(when, sourceIn + offset, …)`; volume
   and fades are linear gain ramps. Every change of the plan — play, pause,
-  stop, seek, a project or music edit — stops all sources and schedules again
-  from the current movie time.
-- **Audio clock.** While music is scheduled and the `AudioContext` runs,
-  `clockTime()` derives the movie time from `AudioContext.currentTime`, and
-  the player's requestAnimationFrame loop advances playback by that clock
-  instead of its own frame delta. Picture and sound therefore cannot drift
-  apart; without music (or without a running context) the rAF clock is
-  used as before.
+  stop, seek, a project, track or level edit — stops all sources and schedules
+  again from the current movie time.
+- **Still one clock.** A video element's sound goes through this engine, never
+  through `video.play()`: the `<video>` element stays muted and is scrubbed by
+  `currentTime` alone (D5 of `add-timeline-editing`). While sound is scheduled
+  and the `AudioContext` runs, `clockTime()` derives the movie time from
+  `AudioContext.currentTime`, and the player's requestAnimationFrame loop
+  advances playback by that clock instead of its own frame delta. Picture and
+  sound therefore cannot drift apart; without sound (or without a running
+  context) the rAF clock is used as before.
 - **Autoplay policy.** The `AudioContext` is created or resumed only inside a
   user gesture: the play button, the space bar, or any pointer/key event while
-  the project has music.
+  the project has music, narration or a video element.
 - The transition sample of the collection is silent. `preview.m4a` carries
   the usual AAC priming delay (20–45 ms), so the preview is not sample-exact;
   the export mixes from the originals instead.
@@ -290,32 +350,41 @@ nothing.
 ```mermaid
 flowchart LR
   Snap["Project snapshot"] --> TLp["timeline.py<br/>frame n at t = n / 30"]
-  Snap --> MSp["music.py<br/>music_schedule"]
+  Snap --> MSp["music.py · audio.py<br/>music + narration +<br/>video-clip sound"]
   ORIG["media/&lt;id&gt;/original.*"] --> Mixd
-  MSp --> Mixd["ffmpeg pre-mix<br/>(mixdown.py)"] --> WAV["exports/&lt;id&gt;/music.wav"]
+  MSp --> Mixd["ffmpeg pre-mix<br/>(mixdown.py,<br/>two-stage by level)"] --> WAV["exports/&lt;id&gt;/music.wav"]
   JPG["media/&lt;id&gt;/preview.jpg"] --> LB["Letterbox onto black<br/>(containRect)"]
   LB --> Tex["Texture<br/>(origin bottom left)"]
   TLp --> Draw
   Tex --> Draw["moderngl, OpenGL 3.3 core<br/>EGL + Mesa llvmpipe"]
   SH["packages/shaders<br/>#version 300 es → 330 core"] --> Draw
   Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>BT.709 · libx264 + aac"]
-  WAV -- "audio_input<br/>(anullsrc without music)" --> FFm
+  WAV -- "audio_input<br/>(anullsrc without sound)" --> FFm
   FFm --> Part["exports/&lt;id&gt;/out.mp4.part"] -- "os.replace" --> MP4["out.mp4"]
 ```
 
-1. **Music pre-mix.** If the project has music, a separate FFmpeg run first
-   mixes it into `exports/<id>/music.wav` (48 kHz stereo, 32-bit float),
+1. **Audio pre-mix.** If anything in the project sounds, a separate FFmpeg run
+   first mixes it into `exports/<id>/music.wav` (48 kHz stereo, 32-bit float),
    exactly as long as the video (`frames / 30` s). Input is each clip's
-   **original** file (not `preview.m4a`), placed by `music_schedule` with the
-   timeline's movie duration — the same placement as in the preview. Per
-   segment the filter chain is `aresample=48000, aformat=fltp/stereo,
-   atrim, asetpts, volume, afade (in/out), adelay`; the segments are summed
-   with `amix=normalize=0` (they never overlap, so each keeps its gain), then
-   `apad` + `atrim` pad with silence or cut to the exact sample count.
+   **original** file (not `preview.m4a`), placed by the three schedules of
+   section 6 with the timeline's movie duration — the same placement as in the
+   preview. Per segment the filter chain is `aresample=48000,
+   aformat=fltp/stereo, atrim, asetpts, volume, afade (in/out), adelay`.
+   The segments then run into the graph as the **two sides** of the global
+   level (`clipAudioBalance`): music plus narration mix to one intermediate
+   signal, the video-clip sound to the other, each takes its `volume` from the
+   level, and a last `amix` puts them together, followed by `apad` + `atrim`
+   to pad with silence or cut to the exact sample count. Every `amix` uses
+   `normalize=0`, so each segment keeps its own gain and overlapping narration
+   or cross-fading clip sound simply sum. A side that is empty or silenced by
+   the level drops out, and with one side left its `amix` is skipped — a
+   music-only project therefore produces the same graph it always did.
+   Whether a video element contributes clip sound at all is one ffprobe
+   question per medium (`has_audio_stream`); anything unanswerable counts as
+   "no audio", so one track stays silent instead of the export failing.
    Cancellation is checked while FFmpeg runs; a mixing error fails the job
    with `export.audioFailed`. `music.wav` is deleted when the job ends.
-   Without music (or if no segment falls into the movie) the silent
-   `anullsrc` input is used.
+   Without any audible segment the silent `anullsrc` input is used.
 2. **Input.** Each picture is the stored `preview.jpg` (EXIF-normalised,
    longest edge ≤ 1920). It is letterboxed onto an opaque black frame of the
    output size with the browser's integer `containRect` and uploaded as a
@@ -356,7 +425,7 @@ flowchart LR
    comes first) and piped as raw RGBA into
    `ffmpeg -f rawvideo -pix_fmt rgba -s WxH -r 30 -i -` together with the
    audio input — `music.wav`, or a silent `anullsrc` (48 kHz stereo) without
-   music — cut to the exact video length and encoded as `libx264 -preset
+   any sound — cut to the exact video length and encoded as `libx264 -preset
    medium -crf 20 -pix_fmt yuv420p -profile:v high -movflags +faststart` and
    `aac -b:a 128k` (48 kHz stereo). A gain above 100 % is only clipped here,
    by the AAC encoder.
@@ -506,7 +575,7 @@ document to `apps/web/src/generated/openapi.json` and generates
 | `GET` | `/api/media/{id}/peaks` | Waveform data `{rate: 50, peaks}` (`Cache-Control: immutable`) |
 | `DELETE` | `/api/media/{id}` | Delete a medium and cascade it out of the project; returns the updated project; `409` (`media.inUseByExport`) while a queued or running export uses it |
 | `GET` | `/api/project` | The stored project (an empty one if none exists) |
-| `PUT` | `/api/project` | Replace the project (`schemaVersion` 5 with `slides` and `music`); `422` leaves the stored state unchanged |
+| `PUT` | `/api/project` | Replace the project (`schemaVersion` 6 with `slides`, `music`, `narration` and `clipAudioBalance`); `422` leaves the stored state unchanged |
 | `POST` | `/api/exports` | Start an export of the stored project (`{profile, fileName}`); `202`, `409` while one is running, `422` for an empty project or missing media |
 | `GET` | `/api/exports` | All known exports, oldest first (finished ones also from earlier runs) |
 | `GET` | `/api/exports/{id}` | Status, progress and error of one export |
@@ -588,7 +657,7 @@ logic:
   `musicSelection`). `ActionBar` offers the element's actions; they call the
   store functions the desktop uses (`moveSlide`, `removeSlide`,
   `updateMusicClip` …) or raise an **edit request** (`requestEdit`, like
-  `requestImport`): the storyboard strip and music track own their dialogs
+  `requestImport`): the storyboard strip, music track and narration bar own their dialogs
   and context menus and open them for a request, a long press
   (`ui/useLongPress`, 400 ms within 8 px) or the *⋯* button.
 - **Picking.** `media/CollectionSheet` hosts `MediaCollection` in picking
@@ -663,11 +732,11 @@ covers the switch to English and the browser-language detection.
 
 | Layer | Tooling | What it covers |
 |---|---|---|
-| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
+| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, project schema v6 with the narration track and the global audio level (validation, migration from v5), the two-stage audio mixdown (narration at its own `at`, overlapping clips, video-clip sound, the level's ratio measured with `astats`, a video without an audio track), cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
 | Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
-| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
+| Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), narration and video-clip-sound schedules, the global audio level, *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), clip sound through the store and the hook, music collection and music track, narration bar (recording, denied microphone, moving by drag and by keyboard, overlapping clips, remove with a confirmation), narration operations and validation, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |
-| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Device profiles iPhone 13, Pixel 7 and iPad (gen 7) with touch: no horizontal scroll, 44 px targets, the whole flow by tapping in portrait and landscape (`e2e/test_mobile.py`); slideshow flow in the real app; LAN mode with access token, token link, cookie and manifest (`e2e/test_lan_mode.py`); language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); golden frames; preview ↔ export frame comparison |
+| E2E | Playwright (Chromium with SwiftShader for headless WebGL2), `pixi run test-e2e` | Device profiles iPhone 13, Pixel 7 and iPad (gen 7) with touch: no horizontal scroll, 44 px targets, the whole flow by tapping in portrait and landscape (`e2e/test_mobile.py`); slideshow flow in the real app; LAN mode with access token, token link, cookie and manifest (`e2e/test_lan_mode.py`); language switch and detection; export wizard incl. cancel; music flow (generated melody → *My Music* → music track → export with an AAC 48 kHz stereo track as long as the video, audible and fading out); narration flow (Chromium's fake microphone via `--use-file-for-fake-audio-capture` → a real `getUserMedia`/`MediaRecorder` recording → a clip at the playhead → three exports measuring the audio level's ratio in the finished MP4); golden frames; preview ↔ export frame comparison |
 | Docker | `scripts/docker_export_smoke.sh` (CI job `docker`) | The `prod` image builds, starts and exports a playable MP4 over the API |
 | Static | Biome, Ruff (backend, `e2e/`, `scripts/`), mypy (strict), TypeScript (strict) | Lint, formatting, types |
 

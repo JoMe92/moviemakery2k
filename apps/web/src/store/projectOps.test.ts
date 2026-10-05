@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Slide } from "../lib/apiClient";
 import {
+  CLIP_AUDIO_BALANCE,
   insertSlide,
+  isValidClipAudioBalance,
   isValidSlideDuration,
   isValidTransitionDuration,
   moveSlide,
@@ -56,5 +58,24 @@ describe("projectOps", () => {
     [1.1, false],
   ])("transition duration %s valid: %s", (d, ok) => {
     expect(isValidTransitionDuration(d)).toBe(ok);
+  });
+
+  // The one global audio level (add-narration-and-audio-levels D4): whole
+  // steps from 0 to 100, because the backend field is an integer.
+  it.each([
+    [0, true],
+    [50, true],
+    [100, true],
+    [-1, false],
+    [101, false],
+    [50.5, false],
+    [Number.NaN, false],
+  ])("audio level %s valid: %s", (v, ok) => {
+    expect(isValidClipAudioBalance(v)).toBe(ok);
+  });
+
+  it("defaults the audio level to both tracks at full gain", () => {
+    expect(CLIP_AUDIO_BALANCE.default).toBe(50);
+    expect(isValidClipAudioBalance(CLIP_AUDIO_BALANCE.default)).toBe(true);
   });
 });

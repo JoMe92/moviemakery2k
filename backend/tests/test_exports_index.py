@@ -72,7 +72,16 @@ def _prepare(client: TestClient) -> None:
         "title": None,
         "transitionIn": None,
     }
-    res = client.put("/api/project", json={"schemaVersion": 5, "slides": [slide], "music": []})
+    res = client.put(
+        "/api/project",
+        json={
+            "schemaVersion": 6,
+            "slides": [slide],
+            "music": [],
+            "narration": [],
+            "clipAudioBalance": 50,
+        },
+    )
     assert res.status_code == 200, res.text
 
 

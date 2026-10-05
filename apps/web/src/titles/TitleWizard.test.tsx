@@ -41,7 +41,13 @@ const titleElement = (id: string): Slide => ({
 
 async function setup(slides: Slide[] = [image("s1", "a"), image("s2", "b")]) {
   const api = mockApi({
-    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, music: [], slides })),
+    getProject: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      music: [],
+      slides,
+    })),
   });
   const view = renderApp(api);
   await act(() => view.ready);
@@ -438,7 +444,7 @@ describe("title wizard (TASK-WEB-066, design.md D6, spec titles-and-credits)", (
     await act(() => store.getState().flushSave());
 
     const saved = api.saved.at(-1);
-    expect(saved?.schemaVersion).toBe(5);
+    expect(saved?.schemaVersion).toBe(6);
     expect(saved?.slides[0]?.kind).toBe("title");
   });
 });

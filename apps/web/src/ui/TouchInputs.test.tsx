@@ -226,7 +226,13 @@ describe("touch inputs (add-mobile-layout design.md D10)", () => {
     const { store, ready } = renderApp(
       mockApi({
         listMedia: async () => [mediaItem("a")],
-        getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })),
+        getProject: vi.fn(async () => ({
+          schemaVersion: 6 as const,
+          narration: [],
+          clipAudioBalance: 50,
+          slides,
+          music: [],
+        })),
       }),
     );
     await act(() => ready);

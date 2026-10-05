@@ -64,7 +64,14 @@ def client(settings: Settings, fake: FakeExport) -> Iterator[TestClient]:
             "transitionIn": None,
         }
         res = test_client.put(
-            "/api/project", json={"schemaVersion": 5, "slides": [slide], "music": []}
+            "/api/project",
+            json={
+                "schemaVersion": 6,
+                "slides": [slide],
+                "music": [],
+                "narration": [],
+                "clipAudioBalance": 50,
+            },
         )
         assert res.status_code == 200, res.text
         yield test_client

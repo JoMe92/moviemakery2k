@@ -27,7 +27,13 @@ const MEDIA: MediaItem[] = [mediaItem("a"), audioItem("song", 192.4, "song.mp3")
 async function ready(music: MusicClip[], media: MediaItem[] = MEDIA) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
-    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides: [], music })),
+    getProject: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      slides: [],
+      music,
+    })),
   });
   const view = renderApp(api);
   await act(() => view.ready);

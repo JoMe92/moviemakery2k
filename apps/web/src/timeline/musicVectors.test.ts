@@ -4,20 +4,15 @@
  */
 import { describe, expect, it } from "vitest";
 import vectors from "../../../../packages/fixtures/music-vectors.json";
-import {
-  type MediaDurations,
-  type MusicClipInput,
-  type MusicSegment,
-  musicDuration,
-  musicSchedule,
-} from "./music";
+import type { AudioSegment, MediaDurations } from "./audio";
+import { type MusicClipInput, musicDuration, musicSchedule } from "./music";
 
 interface VectorCase {
   name: string;
   clips: MusicClipInput[];
   mediaDurations: MediaDurations;
   movieDuration: number;
-  expected: { musicDuration: number; segments: MusicSegment[] };
+  expected: { musicDuration: number; segments: AudioSegment[] };
 }
 
 const TOLERANCE: number = vectors.tolerance;

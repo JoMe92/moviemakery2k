@@ -21,9 +21,12 @@ image, and a missing `*Url` is rebuilt from the entry's ID.
 Detection goes by content, never by name or content type: first Pillow (JPEG,
 PNG, WebP only), then ffprobe. A file with at least one decodable video stream
 in a supported codec (H.264, HEVC, VP9, AV1) is a video, whatever else it
-contains; only then does the existing audio check apply. Limits depend on the
-kind: images 25 MB and 40 megapixels, audio 100 MB and 15 minutes, video
-500 MB and 10 minutes.
+contains; only then does the existing audio check apply. That order is what
+makes an **audio-only WebM** - a narration recording from `MediaRecorder` -
+an ordinary audio import: it has no video stream, so it falls through to the
+audio check, where `matroska` is an accepted container and `opus` an accepted
+codec. Limits depend on the kind: images 25 MB and 40 megapixels, audio 100 MB
+and 15 minutes, video 500 MB and 10 minutes.
 
 Audio derivatives come from one FFmpeg run (add-music-track D2): it decodes the
 original once and writes the AAC preview plus mono PCM to a pipe, from which
@@ -94,7 +97,18 @@ _CHUNK = 1024 * 1024
 _EXTENSIONS = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}
 
 # ffprobe demuxer (first name of `format_name`) -> extension of the stored original.
-_AUDIO_EXTENSIONS = {"mp3": "mp3", "wav": "wav", "mov": "m4a", "ogg": "ogg", "flac": "flac"}
+# `matroska` covers an audio-only WebM, which is what `MediaRecorder` produces
+# for a narration recording (add-narration-and-audio-levels design.md D3: "wie
+# ein normaler Audio-Import gespeichert, kein neuer Medientyp"). A Matroska file
+# with a video stream never gets here - `probe_video` claims it first.
+_AUDIO_EXTENSIONS = {
+    "mp3": "mp3",
+    "wav": "wav",
+    "mov": "m4a",
+    "ogg": "ogg",
+    "flac": "flac",
+    "matroska": "webm",
+}
 # Decoders checked in the pixi FFmpeg (design.md, architect's pre-check); plus all pcm_*.
 _AUDIO_CODECS = frozenset({"mp3", "aac", "alac", "flac", "vorbis", "opus"})
 

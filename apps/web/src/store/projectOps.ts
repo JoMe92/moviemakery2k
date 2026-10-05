@@ -7,6 +7,13 @@ import type { Slide } from "../lib/apiClient";
 
 export const SLIDE_DURATION = { min: 0.5, max: 60, step: 0.25, default: 5 } as const;
 export const TRANSITION_DURATION = { min: 0.25, max: 5, step: 0.25 } as const;
+/**
+ * The one global audio level of the project (add-narration-and-audio-levels
+ * D4): `max` plays only the sound of video clips, `min` only music and
+ * narration, `default` both at full gain. Whole steps only - the backend takes
+ * an integer.
+ */
+export const CLIP_AUDIO_BALANCE = { min: 0, max: 100, default: 50 } as const;
 
 function onGrid(value: number, step: number): boolean {
   const n = value / step;
@@ -28,6 +35,12 @@ export function isValidTransitionDuration(value: number): boolean {
     value >= TRANSITION_DURATION.min &&
     value <= TRANSITION_DURATION.max &&
     onGrid(value, TRANSITION_DURATION.step)
+  );
+}
+
+export function isValidClipAudioBalance(value: number): boolean {
+  return (
+    Number.isInteger(value) && value >= CLIP_AUDIO_BALANCE.min && value <= CLIP_AUDIO_BALANCE.max
   );
 }
 

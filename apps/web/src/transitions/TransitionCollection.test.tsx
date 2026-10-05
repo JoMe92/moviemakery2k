@@ -9,7 +9,9 @@ import { renderApp } from "../test/renderApp";
 async function setup() {
   const api = mockApi({
     getProject: vi.fn(async () => ({
-      schemaVersion: 5 as const,
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
       music: [],
       slides: [
         {
@@ -68,7 +70,9 @@ describe("'Video Transitions' collection", () => {
       const view = renderApp(
         mockApi({
           getProject: vi.fn(async () => ({
-            schemaVersion: 5 as const,
+            schemaVersion: 6 as const,
+            narration: [],
+            clipAudioBalance: 50,
             music: [],
             slides: [
               {
@@ -224,7 +228,9 @@ describe("'Video Transitions' collection with many entries (TASK-WEB-064, design
     const api = mockApi({
       catalog: vi.fn(async () => catalog.transitions as Transition[]),
       getProject: vi.fn(async () => ({
-        schemaVersion: 5 as const,
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
         music: [],
         slides: [
           {

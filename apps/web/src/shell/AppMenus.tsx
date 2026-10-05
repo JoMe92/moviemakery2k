@@ -1,5 +1,6 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AudioLevelsDialog } from "../audio/AudioLevelsDialog";
 import { AutoMovieDialog } from "../automovie/AutoMovieDialog";
 import { canAutoMovie } from "../automovie/autoMovie";
 import { useT } from "../i18n/useT";
@@ -28,6 +29,9 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
   const [confirmNew, setConfirmNew] = useState(false);
   const [options, setOptions] = useState(false);
   const [autoMovieOpen, setAutoMovieOpen] = useState(false);
+  const [audioLevels, setAudioLevels] = useState(false);
+  const clipAudioBalance = useAppStore((s) => s.clipAudioBalance);
+  const setClipAudioBalance = useAppStore((s) => s.setClipAudioBalance);
   const newProject = useAppStore((s) => s.newProject);
   const removeSlide = useAppStore((s) => s.removeSlide);
   const selection = useAppStore((s) => s.selection);
@@ -91,6 +95,7 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
               }
             : undefined,
           split: canSplit ? () => splitSlide() : undefined,
+          audioLevels: () => setAudioLevels(true),
           toggleTimeline: toggleTimelineView,
         },
         t,
@@ -157,6 +162,12 @@ export function AppMenus({ extra = {}, variant = "bar" }: AppMenusProps) {
       <OptionsDialog open={options} onClose={() => setOptions(false)} />
       <AutoMovieDialog open={autoMovieOpen} onClose={() => setAutoMovieOpen(false)} />
       <FitToMusicDialog notice={fitNotice} onClose={() => setFitNotice(null)} />
+      <AudioLevelsDialog
+        open={audioLevels}
+        balance={clipAudioBalance}
+        onConfirm={setClipAudioBalance}
+        onClose={() => setAudioLevels(false)}
+      />
       <ConfirmDialog
         open={confirmNew}
         title={t("newProject.title")}

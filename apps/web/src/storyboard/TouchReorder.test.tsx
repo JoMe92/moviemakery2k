@@ -78,7 +78,9 @@ async function setup() {
       audioItem("z", 50),
     ],
     getProject: vi.fn(async () => ({
-      schemaVersion: 5 as const,
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
       slides: [slide("s1", "a"), slide("s2", "b"), slide("s3", "c")],
       music: [clip("m1", "x"), clip("m2", "y"), clip("m3", "z")],
     })),

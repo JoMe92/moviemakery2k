@@ -125,7 +125,13 @@ def frame_of(
     transitions: TransitionCatalog,
     time: float,
 ) -> bytes:
-    project = Project(schema_version=5, slides=list(slides), music=[])
+    project = Project(
+        schema_version=6,
+        slides=list(slides),
+        music=[],
+        narration=[],
+        clip_audio_balance=50,
+    )
     timeline = build_timeline(timeline_slides_from_project(project))
     return renderer.render(frame_at(timeline, time), timeline, transitions, time)
 
@@ -284,7 +290,15 @@ def test_an_overlay_title_stays_visible_through_a_transition(
         image_slide("s2", transition_in=incoming),
     ]
     timeline = build_timeline(
-        timeline_slides_from_project(Project(schema_version=5, slides=with_title, music=[]))
+        timeline_slides_from_project(
+            Project(
+                schema_version=6,
+                slides=with_title,
+                music=[],
+                narration=[],
+                clip_audio_balance=50,
+            )
+        )
     )
     mid = timeline.slides[1].start + 0.5
     frame = frame_at(timeline, mid)

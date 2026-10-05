@@ -84,6 +84,7 @@ export const en = {
       label: "Clip",
       addToStoryboard: "Add to Storyboard",
       split: "Split",
+      audioLevels: "Audio Levels…",
       fitToMusic: "Fit Movie to Music",
     },
     play: {
@@ -147,6 +148,14 @@ export const en = {
     version: "Version {version}",
     text: "{app} is inspired by the classic Movie Maker. It is not a Microsoft product and is not affiliated with Microsoft.",
     license: "License: {license}",
+  },
+  audioLevels: {
+    title: "Audio Levels",
+    slider: "Level",
+    clipAudio: "Audio from video clips",
+    musicAndNarration: "Music and narration",
+    hint: "One level for the whole movie: left only music and narration, right only the audio of the video clips, in the middle both at full volume.",
+    value: "{clip} % clip audio, {musicAndNarration} % music and narration",
   },
   fitToMusic: {
     title: "Fit Movie to Music",
@@ -316,6 +325,36 @@ export const en = {
     trimFormat: "Times as m:ss.cc or in seconds.",
     trimRange:
       "Allowed are start and end from {min} to {max}; the start must lie before the end and the length must be at least {length} s.",
+  },
+  narrationTrack: {
+    label: "Narration",
+    list: "Narration bar",
+    emptyHint: "Use “Record” during playback to record a narration.",
+    record: "Record",
+    stopRecording: "Stop recording",
+    recordingHint: "Recording – “Stop recording” or Esc ends it.",
+    fullHint: "The narration bar is full (at most {max} clips).",
+    clip: "Narration clip {number}: {name}, from {start}, {duration}",
+    clipMenu: "Narration clip {number} of the narration bar",
+    clipMore: "More about narration clip {number}",
+    missingAudio: "missing audio file",
+    remove: "Remove",
+    removeTitle: "Remove narration clip",
+    removeMessage:
+      "Remove narration clip {number} from the narration bar? The recording stays in the media collection.",
+    moveToPlayhead: "Move to the playback position",
+    volume: "Volume…",
+    fadeIn: "Fade In",
+    fadeOut: "Fade Out",
+    trim: "Trim…",
+    volumeTitle: "Volume of narration clip {number}",
+    trimTitle: "Trim narration clip {number}",
+    error: {
+      denied: "No access to the microphone. Allow access in the browser and try again.",
+      unavailable: "No microphone was found that this browser can record from.",
+      failed: "The recording failed. Please try again.",
+      upload: "The recording could not be saved. Please try again.",
+    },
   },
   stepper: {
     decrease: "Decrease {label}",
@@ -501,7 +540,7 @@ export const en = {
       notFound: "Media item not found.",
       tooManyFiles: "Too many files: at most {max} per import ({count} sent).",
       unsupportedType:
-        "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG and FLAC).",
+        "Not a supported image, video or audio file (allowed are JPEG, PNG, WebP, MP4/MOV and MKV/WebM (H.264, HEVC, VP9 or AV1), MP3, WAV, M4A/AAC, OGG, FLAC and WebM/Opus).",
       tooLarge: "The file is too large (at most {maxMegabytes} MB).",
       tooManyPixels: "The image has too many pixels (at most {maxMegapixels} megapixels).",
       audioTooLong: "The audio file is too long (at most {maxMinutes} minutes).",
@@ -527,6 +566,19 @@ export const en = {
       },
       musicTrim: {
         negative: "The start and end of a music clip must be 0 s or later (is {value} s).",
+      },
+      narrationVolume: {
+        outOfRange: "The narration volume must be between {min} and {max} (is {value}).",
+      },
+      narrationTrim: {
+        negative: "The start and end of a narration clip must be 0 s or later (is {value} s).",
+      },
+      narrationAt: {
+        outOfRange:
+          "The start time of a narration clip must be between {min} and {max} s (is {value} s).",
+      },
+      clipAudioBalance: {
+        outOfRange: "The audio level must be between {min} and {max} (is {value}).",
       },
       slideTrim: {
         negative: "The start and end of a video clip must be 0 s or later (is {value} s).",
@@ -564,12 +616,26 @@ export const en = {
         tooShort:
           "Music clip {clip} (ID “{clipId}”): the clip must play at least {min} s (plays {length} s).",
       },
+      narration: {
+        duplicateId:
+          "Narration clip {clip} (ID “{clipId}”): the ID is already used by narration clip {firstClip}.",
+        unknownMedia: "Narration clip {clip} (ID “{clipId}”): unknown media item “{mediaId}”.",
+        notAudio:
+          "Narration clip {clip} (ID “{clipId}”): media item “{mediaId}” is not an audio file.",
+        trimEndBeyondFile:
+          "Narration clip {clip} (ID “{clipId}”): the end ({trimEnd} s) lies beyond the end of the file ({duration} s).",
+        trimStartNotBeforeEnd:
+          "Narration clip {clip} (ID “{clipId}”): the start ({trimStart} s) must lie before the end ({end} s).",
+        tooShort:
+          "Narration clip {clip} (ID “{clipId}”): the clip must play at least {min} s (plays {length} s).",
+      },
     },
     export: {
       notFound: "Export not found.",
       emptyProject: "Cannot export: the storyboard is empty.",
       missingMedia: "Cannot export: media missing for picture(s) {slides}.",
       missingMusicMedia: "Cannot export: media missing for music clip(s) {clips}.",
+      missingNarrationMedia: "Cannot export: media missing for narration clip(s) {clips}.",
       busy: "An export is already running. Wait for it to finish or cancel it first.",
       notReady: "The movie is not available: the export has the status “{status}”.",
       fileName: {

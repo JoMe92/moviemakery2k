@@ -17,9 +17,9 @@ from PIL import Image
 from mmy_backend.config import Settings
 from mmy_backend.ffmpeg import ffmpeg_binary
 from mmy_backend.main import create_app
-from mmy_backend.project import Project, ProjectStore, on_grid
+from mmy_backend.project import ProjectStore, empty_project, on_grid
 
-EMPTY = {"schemaVersion": 5, "slides": [], "music": []}
+EMPTY = {"schemaVersion": 6, "slides": [], "music": [], "narration": [], "clipAudioBalance": 50}
 
 
 @pytest.fixture
@@ -119,7 +119,7 @@ def _upload_video(client: TestClient, tmp_path: Path, seconds: float = 4.0) -> t
 
 def _valid_project(media: list[str]) -> dict[str, Any]:
     return {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "slides": [
             _slide("a", media[0], 5.0),
             _slide("b", media[1], 2.75, ("fade", 1.25)),
@@ -128,17 +128,21 @@ def _valid_project(media: list[str]) -> dict[str, Any]:
             _slide("e", media[0], 3.0),
         ],
         "music": [],
+        "narration": [],
+        "clipAudioBalance": 50,
     }
 
 
 def _valid_mixed_project(image_id: str, video_id: str, duration: float) -> dict[str, Any]:
     return {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "slides": [
             _slide("a", image_id, 5.0),
             _video_slide("b", video_id, 0.0, duration, ("fade", 1.0)),
         ],
         "music": [],
+        "narration": [],
+        "clipAudioBalance": 50,
     }
 
 
@@ -400,7 +404,13 @@ def test_reference_errors_are_collected_as_project_invalid(client: TestClient) -
 def test_invalid_put_without_previous_project_writes_nothing(
     client: TestClient, settings: Settings
 ) -> None:
-    bad = {"schemaVersion": 5, "slides": [_slide("a", "missing")], "music": []}
+    bad = {
+        "schemaVersion": 6,
+        "slides": [_slide("a", "missing")],
+        "music": [],
+        "narration": [],
+        "clipAudioBalance": 50,
+    }
     assert client.put("/api/project", json=bad).status_code == 422
     assert client.get("/api/project").json() == EMPTY
     assert not (settings.data_dir / "project.json").exists()
@@ -434,7 +444,7 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
     with TestClient(create_app(settings)) as client:
         a, b, c = _upload(client, 3)
         project = {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "slides": [
                 _slide("s1", a, 5.0),
                 _slide("s2", b, 4.0, ("fade", 1.0)),
@@ -442,6 +452,8 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
                 _slide("s4", c, 2.0, ("fade", 0.5)),
             ],
             "music": [],
+            "narration": [],
+            "clipAudioBalance": 50,
         }
         assert client.put("/api/project", json=project).status_code == 200
         store: ProjectStore = client.app.state.project  # type: ignore[attr-defined]
@@ -449,12 +461,14 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
         updated = asyncio.run(store.remove_media(a))
 
         expected = {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "slides": [
                 _slide("s2", b, 4.0),
                 _slide("s4", c, 2.0, ("fade", 0.5)),
             ],
             "music": [],
+            "narration": [],
+            "clipAudioBalance": 50,
         }
         assert updated.model_dump(mode="json") == expected
         assert client.get("/api/project").json() == expected
@@ -465,7 +479,7 @@ def test_remove_media_cascades_and_clears_new_first_transition(settings: Setting
 def test_remove_unused_media_does_not_write(settings: Settings) -> None:
     store = ProjectStore(settings.data_dir)
     result = asyncio.run(store.remove_media("f" * 32))
-    assert result == Project(schema_version=5, slides=[], music=[])
+    assert result == empty_project()
     assert not (settings.data_dir / "project.json").exists()
 
 
@@ -534,9 +548,11 @@ def test_version_2_file_migrates_slides_to_image_kind(settings: Settings) -> Non
     with TestClient(create_app(settings)) as client:
         loaded = client.get("/api/project").json()
         assert loaded == {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "slides": [_slide("s1", image_id, 4.5)],
             "music": [],
+            "narration": [],
+            "clipAudioBalance": 50,
         }
 
 
@@ -641,7 +657,7 @@ def test_invalid_video_slide_is_rejected_and_keeps_previous_project(
 def _effect_project(image_id: str, video_id: str, duration: float) -> dict[str, Any]:
     """Mixed project, each kind once with and once without an effect (design.md D3)."""
     return {
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "slides": [
             _slide("a", image_id, 5.0, effect="sepia"),
             _slide("b", image_id, 2.5, ("fade", 1.0)),
@@ -649,6 +665,8 @@ def _effect_project(image_id: str, video_id: str, duration: float) -> dict[str, 
             _video_slide("d", video_id, 0.0, duration, ("fade", 1.0)),
         ],
         "music": [],
+        "narration": [],
+        "clipAudioBalance": 50,
     }
 
 
@@ -728,9 +746,11 @@ def test_version_3_file_gets_a_null_effect_on_every_slide(
     with TestClient(create_app(settings)) as client:
         loaded = client.get("/api/project").json()
         assert loaded == {
-            "schemaVersion": 5,
+            "schemaVersion": 6,
             "slides": [_slide("a", image_id, 5.0), _video_slide("b", video_id, 0.0, duration)],
             "music": [],
+            "narration": [],
+            "clipAudioBalance": 50,
         }
         # Loading alone does not rewrite the file (and keeps no backup).
         assert json.loads(project_file.read_text()) == v3

@@ -265,8 +265,20 @@ export function mockApi(overrides: Partial<AppApi> = {}): AppApi & { saved: Proj
       filename: file.name,
       item: mediaItem(file.name),
     })),
-    deleteMedia: vi.fn(async () => ({ schemaVersion: 5 as const, slides: [], music: [] })),
-    getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides: [], music: [] })),
+    deleteMedia: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      slides: [],
+      music: [],
+    })),
+    getProject: vi.fn(async () => ({
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
+      slides: [],
+      music: [],
+    })),
     putProject: vi.fn(async (p: Project) => {
       saved.push(structuredClone(p));
       return p;

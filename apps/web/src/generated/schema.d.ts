@@ -631,7 +631,7 @@ export interface components {
          *     Never rename a code, add a new one instead.
          * @enum {string}
          */
-        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.slideTrim.negative" | "project.titleText.missing" | "project.titleText.ambiguous" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.unknownEffect" | "project.slide.unknownTitleStyle" | "project.slide.notImage" | "project.slide.notVideo" | "project.slide.trimOutBeyondFile" | "project.slide.trimInNotBeforeTrimOut" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
+        ErrorCode: "auth.required" | "media.notFound" | "media.tooManyFiles" | "media.unsupportedType" | "media.tooLarge" | "media.tooManyPixels" | "media.inUseByExport" | "media.audioTooLong" | "media.noAudioStream" | "media.videoTooLong" | "media.noVideoStream" | "media.probeUnavailable" | "project.slideDuration.outOfRange" | "project.slideDuration.offGrid" | "project.transitionDuration.outOfRange" | "project.transitionDuration.offGrid" | "project.musicVolume.outOfRange" | "project.musicTrim.negative" | "project.narrationVolume.outOfRange" | "project.narrationTrim.negative" | "project.narrationAt.outOfRange" | "project.clipAudioBalance.outOfRange" | "project.slideTrim.negative" | "project.titleText.missing" | "project.titleText.ambiguous" | "project.invalid" | "project.slide.duplicateId" | "project.slide.unknownMedia" | "project.slide.firstHasTransition" | "project.slide.unknownTransition" | "project.slide.unknownEffect" | "project.slide.unknownTitleStyle" | "project.slide.notImage" | "project.slide.notVideo" | "project.slide.trimOutBeyondFile" | "project.slide.trimInNotBeforeTrimOut" | "project.music.duplicateId" | "project.music.unknownMedia" | "project.music.notAudio" | "project.music.trimEndBeyondFile" | "project.music.trimStartNotBeforeEnd" | "project.music.tooShort" | "project.narration.duplicateId" | "project.narration.unknownMedia" | "project.narration.notAudio" | "project.narration.trimEndBeyondFile" | "project.narration.trimStartNotBeforeEnd" | "project.narration.tooShort" | "export.notFound" | "export.emptyProject" | "export.missingMedia" | "export.missingMusicMedia" | "export.missingNarrationMedia" | "export.busy" | "export.notReady" | "export.fileName.empty" | "export.fileName.invalidChars" | "export.fileName.controlChars" | "export.fileName.invalid" | "export.fileName.tooLong" | "export.glUnavailable" | "export.noImages" | "export.ffmpegMissing" | "export.ffmpegStartFailed" | "export.ffmpegInputClosed" | "export.ffmpegInputClosedEarly" | "export.ffmpegFailed" | "export.renderFailed" | "export.audioFailed" | "export.saveFailed" | "export.unexpected";
         /** ExportJob */
         ExportJob: {
             /**
@@ -899,6 +899,56 @@ export interface components {
              */
             volume: number;
         };
+        /**
+         * NarrationClip
+         * @description A clip of the narration track (add-narration-and-audio-levels design.md
+         *     D2). Same fields as a music clip, but with a stored **absolute** start time
+         *     `at` on the movie timeline instead of a place in a chain: a recording sits
+         *     where it was spoken, whatever the storyboard shows there. Clips may overlap;
+         *     overlapping stretches are mixed together, neither replaces the other.
+         */
+        NarrationClip: {
+            /**
+             * At
+             * @description Absolute start time on the movie timeline in seconds; not on the duration grid, and clips may overlap
+             */
+            at: number;
+            /**
+             * Fadein
+             * @description Fade in over 1 s (new clip: false)
+             */
+            fadeIn: boolean;
+            /**
+             * Fadeout
+             * @description Fade out over 1 s (new clip: false)
+             */
+            fadeOut: boolean;
+            /**
+             * Id
+             * @description Assigned by the client, unique within the narration track
+             */
+            id: string;
+            /**
+             * Mediaid
+             * @description ID of an audio medium from /api/media
+             */
+            mediaId: string;
+            /**
+             * Trimend
+             * @description End within the recording in seconds; null = end of the file (new clip: null)
+             */
+            trimEnd: number | null;
+            /**
+             * Trimstart
+             * @description Start within the recording in seconds (new clip: 0)
+             */
+            trimStart: number;
+            /**
+             * Volume
+             * @description Volume as linear gain (1 = 100 %, new clip: 1)
+             */
+            volume: number;
+        };
         /** Phases */
         Phases: {
             /** Entrance */
@@ -920,13 +970,20 @@ export interface components {
         };
         /** Project */
         Project: {
+            /**
+             * Clipaudiobalance
+             * @description The one global level between the sound of video clips (100: only clip sound) and music plus narration (0: no clip sound); 50 plays both at full gain (new project: 50)
+             */
+            clipAudioBalance: number;
             /** Music */
             music: components["schemas"]["MusicClip"][];
+            /** Narration */
+            narration: components["schemas"]["NarrationClip"][];
             /**
              * Schemaversion
              * @constant
              */
-            schemaVersion: 5;
+            schemaVersion: 6;
             /** Slides */
             slides: components["schemas"]["Slide"][];
         };
@@ -1422,7 +1479,7 @@ export interface operations {
                     "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
-            /** @description Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`) */
+            /** @description Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`, `export.missingNarrationMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`) */
             422: {
                 headers: {
                     [name: string]: unknown;

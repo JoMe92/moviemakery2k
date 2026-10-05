@@ -1,6 +1,6 @@
 import { useDndMonitor } from "@dnd-kit/core";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMusicAudio } from "../audio/useMusicAudio";
+import { usePreviewAudio } from "../audio/usePreviewAudio";
 import { entryName as effectEntryName } from "../effects/effectName";
 import { useT } from "../i18n/useT";
 import type { MediaItem, Slide } from "../lib/apiClient";
@@ -214,7 +214,7 @@ export function useSlideImages(
 export function Player() {
   const { t, formatTime, locale } = useT();
   const store = useAppStoreApi();
-  const audio = useMusicAudio(store);
+  const audio = usePreviewAudio(store);
   const slides = useAppStore((s) => s.slides);
   const media = useAppStore((s) => s.media);
   const catalog = useAppStore((s) => s.catalog);

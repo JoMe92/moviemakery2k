@@ -41,7 +41,9 @@ function setup(project: Partial<Project> = {}, media: MediaItem[] = MEDIA) {
   const api = mockApi({
     listMedia: vi.fn(async () => media),
     getProject: vi.fn(async () => ({
-      schemaVersion: 5 as const,
+      schemaVersion: 6 as const,
+      narration: [],
+      clipAudioBalance: 50,
       slides: project.slides ?? [],
       music: project.music ?? [],
     })),

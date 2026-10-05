@@ -31,7 +31,15 @@ const slides: Slide[] = [
 async function setup(layout: "compact" | "wide" = "compact") {
   if (layout === "compact") mockLayout("compact");
   const view = renderApp(
-    mockApi({ getProject: vi.fn(async () => ({ schemaVersion: 5 as const, slides, music: [] })) }),
+    mockApi({
+      getProject: vi.fn(async () => ({
+        schemaVersion: 6 as const,
+        narration: [],
+        clipAudioBalance: 50,
+        slides,
+        music: [],
+      })),
+    }),
   );
   await act(() => view.ready);
   return { ...view, user: userEvent.setup() };

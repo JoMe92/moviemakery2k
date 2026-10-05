@@ -24,6 +24,9 @@ export type TitleStyle = Schemas["Title"];
 /** Layout of a title style: one line, two lines or a credits list. */
 export type TitleLayout = TitleStyle["layout"];
 export type MusicClip = Schemas["MusicClip"];
+/** A clip of the narration track with its own absolute start time
+ * (add-narration-and-audio-levels D2). */
+export type NarrationClip = Schemas["NarrationClip"];
 export type TransitionRef = Schemas["TransitionRef"];
 export type Transition = Schemas["Transition"];
 export type Effect = Schemas["Effect"];
