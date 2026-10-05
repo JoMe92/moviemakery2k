@@ -36,7 +36,7 @@ Change ist die siebte von neun geplanten WMM-2.x-Lücken-Changes.
   Komponententests Clip-Ton-Wiedergabe ohne zweiten Takt (Bild-Scrubbing
   unverändert über `video.currentTime`), den Pegelregler bei 0/50/100 und
   Pause/Suchen mit Clip-Ton abdecken.
-- [ ] TASK-WEB-068 Erzählungsleiste und Aufnahme: Aufnahme-Knopf
+- [x] TASK-WEB-068 Erzählungsleiste und Aufnahme: Aufnahme-Knopf
   (`getUserMedia`/`MediaRecorder`, Start im selben Benutzergesten-Klick
   wie die Wiedergabe), automatisches Anlegen eines `NarrationClip` nach
   dem Stoppen, Erzählungsleiste unter der Musikleiste mit Verschieben,
