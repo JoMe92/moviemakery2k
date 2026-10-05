@@ -25,7 +25,7 @@ flowchart LR
     Cat["Catalog loader"]
     Exp["ExportManager<br/>(jobs, one worker thread each)"]
     Rnd["render/<br/>timeline.py · frames.py<br/>moderngl (EGL, llvmpipe)"]
-    Mix["render/<br/>music.py · mixdown.py"]
+    Mix["render/<br/>music.py · audio.py · mixdown.py"]
     FF["FFmpeg (subprocess)"]
   end
   subgraph Shared["packages/"]
@@ -57,7 +57,7 @@ flowchart LR
 | Component | Path | Responsibility |
 |---|---|---|
 | Web app | `apps/web/` | UI shell, collections (*My Pictures*, *My Music*, transitions), storyboard and music track, preview player, WebGL2 renderer, preview audio for all three tracks (`audio/AudioEngine.ts`) |
-| Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with music mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
+| Backend | `backend/src/mmy_backend/` | Media import and storage (pictures and audio), catalog validation and delivery, project persistence, MP4 export with the audio mixdown (`render/`, `exports.py`), serving the built web app (`pixi run demo`) |
 | Shaders | `packages/shaders/` | One GLSL ES 3.00 file per transition and per effect plus the shared preludes/epilogues/vertex shader; used by preview and export |
 | Fixtures | `packages/fixtures/` | `timeline-vectors.json` and `music-vectors.json`: shared test vectors for the TypeScript and Python time model and music schedule |
 | Fonts | `packages/fonts/` | The bundled title font (Liberation Sans): the same file rasterises titles in the preview and in the export |
@@ -322,32 +322,41 @@ already carrying the gain its side got from the global level.
 ```mermaid
 flowchart LR
   Snap["Project snapshot"] --> TLp["timeline.py<br/>frame n at t = n / 30"]
-  Snap --> MSp["music.py<br/>music_schedule"]
+  Snap --> MSp["music.py · audio.py<br/>music + narration +<br/>video-clip sound"]
   ORIG["media/&lt;id&gt;/original.*"] --> Mixd
-  MSp --> Mixd["ffmpeg pre-mix<br/>(mixdown.py)"] --> WAV["exports/&lt;id&gt;/music.wav"]
+  MSp --> Mixd["ffmpeg pre-mix<br/>(mixdown.py,<br/>two-stage by level)"] --> WAV["exports/&lt;id&gt;/music.wav"]
   JPG["media/&lt;id&gt;/preview.jpg"] --> LB["Letterbox onto black<br/>(containRect)"]
   LB --> Tex["Texture<br/>(origin bottom left)"]
   TLp --> Draw
   Tex --> Draw["moderngl, OpenGL 3.3 core<br/>EGL + Mesa llvmpipe"]
   SH["packages/shaders<br/>#version 300 es → 330 core"] --> Draw
   Draw -- "read back, flipped,<br/>RGBA bytes via stdin" --> FFm["ffmpeg<br/>BT.709 · libx264 + aac"]
-  WAV -- "audio_input<br/>(anullsrc without music)" --> FFm
+  WAV -- "audio_input<br/>(anullsrc without sound)" --> FFm
   FFm --> Part["exports/&lt;id&gt;/out.mp4.part"] -- "os.replace" --> MP4["out.mp4"]
 ```
 
-1. **Music pre-mix.** If the project has music, a separate FFmpeg run first
-   mixes it into `exports/<id>/music.wav` (48 kHz stereo, 32-bit float),
+1. **Audio pre-mix.** If anything in the project sounds, a separate FFmpeg run
+   first mixes it into `exports/<id>/music.wav` (48 kHz stereo, 32-bit float),
    exactly as long as the video (`frames / 30` s). Input is each clip's
-   **original** file (not `preview.m4a`), placed by `music_schedule` with the
-   timeline's movie duration — the same placement as in the preview. Per
-   segment the filter chain is `aresample=48000, aformat=fltp/stereo,
-   atrim, asetpts, volume, afade (in/out), adelay`; the segments are summed
-   with `amix=normalize=0` (they never overlap, so each keeps its gain), then
-   `apad` + `atrim` pad with silence or cut to the exact sample count.
+   **original** file (not `preview.m4a`), placed by the three schedules of
+   section 6 with the timeline's movie duration — the same placement as in the
+   preview. Per segment the filter chain is `aresample=48000,
+   aformat=fltp/stereo, atrim, asetpts, volume, afade (in/out), adelay`.
+   The segments then run into the graph as the **two sides** of the global
+   level (`clipAudioBalance`): music plus narration mix to one intermediate
+   signal, the video-clip sound to the other, each takes its `volume` from the
+   level, and a last `amix` puts them together, followed by `apad` + `atrim`
+   to pad with silence or cut to the exact sample count. Every `amix` uses
+   `normalize=0`, so each segment keeps its own gain and overlapping narration
+   or cross-fading clip sound simply sum. A side that is empty or silenced by
+   the level drops out, and with one side left its `amix` is skipped — a
+   music-only project therefore produces the same graph it always did.
+   Whether a video element contributes clip sound at all is one ffprobe
+   question per medium (`has_audio_stream`); anything unanswerable counts as
+   "no audio", so one track stays silent instead of the export failing.
    Cancellation is checked while FFmpeg runs; a mixing error fails the job
    with `export.audioFailed`. `music.wav` is deleted when the job ends.
-   Without music (or if no segment falls into the movie) the silent
-   `anullsrc` input is used.
+   Without any audible segment the silent `anullsrc` input is used.
 2. **Input.** Each picture is the stored `preview.jpg` (EXIF-normalised,
    longest edge ≤ 1920). It is letterboxed onto an opaque black frame of the
    output size with the browser's integer `containRect` and uploaded as a
@@ -388,7 +397,7 @@ flowchart LR
    comes first) and piped as raw RGBA into
    `ffmpeg -f rawvideo -pix_fmt rgba -s WxH -r 30 -i -` together with the
    audio input — `music.wav`, or a silent `anullsrc` (48 kHz stereo) without
-   music — cut to the exact video length and encoded as `libx264 -preset
+   any sound — cut to the exact video length and encoded as `libx264 -preset
    medium -crf 20 -pix_fmt yuv420p -profile:v high -movflags +faststart` and
    `aac -b:a 128k` (48 kHz stereo). A gain above 100 % is only clipped here,
    by the AAC encoder.
@@ -695,7 +704,7 @@ covers the switch to English and the browser-language detection.
 
 | Layer | Tooling | What it covers |
 |---|---|---|
-| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
+| Backend | pytest + FastAPI `TestClient`, a temporary `MMY_DATA_DIR` per test | Upload validation and limits, audio import per format (generated MP3, WAV, M4A, OGG, FLAC) incl. too long and no audio stream, audio preview format and peaks length, media library, project schema v2 and the v1 migration, startup against a pre-0.2.0 media index (migration by shape), music clip validation, project schema v6 with the narration track and the global audio level (validation, migration from v5), the two-stage audio mixdown (narration at its own `at`, overlapping clips, video-clip sound, the level's ratio measured with `astats`, a video without an audio track), cascade delete and the in-use `409`, project validation, catalog loading, OpenAPI incl. the `ErrorCode` enum, export jobs (snapshot, cancel, retention, job index across restarts, damaged index) |
 | Export renderer | pytest under llvmpipe | Time model and music schedule against the shared vectors, music pre-mix (length = video length, audible level, end fade-out, fade-in, 50 % volume, silence after short music) via ffprobe and `astats`, all six programs compile, golden boundary frames and letterboxing, MP4 streams, duration and BT.709 colour tags via ffprobe, red/blue round trip within 3 levels, PSNR of a mid-transition frame (decoded as BT.709), context creation without subprocesses |
 | Web | Vitest + Testing Library; `mockLayout()`/`mockViewport()` fake `matchMedia` for the layout modes | Layout modes at every boundary, compact/medium shells, sheets, taskbar, menu sheet, action bar and action sheets, collection sheet, touch reordering, transition sheet, steppers, gestures, full screen, tile size, haptics, preview buffer limits; timeline maths, music schedule (shared vectors), narration and video-clip-sound schedules, the global audio level, *Fit Movie to Music*, `AudioEngine` with a fake `AudioContext` (start time, offset after seek, pause, mute), clip sound through the store and the hook, music collection and music track, playback controls, store and autosave debounce, drop logic, duration parsing, shader source assembly, components |
 | Shaders | `pixi run check-shaders` (glslangValidator, ES 3.00) | Every assembled program compiles; uniforms match the catalog parameters |

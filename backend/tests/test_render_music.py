@@ -12,9 +12,9 @@ from typing import Any
 import pytest
 
 from mmy_backend.config import REPO_ROOT
+from mmy_backend.render.audio import AudioSegment
 from mmy_backend.render.music import (
     MusicClipInput,
-    MusicSegment,
     music_duration,
     music_schedule,
 )
@@ -78,7 +78,7 @@ def clip_from_json(raw: dict[str, Any]) -> MusicClipInput:
     )
 
 
-def segment_json(seg: MusicSegment) -> dict[str, Any]:
+def segment_json(seg: AudioSegment) -> dict[str, Any]:
     return {
         "mediaId": seg.media_id,
         "at": seg.at,

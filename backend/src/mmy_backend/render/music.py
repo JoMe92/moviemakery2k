@@ -4,6 +4,10 @@ Port of `apps/web/src/timeline/music.ts` so that preview and export place the
 music identically. Both implementations are checked against
 `packages/fixtures/music-vectors.json`.
 
+The music track is the sequential one of the project's audio tracks; what it
+shares with the others (the segment shape, the trim arithmetic and how the movie
+end cuts and fades a clip) lives in `audio.py`.
+
 Semantics of `music_schedule(clips, media_durations, movie_duration)`:
 
 - Clips play in list order, gapless from 0. There is no start time per clip.
@@ -34,8 +38,12 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-FADE_SECONDS = 1.0
-"""Fixed duration of the per-clip fades and of the end-of-movie fade-out."""
+from mmy_backend.render.audio import (
+    AudioPlacement,
+    AudioSegment,
+    place_segment,
+    played_length,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,68 +59,42 @@ class MusicClipInput:
     fade_out: bool
 
 
-@dataclass(frozen=True, slots=True)
-class MusicSegment:
-    """A clip placed on the movie time axis; all times in seconds."""
-
-    media_id: str
-    at: float
-    """Start on the movie time axis"""
-    source_in: float
-    """Start within the source medium"""
-    length: float
-    gain: float
-    fade_in: float
-    fade_out: float
-
-
-def _played_length(clip: MusicClipInput, media_durations: Mapping[str, float]) -> float:
-    duration = media_durations.get(clip.media_id, 0.0)
-    if not math.isfinite(duration) or duration <= 0:
-        return 0.0
-    end = duration if clip.trim_end is None else min(clip.trim_end, duration)
-    return end - max(clip.trim_start, 0.0)
-
-
 def music_duration(clips: Sequence[MusicClipInput], media_durations: Mapping[str, float]) -> float:
     """Total length of the music track, independent of the movie duration."""
-    return sum(max(_played_length(c, media_durations), 0.0) for c in clips)
+    return sum(max(played_length(c, media_durations), 0.0) for c in clips)
 
 
 def music_schedule(
     clips: Sequence[MusicClipInput],
     media_durations: Mapping[str, float],
     movie_duration: float,
-) -> tuple[MusicSegment, ...]:
+) -> tuple[AudioSegment, ...]:
     """Places the music clips on the movie time axis (see module docstring)."""
     if not math.isfinite(movie_duration) or movie_duration <= 0:
         return ()
-    end_fade = min(FADE_SECONDS, movie_duration)
-    segments: list[MusicSegment] = []
+    segments: list[AudioSegment] = []
     at = 0.0
     for clip in clips:
-        length = _played_length(clip, media_durations)
+        length = played_length(clip, media_durations)
         if length <= 0:
             continue
+        # The chain stops at the movie end: a clip starting there takes no time,
+        # and neither does any clip after it.
         if at >= movie_duration:
             break
-        cut = at + length > movie_duration
-        if cut:
-            length = movie_duration - at
-        fade_in = min(FADE_SECONDS, length) if clip.fade_in else 0.0
-        fade_out = min(FADE_SECONDS, length) if clip.fade_out and not cut else 0.0
-        if at + length >= movie_duration:
-            fade_out = max(fade_out, min(end_fade, length))
-        segments.append(
-            MusicSegment(
+        segment = place_segment(
+            AudioPlacement(
                 media_id=clip.media_id,
                 at=at,
                 source_in=max(clip.trim_start, 0.0),
                 length=length,
                 gain=clip.volume,
-                fade_in=fade_in,
-                fade_out=fade_out,
-            )
+                fade_in=clip.fade_in,
+                fade_out=clip.fade_out,
+            ),
+            movie_duration,
         )
+        if segment is not None:
+            segments.append(segment)
         at += length
     return tuple(segments)

@@ -61,8 +61,14 @@ from pydantic.alias_generators import to_camel
 
 from mmy_backend.catalog import EffectCatalog, TransitionCatalog
 from mmy_backend.errors import ErrorCode, Params, error_message, validation_error
-from mmy_backend.media import AudioItem, MediaStore
-from mmy_backend.project import Project, slide_media_id
+from mmy_backend.media import AudioItem, MediaStore, VideoItem
+from mmy_backend.project import AudioClip, Project, slide_media_id
+from mmy_backend.render.audio import (
+    NarrationClipInput,
+    VideoClipAudioInput,
+    narration_schedule,
+    video_clip_audio_schedule,
+)
 from mmy_backend.render.context import RenderContextError
 from mmy_backend.render.encode import (
     DEFAULT_PROFILE,
@@ -75,7 +81,13 @@ from mmy_backend.render.encode import (
     video_duration,
 )
 from mmy_backend.render.frames import preview_loader, video_loader
-from mmy_backend.render.mixdown import MIX_FILENAME, file_audio_input, mix_music
+from mmy_backend.render.mixdown import (
+    MIX_FILENAME,
+    AudioMix,
+    file_audio_input,
+    has_audio_stream,
+    mix_audio,
+)
 from mmy_backend.render.music import MusicClipInput, music_schedule
 from mmy_backend.render.timeline import Timeline, build_timeline, timeline_slides_from_project
 from mmy_backend.storage import write_bytes_atomic
@@ -544,7 +556,7 @@ class ExportManager:
             if job.project is None:
                 raise RuntimeError("export job without a project snapshot")
             timeline = build_timeline(timeline_slides_from_project(job.project))
-            audio_input = self._mix_music(job, job.project, timeline)
+            audio_input = self._mix_audio(job, job.project, timeline)
             try:
                 export_movie(
                     timeline,
@@ -599,45 +611,125 @@ class ExportManager:
                 logger.info("Export %s removed (retention)", victim.id)
             logger.info("Export %s done: %s", job.id, job.output)
 
-    def _mix_music(self, job: _Job, project: Project, timeline: Timeline) -> AudioInput:
-        """Mixes the music of `project` into the job directory (design.md D6).
+    def _original(self, media_id: str) -> Path | None:
+        """The stored original of a medium, the file every mix reads from."""
+        return next(iter(sorted(self._media.item_dir(media_id).glob("original.*"))), None)
 
-        Returns the `audio_input` for `export_movie`: the mixed `music.wav`, or
-        the silent track if nothing of the music falls into the movie. The
-        schedule uses the movie duration (as the preview does); the mix is
-        padded or cut to the exact video duration (frames / fps).
-        """
-        if not project.music or job.cancel.is_set():
-            return silent_audio_input
+    def _audio_sources(self, project: Project) -> tuple[dict[str, float], dict[str, Path]]:
+        """Durations and originals of the audio media on the two audio tracks."""
         durations: dict[str, float] = {}
         sources: dict[str, Path] = {}
-        for clip in project.music:
+        clips: list[AudioClip] = [*project.music, *project.narration]
+        for clip in clips:
             item = self._media.get(clip.media_id)
             if not isinstance(item, AudioItem):
                 continue
             durations[item.id] = item.duration
-            original = next(iter(sorted(self._media.item_dir(item.id).glob("original.*"))), None)
+            original = self._original(item.id)
             if original is not None:
                 sources[item.id] = original
-        clips = [
-            MusicClipInput(
-                id=clip.id,
-                media_id=clip.media_id,
-                trim_start=clip.trim_start,
-                trim_end=clip.trim_end,
-                volume=clip.volume,
-                fade_in=clip.fade_in,
-                fade_out=clip.fade_out,
+        return durations, sources
+
+    def _video_clip_audio(
+        self, project: Project, timeline: Timeline, sources: dict[str, Path]
+    ) -> tuple[VideoClipAudioInput, ...]:
+        """The video elements that actually carry sound, where the timeline put
+        them (design.md D1 and D5).
+
+        An element's start comes from the placement, so it includes the incoming
+        transition — its sound begins exactly when its picture does. A video
+        without an audio stream yields no source and is skipped; `has_audio_stream`
+        is asked once per medium, not once per element.
+        """
+        placed = {p.index: p.start for p in timeline.slides}
+        audible: dict[str, bool] = {}
+        clips: list[VideoClipAudioInput] = []
+        for index, slide in enumerate(project.slides):
+            at = placed.get(index)
+            if slide.kind != "video" or at is None:
+                continue
+            item = self._media.get(slide.media_id)
+            if not isinstance(item, VideoItem):
+                continue
+            if item.id not in audible:
+                original = self._original(item.id)
+                audible[item.id] = original is not None and has_audio_stream(original)
+                if audible[item.id] and original is not None:
+                    sources[item.id] = original
+            if not audible[item.id]:
+                continue
+            clips.append(
+                VideoClipAudioInput(
+                    media_id=slide.media_id,
+                    at=at,
+                    trim_in=slide.trim_in,
+                    trim_out=slide.trim_out,
+                )
             )
-            for clip in project.music
-        ]
-        segments = music_schedule(clips, durations, timeline.duration)
-        if not segments:
+        return tuple(clips)
+
+    def _mix_audio(self, job: _Job, project: Project, timeline: Timeline) -> AudioInput:
+        """Mixes the sound of `project` into the job directory (design.md D6, D5).
+
+        Returns the `audio_input` for `export_movie`: the mixed `music.wav`, or
+        the silent track if nothing audible falls into the movie. The schedules
+        use the movie duration (as the preview does); the mix is padded or cut
+        to the exact video duration (frames / fps).
+        """
+        if job.cancel.is_set():
+            return silent_audio_input
+        durations, sources = self._audio_sources(project)
+        music = music_schedule(
+            [
+                MusicClipInput(
+                    id=clip.id,
+                    media_id=clip.media_id,
+                    trim_start=clip.trim_start,
+                    trim_end=clip.trim_end,
+                    volume=clip.volume,
+                    fade_in=clip.fade_in,
+                    fade_out=clip.fade_out,
+                )
+                for clip in project.music
+            ],
+            durations,
+            timeline.duration,
+        )
+        narration = narration_schedule(
+            [
+                NarrationClipInput(
+                    id=clip.id,
+                    media_id=clip.media_id,
+                    at=clip.at,
+                    trim_start=clip.trim_start,
+                    trim_end=clip.trim_end,
+                    volume=clip.volume,
+                    fade_in=clip.fade_in,
+                    fade_out=clip.fade_out,
+                )
+                for clip in project.narration
+            ],
+            durations,
+            timeline.duration,
+        )
+        # Probing the videos costs an ffprobe run each, so only do it when the
+        # level lets the clip sound be heard at all.
+        clip_audio = (
+            video_clip_audio_schedule(
+                self._video_clip_audio(project, timeline, sources), timeline.duration
+            )
+            if project.clip_audio_balance > 0
+            else ()
+        )
+        mix = AudioMix(
+            music_and_narration=(*music, *narration),
+            clip_audio=clip_audio,
+            balance=project.clip_audio_balance,
+        )
+        if mix.is_silent() or job.cancel.is_set():
             return silent_audio_input
         duration = video_duration(timeline, job.profile.spec.fps)
-        mixed = mix_music(
-            segments, sources, duration, job.directory / MIX_FILENAME, cancel=job.cancel
-        )
+        mixed = mix_audio(mix, sources, duration, job.directory / MIX_FILENAME, cancel=job.cancel)
         return file_audio_input(mixed)
 
     @staticmethod

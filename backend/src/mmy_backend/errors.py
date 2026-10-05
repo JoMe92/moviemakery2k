@@ -90,6 +90,7 @@ class ErrorCode(StrEnum):
     EXPORT_EMPTY_PROJECT = "export.emptyProject"
     EXPORT_MISSING_MEDIA = "export.missingMedia"
     EXPORT_MISSING_MUSIC_MEDIA = "export.missingMusicMedia"
+    EXPORT_MISSING_NARRATION_MEDIA = "export.missingNarrationMedia"
     EXPORT_BUSY = "export.busy"
     EXPORT_NOT_READY = "export.notReady"
     EXPORT_FILE_NAME_EMPTY = "export.fileName.empty"
@@ -327,6 +328,10 @@ _SPECS: dict[str, ErrorSpec] = {
         "Cannot export: media missing for slide(s) {slides}.", ("count", "slides", "mediaIds")
     ),
     # `clips`: comma-separated 1-based positions in the music track; `mediaIds`: ids.
+    "export.missingNarrationMedia": ErrorSpec(
+        "Cannot export: media missing for narration clip(s) {clips}.",
+        ("count", "clips", "mediaIds"),
+    ),
     "export.missingMusicMedia": ErrorSpec(
         "Cannot export: media missing for music clip(s) {clips}.", ("count", "clips", "mediaIds")
     ),

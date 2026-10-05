@@ -611,6 +611,8 @@ export const de = {
       emptyProject: "Export nicht möglich: Der Bildstreifen ist leer.",
       missingMedia: "Export nicht möglich: Für Bild(er) {slides} fehlen die Medien.",
       missingMusicMedia: "Export nicht möglich: Für Musikstück(e) {clips} fehlen die Medien.",
+      missingNarrationMedia:
+        "Export nicht möglich: Für Erzählungs-Clip(s) {clips} fehlen die Medien.",
       busy: "Es läuft bereits ein Export. Bitte warten oder ihn zuerst abbrechen.",
       notReady: "Der Film ist nicht verfügbar: Der Export hat den Status „{status}“.",
       fileName: {

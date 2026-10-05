@@ -539,6 +539,7 @@
           "export.emptyProject",
           "export.missingMedia",
           "export.missingMusicMedia",
+          "export.missingNarrationMedia",
           "export.busy",
           "export.notReady",
           "export.fileName.empty",
@@ -2255,7 +2256,7 @@
                 }
               }
             },
-            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
+            "description": "Empty project (`export.emptyProject`), missing media (`export.missingMedia`, `export.missingMusicMedia`, `export.missingNarrationMedia`) or FastAPI's native list (file name rules carry `export.fileName.*` as `type`)"
           }
         },
         "summary": "Start Export",
