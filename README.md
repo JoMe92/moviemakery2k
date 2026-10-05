@@ -90,6 +90,16 @@ What works today:
   up. The monitor previews the style live while you choose it, and the
   exported movie shows the same text, the same bundled font (Liberation Sans)
   and the same animation. See [Titles and credits](#titles-and-credits).
+- **AutoMovie** — *Tools → AutoMovie…* builds a whole movie from the media
+  collection in one go: every picture and video clip in import order, one
+  transition between all of them and, depending on the style, an effect on
+  every element. Three styles: *Classic* (Fade, no effect), *Old Movie*
+  (Dissolve plus *Film Age, Older* on every element) and *Music Video*
+  (Circle, fitted to the length of the music — selectable only with a music
+  track). A filmstrip that is not empty is only replaced after a
+  confirmation; the collection itself stays untouched, and the result is an
+  ordinary project you can keep editing. The opening and closing titles of
+  the three styles arrive with the title feature.
 - **Real-time preview** — play, pause, stop, previous/next picture, seek bar
   and time display; rendered with WebGL2 in a 4:3 monitor. The space bar
   toggles playback.
@@ -514,7 +524,7 @@ instead.
 | [`apps/web/`](apps/web) | Web app: Vite + React 19 + TypeScript, Zustand, dnd-kit, WebGL2 renderer, Y2K theme |
 | [`backend/`](backend) | Python 3.13 + FastAPI: media (pictures, video and audio), transition, effect and title catalogs, project, MP4 export with music mixdown (moderngl + FFmpeg) |
 | [`packages/shaders/`](packages/shaders) | GLSL ES 3.00 transition and effect shaders, shared by preview and export |
-| [`packages/catalog/`](packages/catalog) | Transition, effect and title catalogs with the documented parameters (single source of truth) |
+| [`packages/catalog/`](packages/catalog) | Transition, effect, title and AutoMovie catalogs with the documented parameters (single source of truth) |
 | [`packages/fonts/`](packages/fonts) | The bundled title font (Liberation Sans), shared by preview and export |
 | [`e2e/`](e2e) | Playwright browser tests, including golden frames |
 | [`scripts/`](scripts) | Dev launcher, shader and render-environment checks, export benchmark and Docker smoke test, Git hooks |
