@@ -5,7 +5,7 @@ Datenmodell oder eine API-Änderung braucht sie nicht.
 
 ## 1. Zeitmodell
 
-- [ ] TASK-WEB-079 `fitToMusic` rechnet mit dehnbaren und festen Elementen
+- [x] TASK-WEB-079 `fitToMusic` rechnet mit dehnbaren und festen Elementen
   Dehnbar sind Bild- und Titel-Elemente, fest ist ein Videoclip;
   bisektiert wird die gleichmäßige Dauer der dehnbaren Elemente, gemessen
   über den ganzen Bildstreifen, der Rest liegt auf dem letzten dehnbaren
