@@ -11,7 +11,11 @@ export interface FitToMusicNotice {
   reachable: number;
 }
 
-/** Message dialog: the music length is unreachable with the current pictures. */
+/**
+ * Message dialog: the music length is unreachable with the current elements -
+ * either the stretchable ones cannot get there, or the storyboard has nothing
+ * to stretch at all (fit-to-music-with-video-clips design.md D3).
+ */
 export function FitToMusicDialog({
   notice,
   onClose,

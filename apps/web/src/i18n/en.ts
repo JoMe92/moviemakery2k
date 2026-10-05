@@ -160,9 +160,9 @@ export const en = {
   fitToMusic: {
     title: "Fit Movie to Music",
     tooLong:
-      "The music lasts {music}. With the current pictures the movie can last at most {reachable}. The picture durations were not changed.",
+      "The music lasts {music}. With the current elements the movie can last at most {reachable}. The display durations were not changed.",
     tooShort:
-      "The music lasts {music}. With the current pictures the movie must last at least {reachable}. The picture durations were not changed.",
+      "The music lasts {music}. With the current elements the movie must last at least {reachable}. The display durations were not changed.",
   },
   autoMovie: {
     title: "AutoMovie",

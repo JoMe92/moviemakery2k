@@ -231,7 +231,7 @@ describe("Extras → AutoMovie…", () => {
     expect(timelineOf(slides).duration).toBeCloseTo(60, 1);
   });
 
-  it("gets as close to the music as the fixed video clips allow", async () => {
+  it("matches the music exactly even with a fixed video clip in the collection", async () => {
     const user = userEvent.setup();
     const { store, ready } = withCollection();
     await ready;
@@ -245,14 +245,17 @@ describe("Extras → AutoMovie…", () => {
       "circle",
       "circle",
     ]);
-    // "Fit movie to music" only resizes pictures and titles - a video clip's
-    // length is its trim (add-timeline-editing non-goal). With one 7.5 s clip
-    // among three pictures and two titles the movie therefore lands near, not
-    // exactly on, the 60 s of music; the rest carries the whole adjustment.
-    expect(timelineOf(slides).duration).toBeGreaterThan(40);
-    expect(timelineOf(slides).duration).toBeLessThan(60);
-    const pictures = slides.filter((slide) => slide.kind === "image");
-    expect(pictures.every((slide) => slide.kind === "image" && slide.duration > 5)).toBe(true);
+    // "Musikvideo" promises the total matches the music, and it now does with
+    // an imported video too: the clip keeps its trim window while the three
+    // pictures and the two title elements carry the whole target
+    // (fit-to-music-with-video-clips design.md D1, D5). Before this change the
+    // same collection landed on 51.25 s instead of 60 s.
+    expect(timelineOf(slides).duration).toBeCloseTo(60, 9);
+    const video = slides.find((slide) => slide.kind === "video");
+    expect(video?.kind === "video" && video.trimOut - video.trimIn).toBe(7.5);
+    // Every stretchable element got the same duration.
+    const stretched = slides.filter((slide) => slide.kind !== "video");
+    expect(new Set(stretched.map((slide) => slide.duration)).size).toBe(1);
   });
 
   it("asks before replacing a filmstrip that is not empty", async () => {

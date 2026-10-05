@@ -3,7 +3,7 @@
  * A transition belongs to the target picture (`transitionIn`) and moves with it
  * when reordering; the first item never has an incoming transition.
  */
-import type { Slide } from "../lib/apiClient";
+import type { ImageSlide, Slide, TitleSlide } from "../lib/apiClient";
 
 export const SLIDE_DURATION = { min: 0.5, max: 60, step: 0.25, default: 5 } as const;
 export const TRANSITION_DURATION = { min: 0.25, max: 5, step: 0.25 } as const;
@@ -55,6 +55,27 @@ export function newSlideId(): string {
  */
 export function slideDuration(slide: Slide): number {
   return slide.kind === "video" ? slide.trimOut - slide.trimIn : slide.duration;
+}
+
+/**
+ * Whether "Fit movie to music" may set this element's duration: a picture or
+ * title element has a display duration of its own, while a video clip's length
+ * is its trim window and stretching it would change the user's cut
+ * (fit-to-music-with-video-clips design.md D1). Mirror of `slideDuration`:
+ * exactly the elements whose length that function reads from `duration`.
+ */
+export function isStretchableSlide(slide: Slide): slide is ImageSlide | TitleSlide {
+  return slide.kind !== "video";
+}
+
+/**
+ * The element with a duration from "Fit movie to music" applied - unchanged
+ * when it is fixed, so the whole list the fit returns can be applied as it is
+ * and the caller never decides again what may be stretched (design.md D1).
+ */
+export function withFittedDuration(slide: Slide, duration: number | undefined): Slide {
+  if (!isStretchableSlide(slide) || duration === undefined) return slide;
+  return { ...slide, duration };
 }
 
 /**
