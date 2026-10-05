@@ -49,7 +49,7 @@ wieder, ohne deren Kataloge zu ändern.
 
 ## 4. Abschluss
 
-- [ ] TASK-INFRA-023 E2E und Doku: Playwright-Smoke erweitert um einen
+- [x] TASK-INFRA-023 E2E und Doku: Playwright-Smoke erweitert um einen
   Titel am Filmanfang, einen Overlay-Titel auf einem Bild und einen
   Nachspann mit Scroll; Export enthält an diesen Stellen denselben Text
   und dieselbe Animation wie die Vorschau; README/CHANGELOG „Unreleased“
