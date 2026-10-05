@@ -273,10 +273,18 @@ export function Player() {
         : demoEffect
           ? ({ kind: "still", slideIndex: 0 } as const)
           : frameAt(timeline, playback.time);
-  const images = useMemo(
-    () => (sample ? (i: number) => sampleImages()[i] : slideImages),
-    [sample, slideImages],
-  );
+  const images = useMemo(() => {
+    if (sample) return (i: number) => sampleImages()[i];
+    // A title element has no medium: its own raster is the image source, so a
+    // transition into or out of it cross-fades like any picture. Its still
+    // segment is drawn by the title path instead, which animates its phases.
+    return (i: number) => {
+      const slide = slides[i];
+      if (slide?.kind !== "title") return slideImages(i);
+      const style = titleStyleById(titleCatalog, slide.styleId);
+      return style ? titleSource(slide, style, false)?.canvas : undefined;
+    };
+  }, [sample, slideImages, slides, titleCatalog, titleSource]);
   const params = useCallback(
     (id: string) => catalog.find((t) => t.id === id)?.params ?? {},
     [catalog],

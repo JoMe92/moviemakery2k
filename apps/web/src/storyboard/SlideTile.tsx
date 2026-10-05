@@ -163,7 +163,12 @@ export function SlideTile({
         aria-pressed={selected}
         aria-current={playing ? "true" : undefined}
         data-playing={playing || undefined}
-        aria-label={t("storyboard.slide", { number, name, duration })}
+        aria-label={
+          // A title element is not a picture: it names itself by its text.
+          slide.kind === "title"
+            ? t("titles.tile", { number, text: name, duration })
+            : t("storyboard.slide", { number, name, duration })
+        }
         title={name}
         onKeyDown={onKeyDown}
         onClick={onSelect}

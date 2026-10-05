@@ -3,6 +3,7 @@ immediately: if either is invalid, importing `mmy_backend.main:app` (and
 therefore uvicorn) already fails."""
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -18,14 +19,36 @@ from mmy_backend.media import MediaStore
 from mmy_backend.project import ProjectStore
 from mmy_backend.title_catalog import load_title_catalog
 
+logger = logging.getLogger(__name__)
+
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     catalog = load_catalog(settings.catalog_file)
     title_catalog = load_title_catalog(settings.title_catalog_file)
     effect_catalog = load_effect_catalog(settings.effect_catalog_file)
+    # The bundled title font (add-titles-and-credits design.md D1) ships with
+    # the repository; a project without titles works without it, so a missing
+    # file is a warning rather than a refusal to start - the export then
+    # renders a title as a black frame instead of failing mid-render.
+    title_font_file = settings.title_font_file if settings.title_font_file.is_file() else None
+    if title_font_file is None:
+        logger.warning(
+            "Title font %s is missing: titles and credits will export as black frames "
+            "(set MMY_FONTS_DIR to the directory holding %s).",
+            settings.title_font_file,
+            settings.title_font_file.name,
+        )
     media = MediaStore(settings.data_dir)
-    exports = ExportManager(settings.data_dir, media, catalog, settings.shaders_dir, effect_catalog)
+    exports = ExportManager(
+        settings.data_dir,
+        media,
+        catalog,
+        settings.shaders_dir,
+        effect_catalog,
+        titles=title_catalog,
+        title_font_file=title_font_file,
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:

@@ -108,8 +108,7 @@ function Wizard({
 
   const style = titleStyleById(catalog, styleId);
   const credits = style ? isCredits(style.layout) : false;
-  const creditsValue =
-    creditsText ?? lines.filter((line) => line.trim().length > 0).join("\n");
+  const creditsValue = creditsText ?? lines.filter((line) => line.trim().length > 0).join("\n");
   const textLines = credits
     ? creditsValue.split("\n").slice(0, CREDIT_ENTRIES_MAX)
     : lines.slice(0, style ? lineCount(style.layout) : 1);

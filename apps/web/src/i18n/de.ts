@@ -410,6 +410,7 @@ export const de = {
     next: "Weiter",
     finish: "Fertig",
     noText: "(ohne Text)",
+    tile: "Titel {number}: {text}, {duration}",
   },
   export: {
     title: "Film speichern",

@@ -407,6 +407,7 @@ export const en = {
     next: "Next",
     finish: "Finish",
     noText: "(no text)",
+    tile: "Title {number}: {text}, {duration}",
   },
   export: {
     title: "Save Movie",

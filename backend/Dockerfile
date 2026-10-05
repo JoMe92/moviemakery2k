@@ -25,10 +25,14 @@ COPY --from=build /app/backend /app/backend
 COPY --from=build /shell-hook /shell-hook
 COPY packages/catalog /app/packages/catalog
 COPY packages/shaders /app/packages/shaders
+# The bundled title font (add-titles-and-credits design.md D1): without it the
+# export cannot rasterise a title.
+COPY packages/fonts /app/packages/fonts
 COPY scripts/check_render_env.py /app/scripts/check_render_env.py
 
 ENV MMY_CATALOG_DIR=/app/packages/catalog \
     MMY_SHADERS_DIR=/app/packages/shaders \
+    MMY_FONTS_DIR=/app/packages/fonts \
     MMY_DATA_DIR=/data \
     PYTHONNOUSERSITE=1
 

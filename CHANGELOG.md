@@ -21,6 +21,31 @@ All notable changes to this project are documented here. The format follows
   the existing still/transition pass, from the same shader files in the
   preview and in the export, so the exported movie carries the same effect at
   the same spot.
+- **Titles and credits** (OpenSpec change `add-titles-and-credits`): the task
+  pane's *Make titles or credits* now opens a four-step wizard — placement,
+  text, style, colour — and puts a title at the beginning of the movie,
+  before or on the selected element, or at the end. A title before, at the
+  beginning or at the end becomes a storyboard element of its own with its
+  own duration; *on the selected element* sets that picture's or clip's
+  overlay title, which changes neither the element list nor the element's
+  duration. Eight MVP styles (Basic Title, Fly In, Zoom In, Subtitle, Fade In
+  and Out, Fly In Fades, Scroll Up Stacked, Fade In and Out for credits)
+  animate in the original's three phases, Entrance → Main → Exit. The
+  monitor previews the chosen style live, and preview and export share the
+  text rasterisation, the bundled Liberation Sans font and the title GLSL
+  program, so the exported movie shows the same text and animation at the
+  same places. `GET /api/catalog/titles` serves the new catalog, validated at
+  startup like the other two.
+- **BREAKING (API):** project **schema version 5**: a storyboard element may
+  now be a **title element** (`kind: "title"` with `lines` or
+  `creditEntries`, a `styleId`, a `color` and its own `duration`; it refers
+  to no medium), and every picture and video clip carries a required,
+  nullable `title` — the overlay title `{lines, styleId, color}`. A title
+  element has no `title` field of its own, so an overlay on one is rejected.
+  A stored version-4 project is migrated on read (every element gets
+  `title: null`) and written at version 5 on the next save; `PUT
+  /api/project` accepts version 5 only and rejects an unknown title style as
+  `project.slide.unknownTitleStyle`.
 - **BREAKING (API):** project **schema version 4**: every element (picture and
   video clip alike) carries a required, nullable `effectId` (an ID from the
   effect catalog). A stored version-3 project is migrated on read (every
