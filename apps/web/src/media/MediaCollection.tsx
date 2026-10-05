@@ -1,12 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
-import {
-  type KeyboardEvent,
-  type MouseEvent,
-  type PointerEvent,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type KeyboardEvent, type MouseEvent, useMemo, useRef, useState } from "react";
 import { translateError } from "../i18n/errors";
 import { formatClipDuration } from "../i18n/format";
 import type { MessageKey } from "../i18n/types";
@@ -30,7 +23,7 @@ import { ContextMenu } from "../ui/ContextMenu";
 import { Dialog } from "../ui/Dialog";
 import { AudioIcon } from "../ui/icons";
 import { Tile } from "../ui/Tile";
-import { chain, HOLD_MS, useLongPress } from "../ui/useLongPress";
+import { type HoldGesture, useHoldGesture } from "../ui/useLongPress";
 import styles from "./MediaCollection.module.css";
 import { MediaPropertiesDialog } from "./MediaPropertiesDialog";
 import { useAddFromCollection } from "./useAddFromCollection";
@@ -103,48 +96,22 @@ function tileAttributes(
   return plain;
 }
 
-type PointerHandler = ((event: PointerEvent<HTMLElement>) => void) | undefined;
-
 /**
- * Long press (picking mode) on top of the dnd-kit listeners. A tap picks the
- * tile, so the press only becomes the action sheet after an unmistakable
+ * Long press (picking mode) on top of the dnd-kit listeners - the same gesture
+ * the filmstrip and the music bar use (`useHoldGesture`, mmy-c4r). A tap picks
+ * the tile, so the press only becomes the action sheet after an unmistakable
  * HOLD_MS hold (mmy-43e), and while it is armed the tile says so
  * (`data-armed`) - the release is then no longer a coin toss between picking
- * and a menu.
+ * and a menu. The hold is the same for every kind, since a video can be added
+ * to the storyboard too (add-timeline-editing D2).
  */
 function usePickingPointer(
   picking: boolean,
   onLongPress: () => void,
   onTap: () => void,
   listeners: Record<string, unknown> | undefined,
-  /**
-   * Hold the action sheet needs: HOLD_MS wherever a tap picks the tile, which
-   * is every kind since a video can be added to the storyboard too
-   * (add-timeline-editing D2).
-   */
-  delay: number = HOLD_MS,
-) {
-  const [armed, setArmed] = useState(false);
-  const longPress = useLongPress(onLongPress, {
-    enabled: picking,
-    delay,
-    onTap,
-    onArmed: () => setArmed(true),
-    onDisarmed: () => setArmed(false),
-  });
-  return {
-    armed,
-    pointer: {
-      onPointerDown: chain(listeners?.onPointerDown as PointerHandler, longPress.onPointerDown),
-      onPointerMove: longPress.onPointerMove,
-      onPointerUp: longPress.onPointerUp,
-      onPointerCancel: longPress.onPointerCancel,
-      // The touch stream decides the tap the browser revoked (mmy-bmh).
-      onTouchMove: longPress.onTouchMove,
-      onTouchEnd: longPress.onTouchEnd,
-    },
-    guardClick: longPress.guardClick,
-  };
+): HoldGesture {
+  return useHoldGesture(onLongPress, { enabled: picking, onTap, listeners });
 }
 
 interface MediaTileProps extends TileHandlers {

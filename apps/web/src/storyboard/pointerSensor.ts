@@ -6,6 +6,7 @@ import {
 } from "@dnd-kit/core";
 import { getOwnerDocument } from "@dnd-kit/utilities";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { HOLD_MS, LONG_PRESS_TOLERANCE } from "../ui/useLongPress";
 
 interface GuardListeners {
   removeAll?: () => void;
@@ -87,8 +88,19 @@ export class StoryboardPointerSensor extends PointerSensor {
   }
 }
 
-/** Touch: drag only after a long press (400 ms within 8 px), see design.md D8. */
-export const TOUCH_ACTIVATION = { delay: 400, tolerance: 8 } as const;
+/**
+ * Touch: drag only after a hold (design.md D8), and after exactly the hold that
+ * opens an element's action sheet - HOLD_MS, not design.md's 400 ms default
+ * (which it marks "im PR änderbar").
+ *
+ * The two have to be the same number (mmy-c4r). A deliberate tap on a phone
+ * lasts 400 to 700 ms, so the action sheet needs HOLD_MS to leave a tap alone;
+ * had the sensor stayed at 400 ms, one press would announce a reorder drag by
+ * vibrating at 400 ms and then arm a menu at 1000 ms - two gestures, two
+ * moments, from one finger that never moved. Now one press arms both at once:
+ * moving from there reorders, lifting opens the sheet.
+ */
+export const TOUCH_ACTIVATION = { delay: HOLD_MS, tolerance: LONG_PRESS_TOLERANCE } as const;
 
 /** TouchSensor with the same click-guard release as StoryboardPointerSensor. */
 export class StoryboardTouchSensor extends TouchSensor {

@@ -473,8 +473,9 @@ close button, Escape, a tap on the backdrop or a swipe down at the grip.
 - **Tap** selects a picture or music clip; the **action bar** above the
   taskbar offers its actions (*Duration…*, *Move left/right*, *Transition
   before…*, *Remove*; for music *Volume…*, *Trim…*, *Fade in/out*, *Move*,
-  *Remove*). A **long press** (400 ms) or the *⋯* button opens the same menu
-  as a right click on the desktop, as an action sheet.
+  *Remove*). A **hold** (one second, which also starts a drag to reorder) or
+  the *⋯* button opens the same menu as a right click on the desktop, as an
+  action sheet. A tap that simply takes a moment still selects.
 - **Adding** works by picking instead of dragging: *2. Edit → View
   collections* opens the collection sheet; tap pictures (or music) in the
   order you want them, then *Add to storyboard (n)* / *Add to music track

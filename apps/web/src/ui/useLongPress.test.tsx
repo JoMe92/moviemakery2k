@@ -19,18 +19,20 @@ import {
 const ID = 7;
 const ORIGIN = { pointerId: ID, pointerType: "touch", clientX: 100, clientY: 100 };
 
-const counters = { tap: 0, longPress: 0, click: 0 };
+const counters = { tap: 0, longPress: 0, click: 0, elsewhere: 0 };
 
-function Harness({ scroller }: { scroller?: boolean }) {
+function Harness({ scroller, noTap }: { scroller?: boolean; noTap?: boolean }) {
   const handlers = useLongPress(
     () => {
       counters.longPress += 1;
     },
     {
       delay: HOLD_MS,
-      onTap: () => {
-        counters.tap += 1;
-      },
+      onTap: noTap
+        ? undefined
+        : () => {
+            counters.tap += 1;
+          },
       haptic: false,
     },
   );
@@ -53,11 +55,37 @@ function Harness({ scroller }: { scroller?: boolean }) {
       tile
     </button>
   );
-  if (!scroller) return tile;
+  /*
+   * Something else that is clickable, standing in for whatever the handled
+   * gesture can move under the lifted finger - on a phone, the action bar that
+   * the selection makes appear right there (mmy-c4r).
+   */
+  const elsewhere = (
+    <button
+      type="button"
+      data-testid="elsewhere"
+      onClick={() => {
+        counters.elsewhere += 1;
+      }}
+    >
+      elsewhere
+    </button>
+  );
+  if (!scroller) {
+    return (
+      <>
+        {tile}
+        {elsewhere}
+      </>
+    );
+  }
   return (
-    <div data-testid="scroller" style={{ overflowY: "auto" }}>
-      {tile}
-    </div>
+    <>
+      <div data-testid="scroller" style={{ overflowY: "auto" }}>
+        {tile}
+      </div>
+      {elsewhere}
+    </>
   );
 }
 
@@ -129,6 +157,7 @@ beforeEach(() => {
   counters.tap = 0;
   counters.longPress = 0;
   counters.click = 0;
+  counters.elsewhere = 0;
   vi.useFakeTimers();
   return () => vi.useRealTimers();
 });
@@ -226,6 +255,70 @@ describe("useLongPress", () => {
     });
     expect(counters.longPress).toBe(0);
     expect(counters.tap).toBe(0);
+  });
+
+  /*
+   * mmy-c4r: handling the tap on `pointerup` runs before the click the browser
+   * still fires, so the selection it makes can move something else under the
+   * lifted finger - on a phone the action bar appears exactly there - and that
+   * click then activates whatever arrived. It cost a plain tap on a music clip
+   * its own trim dialog. The guard therefore has to be on the document, not on
+   * the element the gesture started on, which never sees that click.
+   */
+  describe("the click after a handled tap", () => {
+    it("does not reach an element that moved under the finger", () => {
+      render(<Harness />);
+      press(tile());
+      expect(counters.tap).toBe(1);
+      // The click the browser sends next, now over something else entirely.
+      fireEvent.click(screen.getByTestId("elsewhere"));
+      expect(counters.elsewhere).toBe(0);
+    });
+
+    it("lets that element's own next tap through", () => {
+      render(<Harness />);
+      press(tile());
+      const other = screen.getByTestId("elsewhere");
+      // A new gesture of its own: its pointerdown ends the guard, so its click
+      // counts. This is also what keeps a later mouse click working.
+      fireEvent.pointerDown(other, { ...ORIGIN, pointerId: ID + 1 });
+      fireEvent.click(other);
+      expect(counters.elsewhere).toBe(1);
+    });
+
+    it("stops guarding once the window has passed", () => {
+      render(<Harness />);
+      press(tile());
+      act(() => vi.advanceTimersByTime(1000));
+      fireEvent.click(screen.getByTestId("elsewhere"));
+      expect(counters.elsewhere).toBe(1);
+    });
+
+    // A hold opens an action sheet under the finger, so the same click would
+    // land on the sheet's first entry.
+    it("does not reach an element that a hold brought there", () => {
+      render(<Harness />);
+      press(tile(), { hold: HOLD_MS + 50 });
+      expect(counters.longPress).toBe(1);
+      fireEvent.click(screen.getByTestId("elsewhere"));
+      expect(counters.elsewhere).toBe(0);
+    });
+
+    /*
+     * A caller without `onTap` has not handed its tap over - the native click
+     * *is* its tap (narrationtrack/NarrationClipBlock). Guarding it there would
+     * leave the element unselectable, which is a worse bug than the one the
+     * guard exists for.
+     */
+    it("still runs for a caller that has no onTap of its own", () => {
+      render(<Harness noTap />);
+      press(tile());
+      expect(counters.tap).toBe(0);
+      fireEvent.click(tile());
+      expect(counters.click).toBe(1);
+      fireEvent.click(screen.getByTestId("elsewhere"));
+      expect(counters.elsewhere).toBe(1);
+    });
   });
 
   describe("on a grid that scrolls", () => {

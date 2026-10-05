@@ -4,6 +4,7 @@ import type { MusicClip, Slide } from "../lib/apiClient";
 import { audioItem, mediaItem, mockApi } from "../store/testApi";
 import { mockLayout } from "../test/mockLayout";
 import { renderApp } from "../test/renderApp";
+import { HOLD_MS } from "../ui/useLongPress";
 
 const slide = (id: string, mediaId: string): Slide => ({
   kind: "image",
@@ -90,11 +91,11 @@ async function setup() {
   return { ...view, api };
 }
 
-/** Long press (400 ms) on an element, then drag it to x and lift the finger. */
+/** Long press (HOLD_MS) on an element, then drag it to x and lift the finger. */
 async function longPressDrag(el: HTMLElement, from: [number, number], toX: number) {
   const [x, y] = from;
   fireEvent.touchStart(el, touches(x, y));
-  await wait(450);
+  await wait(HOLD_MS + 50);
   fireEvent.touchMove(el, touches(x - 10, y));
   await wait(20);
   fireEvent.touchMove(el, touches(toX, y));
@@ -107,7 +108,7 @@ async function swipe(el: HTMLElement, from: [number, number], toX: number) {
   const [x, y] = from;
   fireEvent.touchStart(el, touches(x, y));
   fireEvent.touchMove(el, touches(x - 30, y));
-  await wait(450);
+  await wait(HOLD_MS + 50);
   fireEvent.touchMove(el, touches(toX, y));
   fireEvent.touchEnd(el, end(toX, y));
 }
